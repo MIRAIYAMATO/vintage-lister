@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v3 (Square)</title>
+    <title>Vintage Lister v3 (Square + Pedal)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -104,10 +104,14 @@
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Condition</label>
                 <select id="cond-select" class="w-full mt-2 p-4 bg-gray-50 border border-gray-200 rounded-xl text-lg font-medium outline-none focus:border-blue-500">
-                    <option>Vintage (Pre-2000)</option>
-                    <option>Modern (Post-2000)</option>
-                    <option>New With Tags</option>
-                    <option>Thrashed / Damaged</option>
+                    <option>New with tag</option>
+                    <option>New without tag</option>
+                    <option>New with imperfections</option>
+                    <option>Pre-owned excellent</option>
+                    <option>Pre-owned good</option>
+                    <option>Pre-owned fair</option>
+                    <option>Poor – major flaws</option>
+                    <option>Cannot decide</option>
                 </select>
             </div>
         </div>
@@ -194,6 +198,24 @@
     </div>
 
     <script>
+        // --- KEYBOARD / PEDAL SUPPORT ---
+        document.addEventListener('keydown', (e) => {
+            // Check if Camera Overlay is open
+            const overlay = document.getElementById('cam-overlay');
+            if (overlay.classList.contains('hidden')) return;
+
+            // Map Spacebar or Enter to "Take Snap"
+            if (e.code === 'Space' || e.key === 'Enter') {
+                e.preventDefault(); // Stop page scrolling
+                takeSnap();
+            }
+            
+            // Map Escape to "Close"
+            if (e.code === 'Escape') {
+                closeCamera();
+            }
+        });
+
         // --- LOGIC ---
         let data = {
             mode: 'tops',
