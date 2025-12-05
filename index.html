@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v6 (Double Verify)</title>
+    <title>Vintage Lister v6.1 (Defect Toggle)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -79,7 +79,7 @@
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- UNIVERSAL: Tag Photo (Always take it, even if no tag/cut tag) -->
+            <!-- UNIVERSAL: Tag Photo -->
             <div class="mb-6">
                 <button onclick="openCamera('tag')" class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 text-sm font-bold flex items-center justify-center gap-2 active:bg-gray-50">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
@@ -91,7 +91,7 @@
             <!-- UNIVERSAL: Fabric & Size Logic -->
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 
-                <!-- A. FABRIC (Structured for Everyone) -->
+                <!-- A. FABRIC -->
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
                     <select id="fabric-select" class="w-full p-2 bg-white border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
@@ -124,7 +124,7 @@
                     </select>
                 </div>
 
-                <!-- B. TAG SIZE (Only if Has Tag) -->
+                <!-- B. TAG SIZE -->
                 <div id="section-tag-size" class="hidden">
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Reads</label>
                     <div class="grid grid-cols-6 gap-1 mb-2">
@@ -138,7 +138,7 @@
                     <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R)" onfocus="clearTagSizeBtns()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-blue-500">
                 </div>
 
-                <!-- C. FITS LIKE / ESTIMATED (Logic changes based on button) -->
+                <!-- C. FITS LIKE / ESTIMATED -->
                 <div>
                     <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
                     <select id="size-select" class="w-full p-2 bg-white border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
@@ -148,7 +148,7 @@
                 </div>
             </div>
 
-            <!-- AUDIO RECORDER (Only for Brand/MadeIn - NOT Material/Size) -->
+            <!-- AUDIO RECORDER -->
             <div id="tag-area-audio" class="hidden">
                 <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     <div class="flex items-center gap-2">
@@ -185,18 +185,28 @@
             </div>
         </div>
 
-        <!-- 7. DEFECTS PHOTOS -->
+        <!-- 7. DEFECTS TOGGLE & PHOTOS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-red-500 uppercase tracking-wide">7. Defect Photos</label>
-                <span id="count-defect" class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
+            <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
+            
+            <!-- Toggle Buttons -->
+            <div class="flex gap-3 mb-4">
+                <button onclick="setDefectState(false)" id="btn-no-defects" class="flex-1 py-4 border border-green-200 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner">No Defects</button>
+                <button onclick="setDefectState(true)" id="btn-has-defects" class="flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all">Has Defects</button>
             </div>
-            <p class="text-xs text-gray-400 mb-2">Use finger pointing (1=Stain, 2=Hole, 3=Repair)</p>
-            <button onclick="openCamera('defect')" class="w-full h-16 border-2 border-dashed border-red-300 bg-red-50 rounded-xl flex items-center justify-center gap-2 text-red-500 font-bold active:bg-red-100 transition-all shadow-sm">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                SNAP DEFECTS
-            </button>
-            <div id="thumbs-defect" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+
+            <!-- Content Area (Hidden by Default) -->
+            <div id="defect-content" class="hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-xs text-gray-400">Finger Point: 1=Stain, 2=Hole, 3=Repair</p>
+                    <span id="count-defect" class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
+                </div>
+                <button onclick="openCamera('defect')" class="w-full h-16 border-2 border-dashed border-red-300 bg-red-50 rounded-xl flex items-center justify-center gap-2 text-red-500 font-bold active:bg-red-100 transition-all shadow-sm">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    SNAP DEFECTS
+                </button>
+                <div id="thumbs-defect" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+            </div>
         </div>
 
         <!-- 8. MEASUREMENTS -->
@@ -265,6 +275,7 @@
             gender: '',
             tagStatus: 'has',
             tagSize: '',
+            hasDefects: false, // New Flag
             audioTag: null, audioMeasure: null,
             scanTime: null
         };
@@ -277,6 +288,7 @@
         window.onload = () => {
             setMode('tops');
             setTagState('has');
+            setDefectState(false); // Default No Defects
             document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); });
         };
 
@@ -292,13 +304,10 @@
 
         function setTagState(state) {
             data.tagStatus = state;
-            
-            // UI Toggles
             ['has', 'unreadable', 'none'].forEach(k => {
                 document.getElementById(`btn-tag-${k}`).className = "py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs bg-white";
             });
             const activeBtn = document.getElementById(`btn-tag-${state}`);
-            
             if(state === 'has') {
                 activeBtn.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.remove('hidden');
@@ -322,6 +331,21 @@
         function clearTagSizeBtns() {
             document.querySelectorAll('.size-btn').forEach(b => b.className = "size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs");
             data.tagSize = ""; 
+        }
+
+        // --- DEFECT LOGIC ---
+        function setDefectState(hasDefects) {
+            data.hasDefects = hasDefects;
+            if(hasDefects) {
+                document.getElementById('btn-has-defects').className = "flex-1 py-4 border border-red-500 bg-red-50 text-red-600 rounded-xl font-bold transition-all shadow-inner";
+                document.getElementById('btn-no-defects').className = "flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all";
+                document.getElementById('defect-content').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-no-defects').className = "flex-1 py-4 border border-green-500 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner";
+                document.getElementById('btn-has-defects').className = "flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all";
+                document.getElementById('defect-content').classList.add('hidden');
+                // Optional: Clear defect photos if switched to No? Keeping them in memory is safer in case of mis-click.
+            }
         }
 
         // --- CAMERA LOGIC ---
@@ -441,6 +465,11 @@
                 if(manualInput) data.tagSize = manualInput;
             }
 
+            // Defect Validation
+            if (data.hasDefects && data.defectPhotos.length === 0) {
+                if(!confirm("You marked 'Has Defects' but took no defect photos. Continue?")) return;
+            }
+
             const modal = document.getElementById('upload-modal');
             modal.classList.remove('hidden');
 
@@ -448,6 +477,7 @@
             fd.append('sku', sku);
             fd.append('mode', data.mode);
             fd.append('tag_status', data.tagStatus);
+            fd.append('has_defects', data.hasDefects); // New Flag
             fd.append('category', document.getElementById('cat-select').value);
             fd.append('gender', data.gender);
             fd.append('condition', document.getElementById('cond-select').value);
@@ -463,7 +493,11 @@
 
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
-            data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
+            
+            // Append Defects only if flagged
+            if (data.hasDefects) {
+                data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
+            }
 
             if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
