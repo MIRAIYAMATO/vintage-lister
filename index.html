@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- Updated Viewport for iPhone Notch Support -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v6.3 (Care Tag Logic)</title>
+    <title>Vintage Lister v6.4 (Dynamic Measurements)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -201,7 +201,7 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
-                <select id="cat-select" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
+                <select id="cat-select" onchange="updateMeasureHint()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
@@ -247,7 +247,12 @@
         <!-- 8. MEASUREMENTS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Measurements</label>
-            <p id="measure-hint" class="text-xs text-blue-500 mb-3 mt-1 font-mono font-bold"></p>
+            
+            <!-- DYNAMIC HINT AREA -->
+            <div id="measure-hint" class="text-xs font-mono text-gray-500 mb-3 bg-gray-100 p-3 rounded-lg border border-gray-200 leading-relaxed">
+                <!-- Hint injected by JS -->
+            </div>
+            
             <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
                 <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                 <span id="lbl-measure">Tap to Record Measurements</span>
@@ -316,8 +321,8 @@
         };
 
         const config = {
-            tops: { cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], hint: "Shoulder, Pit-to-Pit, Length, Sleeve" },
-            bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], hint: "Waist, Inseam, Rise, Hips" }
+            tops: { cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], hint: "Shoulder • Pit-to-Pit • Length • Sleeve" },
+            bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], hint: "Waist • Inseam • Rise • Hips" }
         };
 
         const scripts = {
@@ -340,7 +345,31 @@
             const s = document.getElementById('cat-select');
             s.innerHTML = '<option disabled selected>Select...</option>';
             config[m].cats.forEach(c => s.add(new Option(c, c)));
-            document.getElementById('measure-hint').innerText = config[m].hint;
+            updateMeasureHint(); // Refresh hint
+        }
+
+        // --- NEW: DYNAMIC MEASUREMENT HINT ---
+        function updateMeasureHint() {
+            const cat = document.getElementById('cat-select').value;
+            const hintBox = document.getElementById('measure-hint');
+            
+            // Default Base Hints
+            let hint = config[data.mode].hint;
+
+            // SPECIAL LOGIC: Button Shirt
+            if (cat === "Button Shirt") {
+                hint = `
+                <span class="block mb-1">1. Shoulder • 2. Pit-to-Pit • 3. Waist</span>
+                <span class="block mb-1">4. Bottom Hem • 5. Length • 6. Neck-to-Shoulder</span>
+                <span class="block mb-1">7. Sleeve • 8. Arm Opening</span>
+                <span class="block text-red-600 font-bold bg-red-50 p-1 rounded">9. NECK MEASUREMENT</span>
+                `;
+            } else {
+                // Formatting for readability
+                hint = hint.replace(/•/g, '<span class="text-gray-300 px-1">•</span>');
+            }
+            
+            hintBox.innerHTML = hint;
         }
 
         function setTagState(state) {
