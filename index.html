@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v5 (Split Photos)</title>
+    <title>Vintage Lister v5.1 (Tag Buttons)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -15,6 +15,9 @@
         .flash { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0; background: white; }
         .trigger-flash { animation: flash-anim 0.15s ease-out; }
         @keyframes flash-anim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+        
+        /* Tag Size Selected State */
+        .size-btn-selected { background-color: #2563eb; color: white; border-color: #2563eb; }
     </style>
 </head>
 <body class="pb-40">
@@ -84,15 +87,32 @@
                 <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mt-2"></div>
             </div>
 
-            <!-- HAS TAG: Audio -->
-            <div id="tag-area-audio" class="hidden space-y-3">
+            <!-- HAS TAG: Size Selector + Audio -->
+            <div id="tag-area-audio" class="hidden space-y-4">
+                
+                <!-- NEW: Tag Size Buttons -->
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Select Tag Size</label>
+                    <div class="grid grid-cols-4 gap-2 mb-2">
+                        <button onclick="setTagSize('S', this)" class="size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">S</button>
+                        <button onclick="setTagSize('M', this)" class="size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">M</button>
+                        <button onclick="setTagSize('L', this)" class="size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">L</button>
+                        <button onclick="setTagSize('XL', this)" class="size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">XL</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="setTagSize('XS', this)" class="size-btn flex-1 py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">XS</button>
+                        <button onclick="setTagSize('XXL', this)" class="size-btn flex-1 py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white">XXL</button>
+                        <input type="text" id="tag-size-input" placeholder="Other/Numeric" onfocus="clearTagSizeBtns()" class="flex-[2] p-3 border border-gray-200 rounded-lg font-bold text-gray-800 text-center outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
                 <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-6 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     <div class="flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                         <span>Record Tag Data</span>
                     </div>
                     <div id="script-tag" class="hidden text-xs text-red-800 font-mono mt-2 text-center leading-relaxed bg-red-100 p-2 rounded w-full">
-                        BRAND • STYLE • MADE IN • RN • SIZE • MATERIAL
+                        BRAND • STYLE • MADE IN • RN • MATERIAL
                     </div>
                 </button>
             </div>
@@ -143,7 +163,7 @@
             </div>
         </div>
 
-        <!-- 7. DEFECTS PHOTOS (New Section) -->
+        <!-- 7. DEFECTS PHOTOS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div class="flex justify-between items-center mb-3">
                 <label class="text-xs font-bold text-red-500 uppercase tracking-wide">7. Defect Photos</label>
@@ -218,10 +238,11 @@
 
         let data = {
             mode: 'tops',
-            mainPhotos: [], tagPhotos: [], defectPhotos: [], // Separate arrays
-            cameraMode: 'main', // 'main', 'tag', 'defect'
+            mainPhotos: [], tagPhotos: [], defectPhotos: [], 
+            cameraMode: 'main',
             gender: '',
             tagStatus: 'has',
+            tagSize: '', // NEW
             audioTag: null, audioMeasure: null,
             scanTime: null
         };
@@ -232,7 +253,7 @@
         };
 
         const scripts = {
-            has: "BRAND • STYLE CODE • MADE IN • RN • SIZE • MATERIAL",
+            has: "BRAND • STYLE CODE • MADE IN • RN • MATERIAL", // Removed SIZE
             unreadable: "FABRIC GUESS • ESTIMATED SIZE",
             none: "FABRIC GUESS • ESTIMATED SIZE"
         };
@@ -270,17 +291,26 @@
             }
         }
 
-        // --- CAMERA LOGIC (Split Buckets) ---
+        function setTagSize(size, el) {
+            data.tagSize = size;
+            document.getElementById('tag-size-input').value = ""; // Clear manual input
+            document.querySelectorAll('.size-btn').forEach(b => b.className = "size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white");
+            if(el) el.className = "size-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-lg font-bold shadow";
+        }
+
+        function clearTagSizeBtns() {
+            document.querySelectorAll('.size-btn').forEach(b => b.className = "size-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white");
+            data.tagSize = ""; // Clears button selection to prioritize manual input
+        }
+
+        // --- CAMERA LOGIC ---
         let stream;
         
         async function openCamera(mode) {
-            data.cameraMode = mode; // 'main', 'tag', 'defect'
+            data.cameraMode = mode;
             document.getElementById('cam-mode-label').innerText = mode;
-            
-            // Update count display for this specific mode
             const currentCount = mode === 'main' ? data.mainPhotos.length : (mode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length);
             document.getElementById('cam-count').innerText = currentCount;
-
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } });
                 document.getElementById('cam-feed').srcObject = stream;
@@ -296,22 +326,15 @@
             const startY = (v.videoHeight - size) / 2;
             c.width = size; c.height = size;
             c.getContext('2d').drawImage(v, startX, startY, size, size, 0, 0, size, size);
-            
             const f = document.getElementById('flash');
             f.classList.add('trigger-flash');
             setTimeout(() => f.classList.remove('trigger-flash'), 150);
-
             c.toBlob(blob => {
                 const photoObj = { blob: blob, ts: new Date() };
-                
-                // Add to specific bucket
                 if (data.cameraMode === 'main') data.mainPhotos.push(photoObj);
                 else if (data.cameraMode === 'tag') data.tagPhotos.push(photoObj);
                 else if (data.cameraMode === 'defect') data.defectPhotos.push(photoObj);
-
                 updateThumbnails(data.cameraMode);
-                
-                // Update live count in camera view
                 const currentCount = data.cameraMode === 'main' ? data.mainPhotos.length : (data.cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length);
                 document.getElementById('cam-count').innerText = currentCount;
             }, 'image/jpeg', 0.7);
@@ -321,11 +344,9 @@
             const containerId = `thumbs-${mode}`;
             const countId = `count-${mode}`;
             const photoList = mode === 'main' ? data.mainPhotos : (mode === 'tag' ? data.tagPhotos : data.defectPhotos);
-            
             document.getElementById(countId).innerText = photoList.length;
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
             photoList.forEach(p => {
                 const img = document.createElement('img');
                 img.src = URL.createObjectURL(p.blob);
@@ -351,7 +372,6 @@
         async function recordAudio(key) {
             const btn = document.getElementById(`rec-${key}`);
             const scriptBox = document.getElementById(`script-${key}`);
-            
             if(recorders[key] && recorders[key].state === 'recording') {
                 recorders[key].stop();
                 btn.classList.remove('recording');
@@ -398,7 +418,13 @@
             if(!sku) return alert("Missing SKU");
             if(data.mainPhotos.length === 0) return alert("Take Main Photos");
 
-            if(data.tagStatus !== 'has') {
+            // VALIDATION
+            if(data.tagStatus === 'has') {
+                const manualInput = document.getElementById('tag-size-input').value;
+                if(!data.tagSize && !manualInput) return alert("Select or Type Tag Size");
+                if(!manualInput && data.tagSize) data.tagSize = data.tagSize; // Ensure we use the button value
+                if(manualInput) data.tagSize = manualInput; // Override if typed
+            } else {
                 if(!document.getElementById('fabric-select').value) return alert("Select Fabric");
                 if(!document.getElementById('size-select').value) return alert("Select Size");
             }
@@ -414,18 +440,18 @@
             fd.append('gender', data.gender);
             fd.append('condition', document.getElementById('cond-select').value);
             
-            // Manual Tag Info
-            if(data.tagStatus !== 'has') {
+            // Handle Size Logic
+            if(data.tagStatus === 'has') {
+                fd.append('tag_size', data.tagSize);
+            } else {
                 fd.append('fabric_guess', document.getElementById('fabric-select').value);
                 fd.append('estimated_size', document.getElementById('size-select').value);
             }
 
-            // KPIs
-            const kpiStart = data.mainPhotos[0].ts; // Start from first main photo
+            const kpiStart = data.mainPhotos[0].ts; 
             const kpiEnd = new Date();
             fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime) / 1000));
 
-            // Append Photos (BUCKETED)
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
