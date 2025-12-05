@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- Updated Viewport for iPhone Notch Support -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v6.4 (Dynamic Measurements)</title>
+    <title>Vintage Lister v6.5 (Vertical Lists)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -108,7 +108,7 @@
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- DUAL TAG PHOTO BUTTONS (Neck vs Care) -->
+            <!-- DUAL TAG PHOTO BUTTONS -->
             <div class="mb-6 grid grid-cols-2 gap-2">
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
@@ -120,7 +120,6 @@
                 </button>
             </div>
             
-            <!-- Shared Thumbnails for Tags -->
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
 
             <!-- UNIVERSAL: Fabric & Size Logic -->
@@ -249,7 +248,7 @@
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Measurements</label>
             
             <!-- DYNAMIC HINT AREA -->
-            <div id="measure-hint" class="text-xs font-mono text-gray-500 mb-3 bg-gray-100 p-3 rounded-lg border border-gray-200 leading-relaxed">
+            <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed">
                 <!-- Hint injected by JS -->
             </div>
             
@@ -321,8 +320,16 @@
         };
 
         const config = {
-            tops: { cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], hint: "Shoulder • Pit-to-Pit • Length • Sleeve" },
-            bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], hint: "Waist • Inseam • Rise • Hips" }
+            tops: { 
+                cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], 
+                // Default measurements for Tops (Array format)
+                measures: ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Neck to Shoulder", "Sleeve Length", "Arm Opening"]
+            },
+            bottoms: { 
+                cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], 
+                // Default measurements for Bottoms
+                measures: ["Waist", "Inseam", "Front Rise", "Hips", "Leg Opening"]
+            }
         };
 
         const scripts = {
@@ -348,28 +355,29 @@
             updateMeasureHint(); // Refresh hint
         }
 
-        // --- NEW: DYNAMIC MEASUREMENT HINT ---
+        // --- NEW: DYNAMIC MEASUREMENT HINT (Vertical List) ---
         function updateMeasureHint() {
             const cat = document.getElementById('cat-select').value;
             const hintBox = document.getElementById('measure-hint');
             
-            // Default Base Hints
-            let hint = config[data.mode].hint;
+            // Get base list copy
+            let list = [...config[data.mode].measures];
 
-            // SPECIAL LOGIC: Button Shirt
+            // SPECIAL LOGIC: Button Shirt adds Neck
             if (cat === "Button Shirt") {
-                hint = `
-                <span class="block mb-1">1. Shoulder • 2. Pit-to-Pit • 3. Waist</span>
-                <span class="block mb-1">4. Bottom Hem • 5. Length • 6. Neck-to-Shoulder</span>
-                <span class="block mb-1">7. Sleeve • 8. Arm Opening</span>
-                <span class="block text-red-600 font-bold bg-red-50 p-1 rounded">9. NECK MEASUREMENT</span>
-                `;
-            } else {
-                // Formatting for readability
-                hint = hint.replace(/•/g, '<span class="text-gray-300 px-1">•</span>');
+                list.push("NECK MEASUREMENT");
             }
             
-            hintBox.innerHTML = hint;
+            // Build Vertical List HTML
+            let html = '<div class="grid grid-cols-1 gap-1">';
+            list.forEach((m, i) => {
+                // Highlight Neck measurement if present
+                const style = m.includes("NECK") ? "text-red-600 font-bold bg-red-50 p-1 rounded" : "";
+                html += `<div class="${style}">${i+1}. ${m}</div>`;
+            });
+            html += '</div>';
+            
+            hintBox.innerHTML = html;
         }
 
         function setTagState(state) {
