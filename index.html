@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vintage Lister v3 (Lean)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; user-select: none; background: #f9fafb; }
+        
+        /* Animations */
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .recording { animation: pulse-red 1.5s infinite; background-color: #ef4444 !important; border-color: #ef4444 !important; color: white !important; }
+        .flash { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0; background: white; }
+        .trigger-flash { animation: flash-anim 0.15s ease-out; }
+        @keyframes flash-anim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
+    </style>
+</head>
+<body class="pb-40">
+
+    <!-- CONFIG -->
+    <script>
+        // We will update this URL in a later step!
+        const N8N_WEBHOOK_URL = ""; 
+    </script>
+
+    <!-- HEADER -->
+    <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200">
+        <div class="font-bold text-gray-800 text-lg tracking-tight">Vintage<span class="text-blue-600">Lister</span></div>
+        <div class="flex bg-gray-100 rounded-lg p-1">
+            <button onclick="setMode('tops')" id="mode-tops" class="px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm transition-all">TOPS</button>
+            <button onclick="setMode('bottoms')" id="mode-bottoms" class="px-4 py-2 rounded text-gray-500 font-bold text-sm transition-all">BOTTOMS</button>
+        </div>
+    </div>
+
+    <!-- MAIN FLOW -->
+    <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto">
+
+        <!-- 1. SKU (Trigger for Total Time KPI) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">1. SKU Identification</label>
+            <div class="flex gap-2 mt-2">
+                <input type="number" id="sku-input" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
+                <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 transition-transform shadow-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 16h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                </button>
+            </div>
+            <!-- Scanner View -->
+            <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-56">
+                <div id="reader" class="w-full h-full"></div>
+                <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">CLOSE</button>
+            </div>
+        </div>
+
+        <!-- 2. PHOTOS (KPI: First vs Last Photo) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <div class="flex justify-between items-center mb-3">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">2. Photos (Snap-Snap)</label>
+                <span id="photo-count" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">0 Photos</span>
+            </div>
+            
+            <button onclick="openCamera()" class="w-full h-20 border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl flex items-center justify-center gap-2 text-blue-600 font-bold active:bg-blue-100 transition-all shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                LAUNCH RAPID CAMERA
+            </button>
+            
+            <div id="thumbnails" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+        </div>
+
+        <!-- 3. TAG INFO -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
+            <div class="flex gap-3 mt-3 mb-4">
+                <button onclick="toggleTag(true)" id="btn-has-tag" class="flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 transition-all">Has Tag</button>
+                <button onclick="toggleTag(false)" id="btn-no-tag" class="flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-gray-50 transition-all">No Tag</button>
+            </div>
+
+            <div id="tag-area" class="opacity-40 pointer-events-none transition-opacity duration-300">
+                <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    <span id="lbl-tag">Record Tag Info</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. SPECS -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
+                <select id="cat-select" class="w-full mt-2 p-4 bg-gray-50 border border-gray-200 rounded-xl text-lg font-medium outline-none focus:border-blue-500"></select>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
+                <div class="grid grid-cols-2 gap-3 mt-2">
+                    <button onclick="setGender('Male', this)" class="g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white">Male</button>
+                    <button onclick="setGender('Female', this)" class="g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white">Female</button>
+                    <button onclick="setGender('Unisex', this)" class="g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white">Unisex</button>
+                    <button onclick="setGender('Kids', this)" class="g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white">Kids</button>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Condition</label>
+                <select id="cond-select" class="w-full mt-2 p-4 bg-gray-50 border border-gray-200 rounded-xl text-lg font-medium outline-none focus:border-blue-500">
+                    <option>Vintage (Pre-2000)</option>
+                    <option>Modern (Post-2000)</option>
+                    <option>New With Tags</option>
+                    <option>Thrashed / Damaged</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 5. MEASUREMENTS -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Measurements</label>
+            <p id="measure-hint" class="text-xs text-blue-500 mb-3 mt-1 font-mono font-bold"></p>
+            
+            <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
+                <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                <span id="lbl-measure">Tap to Record Measurements</span>
+            </button>
+        </div>
+
+        <!-- SUBMIT -->
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30">
+            <button onclick="submitData()" id="btn-submit" class="w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">
+                PROCESS LISTING
+            </button>
+        </div>
+
+    </div>
+
+    <!-- CAMERA OVERLAY -->
+    <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col">
+        <div class="relative flex-1 bg-black">
+            <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
+            <div id="flash" class="flash"></div>
+        </div>
+        <div class="h-56 bg-gray-900 flex flex-col items-center justify-center pb-8 rounded-t-3xl">
+            <div class="flex items-center justify-between w-full px-8 max-w-sm">
+                <button onclick="closeCamera()" class="text-gray-400 font-bold p-4">Cancel</button>
+                <button onclick="takeSnap()" class="w-20 h-20 bg-white rounded-full border-4 border-gray-400 shadow-xl active:scale-90 transition-transform"></button>
+                <button onclick="closeCamera()" class="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg shadow-lg">Done</button>
+            </div>
+            <p class="text-gray-500 text-xs mt-4 font-mono">Photos taken: <span id="cam-count" class="text-white font-bold">0</span></p>
+        </div>
+    </div>
+
+    <!-- UPLOAD MODAL -->
+    <div id="upload-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
+            <p id="upload-detail" class="text-sm text-gray-500 mb-6">Compressing & Sending</p>
+            
+            <div class="w-full bg-gray-100 rounded-full h-4 mb-3 overflow-hidden">
+                <div id="progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-100 ease-out" style="width: 0%"></div>
+            </div>
+            <p id="upload-pct" class="text-xs font-bold text-blue-600 font-mono">0%</p>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIC ---
+        let data = {
+            mode: 'tops',
+            photos: [], // { blob, ts }
+            gender: '',
+            hasTag: false,
+            audioTag: null,
+            audioMeasure: null,
+            scanTime: null // KPI: Start of SKU Scan
+        };
+
+        const config = {
+            tops: { cats: ["T-Shirt", "Sweatshirt", "Hoodie", "Button Shirt", "Polo", "Jacket", "Sweater", "Tank Top"], hint: "Shoulder, Pit-to-Pit, Length, Sleeve" },
+            bottoms: { cats: ["Jeans", "Pants", "Shorts", "Sweatpants", "Joggers", "Leggings"], hint: "Waist, Inseam, Rise, Hips" }
+        };
+
+        window.onload = () => {
+            setMode('tops');
+            // Focus SKU on load
+            document.getElementById('sku-input').addEventListener('focus', () => {
+                if(!data.scanTime) data.scanTime = new Date();
+            });
+        };
+
+        function setMode(m) {
+            data.mode = m;
+            document.getElementById('mode-tops').className = m === 'tops' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
+            document.getElementById('mode-bottoms').className = m === 'bottoms' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
+            const s = document.getElementById('cat-select');
+            s.innerHTML = '<option disabled selected>Select...</option>';
+            config[m].cats.forEach(c => s.add(new Option(c, c)));
+            document.getElementById('measure-hint').innerText = config[m].hint;
+        }
+
+        // --- 1. SCANNER (Code 128 Optimized) ---
+        let scanner;
+        function toggleScanner() {
+            if(!data.scanTime) data.scanTime = new Date(); // Start KPI timer
+            
+            const v = document.getElementById('scanner-view');
+            if(!v.classList.contains('hidden')) {
+                if(scanner) scanner.stop().then(() => { v.classList.add('hidden'); scanner.clear(); });
+                return;
+            }
+            v.classList.remove('hidden');
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 100 }, aspectRatio: 1.0, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39 ] }, 
+                (txt) => {
+                    document.getElementById('sku-input').value = txt;
+                    toggleScanner();
+                }
+            ).catch(e => console.log(e));
+        }
+
+        // --- 2. CAMERA (Compressed & Timestampped) ---
+        let stream;
+        async function openCamera() {
+            try {
+                // Request 4K ideal, usually gets 1080p on web
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } });
+                document.getElementById('cam-feed').srcObject = stream;
+                document.getElementById('cam-overlay').classList.remove('hidden');
+                document.getElementById('cam-count').innerText = data.photos.length;
+            } catch(e) { alert("Camera Error. Ensure HTTPS."); }
+        }
+
+        function takeSnap() {
+            const v = document.getElementById('cam-feed');
+            const c = document.createElement('canvas');
+            c.width = v.videoWidth; c.height = v.videoHeight;
+            c.getContext('2d').drawImage(v, 0, 0);
+            
+            const f = document.getElementById('flash');
+            f.classList.add('trigger-flash');
+            setTimeout(() => f.classList.remove('trigger-flash'), 150);
+
+            // COMPRESSION HACK: 0.7 Quality JPEG
+            c.toBlob(blob => {
+                data.photos.push({ blob: blob, ts: new Date() });
+                // UI
+                document.getElementById('cam-count').innerText = data.photos.length;
+                document.getElementById('photo-count').innerText = `${data.photos.length} Photos`;
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.className = "h-20 w-20 object-cover rounded-lg border border-gray-200 flex-shrink-0 snap-center";
+                document.getElementById('thumbnails').appendChild(img);
+            }, 'image/jpeg', 0.7);
+        }
+
+        function closeCamera() {
+            if(stream) stream.getTracks().forEach(t => t.stop());
+            document.getElementById('cam-overlay').classList.add('hidden');
+        }
+
+        // --- 3. UI HELPERS ---
+        function toggleTag(has) {
+            data.hasTag = has;
+            const area = document.getElementById('tag-area');
+            if(has) {
+                area.classList.remove('opacity-40', 'pointer-events-none');
+                document.getElementById('btn-has-tag').className = "flex-1 py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold shadow-inner";
+                document.getElementById('btn-no-tag').className = "flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-white";
+            } else {
+                area.classList.add('opacity-40', 'pointer-events-none');
+                data.audioTag = null;
+                document.getElementById('btn-no-tag').className = "flex-1 py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold shadow";
+                document.getElementById('btn-has-tag').className = "flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-white";
+            }
+        }
+
+        function setGender(g, el) {
+            data.gender = g;
+            document.querySelectorAll('.g-btn').forEach(b => b.className = "g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white");
+            el.className = "g-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-xl font-bold shadow";
+        }
+
+        // --- 4. AUDIO ---
+        let recorders = {};
+        async function recordAudio(key) {
+            const btn = document.getElementById(`rec-${key}`);
+            const lbl = document.getElementById(`lbl-${key}`);
+            
+            if(recorders[key] && recorders[key].state === 'recording') {
+                recorders[key].stop();
+                btn.classList.remove('recording');
+                lbl.innerText = "Audio Saved (Tap to Redo)";
+                return;
+            }
+
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const r = new MediaRecorder(s);
+                let chunks = [];
+                r.ondataavailable = e => chunks.push(e.data);
+                r.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    if(key === 'tag') data.audioTag = blob;
+                    if(key === 'measure') data.audioMeasure = blob;
+                    s.getTracks().forEach(t => t.stop());
+                };
+                r.start();
+                recorders[key] = r;
+                btn.classList.add('recording');
+                lbl.innerText = "RECORDING... (Tap to Stop)";
+            } catch(e) { alert("Mic Access Denied"); }
+        }
+
+        // --- 5. SUBMIT (REAL PROGRESS BAR) ---
+        function submitData() {
+            const sku = document.getElementById('sku-input').value;
+            if(!sku) return alert("Missing SKU");
+            if(data.photos.length === 0) return alert("Take Photos first");
+
+            // KPI Logic
+            const kpiStart = data.photos[0].ts;
+            const kpiEnd = data.photos[data.photos.length-1].ts;
+            const photoDuration = Math.round((kpiEnd - kpiStart) / 1000);
+            const totalDuration = data.scanTime ? Math.round((new Date() - data.scanTime) / 1000) : 0;
+
+            const modal = document.getElementById('upload-modal');
+            modal.classList.remove('hidden');
+
+            const fd = new FormData();
+            fd.append('sku', sku);
+            fd.append('mode', data.mode);
+            fd.append('category', document.getElementById('cat-select').value);
+            fd.append('gender', data.gender);
+            fd.append('condition', document.getElementById('cond-select').value);
+            
+            // KPI FIELDS
+            fd.append('kpi_photo_duration_sec', photoDuration);
+            fd.append('kpi_total_listing_sec', totalDuration);
+            fd.append('kpi_first_photo_time', kpiStart.toISOString());
+            fd.append('kpi_last_photo_time', kpiEnd.toISOString());
+
+            // PHOTOS
+            data.photos.forEach((p, i) => {
+                const name = `${sku}_${p.ts.getTime()}_${i+1}.jpg`;
+                fd.append(`photo_${i+1}`, p.blob, name);
+            });
+
+            if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
+            if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
+
+            // XHR for Progress
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", N8N_WEBHOOK_URL, true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    document.getElementById('progress-bar').style.width = `${pct}%`;
+                    document.getElementById('upload-pct').innerText = `${pct}%`;
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    document.getElementById('upload-detail').innerText = "Success!";
+                    document.getElementById('progress-bar').style.backgroundColor = "#22c55e"; // Green
+                    setTimeout(() => {
+                        location.reload(); // HARD RESET
+                    }, 500);
+                } else {
+                    alert("Server Error: " + xhr.statusText);
+                    modal.classList.add('hidden');
+                }
+            };
+
+            xhr.onerror = () => {
+                alert("Network Error");
+                modal.classList.add('hidden');
+            };
+
+            xhr.send(fd);
+        }
+    </script>
+</body>
+</html>
