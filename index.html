@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v3 (Square + Pedal)</title>
+    <title>Vintage Lister v4 (Smart Data)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -68,29 +68,81 @@
             <div id="thumbnails" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 3. TAG INFO (TRI-STATE) -->
+        <!-- 3. TAG INFO (SMART TOGGLE) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
             
             <!-- Tri-State Buttons -->
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
-                <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">Has Tag</button>
-                <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">Unreadable</button>
-                <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">No Tag</button>
+                <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
+                <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
+                <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- Tag Recorder Area -->
-            <div id="tag-area" class="opacity-40 pointer-events-none transition-opacity duration-300">
+            <!-- STATE A: Audio Recorder (Shown if 'Has Tag') -->
+            <div id="tag-area-audio" class="hidden">
                 <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-6 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     <div class="flex items-center gap-2">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                        <span>Record Details</span>
+                        <span>Record Tag Data</span>
                     </div>
-                    <!-- Teleprompter (Hidden by default) -->
+                    <!-- Teleprompter -->
                     <div id="script-tag" class="hidden text-xs text-red-800 font-mono mt-2 text-center leading-relaxed bg-red-100 p-2 rounded w-full">
-                        <!-- Content Injected via JS -->
+                        BRAND • STYLE • MADE IN • RN • SIZE • MATERIAL
                     </div>
                 </button>
+            </div>
+
+            <!-- STATE B: Manual Dropdowns (Shown if 'No Tag' or 'Unreadable') -->
+            <div id="tag-area-manual" class="hidden space-y-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div>
+                    <label class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 block">Fabric Guess</label>
+                    <select id="fabric-select" class="w-full p-3 bg-white border border-blue-200 rounded-xl text-gray-800 font-bold outline-none focus:border-blue-500">
+                        <option value="" disabled selected>Select Fabric...</option>
+                        <optgroup label="Natural Fibers">
+                            <option>Cotton</option>
+                            <option>Linen</option>
+                            <option>Silk</option>
+                            <option>Wool</option>
+                        </optgroup>
+                        <optgroup label="Synthetic Fibers">
+                            <option>Polyester</option>
+                            <option>Nylon</option>
+                            <option>Acrylic</option>
+                            <option>Spandex</option>
+                        </optgroup>
+                        <optgroup label="Blended Fabrics">
+                            <option>Cotton-Poly Blend</option>
+                            <option>Rayon Blend</option>
+                        </optgroup>
+                        <optgroup label="Specialty Fabrics">
+                            <option>Denim</option>
+                            <option>Velvet</option>
+                            <option>Lace</option>
+                            <option>Fleece</option>
+                        </optgroup>
+                        <optgroup label="Other Types">
+                            <option>Knit Fabric</option>
+                            <option>Woven Fabric</option>
+                            <option>Jersey Fabric</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 block">Estimated Size</label>
+                    <select id="size-select" class="w-full p-3 bg-white border border-blue-200 rounded-xl text-gray-800 font-bold outline-none focus:border-blue-500">
+                        <option value="" disabled selected>Est. Size...</option>
+                        <option>XXS</option>
+                        <option>XS</option>
+                        <option>S</option>
+                        <option>M</option>
+                        <option>L</option>
+                        <option>XL</option>
+                        <option>XXL</option>
+                        <option>3XL+</option>
+                        <option>One Size</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -239,20 +291,20 @@
             // Reset Styles
             ['has', 'unreadable', 'none'].forEach(k => {
                 const btn = document.getElementById(`btn-tag-${k}`);
-                btn.className = "py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm bg-white";
+                btn.className = "py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs bg-white";
             });
 
             // Set Active Style
             const activeBtn = document.getElementById(`btn-tag-${state}`);
-            if(state === 'has') activeBtn.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm shadow-inner";
-            else if (state === 'unreadable') activeBtn.className = "py-4 border border-orange-500 bg-orange-50 text-orange-600 rounded-xl font-bold text-sm shadow-inner";
-            else activeBtn.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-sm shadow-inner";
-
-            // Enable Recorder Area
-            document.getElementById('tag-area').classList.remove('opacity-40', 'pointer-events-none');
-            
-            // Update Script Text Preview (Before Recording)
-            // Optional: You could show the script immediately, but we hide it until record is pressed to keep it clean.
+            if(state === 'has') {
+                activeBtn.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
+                document.getElementById('tag-area-audio').classList.remove('hidden');
+                document.getElementById('tag-area-manual').classList.add('hidden');
+            } else {
+                activeBtn.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
+                document.getElementById('tag-area-audio').classList.add('hidden');
+                document.getElementById('tag-area-manual').classList.remove('hidden');
+            }
         }
 
         // --- AUDIO RECORDER + TELEPROMPTER ---
@@ -377,6 +429,17 @@
             if(!sku) return alert("Missing SKU");
             if(data.photos.length === 0) return alert("Take Photos first");
 
+            // VALIDATION: Tag Logic
+            if(data.tagStatus === 'has') {
+                // Not validating audio existence strictly, but could
+            } else {
+                // Must have fabric and size
+                const fabric = document.getElementById('fabric-select').value;
+                const size = document.getElementById('size-select').value;
+                if(!fabric) return alert("Please select a Fabric Guess");
+                if(!size) return alert("Please select an Estimated Size");
+            }
+
             const kpiStart = data.photos[0].ts;
             const kpiEnd = data.photos[data.photos.length-1].ts;
             const photoDuration = Math.round((kpiEnd - kpiStart) / 1000);
@@ -392,6 +455,11 @@
             fd.append('category', document.getElementById('cat-select').value);
             fd.append('gender', data.gender);
             fd.append('condition', document.getElementById('cond-select').value);
+            
+            // NEW FIELDS
+            fd.append('fabric_guess', document.getElementById('fabric-select').value);
+            fd.append('estimated_size', document.getElementById('size-select').value);
+
             fd.append('kpi_photo_duration_sec', photoDuration);
             fd.append('kpi_total_listing_sec', totalDuration);
             fd.append('kpi_first_photo_time', kpiStart.toISOString());
