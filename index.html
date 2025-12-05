@@ -68,18 +68,28 @@
             <div id="thumbnails" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 3. TAG INFO -->
+        <!-- 3. TAG INFO (TRI-STATE) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
-            <div class="flex gap-3 mt-3 mb-4">
-                <button onclick="toggleTag(true)" id="btn-has-tag" class="flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 transition-all">Has Tag</button>
-                <button onclick="toggleTag(false)" id="btn-no-tag" class="flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-gray-50 transition-all">No Tag</button>
+            
+            <!-- Tri-State Buttons -->
+            <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
+                <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">Has Tag</button>
+                <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">Unreadable</button>
+                <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm transition-all">No Tag</button>
             </div>
 
+            <!-- Tag Recorder Area -->
             <div id="tag-area" class="opacity-40 pointer-events-none transition-opacity duration-300">
-                <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                    <span id="lbl-tag">Record Tag Info</span>
+                <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-6 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        <span>Record Details</span>
+                    </div>
+                    <!-- Teleprompter (Hidden by default) -->
+                    <div id="script-tag" class="hidden text-xs text-red-800 font-mono mt-2 text-center leading-relaxed bg-red-100 p-2 rounded w-full">
+                        <!-- Content Injected via JS -->
+                    </div>
                 </button>
             </div>
         </div>
@@ -138,48 +148,27 @@
 
     <!-- SQUARE CAMERA OVERLAY -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
-        
-        <!-- Top Spacer to push camera to center (optional) -->
+        <!-- Top Spacer -->
         <div class="flex-1 bg-black"></div>
-
-        <!-- SQUARE VIEWPORT (This constrains what the user sees) -->
+        <!-- SQUARE VIEWPORT -->
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
             <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
-            
-            <!-- GRID LINES (Rule of Thirds) -->
+            <!-- GRID LINES -->
             <div class="absolute inset-0 pointer-events-none z-10 opacity-50">
                 <div class="absolute left-1/3 top-0 bottom-0 border-l border-white/50"></div>
                 <div class="absolute left-2/3 top-0 bottom-0 border-l border-white/50"></div>
                 <div class="absolute top-1/3 left-0 right-0 border-t border-white/50"></div>
                 <div class="absolute top-2/3 left-0 right-0 border-t border-white/50"></div>
             </div>
-
             <div id="flash" class="flash"></div>
         </div>
-        
-        <!-- GIANT CONTROLS (Below the square) -->
+        <!-- CONTROLS -->
         <div class="flex-1 bg-black flex flex-col items-center justify-start pt-8 pb-8">
-            
             <p class="text-gray-400 text-sm font-mono tracking-widest mb-6">PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
-
             <div class="flex items-center justify-evenly w-full px-4 max-w-sm">
-                
-                <!-- CANCEL (Left) -->
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-800 text-gray-300 font-bold text-[10px] active:bg-gray-700 transition-all border border-gray-700">
-                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    CANCEL
-                </button>
-                
-                <!-- SHUTTER (Center - HUGE) -->
-                <button onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 transition-all flex items-center justify-center relative">
-                    <div class="w-20 h-20 rounded-full border-2 border-gray-100"></div>
-                </button>
-                
-                <!-- DONE (Right) -->
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-green-600 text-white font-bold text-[10px] active:bg-green-700 transition-all shadow-lg border border-green-500">
-                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    DONE
-                </button>
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-800 text-gray-300 font-bold text-[10px] active:bg-gray-700 transition-all border border-gray-700"><svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>CANCEL</button>
+                <button onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 transition-all flex items-center justify-center relative"><div class="w-20 h-20 rounded-full border-2 border-gray-100"></div></button>
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-green-600 text-white font-bold text-[10px] active:bg-green-700 transition-all shadow-lg border border-green-500"><svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>DONE</button>
             </div>
         </div>
     </div>
@@ -189,7 +178,6 @@
         <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
             <p id="upload-detail" class="text-sm text-gray-500 mb-6">Compressing & Sending</p>
-            
             <div class="w-full bg-gray-100 rounded-full h-4 mb-3 overflow-hidden">
                 <div id="progress-bar" class="bg-blue-600 h-full rounded-full transition-all duration-100 ease-out" style="width: 0%"></div>
             </div>
@@ -200,31 +188,21 @@
     <script>
         // --- KEYBOARD / PEDAL SUPPORT ---
         document.addEventListener('keydown', (e) => {
-            // Check if Camera Overlay is open
             const overlay = document.getElementById('cam-overlay');
             if (overlay.classList.contains('hidden')) return;
-
-            // Map Spacebar or Enter to "Take Snap"
-            if (e.code === 'Space' || e.key === 'Enter') {
-                e.preventDefault(); // Stop page scrolling
-                takeSnap();
-            }
-            
-            // Map Escape to "Close"
-            if (e.code === 'Escape') {
-                closeCamera();
-            }
+            if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); takeSnap(); }
+            if (e.code === 'Escape') { closeCamera(); }
         });
 
         // --- LOGIC ---
         let data = {
             mode: 'tops',
-            photos: [], // { blob, ts }
+            photos: [],
             gender: '',
-            hasTag: false,
+            tagStatus: 'has', // has, unreadable, none
             audioTag: null,
             audioMeasure: null,
-            scanTime: null // KPI: Start of SKU Scan
+            scanTime: null
         };
 
         const config = {
@@ -232,12 +210,17 @@
             bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], hint: "Waist, Inseam, Rise, Hips" }
         };
 
+        // Teleprompter Scripts
+        const scripts = {
+            has: "BRAND • STYLE CODE • MADE IN • RN • SIZE • MATERIAL",
+            unreadable: "FABRIC GUESS (Cotton/Poly?) • ESTIMATED SIZE",
+            none: "FABRIC GUESS (Cotton/Poly?) • ESTIMATED SIZE"
+        };
+
         window.onload = () => {
             setMode('tops');
-            // Focus SKU on load
-            document.getElementById('sku-input').addEventListener('focus', () => {
-                if(!data.scanTime) data.scanTime = new Date();
-            });
+            setTagState('has'); // Default
+            document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); });
         };
 
         function setMode(m) {
@@ -250,111 +233,50 @@
             document.getElementById('measure-hint').innerText = config[m].hint;
         }
 
-        // --- 1. SCANNER (Code 128 Optimized) ---
-        let scanner;
-        function toggleScanner() {
-            if(!data.scanTime) data.scanTime = new Date(); // Start KPI timer
+        function setTagState(state) {
+            data.tagStatus = state;
             
-            const v = document.getElementById('scanner-view');
-            if(!v.classList.contains('hidden')) {
-                if(scanner) scanner.stop().then(() => { v.classList.add('hidden'); scanner.clear(); });
-                return;
-            }
-            v.classList.remove('hidden');
-            scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, 
-                { fps: 10, qrbox: { width: 250, height: 100 }, aspectRatio: 1.0, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39 ] }, 
-                (txt) => {
-                    document.getElementById('sku-input').value = txt;
-                    toggleScanner();
-                }
-            ).catch(e => console.log(e));
-        }
+            // Reset Styles
+            ['has', 'unreadable', 'none'].forEach(k => {
+                const btn = document.getElementById(`btn-tag-${k}`);
+                btn.className = "py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-sm bg-white";
+            });
 
-        // --- 2. CAMERA (Compressed & Timestampped) ---
-        let stream;
-        async function openCamera() {
-            try {
-                // Request 4K ideal, usually gets 1080p on web
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } });
-                document.getElementById('cam-feed').srcObject = stream;
-                document.getElementById('cam-overlay').classList.remove('hidden');
-                document.getElementById('cam-count').innerText = data.photos.length;
-            } catch(e) { alert("Camera Error. Ensure HTTPS."); }
-        }
+            // Set Active Style
+            const activeBtn = document.getElementById(`btn-tag-${state}`);
+            if(state === 'has') activeBtn.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm shadow-inner";
+            else if (state === 'unreadable') activeBtn.className = "py-4 border border-orange-500 bg-orange-50 text-orange-600 rounded-xl font-bold text-sm shadow-inner";
+            else activeBtn.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-sm shadow-inner";
 
-        function takeSnap() {
-            const v = document.getElementById('cam-feed');
-            const c = document.createElement('canvas');
+            // Enable Recorder Area
+            document.getElementById('tag-area').classList.remove('opacity-40', 'pointer-events-none');
             
-            // SQUARE CROP LOGIC
-            // Determine the size of the square (shortest side of video)
-            const size = Math.min(v.videoWidth, v.videoHeight);
-            const startX = (v.videoWidth - size) / 2;
-            const startY = (v.videoHeight - size) / 2;
-
-            // Set canvas to perfect square
-            c.width = size;
-            c.height = size;
-            
-            // Draw ONLY the center square from the video
-            const ctx = c.getContext('2d');
-            ctx.drawImage(v, startX, startY, size, size, 0, 0, size, size);
-            
-            const f = document.getElementById('flash');
-            f.classList.add('trigger-flash');
-            setTimeout(() => f.classList.remove('trigger-flash'), 150);
-
-            // COMPRESSION HACK: 0.7 Quality JPEG
-            c.toBlob(blob => {
-                data.photos.push({ blob: blob, ts: new Date() });
-                // UI
-                document.getElementById('cam-count').innerText = data.photos.length;
-                document.getElementById('photo-count').innerText = `${data.photos.length} Photos`;
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(blob);
-                img.className = "h-20 w-20 object-cover rounded-lg border border-gray-200 flex-shrink-0 snap-center";
-                document.getElementById('thumbnails').appendChild(img);
-            }, 'image/jpeg', 0.7);
+            // Update Script Text Preview (Before Recording)
+            // Optional: You could show the script immediately, but we hide it until record is pressed to keep it clean.
         }
 
-        function closeCamera() {
-            if(stream) stream.getTracks().forEach(t => t.stop());
-            document.getElementById('cam-overlay').classList.add('hidden');
-        }
-
-        // --- 3. UI HELPERS ---
-        function toggleTag(has) {
-            data.hasTag = has;
-            const area = document.getElementById('tag-area');
-            if(has) {
-                area.classList.remove('opacity-40', 'pointer-events-none');
-                document.getElementById('btn-has-tag').className = "flex-1 py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold shadow-inner";
-                document.getElementById('btn-no-tag').className = "flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-white";
-            } else {
-                area.classList.add('opacity-40', 'pointer-events-none');
-                data.audioTag = null;
-                document.getElementById('btn-no-tag').className = "flex-1 py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold shadow";
-                document.getElementById('btn-has-tag').className = "flex-1 py-4 border border-gray-200 rounded-xl font-bold text-gray-500 bg-white";
-            }
-        }
-
-        function setGender(g, el) {
-            data.gender = g;
-            document.querySelectorAll('.g-btn').forEach(b => b.className = "g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white");
-            el.className = "g-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-xl font-bold shadow";
-        }
-
-        // --- 4. AUDIO ---
+        // --- AUDIO RECORDER + TELEPROMPTER ---
         let recorders = {};
         async function recordAudio(key) {
             const btn = document.getElementById(`rec-${key}`);
-            const lbl = document.getElementById(`lbl-${key}`);
+            const scriptBox = document.getElementById(`script-${key}`); // Only exists for tag currently
             
             if(recorders[key] && recorders[key].state === 'recording') {
+                // STOP RECORDING
                 recorders[key].stop();
                 btn.classList.remove('recording');
-                lbl.innerText = "Audio Saved (Tap to Redo)";
+                // Hide Teleprompter
+                if(scriptBox) scriptBox.classList.add('hidden');
+                
+                // Update Button Text
+                const lbl = btn.querySelector('span'); // Assuming simple structure for measure, simpler for tag
+                if(key === 'tag') {
+                     // Revert tag button structure
+                     btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Audio Saved (Tap to Redo)</span>`;
+                     btn.className = "w-full py-5 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-2";
+                } else {
+                    document.getElementById('lbl-measure').innerText = "Measurement Saved (Tap to Redo)";
+                }
                 return;
             }
 
@@ -371,18 +293,90 @@
                 };
                 r.start();
                 recorders[key] = r;
+                
+                // UI: START RECORDING
                 btn.classList.add('recording');
-                lbl.innerText = "RECORDING... (Tap to Stop)";
+                
+                if(key === 'tag') {
+                    // Show Teleprompter based on State
+                    const text = scripts[data.tagStatus];
+                    btn.innerHTML = `<span>RECORDING...</span><div class="text-xs font-mono mt-1">${text}</div>`;
+                } else {
+                    document.getElementById('lbl-measure').innerText = "RECORDING... (Tap to Stop)";
+                }
+
             } catch(e) { alert("Mic Access Denied"); }
         }
 
-        // --- 5. SUBMIT (REAL PROGRESS BAR) ---
+        // --- 1. SCANNER ---
+        let scanner;
+        function toggleScanner() {
+            if(!data.scanTime) data.scanTime = new Date(); 
+            const v = document.getElementById('scanner-view');
+            if(!v.classList.contains('hidden')) {
+                if(scanner) scanner.stop().then(() => { v.classList.add('hidden'); scanner.clear(); });
+                return;
+            }
+            v.classList.remove('hidden');
+            scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 100 }, aspectRatio: 1.0, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39 ] }, (txt) => {
+                document.getElementById('sku-input').value = txt;
+                toggleScanner();
+            }).catch(e => console.log(e));
+        }
+
+        // --- 2. CAMERA ---
+        let stream;
+        async function openCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } });
+                document.getElementById('cam-feed').srcObject = stream;
+                document.getElementById('cam-overlay').classList.remove('hidden');
+                document.getElementById('cam-count').innerText = data.photos.length;
+            } catch(e) { alert("Camera Error. Ensure HTTPS."); }
+        }
+
+        function takeSnap() {
+            const v = document.getElementById('cam-feed');
+            const c = document.createElement('canvas');
+            const size = Math.min(v.videoWidth, v.videoHeight);
+            const startX = (v.videoWidth - size) / 2;
+            const startY = (v.videoHeight - size) / 2;
+            c.width = size; c.height = size;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(v, startX, startY, size, size, 0, 0, size, size);
+            const f = document.getElementById('flash');
+            f.classList.add('trigger-flash');
+            setTimeout(() => f.classList.remove('trigger-flash'), 150);
+            c.toBlob(blob => {
+                data.photos.push({ blob: blob, ts: new Date() });
+                document.getElementById('cam-count').innerText = data.photos.length;
+                document.getElementById('photo-count').innerText = `${data.photos.length} Photos`;
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(blob);
+                img.className = "h-20 w-20 object-cover rounded-lg border border-gray-200 flex-shrink-0 snap-center";
+                document.getElementById('thumbnails').appendChild(img);
+            }, 'image/jpeg', 0.7);
+        }
+
+        function closeCamera() {
+            if(stream) stream.getTracks().forEach(t => t.stop());
+            document.getElementById('cam-overlay').classList.add('hidden');
+        }
+
+        // --- 3. UI HELPERS ---
+        function setGender(g, el) {
+            data.gender = g;
+            document.querySelectorAll('.g-btn').forEach(b => b.className = "g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white");
+            el.className = "g-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-xl font-bold shadow";
+        }
+
+        // --- 5. SUBMIT ---
         function submitData() {
             const sku = document.getElementById('sku-input').value;
             if(!sku) return alert("Missing SKU");
             if(data.photos.length === 0) return alert("Take Photos first");
 
-            // KPI Logic
             const kpiStart = data.photos[0].ts;
             const kpiEnd = data.photos[data.photos.length-1].ts;
             const photoDuration = Math.round((kpiEnd - kpiStart) / 1000);
@@ -394,17 +388,15 @@
             const fd = new FormData();
             fd.append('sku', sku);
             fd.append('mode', data.mode);
+            fd.append('tag_status', data.tagStatus);
             fd.append('category', document.getElementById('cat-select').value);
             fd.append('gender', data.gender);
             fd.append('condition', document.getElementById('cond-select').value);
-            
-            // KPI FIELDS
             fd.append('kpi_photo_duration_sec', photoDuration);
             fd.append('kpi_total_listing_sec', totalDuration);
             fd.append('kpi_first_photo_time', kpiStart.toISOString());
             fd.append('kpi_last_photo_time', kpiEnd.toISOString());
 
-            // PHOTOS
             data.photos.forEach((p, i) => {
                 const name = `${sku}_${p.ts.getTime()}_${i+1}.jpg`;
                 fd.append(`photo_${i+1}`, p.blob, name);
@@ -413,10 +405,8 @@
             if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
 
-            // XHR for Progress
             const xhr = new XMLHttpRequest();
             xhr.open("POST", N8N_WEBHOOK_URL, true);
-
             xhr.upload.onprogress = (e) => {
                 if (e.lengthComputable) {
                     const pct = Math.round((e.loaded / e.total) * 100);
@@ -424,25 +414,17 @@
                     document.getElementById('upload-pct').innerText = `${pct}%`;
                 }
             };
-
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     document.getElementById('upload-detail').innerText = "Success!";
-                    document.getElementById('progress-bar').style.backgroundColor = "#22c55e"; // Green
-                    setTimeout(() => {
-                        location.reload(); // HARD RESET
-                    }, 500);
+                    document.getElementById('progress-bar').style.backgroundColor = "#22c55e"; 
+                    setTimeout(() => { location.reload(); }, 500);
                 } else {
                     alert("Server Error: " + xhr.statusText);
                     modal.classList.add('hidden');
                 }
             };
-
-            xhr.onerror = () => {
-                alert("Network Error");
-                modal.classList.add('hidden');
-            };
-
+            xhr.onerror = () => { alert("Network Error"); modal.classList.add('hidden'); };
             xhr.send(fd);
         }
     </script>
