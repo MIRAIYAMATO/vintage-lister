@@ -2,12 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v6.1 (Defect Toggle)</title>
+    <!-- Updated Viewport for iPhone Notch Support -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Vintage Lister v6.3 (Care Tag Logic)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; user-select: none; background: #f9fafb; }
+        /* iOS Safe Area & Base Styles */
+        body { 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: contain; 
+            user-select: none; 
+            background: #f9fafb;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
         
         /* Animations */
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
@@ -16,8 +25,28 @@
         .trigger-flash { animation: flash-anim 0.15s ease-out; }
         @keyframes flash-anim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
 
-        /* Force Dropdown Font Sizes for Mobile */
-        select, option, optgroup { font-size: 13px !important; }
+        /* Force Dropdown Font Sizes & Style for iOS */
+        select, option, optgroup { 
+            font-size: 13px !important; 
+        }
+        
+        /* iOS Form Control Reset */
+        select {
+            -webkit-appearance: none;
+            appearance: none;
+            background-color: white;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+        
+        /* Fix Scanner Video containment on iOS */
+        #reader video {
+            object-fit: cover;
+            border-radius: 0.75rem;
+        }
     </style>
 </head>
 <body class="pb-40">
@@ -29,7 +58,7 @@
     </script>
 
     <!-- HEADER -->
-    <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200">
+    <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
         <div class="font-bold text-gray-800 text-lg tracking-tight">Vintage<span class="text-blue-600">Lister</span></div>
         <div class="flex bg-gray-100 rounded-lg p-1">
             <button onclick="setMode('tops')" id="mode-tops" class="px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm transition-all">TOPS</button>
@@ -38,7 +67,7 @@
     </div>
 
     <!-- MAIN FLOW -->
-    <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto">
+    <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto pt-4">
 
         <!-- 1. SKU -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
@@ -79,14 +108,20 @@
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- UNIVERSAL: Tag Photo -->
-            <div class="mb-6">
-                <button onclick="openCamera('tag')" class="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 text-sm font-bold flex items-center justify-center gap-2 active:bg-gray-50">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
-                    <span>Snap Tag / Neck Area (<span id="count-tag">0</span>)</span>
+            <!-- DUAL TAG PHOTO BUTTONS (Neck vs Care) -->
+            <div class="mb-6 grid grid-cols-2 gap-2">
+                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                    <span class="text-[10px]">Snap Neck Tag</span>
                 </button>
-                <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mt-2"></div>
+                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="text-[10px]">Snap Care/Hip Tag</span>
+                </button>
             </div>
+            
+            <!-- Shared Thumbnails for Tags -->
+            <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
 
             <!-- UNIVERSAL: Fabric & Size Logic -->
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
@@ -94,7 +129,7 @@
                 <!-- A. FABRIC -->
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
-                    <select id="fabric-select" class="w-full p-2 bg-white border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
+                    <select id="fabric-select" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
                         <optgroup label="Common">
                             <option>100% Cotton</option>
@@ -141,7 +176,7 @@
                 <!-- C. FITS LIKE / ESTIMATED -->
                 <div>
                     <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
-                    <select id="size-select" class="w-full p-2 bg-white border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
+                    <select id="size-select" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Fit...</option>
                         <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option><option>Cannot Determine</option>
                     </select>
@@ -155,8 +190,8 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                         <span>Record Brand & Origin</span>
                     </div>
-                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70">
-                        BRAND • STYLE • MADE IN • RN
+                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">
+                        BRAND • STYLE (Check Side Seam!) • MADE IN • RN
                     </div>
                 </button>
             </div>
@@ -166,7 +201,7 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
-                <select id="cat-select" class="w-full mt-2 p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
+                <select id="cat-select" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
@@ -179,7 +214,7 @@
             </div>
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Condition</label>
-                <select id="cond-select" class="w-full mt-2 p-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
+                <select id="cond-select" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
                     <option>New with tag</option><option>New without tag</option><option>New with imperfections</option><option>Pre-owned excellent</option><option>Pre-owned good</option><option>Pre-owned fair</option><option>Poor – major flaws</option><option>Cannot decide</option>
                 </select>
             </div>
@@ -220,7 +255,7 @@
         </div>
 
         <!-- SUBMIT -->
-        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30">
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
             <button onclick="submitData()" id="btn-submit" class="w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">
                 PROCESS LISTING
             </button>
@@ -285,6 +320,12 @@
             bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], hint: "Waist, Inseam, Rise, Hips" }
         };
 
+        const scripts = {
+            has: "BRAND • STYLE (Check Side Seam!) • MADE IN • RN", // Updated
+            unreadable: "FABRIC GUESS • ESTIMATED SIZE",
+            none: "FABRIC GUESS • ESTIMATED SIZE"
+        };
+
         window.onload = () => {
             setMode('tops');
             setTagState('has');
@@ -344,7 +385,6 @@
                 document.getElementById('btn-no-defects').className = "flex-1 py-4 border border-green-500 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner";
                 document.getElementById('btn-has-defects').className = "flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all";
                 document.getElementById('defect-content').classList.add('hidden');
-                // Optional: Clear defect photos if switched to No? Keeping them in memory is safer in case of mis-click.
             }
         }
 
@@ -433,7 +473,7 @@
                 r.start();
                 recorders[key] = r;
                 btn.classList.add('recording');
-                if(key === 'tag') btn.innerHTML = `<span>RECORDING...</span>`;
+                if(key === 'tag') btn.innerHTML = `<span>RECORDING...</span><div class="text-[10px] font-mono mt-1">${scripts[data.tagStatus]}</div>`;
                 else document.getElementById('lbl-measure').innerText = "RECORDING...";
             } catch(e) { alert("Mic Access Denied"); }
         }
