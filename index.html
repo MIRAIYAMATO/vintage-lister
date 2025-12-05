@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v3 (Grid)</title>
+    <title>Vintage Lister v3 (Square)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -132,31 +132,36 @@
 
     </div>
 
-    <!-- IMPROVED CAMERA OVERLAY -->
-    <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col">
-        <div class="relative flex-1 bg-black overflow-hidden">
+    <!-- SQUARE CAMERA OVERLAY -->
+    <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
+        
+        <!-- Top Spacer to push camera to center (optional) -->
+        <div class="flex-1 bg-black"></div>
+
+        <!-- SQUARE VIEWPORT (This constrains what the user sees) -->
+        <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
             <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
             
             <!-- GRID LINES (Rule of Thirds) -->
-            <div class="absolute inset-0 pointer-events-none z-10 opacity-40">
-                <div class="absolute left-1/3 top-0 bottom-0 border-l-2 border-white shadow-sm"></div>
-                <div class="absolute left-2/3 top-0 bottom-0 border-l-2 border-white shadow-sm"></div>
-                <div class="absolute top-1/3 left-0 right-0 border-t-2 border-white shadow-sm"></div>
-                <div class="absolute top-2/3 left-0 right-0 border-t-2 border-white shadow-sm"></div>
+            <div class="absolute inset-0 pointer-events-none z-10 opacity-50">
+                <div class="absolute left-1/3 top-0 bottom-0 border-l border-white/50"></div>
+                <div class="absolute left-2/3 top-0 bottom-0 border-l border-white/50"></div>
+                <div class="absolute top-1/3 left-0 right-0 border-t border-white/50"></div>
+                <div class="absolute top-2/3 left-0 right-0 border-t border-white/50"></div>
             </div>
 
             <div id="flash" class="flash"></div>
         </div>
         
-        <!-- GIANT CONTROLS -->
-        <div class="h-64 bg-gray-900 flex flex-col items-center justify-between pb-8 pt-4 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+        <!-- GIANT CONTROLS (Below the square) -->
+        <div class="flex-1 bg-black flex flex-col items-center justify-start pt-8 pb-8">
             
-            <p class="text-gray-400 text-sm font-mono tracking-widest mb-2">PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
+            <p class="text-gray-400 text-sm font-mono tracking-widest mb-6">PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
 
-            <div class="flex items-center justify-between w-full px-6 max-w-md">
+            <div class="flex items-center justify-evenly w-full px-4 max-w-sm">
                 
                 <!-- CANCEL (Left) -->
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-gray-800 text-gray-300 font-bold text-xs active:bg-gray-700 transition-all border border-gray-700">
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-800 text-gray-300 font-bold text-[10px] active:bg-gray-700 transition-all border border-gray-700">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     CANCEL
                 </button>
@@ -167,13 +172,11 @@
                 </button>
                 
                 <!-- DONE (Right) -->
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-green-600 text-white font-bold text-xs active:bg-green-700 transition-all shadow-lg border border-green-500">
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-green-600 text-white font-bold text-[10px] active:bg-green-700 transition-all shadow-lg border border-green-500">
                     <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                     DONE
                 </button>
             </div>
-            
-            <p class="text-gray-600 text-[10px] mt-2">Tap center to snap • Tap Done to finish</p>
         </div>
     </div>
 
@@ -261,8 +264,20 @@
         function takeSnap() {
             const v = document.getElementById('cam-feed');
             const c = document.createElement('canvas');
-            c.width = v.videoWidth; c.height = v.videoHeight;
-            c.getContext('2d').drawImage(v, 0, 0);
+            
+            // SQUARE CROP LOGIC
+            // Determine the size of the square (shortest side of video)
+            const size = Math.min(v.videoWidth, v.videoHeight);
+            const startX = (v.videoWidth - size) / 2;
+            const startY = (v.videoHeight - size) / 2;
+
+            // Set canvas to perfect square
+            c.width = size;
+            c.height = size;
+            
+            // Draw ONLY the center square from the video
+            const ctx = c.getContext('2d');
+            ctx.drawImage(v, startX, startY, size, size, 0, 0, size, size);
             
             const f = document.getElementById('flash');
             f.classList.add('trigger-flash');
