@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vintage Lister v3 (Lean)</title>
+    <title>Vintage Lister v3 (Grid)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -21,8 +21,7 @@
 
     <!-- CONFIG -->
     <script>
-        // UPDATED: Your specific n8n URL is now here.
-        // IMPORTANT: Ensure your n8n Webhook Node is set to "POST" method, not "GET"!
+        // YOUR N8N URL
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c"; 
     </script>
 
@@ -133,19 +132,48 @@
 
     </div>
 
-    <!-- CAMERA OVERLAY -->
+    <!-- IMPROVED CAMERA OVERLAY -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col">
-        <div class="relative flex-1 bg-black">
+        <div class="relative flex-1 bg-black overflow-hidden">
             <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
+            
+            <!-- GRID LINES (Rule of Thirds) -->
+            <div class="absolute inset-0 pointer-events-none z-10 opacity-40">
+                <div class="absolute left-1/3 top-0 bottom-0 border-l-2 border-white shadow-sm"></div>
+                <div class="absolute left-2/3 top-0 bottom-0 border-l-2 border-white shadow-sm"></div>
+                <div class="absolute top-1/3 left-0 right-0 border-t-2 border-white shadow-sm"></div>
+                <div class="absolute top-2/3 left-0 right-0 border-t-2 border-white shadow-sm"></div>
+            </div>
+
             <div id="flash" class="flash"></div>
         </div>
-        <div class="h-56 bg-gray-900 flex flex-col items-center justify-center pb-8 rounded-t-3xl">
-            <div class="flex items-center justify-between w-full px-8 max-w-sm">
-                <button onclick="closeCamera()" class="text-gray-400 font-bold p-4">Cancel</button>
-                <button onclick="takeSnap()" class="w-20 h-20 bg-white rounded-full border-4 border-gray-400 shadow-xl active:scale-90 transition-transform"></button>
-                <button onclick="closeCamera()" class="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg shadow-lg">Done</button>
+        
+        <!-- GIANT CONTROLS -->
+        <div class="h-64 bg-gray-900 flex flex-col items-center justify-between pb-8 pt-4 rounded-t-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+            
+            <p class="text-gray-400 text-sm font-mono tracking-widest mb-2">PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
+
+            <div class="flex items-center justify-between w-full px-6 max-w-md">
+                
+                <!-- CANCEL (Left) -->
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-gray-800 text-gray-300 font-bold text-xs active:bg-gray-700 transition-all border border-gray-700">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    CANCEL
+                </button>
+                
+                <!-- SHUTTER (Center - HUGE) -->
+                <button onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 transition-all flex items-center justify-center relative">
+                    <div class="w-20 h-20 rounded-full border-2 border-gray-100"></div>
+                </button>
+                
+                <!-- DONE (Right) -->
+                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-green-600 text-white font-bold text-xs active:bg-green-700 transition-all shadow-lg border border-green-500">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    DONE
+                </button>
             </div>
-            <p class="text-gray-500 text-xs mt-4 font-mono">Photos taken: <span id="cam-count" class="text-white font-bold">0</span></p>
+            
+            <p class="text-gray-600 text-[10px] mt-2">Tap center to snap • Tap Done to finish</p>
         </div>
     </div>
 
