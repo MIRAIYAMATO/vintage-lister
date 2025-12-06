@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v9 (Vertical Maps)</title>
+    <title>Vintage Lister v9.1 (Vertical Split)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -30,7 +30,7 @@
             pointer-events: none; 
         }
         
-        #defect-map-container { cursor: crosshair; touch-action: none; }
+        .map-container { position: relative; cursor: crosshair; touch-action: none; }
     </style>
 </head>
 <body class="pb-40">
@@ -95,14 +95,12 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
             
-            <!-- STATE BUTTONS -->
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- DUAL TAG PHOTO BUTTONS -->
             <div class="mb-6 grid grid-cols-2 gap-2">
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
                     <span class="text-[10px]">Snap Neck Tag</span>
@@ -114,7 +112,6 @@
             
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
 
-            <!-- FABRIC & SIZE -->
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
@@ -182,7 +179,7 @@
             </div>
         </div>
 
-        <!-- 7. VISUAL DEFECT MAP (VERTICAL STACK) -->
+        <!-- 7. VISUAL DEFECT MAP (SEPARATE BOXES) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
@@ -193,12 +190,23 @@
             <div id="defect-content" class="hidden">
                 <div class="text-center mb-3 text-xs text-gray-500 font-medium">Tap diagram to log defects</div>
                 
-                <!-- VISUAL MAP CONTAINER (TALLER FOR STACK) -->
-                <div id="defect-map-container" class="relative w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-4" style="height: 500px;">
-                    <!-- SVG MAPS (Injected via JS) -->
-                    <div id="defect-map-svg" class="w-full h-full flex items-center justify-center p-2"></div>
-                    <!-- DEFECT DOTS CONTAINER -->
-                    <div id="defect-dots-layer" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+                <!-- SEPARATE FRONT/BACK CONTAINERS -->
+                <div class="space-y-3 mb-4">
+                    <!-- Front Map -->
+                    <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
+                         <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest">FRONT</div>
+                         <div id="map-front" class="map-container w-full h-full" onclick="handleMapClick(event, 'Front')"></div>
+                         <!-- Dots Layer (Front) -->
+                         <div id="dots-front" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+                    </div>
+
+                    <!-- Back Map -->
+                    <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
+                         <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest">BACK</div>
+                         <div id="map-back" class="map-container w-full h-full" onclick="handleMapClick(event, 'Back')"></div>
+                         <!-- Dots Layer (Back) -->
+                         <div id="dots-back" class="absolute inset-0 w-full h-full pointer-events-none"></div>
+                    </div>
                 </div>
 
                 <div id="thumbs-defect" class="flex gap-2 overflow-x-auto h-24 empty:hidden snap-x"></div>
@@ -222,7 +230,7 @@
 
     </div>
 
-    <!-- OVERLAYS (CAM, MODAL, UPLOAD) - Same structure as before -->
+    <!-- OVERLAYS (CAM, MODAL, UPLOAD) -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
         <div class="flex-1 bg-black"></div>
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
@@ -262,49 +270,20 @@
     </div>
 
     <script>
-        // --- STACKED VERTICAL SVGS (BIGGER) ---
-        const SVG_TEES = `<svg viewBox="0 0 200 450" class="w-full h-full opacity-20">
-            <!-- Front Tee (Top) -->
-            <g transform="translate(10, 10) scale(1.8)">
-                <path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="2"/>
-                <text x="90" y="110" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text>
-            </g>
-            <!-- Back Tee (Bottom) -->
-            <g transform="translate(10, 230) scale(1.8)">
-                <path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="2"/>
-                <text x="90" y="110" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text>
-            </g>
-        </svg>`;
+        // --- SINGLE ITEM SVGs (SCALED FOR FULL BOX) ---
+        // Front Tee
+        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        // Back Tee
+        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
         
-        const SVG_PANTS = `<svg viewBox="0 0 200 450" class="w-full h-full opacity-20">
-            <!-- Front Pants (Top) -->
-            <g transform="translate(30, 10) scale(1.4)">
-                <path d="M10,10 L90,10 L100,180 L60,180 L50,60 L40,180 L0,180 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <text x="50" y="100" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text>
-            </g>
-            <!-- Back Pants (Bottom) -->
-            <g transform="translate(30, 230) scale(1.4)">
-                <path d="M10,10 L90,10 L100,180 L60,180 L50,60 L40,180 L0,180 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <path d="M20,25 Q45,40 80,25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                <text x="50" y="100" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text>
-            </g>
-        </svg>`;
+        // Front Pants/Shorts (Dynamic logic later, generic pants for now)
+        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        // Back Pants
+        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
 
-        const SVG_SHORTS = `<svg viewBox="0 0 200 450" class="w-full h-full opacity-20">
-             <!-- Front Shorts (Top) -->
-            <g transform="translate(30, 10) scale(1.4)">
-                <path d="M10,10 L90,10 L95,120 L55,120 L50,50 L45,120 L5,120 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <text x="50" y="70" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text>
-            </g>
-            <!-- Back Shorts (Bottom) -->
-            <g transform="translate(30, 230) scale(1.4)">
-                <path d="M10,10 L90,10 L95,120 L55,120 L50,50 L45,120 L5,120 Z" fill="none" stroke="currentColor" stroke-width="2"/>
-                <path d="M20,25 Q45,40 80,25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                <text x="50" y="70" font-size="10" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text>
-            </g>
-        </svg>`;
+        // Shorts Logic
+        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
 
         // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -326,36 +305,41 @@
             const s = document.getElementById('cat-select'); s.innerHTML = '<option disabled selected>Select...</option>';
             config[m].cats.forEach(c => s.add(new Option(c, c)));
             
-            // Default Map Logic
-            document.getElementById('defect-map-svg').innerHTML = m === 'tops' ? SVG_TEES : SVG_PANTS;
-            updateMeasureHint(); // Also handles reset
+            // Trigger Update to set initial maps
+            updateCatLogic();
         }
         
-        // --- NEW: Update Map & Hints based on Category ---
+        // --- NEW: Update Map based on Category ---
         function updateCatLogic() {
-            updateMeasureHint(); // Measurement Hints
+            updateMeasureHint();
             
-            // Update Defect Map
             const cat = document.getElementById('cat-select').value;
-            const mapDiv = document.getElementById('defect-map-svg');
+            const frontMap = document.getElementById('map-front');
+            const backMap = document.getElementById('map-back');
             
             if(data.mode === 'bottoms') {
-                if(cat === 'Shorts') mapDiv.innerHTML = SVG_SHORTS;
-                else mapDiv.innerHTML = SVG_PANTS;
+                if(cat === 'Shorts') {
+                    frontMap.innerHTML = SVG_SHORTS_FRONT;
+                    backMap.innerHTML = SVG_SHORTS_BACK;
+                } else {
+                    frontMap.innerHTML = SVG_PANTS_FRONT;
+                    backMap.innerHTML = SVG_PANTS_BACK;
+                }
             } else {
-                mapDiv.innerHTML = SVG_TEES; // Tops default for now
+                frontMap.innerHTML = SVG_TEE_FRONT;
+                backMap.innerHTML = SVG_TEE_BACK;
             }
         }
 
-        // --- DEFECT MAP LOGIC (UPDATED LISTENER) ---
-        document.getElementById('defect-map-container').addEventListener('click', (e) => {
+        // --- SPLIT CLICK HANDLER ---
+        function handleMapClick(e, side) {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             
-            data.tempDefect = { x, y };
+            data.tempDefect = { x, y, side }; // Added 'side' (Front/Back)
             document.getElementById('defect-type-modal').classList.remove('hidden');
-        });
+        }
 
         function selectDefectType(type) {
             data.tempDefect.type = type;
@@ -368,8 +352,11 @@
             dot.className = "defect-dot";
             dot.style.left = `${defect.x}%`;
             dot.style.top = `${defect.y}%`;
-            dot.innerText = data.defectPhotos.length; // Index 1-based
-            document.getElementById('defect-dots-layer').appendChild(dot);
+            dot.innerText = data.defectPhotos.length;
+            
+            // Attach to correct container
+            const container = defect.side === 'Front' ? document.getElementById('dots-front') : document.getElementById('dots-back');
+            container.appendChild(dot);
         }
 
         // --- CAMERA ---
@@ -476,8 +463,8 @@
             fd.append('fabric', document.getElementById('fabric-select').value); fd.append('fits_like_size', document.getElementById('size-select').value);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
 
-            // Defect Map Data
-            const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, x: p.defectMeta.x, y: p.defectMeta.y }));
+            // Defect Map Data (Include 'side' property)
+            const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, x: p.defectMeta.x, y: p.defectMeta.y, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
 
             const kpiEnd = new Date(); fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
