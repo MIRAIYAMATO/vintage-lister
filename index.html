@@ -2,50 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Updated Viewport for iPhone Notch Support -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v7.1 (Handshake)</title>
+    <title>Vintage Lister v8 (Visual Defects)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        /* iOS Safe Area & Base Styles */
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            overscroll-behavior-y: contain; 
-            user-select: none; 
-            background: #f9fafb;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-        
-        /* Animations */
+        body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; user-select: none; background: #f9fafb; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .recording { animation: pulse-red 1.5s infinite; background-color: #ef4444 !important; border-color: #ef4444 !important; color: white !important; }
         .flash { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0; background: white; }
         .trigger-flash { animation: flash-anim 0.15s ease-out; }
         @keyframes flash-anim { 0% { opacity: 0.8; } 100% { opacity: 0; } }
-
-        /* Force Dropdown Font Sizes & Style for iOS */
-        select, option, optgroup { 
-            font-size: 13px !important; 
-        }
+        select, option, optgroup { font-size: 13px !important; }
+        select { -webkit-appearance: none; appearance: none; background-color: white; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+        #reader video { object-fit: cover; border-radius: 0.75rem; }
         
-        /* iOS Form Control Reset */
-        select {
-            -webkit-appearance: none;
-            appearance: none;
-            background-color: white;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-        }
-        
-        /* Fix Scanner Video containment on iOS */
-        #reader video {
-            object-fit: cover;
-            border-radius: 0.75rem;
+        /* Defect Map Styles */
+        .defect-dot {
+            position: absolute;
+            width: 24px; height: 24px;
+            background: #ef4444; border: 2px solid white;
+            border-radius: 50%;
+            color: white; font-size: 12px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
         }
     </style>
 </head>
@@ -53,17 +35,15 @@
 
     <!-- CONFIG -->
     <script>
-        // YOUR N8N URL
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c"; 
-        // YOUR ACCESS PIN
         const APP_PIN = "1234";
     </script>
 
-    <!-- LOGIN OVERLAY (SECURITY) -->
+    <!-- LOGIN SCREEN -->
     <div id="login-screen" class="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Locked</h2>
-            <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN to access</p>
+            <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN</p>
             <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••">
             <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl active:bg-blue-700">UNLOCK</button>
         </div>
@@ -109,68 +89,39 @@
             <div id="thumbs-main" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 3. TAG DATA & PHOTO -->
+        <!-- 3. TAG INFO -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
             
-            <!-- STATE BUTTONS -->
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
-            <!-- DUAL TAG PHOTO BUTTONS -->
             <div class="mb-6 grid grid-cols-2 gap-2">
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
                     <span class="text-[10px]">Snap Neck Tag</span>
                 </button>
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     <span class="text-[10px]">Snap Care/Hip Tag</span>
                 </button>
             </div>
             
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
 
-            <!-- UNIVERSAL: Fabric & Size Logic -->
+            <!-- FABRIC & SIZE -->
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
-                
-                <!-- A. FABRIC -->
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
                     <select id="fabric-select" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
-                        <optgroup label="Common">
-                            <option>100% Cotton</option>
-                            <option>50/50 (Cotton/Poly)</option>
-                            <option>Tri-Blend (Cotton/Poly/Rayon)</option>
-                            <option>100% Polyester</option>
-                        </optgroup>
-                        <optgroup label="Vintage/Specialty">
-                            <option>Dacron / Branded Poly</option>
-                            <option>Acrylic</option>
-                            <option>Acrylic/Poly Blend</option>
-                            <option>Nylon</option>
-                            <option>Rayon</option>
-                            <option>Wool</option>
-                            <option>Silk</option>
-                            <option>Linen</option>
-                            <option>Velour</option>
-                            <option>Terry Cloth</option>
-                        </optgroup>
-                        <optgroup label="Other">
-                            <option>Denim</option>
-                            <option>Fleece</option>
-                            <option>Leather</option>
-                            <option>Velvet</option>
-                            <option>Cannot Determine</option>
-                        </optgroup>
+                        <optgroup label="Common"><option>100% Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
+                        <optgroup label="Vintage"><option>Dacron / Poly</option><option>Acrylic</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option></optgroup>
+                        <optgroup label="Other"><option>Denim</option><option>Leather</option><option>Cannot Determine</option></optgroup>
                     </select>
                 </div>
 
-                <!-- B. TAG SIZE -->
                 <div id="section-tag-size" class="hidden">
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Reads</label>
                     <div class="grid grid-cols-6 gap-1 mb-2">
@@ -184,31 +135,27 @@
                     <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R)" onfocus="clearTagSizeBtns()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-blue-500">
                 </div>
 
-                <!-- C. FITS LIKE / ESTIMATED -->
                 <div>
                     <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
                     <select id="size-select" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Fit...</option>
-                        <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option><option>Cannot Determine</option>
+                        <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option>
                     </select>
                 </div>
             </div>
 
-            <!-- AUDIO RECORDER -->
             <div id="tag-area-audio" class="hidden">
                 <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     <div class="flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                         <span>Record Brand & Origin</span>
                     </div>
-                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">
-                        BRAND • STYLE (Check Side Seam!) • MADE IN • RN
-                    </div>
+                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">BRAND • STYLE (Check Side!) • MADE IN • RN</div>
                 </button>
             </div>
         </div>
 
-        <!-- 4. SPECS -->
+        <!-- 4. SPECS (Category, Gender, Condition) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
@@ -231,39 +178,34 @@
             </div>
         </div>
 
-        <!-- 7. DEFECTS TOGGLE & PHOTOS -->
+        <!-- 7. VISUAL DEFECT MAP -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
-            
-            <!-- Toggle Buttons -->
             <div class="flex gap-3 mb-4">
                 <button onclick="setDefectState(false)" id="btn-no-defects" class="flex-1 py-4 border border-green-200 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner">No Defects</button>
                 <button onclick="setDefectState(true)" id="btn-has-defects" class="flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all">Has Defects</button>
             </div>
 
-            <!-- Content Area (Hidden by Default) -->
             <div id="defect-content" class="hidden">
-                <div class="flex justify-between items-center mb-2">
-                    <p class="text-xs text-gray-400">Finger Point: 1=Stain, 2=Hole, 3=Repair</p>
-                    <span id="count-defect" class="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
+                <div class="text-center mb-3 text-xs text-gray-500 font-medium">Tap diagram to log defects</div>
+                
+                <!-- VISUAL MAP CONTAINER -->
+                <div class="relative w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-4" style="height: 300px;">
+                    <!-- SVG MAPS (Injected via JS) -->
+                    <div id="defect-map-svg" class="w-full h-full flex items-center justify-center p-4"></div>
+                    
+                    <!-- DEFECT DOTS CONTAINER -->
+                    <div id="defect-dots-layer" class="absolute inset-0 w-full h-full"></div>
                 </div>
-                <button onclick="openCamera('defect')" class="w-full h-16 border-2 border-dashed border-red-300 bg-red-50 rounded-xl flex items-center justify-center gap-2 text-red-500 font-bold active:bg-red-100 transition-all shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    SNAP DEFECTS
-                </button>
-                <div id="thumbs-defect" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+
+                <div id="thumbs-defect" class="flex gap-2 overflow-x-auto h-24 empty:hidden snap-x"></div>
             </div>
         </div>
 
         <!-- 8. MEASUREMENTS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Measurements</label>
-            
-            <!-- DYNAMIC HINT AREA -->
-            <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed">
-                <!-- Hint injected by JS -->
-            </div>
-            
+            <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed"></div>
             <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
                 <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                 <span id="lbl-measure">Tap to Record Measurements</span>
@@ -271,373 +213,4 @@
         </div>
 
         <!-- SUBMIT -->
-        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
-            <button onclick="submitData()" id="btn-submit" class="w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">
-                PROCESS LISTING
-            </button>
-        </div>
-
-    </div>
-
-    <!-- SQUARE CAMERA OVERLAY -->
-    <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
-        <div class="flex-1 bg-black"></div>
-        <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
-            <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
-            <div class="absolute inset-0 pointer-events-none z-10 opacity-50">
-                <div class="absolute left-1/3 top-0 bottom-0 border-l border-white/50"></div>
-                <div class="absolute left-2/3 top-0 bottom-0 border-l border-white/50"></div>
-                <div class="absolute top-1/3 left-0 right-0 border-t border-white/50"></div>
-                <div class="absolute top-2/3 left-0 right-0 border-t border-white/50"></div>
-            </div>
-            <div id="flash" class="flash"></div>
-        </div>
-        <div class="flex-1 bg-black flex flex-col items-center justify-start pt-8 pb-8">
-            <p class="text-gray-400 text-sm font-mono tracking-widest mb-6"><span id="cam-mode-label" class="text-blue-400 font-bold uppercase">MAIN</span> PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
-            <div class="flex items-center justify-evenly w-full px-4 max-w-sm">
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-800 text-gray-300 font-bold text-[10px] active:bg-gray-700 border border-gray-700"><svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>CANCEL</button>
-                <button onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 flex items-center justify-center relative"><div class="w-20 h-20 rounded-full border-2 border-gray-100"></div></button>
-                <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-green-600 text-white font-bold text-[10px] active:bg-green-700 shadow-lg border border-green-500"><svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>DONE</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- UPLOAD MODAL -->
-    <div id="upload-modal" class="fixed inset-0 z-[60] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm p-4">
-        <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
-            <div class="w-full bg-gray-100 rounded-full h-4 mb-3 overflow-hidden"><div id="progress-bar" class="bg-blue-600 h-full transition-all" style="width: 0%"></div></div>
-            <p id="upload-detail" class="text-sm text-gray-500">Processing...</p>
-        </div>
-    </div>
-
-    <script>
-        // --- SECURITY CHECK ---
-        document.addEventListener("DOMContentLoaded", () => {
-            const savedPin = localStorage.getItem('vintage_lister_auth');
-            if (savedPin === APP_PIN) {
-                document.getElementById('login-screen').classList.add('hidden');
-            }
-            
-            // Restore mode if needed
-            setMode('tops');
-            setTagState('has');
-            setDefectState(false);
-        });
-
-        function checkPin() {
-            const input = document.getElementById('pin-input').value;
-            if (input === APP_PIN) {
-                localStorage.setItem('vintage_lister_auth', APP_PIN);
-                document.getElementById('login-screen').classList.add('hidden');
-            } else {
-                alert("Incorrect PIN");
-                document.getElementById('pin-input').value = '';
-            }
-        }
-
-        document.addEventListener('keydown', (e) => {
-            const overlay = document.getElementById('cam-overlay');
-            if (overlay.classList.contains('hidden')) return;
-            if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); takeSnap(); }
-            if (e.code === 'Escape') { closeCamera(); }
-        });
-
-        let data = {
-            mode: 'tops',
-            mainPhotos: [], tagPhotos: [], defectPhotos: [], 
-            cameraMode: 'main',
-            gender: '',
-            tagStatus: 'has',
-            tagSize: '',
-            hasDefects: false, // New Flag
-            audioTag: null, audioMeasure: null,
-            scanTime: null
-        };
-
-        const config = {
-            tops: { 
-                cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], 
-                // Default measurements for Tops (Array format)
-                measures: ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Neck to Shoulder", "Sleeve Length", "Arm Opening"]
-            },
-            bottoms: { 
-                cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], 
-                // Default measurements for Bottoms
-                measures: ["Waist", "Inseam", "Front Rise", "Hips", "Leg Opening"]
-            }
-        };
-
-        const scripts = {
-            has: "BRAND • STYLE (Check Side Seam!) • MADE IN • RN", // Updated
-            unreadable: "FABRIC GUESS • ESTIMATED SIZE",
-            none: "FABRIC GUESS • ESTIMATED SIZE"
-        };
-
-        window.onload = () => {
-            setMode('tops');
-            setTagState('has');
-            setDefectState(false); // Default No Defects
-            document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); });
-        };
-
-        function setMode(m) {
-            data.mode = m;
-            document.getElementById('mode-tops').className = m === 'tops' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
-            document.getElementById('mode-bottoms').className = m === 'bottoms' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
-            const s = document.getElementById('cat-select');
-            s.innerHTML = '<option disabled selected>Select...</option>';
-            config[m].cats.forEach(c => s.add(new Option(c, c)));
-            updateMeasureHint(); // Refresh hint
-        }
-
-        // --- NEW: DYNAMIC MEASUREMENT HINT (Vertical List) ---
-        function updateMeasureHint() {
-            const cat = document.getElementById('cat-select').value;
-            const hintBox = document.getElementById('measure-hint');
-            
-            // Get base list copy
-            let list = [...config[data.mode].measures];
-
-            // SPECIAL LOGIC: Button Shirt adds Neck
-            if (cat === "Button Shirt") {
-                list.push("NECK MEASUREMENT");
-            }
-            
-            // Build Vertical List HTML
-            let html = '<div class="grid grid-cols-1 gap-1">';
-            list.forEach((m, i) => {
-                // Highlight Neck measurement if present
-                const style = m.includes("NECK") ? "text-red-600 font-bold bg-red-50 p-1 rounded" : "";
-                html += `<div class="${style}">${i+1}. ${m}</div>`;
-            });
-            html += '</div>';
-            
-            hintBox.innerHTML = html;
-        }
-
-        function setTagState(state) {
-            data.tagStatus = state;
-            ['has', 'unreadable', 'none'].forEach(k => {
-                document.getElementById(`btn-tag-${k}`).className = "py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs bg-white";
-            });
-            const activeBtn = document.getElementById(`btn-tag-${state}`);
-            if(state === 'has') {
-                activeBtn.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
-                document.getElementById('section-tag-size').classList.remove('hidden');
-                document.getElementById('tag-area-audio').classList.remove('hidden');
-                document.getElementById('label-fits-like').innerText = "FITS LIKE (Expert Guess)";
-            } else {
-                activeBtn.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
-                document.getElementById('section-tag-size').classList.add('hidden');
-                document.getElementById('tag-area-audio').classList.add('hidden');
-                document.getElementById('label-fits-like').innerText = "ESTIMATED SIZE";
-            }
-        }
-
-        function setTagSize(size, el) {
-            data.tagSize = size;
-            document.getElementById('tag-size-input').value = ""; // Clear manual input
-            document.querySelectorAll('.size-btn').forEach(b => b.className = "size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs");
-            if(el) el.className = "size-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs";
-        }
-
-        function clearTagSizeBtns() {
-            document.querySelectorAll('.size-btn').forEach(b => b.className = "size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs");
-            data.tagSize = ""; 
-        }
-
-        // --- DEFECT LOGIC ---
-        function setDefectState(hasDefects) {
-            data.hasDefects = hasDefects;
-            if(hasDefects) {
-                document.getElementById('btn-has-defects').className = "flex-1 py-4 border border-red-500 bg-red-50 text-red-600 rounded-xl font-bold transition-all shadow-inner";
-                document.getElementById('btn-no-defects').className = "flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all";
-                document.getElementById('defect-content').classList.remove('hidden');
-            } else {
-                document.getElementById('btn-no-defects').className = "flex-1 py-4 border border-green-500 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner";
-                document.getElementById('btn-has-defects').className = "flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all";
-                document.getElementById('defect-content').classList.add('hidden');
-            }
-        }
-
-        // --- CAMERA LOGIC ---
-        let stream;
-        async function openCamera(mode) {
-            data.cameraMode = mode;
-            document.getElementById('cam-mode-label').innerText = mode;
-            const currentCount = mode === 'main' ? data.mainPhotos.length : (mode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length);
-            document.getElementById('cam-count').innerText = currentCount;
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } });
-                document.getElementById('cam-feed').srcObject = stream;
-                document.getElementById('cam-overlay').classList.remove('hidden');
-            } catch(e) { alert("Camera Error"); }
-        }
-
-        function takeSnap() {
-            const v = document.getElementById('cam-feed');
-            const c = document.createElement('canvas');
-            const size = Math.min(v.videoWidth, v.videoHeight);
-            const startX = (v.videoWidth - size) / 2;
-            const startY = (v.videoHeight - size) / 2;
-            c.width = size; c.height = size;
-            c.getContext('2d').drawImage(v, startX, startY, size, size, 0, 0, size, size);
-            const f = document.getElementById('flash');
-            f.classList.add('trigger-flash');
-            setTimeout(() => f.classList.remove('trigger-flash'), 150);
-            c.toBlob(blob => {
-                const photoObj = { blob: blob, ts: new Date() };
-                if (data.cameraMode === 'main') data.mainPhotos.push(photoObj);
-                else if (data.cameraMode === 'tag') data.tagPhotos.push(photoObj);
-                else if (data.cameraMode === 'defect') data.defectPhotos.push(photoObj);
-                updateThumbnails(data.cameraMode);
-                const currentCount = data.cameraMode === 'main' ? data.mainPhotos.length : (data.cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length);
-                document.getElementById('cam-count').innerText = currentCount;
-            }, 'image/jpeg', 0.7);
-        }
-
-        function updateThumbnails(mode) {
-            const containerId = `thumbs-${mode}`;
-            const photoList = mode === 'main' ? data.mainPhotos : (mode === 'tag' ? data.tagPhotos : data.defectPhotos);
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-            photoList.forEach(p => {
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(p.blob);
-                img.className = "h-20 w-20 object-cover rounded-lg border border-gray-200 flex-shrink-0 snap-center";
-                container.appendChild(img);
-            });
-            container.scrollLeft = container.scrollWidth;
-        }
-
-        function closeCamera() {
-            if(stream) stream.getTracks().forEach(t => t.stop());
-            document.getElementById('cam-overlay').classList.add('hidden');
-        }
-
-        // --- OTHER LOGIC ---
-        function setGender(g, el) {
-            data.gender = g;
-            document.querySelectorAll('.g-btn').forEach(b => b.className = "g-btn py-3 border border-gray-200 rounded-xl text-gray-600 font-bold bg-white");
-            el.className = "g-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-xl font-bold shadow";
-        }
-
-        let recorders = {};
-        async function recordAudio(key) {
-            const btn = document.getElementById(`rec-${key}`);
-            if(recorders[key] && recorders[key].state === 'recording') {
-                recorders[key].stop();
-                btn.classList.remove('recording');
-                if(key === 'tag') btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Audio Saved</span>`;
-                else document.getElementById('lbl-measure').innerText = "Saved";
-                return;
-            }
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const r = new MediaRecorder(s);
-                let chunks = [];
-                r.ondataavailable = e => chunks.push(e.data);
-                r.onstop = () => {
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
-                    if(key === 'tag') data.audioTag = blob; else data.audioMeasure = blob;
-                    s.getTracks().forEach(t => t.stop());
-                };
-                r.start();
-                recorders[key] = r;
-                btn.classList.add('recording');
-                if(key === 'tag') btn.innerHTML = `<span>RECORDING...</span><div class="text-[10px] font-mono mt-1">${scripts[data.tagStatus]}</div>`;
-                else document.getElementById('lbl-measure').innerText = "RECORDING...";
-            } catch(e) { alert("Mic Access Denied"); }
-        }
-
-        let scanner;
-        function toggleScanner() {
-            if(!data.scanTime) data.scanTime = new Date();
-            const v = document.getElementById('scanner-view');
-            if(!v.classList.contains('hidden')) { if(scanner) scanner.stop().then(() => { v.classList.add('hidden'); scanner.clear(); }); return; }
-            v.classList.remove('hidden');
-            scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 100 }, aspectRatio: 1.0, formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39 ] }, (txt) => {
-                document.getElementById('sku-input').value = txt; toggleScanner();
-            }).catch(e => console.log(e));
-        }
-
-        function submitData() {
-            const sku = document.getElementById('sku-input').value;
-            if(!sku) return alert("Missing SKU");
-            if(data.mainPhotos.length === 0) return alert("Take Main Photos");
-
-            // VALIDATION
-            if(!document.getElementById('fabric-select').value) return alert("Select Fabric Type");
-            if(!document.getElementById('size-select').value) return alert("Select Fits Like / Est Size");
-            
-            if(data.tagStatus === 'has') {
-                const manualInput = document.getElementById('tag-size-input').value;
-                if(!data.tagSize && !manualInput) return alert("Select Tag Size");
-                if(manualInput) data.tagSize = manualInput;
-            }
-
-            // Defect Validation
-            if (data.hasDefects && data.defectPhotos.length === 0) {
-                if(!confirm("You marked 'Has Defects' but took no defect photos. Continue?")) return;
-            }
-
-            const modal = document.getElementById('upload-modal');
-            modal.classList.remove('hidden');
-
-            const fd = new FormData();
-            fd.append('sku', sku);
-            fd.append('mode', data.mode);
-            fd.append('tag_status', data.tagStatus);
-            fd.append('has_defects', data.hasDefects); // New Flag
-            fd.append('category', document.getElementById('cat-select').value);
-            fd.append('gender', data.gender);
-            fd.append('condition', document.getElementById('cond-select').value);
-            
-            // NEW FIELDS
-            fd.append('fabric', document.getElementById('fabric-select').value);
-            fd.append('fits_like_size', document.getElementById('size-select').value);
-            if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
-
-            // APP PIN (Secret Handshake)
-            fd.append('auth_pin', APP_PIN);
-
-            const kpiStart = data.mainPhotos[0].ts; 
-            const kpiEnd = new Date();
-            fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime) / 1000));
-
-            data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
-            data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
-            
-            // Append Defects only if flagged
-            if (data.hasDefects) {
-                data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
-            }
-
-            if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
-            if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
-
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", N8N_WEBHOOK_URL, true);
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const pct = Math.round((e.loaded / e.total) * 100);
-                    document.getElementById('progress-bar').style.width = `${pct}%`;
-                }
-            };
-            xhr.onload = function() {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    document.getElementById('upload-detail').innerText = "Success!";
-                    document.getElementById('progress-bar').style.backgroundColor = "#22c55e";
-                    setTimeout(() => { location.reload(); }, 500);
-                } else {
-                    alert("Server Error"); modal.classList.add('hidden');
-                }
-            };
-            xhr.onerror = () => { alert("Network Error"); modal.classList.add('hidden'); };
-            xhr.send(fd);
-        }
-    </script>
-</body>
-</html>
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop
