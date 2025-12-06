@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v8 (Visual Defects)</title>
+    <title>Vintage Lister v8.1 (Fixed Map)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -89,16 +89,18 @@
             <div id="thumbs-main" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 3. TAG INFO -->
+        <!-- 3. TAG DATA & PHOTO -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
             
+            <!-- STATE BUTTONS -->
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
 
+            <!-- DUAL TAG PHOTO BUTTONS -->
             <div class="mb-6 grid grid-cols-2 gap-2">
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
                     <span class="text-[10px]">Snap Neck Tag</span>
@@ -117,7 +119,7 @@
                     <select id="fabric-select" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
                         <optgroup label="Common"><option>100% Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
-                        <optgroup label="Vintage"><option>Dacron / Poly</option><option>Acrylic</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option></optgroup>
+                        <optgroup label="Vintage"><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option></optgroup>
                         <optgroup label="Other"><option>Denim</option><option>Leather</option><option>Cannot Determine</option></optgroup>
                     </select>
                 </div>
@@ -139,7 +141,7 @@
                     <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
                     <select id="size-select" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Fit...</option>
-                        <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option>
+                        <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option><option>Cannot Determine</option>
                     </select>
                 </div>
             </div>
@@ -155,7 +157,7 @@
             </div>
         </div>
 
-        <!-- 4. SPECS (Category, Gender, Condition) -->
+        <!-- 4. SPECS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
@@ -194,8 +196,8 @@
                     <!-- SVG MAPS (Injected via JS) -->
                     <div id="defect-map-svg" class="w-full h-full flex items-center justify-center p-4"></div>
                     
-                    <!-- DEFECT DOTS CONTAINER -->
-                    <div id="defect-dots-layer" class="absolute inset-0 w-full h-full"></div>
+                    <!-- DEFECT DOTS CONTAINER (With Pointer Events Fix) -->
+                    <div id="defect-dots-layer" class="absolute inset-0 w-full h-full pointer-events-none"></div>
                 </div>
 
                 <div id="thumbs-defect" class="flex gap-2 overflow-x-auto h-24 empty:hidden snap-x"></div>
@@ -262,8 +264,16 @@
     </div>
 
     <script>
-        // --- SVGs ---
-        const SVG_TEES = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20"><path d="M60,50 L40,70 L55,85 L70,70 L70,160 L130,160 L130,70 L145,85 L160,70 L140,50 Q100,65 60,50" fill="none" stroke="currentColor" stroke-width="2"/><text x="50" y="180" font-size="10" fill="currentColor">FRONT</text><text x="130" y="180" font-size="10" fill="currentColor">BACK</text></svg>`;
+        // --- UPDATED SVGs (Two Distinct Shirts) ---
+        const SVG_TEES = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20">
+            <!-- Front -->
+            <path d="M30,50 L15,65 L25,75 L35,65 L35,150 L65,150 L65,65 L75,75 L85,65 L70,50 Q50,65 30,50" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="50" y="170" font-size="10" text-anchor="middle" fill="currentColor">FRONT</text>
+            <!-- Back -->
+            <path d="M130,50 L115,65 L125,75 L135,65 L135,150 L165,150 L165,65 L175,75 L185,65 L170,50 Q150,55 130,50" fill="none" stroke="currentColor" stroke-width="2"/>
+            <text x="150" y="170" font-size="10" text-anchor="middle" fill="currentColor">BACK</text>
+        </svg>`;
+        
         const SVG_PANTS = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20"><path d="M60,40 L140,40 L150,160 L110,160 L100,80 L90,160 L50,160 L60,40" fill="none" stroke="currentColor" stroke-width="2"/><text x="100" y="180" font-size="10" text-anchor="middle" fill="currentColor">FRONT / BACK</text></svg>`;
 
         // --- SECURITY ---
@@ -290,7 +300,8 @@
             document.getElementById('defect-map-svg').innerHTML = m === 'tops' ? SVG_TEES : SVG_PANTS;
         }
 
-        // --- DEFECT MAP LOGIC ---
+        // --- DEFECT MAP LOGIC (Updated to listen on parent) ---
+        // Using parent container logic handled by SVG bubble-up but making sure dots layer is passable
         document.getElementById('defect-map-svg').addEventListener('click', (e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
