@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- Updated Viewport for iPhone Notch Support -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v6.5 (Vertical Lists)</title>
+    <title>Vintage Lister v7.1 (Handshake)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -55,7 +55,19 @@
     <script>
         // YOUR N8N URL
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c"; 
+        // YOUR ACCESS PIN
+        const APP_PIN = "1234";
     </script>
+
+    <!-- LOGIN OVERLAY (SECURITY) -->
+    <div id="login-screen" class="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Locked</h2>
+            <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN to access</p>
+            <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••">
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl active:bg-blue-700">UNLOCK</button>
+        </div>
+    </div>
 
     <!-- HEADER -->
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
@@ -300,6 +312,30 @@
     </div>
 
     <script>
+        // --- SECURITY CHECK ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedPin = localStorage.getItem('vintage_lister_auth');
+            if (savedPin === APP_PIN) {
+                document.getElementById('login-screen').classList.add('hidden');
+            }
+            
+            // Restore mode if needed
+            setMode('tops');
+            setTagState('has');
+            setDefectState(false);
+        });
+
+        function checkPin() {
+            const input = document.getElementById('pin-input').value;
+            if (input === APP_PIN) {
+                localStorage.setItem('vintage_lister_auth', APP_PIN);
+                document.getElementById('login-screen').classList.add('hidden');
+            } else {
+                alert("Incorrect PIN");
+                document.getElementById('pin-input').value = '';
+            }
+        }
+
         document.addEventListener('keydown', (e) => {
             const overlay = document.getElementById('cam-overlay');
             if (overlay.classList.contains('hidden')) return;
@@ -563,6 +599,9 @@
             fd.append('fabric', document.getElementById('fabric-select').value);
             fd.append('fits_like_size', document.getElementById('size-select').value);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
+
+            // APP PIN (Secret Handshake)
+            fd.append('auth_pin', APP_PIN);
 
             const kpiStart = data.mainPhotos[0].ts; 
             const kpiEnd = new Date();
