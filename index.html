@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v8.1 (Fixed Map)</title>
+    <title>Vintage Lister v8.3 (Smart Maps)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -27,8 +27,10 @@
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             transform: translate(-50%, -50%);
-            pointer-events: none;
+            pointer-events: none; 
         }
+        
+        #defect-map-container { cursor: crosshair; touch-action: none; }
     </style>
 </head>
 <body class="pb-40">
@@ -161,7 +163,7 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
-                <select id="cat-select" onchange="updateMeasureHint()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
+                <select id="cat-select" onchange="updateCatLogic()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
@@ -192,11 +194,10 @@
                 <div class="text-center mb-3 text-xs text-gray-500 font-medium">Tap diagram to log defects</div>
                 
                 <!-- VISUAL MAP CONTAINER -->
-                <div class="relative w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-4" style="height: 300px;">
+                <div id="defect-map-container" class="relative w-full bg-gray-50 rounded-xl border border-gray-200 overflow-hidden mb-4" style="height: 300px;">
                     <!-- SVG MAPS (Injected via JS) -->
                     <div id="defect-map-svg" class="w-full h-full flex items-center justify-center p-4"></div>
-                    
-                    <!-- DEFECT DOTS CONTAINER (With Pointer Events Fix) -->
+                    <!-- DEFECT DOTS CONTAINER -->
                     <div id="defect-dots-layer" class="absolute inset-0 w-full h-full pointer-events-none"></div>
                 </div>
 
@@ -221,8 +222,7 @@
 
     </div>
 
-    <!-- OVERLAYS -->
-    <!-- 1. CAMERA -->
+    <!-- OVERLAYS (CAM, MODAL, UPLOAD) - Same structure as before -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
         <div class="flex-1 bg-black"></div>
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
@@ -240,7 +240,6 @@
         </div>
     </div>
 
-    <!-- 2. DEFECT TYPE SELECTOR -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">What is the defect?</h3>
@@ -254,7 +253,6 @@
         </div>
     </div>
 
-    <!-- 3. UPLOAD PROGRESS -->
     <div id="upload-modal" class="fixed inset-0 z-[80] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
@@ -264,17 +262,11 @@
     </div>
 
     <script>
-        // --- UPDATED SVGs (Two Distinct Shirts) ---
-        const SVG_TEES = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20">
-            <!-- Front -->
-            <path d="M30,50 L15,65 L25,75 L35,65 L35,150 L65,150 L65,65 L75,75 L85,65 L70,50 Q50,65 30,50" fill="none" stroke="currentColor" stroke-width="2"/>
-            <text x="50" y="170" font-size="10" text-anchor="middle" fill="currentColor">FRONT</text>
-            <!-- Back -->
-            <path d="M130,50 L115,65 L125,75 L135,65 L135,150 L165,150 L165,65 L175,75 L185,65 L170,50 Q150,55 130,50" fill="none" stroke="currentColor" stroke-width="2"/>
-            <text x="150" y="170" font-size="10" text-anchor="middle" fill="currentColor">BACK</text>
-        </svg>`;
-        
-        const SVG_PANTS = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20"><path d="M60,40 L140,40 L150,160 L110,160 L100,80 L90,160 L50,160 L60,40" fill="none" stroke="currentColor" stroke-width="2"/><text x="100" y="180" font-size="10" text-anchor="middle" fill="currentColor">FRONT / BACK</text></svg>`;
+        // --- NEW SVGs (Tee, Pants, Shorts) ---
+        const SVG_TEES = `<svg viewBox="0 0 400 200" class="w-full h-full opacity-20"><g transform="translate(20, 10)"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="3"/><text x="90" y="195" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text></g><g transform="translate(220, 10)"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="3"/><text x="90" y="195" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text></g></svg>`;
+        const SVG_PANTS = `<svg viewBox="0 0 400 200" class="w-full h-full opacity-20"><g transform="translate(40, 10)"><path d="M10,10 L90,10 L100,180 L60,180 L50,60 L40,180 L0,180 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="50" y="195" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text></g><g transform="translate(240, 10)"><path d="M10,10 L90,10 L100,180 L60,180 L50,60 L40,180 L0,180 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20,25 Q45,40 80,25" fill="none" stroke="currentColor" stroke-width="2"/><text x="50" y="195" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text></g></svg>`;
+        // ADDED SHORTS
+        const SVG_SHORTS = `<svg viewBox="0 0 400 200" class="w-full h-full opacity-20"><g transform="translate(40, 10)"><path d="M10,10 L90,10 L95,120 L55,120 L50,50 L45,120 L5,120 Z" fill="none" stroke="currentColor" stroke-width="3"/><text x="50" y="150" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">FRONT</text></g><g transform="translate(240, 10)"><path d="M10,10 L90,10 L95,120 L55,120 L50,50 L45,120 L5,120 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20,25 Q45,40 80,25" fill="none" stroke="currentColor" stroke-width="2"/><text x="50" y="150" font-size="14" text-anchor="middle" fill="currentColor" font-weight="bold">BACK</text></g></svg>`;
 
         // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -295,14 +287,30 @@
             document.getElementById('mode-bottoms').className = m === 'bottoms' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
             const s = document.getElementById('cat-select'); s.innerHTML = '<option disabled selected>Select...</option>';
             config[m].cats.forEach(c => s.add(new Option(c, c)));
-            updateMeasureHint();
-            // Update Map
+            
+            // Default Map Logic
             document.getElementById('defect-map-svg').innerHTML = m === 'tops' ? SVG_TEES : SVG_PANTS;
+            updateMeasureHint(); // Also handles reset
+        }
+        
+        // --- NEW: Update Map & Hints based on Category ---
+        function updateCatLogic() {
+            updateMeasureHint(); // Measurement Hints
+            
+            // Update Defect Map
+            const cat = document.getElementById('cat-select').value;
+            const mapDiv = document.getElementById('defect-map-svg');
+            
+            if(data.mode === 'bottoms') {
+                if(cat === 'Shorts') mapDiv.innerHTML = SVG_SHORTS;
+                else mapDiv.innerHTML = SVG_PANTS;
+            } else {
+                mapDiv.innerHTML = SVG_TEES; // Tops default for now
+            }
         }
 
-        // --- DEFECT MAP LOGIC (Updated to listen on parent) ---
-        // Using parent container logic handled by SVG bubble-up but making sure dots layer is passable
-        document.getElementById('defect-map-svg').addEventListener('click', (e) => {
+        // --- DEFECT MAP LOGIC (UPDATED LISTENER) ---
+        document.getElementById('defect-map-container').addEventListener('click', (e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
