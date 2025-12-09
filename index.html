@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v10 (Smart Zones)</title>
+    <title>Vintage Lister v10.1 (PDF Zones)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -162,7 +162,6 @@
                 <select id="cat-select" onchange="updateCatLogic()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
             
-            <!-- NEW SLEEVE LENGTH SELECTOR (Only shows for Tops) -->
             <div id="sleeve-selector" class="hidden">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sleeve / Cut</label>
                 <div class="grid grid-cols-2 gap-2 mt-2">
@@ -190,7 +189,7 @@
             </div>
         </div>
 
-        <!-- 7. VISUAL DEFECT MAP (SMART ZONES) -->
+        <!-- 7. VISUAL DEFECT MAP (SMART ZONES V2) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
@@ -256,7 +255,6 @@
         </div>
     </div>
 
-    <!-- UPDATED MODAL WITH SMART ZONES -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <div class="text-center mb-4">
@@ -282,18 +280,28 @@
     </div>
 
     <script>
-        // --- DYNAMIC SVGs (Smart Switching) ---
-        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // --- IMPROVED "BLOCKY" SVGs (Matches PDF Style) ---
+        // Front Tee
+        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L170,80 L140,90 L130,70 L130,170 L70,170 L70,70 L60,90 L30,80 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M80,40 Q100,60 120,40" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // Back Tee
+        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L170,80 L140,90 L130,70 L130,170 L70,170 L70,70 L60,90 L30,80 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
         
-        const SVG_LONG_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L170,180 L140,180 L130,60 L130,180 L50,180 L50,60 L40,180 L10,180 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_LONG_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L170,180 L140,180 L130,60 L130,180 L50,180 L50,60 L40,180 L10,180 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // Front Long Sleeve
+        const SVG_LONG_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L180,140 L160,150 L130,70 L130,170 L70,170 L70,70 L40,150 L20,140 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M80,40 Q100,60 120,40" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // Back Long Sleeve
+        const SVG_LONG_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L180,140 L160,150 L130,70 L130,170 L70,170 L70,70 L40,150 L20,140 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
 
-        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        // Front Sleeveless
+        const SVG_TANK_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M60,40 L140,40 L130,170 L70,170 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,40 Q50,90 70,100" fill="none" stroke="currentColor" stroke-width="4"/><path d="M140,40 Q150,90 130,100" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // Back Sleeveless
+        const SVG_TANK_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M60,40 L140,40 L130,170 L70,170 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
 
-        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        // Pants / Shorts SVGs remain similar but blockier
+        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,170 L110,170 L100,80 L90,170 L40,170 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,170 L110,170 L100,80 L90,170 L40,170 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,55 Q100,70 140,55" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+
+        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,110 L110,110 L100,70 L90,110 L40,110 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,110 L110,110 L100,70 L90,110 L40,110 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,55 Q100,70 140,55" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
 
         // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -345,6 +353,9 @@
             if (type === 'Long') {
                 document.getElementById('map-front').innerHTML = SVG_LONG_FRONT;
                 document.getElementById('map-back').innerHTML = SVG_LONG_BACK;
+            } else if (type === 'None') {
+                document.getElementById('map-front').innerHTML = SVG_TANK_FRONT;
+                document.getElementById('map-back').innerHTML = SVG_TANK_BACK;
             } else {
                 document.getElementById('map-front').innerHTML = SVG_TEE_FRONT;
                 document.getElementById('map-back').innerHTML = SVG_TEE_BACK;
@@ -361,22 +372,41 @@
             }
         }
 
-        // --- ZONE LOGIC (SMART) ---
+        // --- ZONE LOGIC (PDF MAPPED) ---
         function getZoneName(x, y, type) {
-            const side = data.tempDefect.side;
+            const side = data.tempDefect.side; // 'Front' or 'Back'
             const prefix = side === 'Front' ? "FRONT" : "BACK";
             
-            // Sleeve Logic
-            if(data.sleeveType === 'Long' && (x < 25 || x > 75)) {
-                if (y < 40) return `UPPER SLEEVE (${side === 'Front' ? 'Right' : 'Left'})`;
-                if (y < 70) return `LOWER SLEEVE (${side === 'Front' ? 'Right' : 'Left'})`;
-                return `CUFF (${side === 'Front' ? 'Right' : 'Left'})`;
+            // 1. COLLAR (Top 15%)
+            if (y < 15) return `${prefix} NECK / COLLAR`;
+            
+            // 2. SHOULDER vs CHEST (Next 25%)
+            if (y >= 15 && y < 40) {
+                // If far left/right, it's shoulder/sleeve start
+                if (x < 20) return `LEFT SHOULDER`;
+                if (x > 80) return `RIGHT SHOULDER`;
+                // Middle is chest/back
+                if (x < 50) return `LEFT ${prefix} CHEST`;
+                return `RIGHT ${prefix} CHEST`;
             }
             
-            if (y < 20) return "COLLAR / NECK";
-            if (y < 40) return `${prefix} CHEST / SHOULDER`;
-            if (y < 70) return `${prefix} MID-SECTION`;
-            return `${prefix} BOTTOM HEM`;
+            // 3. MID-SECTION / BELLY (40-70%)
+            if (y >= 40 && y < 70) {
+                 if (x >= 40 && x <= 60) return `${prefix} CENTER`;
+                 if (x < 40) return `LEFT ${prefix} MID`;
+                 return `RIGHT ${prefix} MID`;
+            }
+
+            // 4. HEM (Bottom 10%)
+            if (y > 90) return `${prefix} HEM`;
+
+            // 5. LOWER AREA (70-90%)
+            if (y >= 70 && y <= 90) return `${prefix} LOWER`;
+
+            // 6. SLEEVES (Based on X width in relation to body)
+            // (Note: This is rough on a generic map, but works for general quadrant clicking)
+            
+            return "GENERAL AREA";
         }
 
         // --- SPLIT CLICK HANDLER (WITH ZONE DETECTION) ---
@@ -430,10 +460,11 @@
                 if(data.cameraMode === 'main') data.mainPhotos.push(photo);
                 else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
                 else if(data.cameraMode === 'defect') {
+                    // Link photo to map point
                     photo.defectMeta = { ...data.tempDefect };
                     data.defectPhotos.push(photo);
                     addDefectMarker(photo.defectMeta);
-                    closeCamera(); 
+                    closeCamera(); // Auto-close for defect flow
                 }
                 
                 if(data.cameraMode !== 'defect') {
