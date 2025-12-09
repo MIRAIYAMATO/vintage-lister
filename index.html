@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v9.1 (Vertical Split)</title>
+    <title>Vintage Lister v10 (Smart Zones)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -17,7 +17,6 @@
         select { -webkit-appearance: none; appearance: none; background-color: white; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
         #reader video { object-fit: cover; border-radius: 0.75rem; }
         
-        /* Defect Map Styles */
         .defect-dot {
             position: absolute;
             width: 24px; height: 24px;
@@ -156,12 +155,24 @@
             </div>
         </div>
 
-        <!-- 4. SPECS -->
+        <!-- 4. SPECS (With Sleeve Length) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
                 <select id="cat-select" onchange="updateCatLogic()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
+            
+            <!-- NEW SLEEVE LENGTH SELECTOR (Only shows for Tops) -->
+            <div id="sleeve-selector" class="hidden">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sleeve / Cut</label>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <button onclick="setSleeve('Short', this)" class="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">Short Sleeve</button>
+                    <button onclick="setSleeve('Long', this)" class="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">Long Sleeve</button>
+                    <button onclick="setSleeve('3/4', this)" class="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">3/4 Sleeve</button>
+                    <button onclick="setSleeve('None', this)" class="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">Sleeveless</button>
+                </div>
+            </div>
+
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
                 <div class="grid grid-cols-2 gap-3 mt-2">
@@ -179,7 +190,7 @@
             </div>
         </div>
 
-        <!-- 7. VISUAL DEFECT MAP (SEPARATE BOXES) -->
+        <!-- 7. VISUAL DEFECT MAP (SMART ZONES) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
@@ -190,13 +201,11 @@
             <div id="defect-content" class="hidden">
                 <div class="text-center mb-3 text-xs text-gray-500 font-medium">Tap diagram to log defects</div>
                 
-                <!-- SEPARATE FRONT/BACK CONTAINERS -->
                 <div class="space-y-3 mb-4">
                     <!-- Front Map -->
                     <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
                          <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest">FRONT</div>
                          <div id="map-front" class="map-container w-full h-full" onclick="handleMapClick(event, 'Front')"></div>
-                         <!-- Dots Layer (Front) -->
                          <div id="dots-front" class="absolute inset-0 w-full h-full pointer-events-none"></div>
                     </div>
 
@@ -204,7 +213,6 @@
                     <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
                          <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest">BACK</div>
                          <div id="map-back" class="map-container w-full h-full" onclick="handleMapClick(event, 'Back')"></div>
-                         <!-- Dots Layer (Back) -->
                          <div id="dots-back" class="absolute inset-0 w-full h-full pointer-events-none"></div>
                     </div>
                 </div>
@@ -248,9 +256,13 @@
         </div>
     </div>
 
+    <!-- UPDATED MODAL WITH SMART ZONES -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 text-center">What is the defect?</h3>
+            <div class="text-center mb-4">
+                <p class="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">LOCATION DETECTED</p>
+                <h3 id="zone-label" class="text-xl font-black text-gray-800">COLLAR AREA</h3>
+            </div>
             <div class="grid grid-cols-2 gap-3">
                 <button onclick="selectDefectType('Stain')" class="py-4 bg-yellow-100 text-yellow-800 font-bold rounded-xl border-2 border-yellow-200 active:scale-95">STAIN</button>
                 <button onclick="selectDefectType('Hole')" class="py-4 bg-red-100 text-red-800 font-bold rounded-xl border-2 border-red-200 active:scale-95">HOLE</button>
@@ -270,20 +282,18 @@
     </div>
 
     <script>
-        // --- SINGLE ITEM SVGs (SCALED FOR FULL BOX) ---
-        // Front Tee
-        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
-        // Back Tee
-        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+        // --- DYNAMIC SVGs (Smart Switching) ---
+        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L150,50 L130,60 L130,180 L50,180 L50,60 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
         
-        // Front Pants/Shorts (Dynamic logic later, generic pants for now)
-        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
-        // Back Pants
-        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+        const SVG_LONG_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L170,180 L140,180 L130,60 L130,180 L50,180 L50,60 L40,180 L10,180 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,30 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_LONG_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M50,10 L130,10 L170,180 L140,180 L130,60 L130,180 L50,180 L50,60 L40,180 L10,180 L30,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M70,10 Q90,15 110,10" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
 
-        // Shorts Logic
-        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
-        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-20 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,190 L110,190 L100,60 L90,190 L30,190 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
+
+        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-4"><path d="M40,10 L160,10 L170,120 L110,120 L100,50 L90,120 L30,120 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,30 Q100,50 140,30" fill="none" stroke="currentColor" stroke-width="3"/></svg>`;
 
         // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -293,7 +303,7 @@
         });
         function checkPin() { if(document.getElementById('pin-input').value === APP_PIN) { localStorage.setItem('vintage_lister_auth', APP_PIN); document.getElementById('login-screen').classList.add('hidden'); } else alert("Bad PIN"); }
 
-        let data = { mode: 'tops', mainPhotos: [], tagPhotos: [], defectPhotos: [], cameraMode: 'main', gender: '', tagStatus: 'has', tagSize: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null };
+        let data = { mode: 'tops', mainPhotos: [], tagPhotos: [], defectPhotos: [], cameraMode: 'main', gender: '', tagStatus: 'has', tagSize: '', sleeveType: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null };
         const config = { tops: { cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], measures: ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Neck to Shoulder", "Sleeve Length", "Arm Opening"] }, bottoms: { cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], measures: ["Waist", "Inseam", "Front Rise", "Hips", "Leg Opening"] } };
 
         window.onload = () => { setMode('tops'); document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); }); };
@@ -304,40 +314,82 @@
             document.getElementById('mode-bottoms').className = m === 'bottoms' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
             const s = document.getElementById('cat-select'); s.innerHTML = '<option disabled selected>Select...</option>';
             config[m].cats.forEach(c => s.add(new Option(c, c)));
-            
-            // Trigger Update to set initial maps
-            updateCatLogic();
+            updateCatLogic(); 
         }
         
-        // --- NEW: Update Map based on Category ---
+        // --- SMART DEFAULTS & MAPS ---
         function updateCatLogic() {
-            updateMeasureHint();
-            
             const cat = document.getElementById('cat-select').value;
-            const frontMap = document.getElementById('map-front');
-            const backMap = document.getElementById('map-back');
             
-            if(data.mode === 'bottoms') {
-                if(cat === 'Shorts') {
-                    frontMap.innerHTML = SVG_SHORTS_FRONT;
-                    backMap.innerHTML = SVG_SHORTS_BACK;
-                } else {
-                    frontMap.innerHTML = SVG_PANTS_FRONT;
-                    backMap.innerHTML = SVG_PANTS_BACK;
-                }
+            // 1. Logic for Sleeve Selector Visibility
+            if (data.mode === 'tops') {
+                document.getElementById('sleeve-selector').classList.remove('hidden');
+                
+                // Smart Defaults
+                if(["T-Shirt", "Polo Shirt", "Jersey"].includes(cat)) setSleeve('Short', document.querySelectorAll('.sleeve-btn')[1]);
+                else if(["Button Shirt", "Sweatshirt", "Hoodie", "Jacket", "Sweater", "Cardigan"].includes(cat)) setSleeve('Long', document.querySelectorAll('.sleeve-btn')[0]);
+                else if(cat === "Tank Top") setSleeve('None', document.querySelectorAll('.sleeve-btn')[3]);
             } else {
-                frontMap.innerHTML = SVG_TEE_FRONT;
-                backMap.innerHTML = SVG_TEE_BACK;
+                document.getElementById('sleeve-selector').classList.add('hidden');
+                updateBottomsMap(cat);
+            }
+            updateMeasureHint();
+        }
+
+        function setSleeve(type, el) {
+            data.sleeveType = type;
+            document.querySelectorAll('.sleeve-btn').forEach(b => b.className="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs");
+            if(el) el.className="sleeve-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs";
+            
+            // Update Map based on Sleeve
+            if (type === 'Long') {
+                document.getElementById('map-front').innerHTML = SVG_LONG_FRONT;
+                document.getElementById('map-back').innerHTML = SVG_LONG_BACK;
+            } else {
+                document.getElementById('map-front').innerHTML = SVG_TEE_FRONT;
+                document.getElementById('map-back').innerHTML = SVG_TEE_BACK;
             }
         }
 
-        // --- SPLIT CLICK HANDLER ---
+        function updateBottomsMap(cat) {
+            if(cat === 'Shorts') {
+                document.getElementById('map-front').innerHTML = SVG_SHORTS_FRONT;
+                document.getElementById('map-back').innerHTML = SVG_SHORTS_BACK;
+            } else {
+                document.getElementById('map-front').innerHTML = SVG_PANTS_FRONT;
+                document.getElementById('map-back').innerHTML = SVG_PANTS_BACK;
+            }
+        }
+
+        // --- ZONE LOGIC (SMART) ---
+        function getZoneName(x, y, type) {
+            const side = data.tempDefect.side;
+            const prefix = side === 'Front' ? "FRONT" : "BACK";
+            
+            // Sleeve Logic
+            if(data.sleeveType === 'Long' && (x < 25 || x > 75)) {
+                if (y < 40) return `UPPER SLEEVE (${side === 'Front' ? 'Right' : 'Left'})`;
+                if (y < 70) return `LOWER SLEEVE (${side === 'Front' ? 'Right' : 'Left'})`;
+                return `CUFF (${side === 'Front' ? 'Right' : 'Left'})`;
+            }
+            
+            if (y < 20) return "COLLAR / NECK";
+            if (y < 40) return `${prefix} CHEST / SHOULDER`;
+            if (y < 70) return `${prefix} MID-SECTION`;
+            return `${prefix} BOTTOM HEM`;
+        }
+
+        // --- SPLIT CLICK HANDLER (WITH ZONE DETECTION) ---
         function handleMapClick(e, side) {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             
-            data.tempDefect = { x, y, side }; // Added 'side' (Front/Back)
+            data.tempDefect = { x, y, side }; 
+            const zoneName = getZoneName(x, y, data.mode);
+            data.tempDefect.zone = zoneName;
+            
+            document.getElementById('zone-label').innerText = zoneName;
             document.getElementById('defect-type-modal').classList.remove('hidden');
         }
 
@@ -353,8 +405,6 @@
             dot.style.left = `${defect.x}%`;
             dot.style.top = `${defect.y}%`;
             dot.innerText = data.defectPhotos.length;
-            
-            // Attach to correct container
             const container = defect.side === 'Front' ? document.getElementById('dots-front') : document.getElementById('dots-back');
             container.appendChild(dot);
         }
@@ -380,11 +430,10 @@
                 if(data.cameraMode === 'main') data.mainPhotos.push(photo);
                 else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
                 else if(data.cameraMode === 'defect') {
-                    // Link photo to map point
                     photo.defectMeta = { ...data.tempDefect };
                     data.defectPhotos.push(photo);
                     addDefectMarker(photo.defectMeta);
-                    closeCamera(); // Auto-close for defect flow
+                    closeCamera(); 
                 }
                 
                 if(data.cameraMode !== 'defect') {
@@ -462,9 +511,9 @@
             fd.append('category', document.getElementById('cat-select').value); fd.append('gender', data.gender); fd.append('condition', document.getElementById('cond-select').value);
             fd.append('fabric', document.getElementById('fabric-select').value); fd.append('fits_like_size', document.getElementById('size-select').value);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
+            fd.append('sleeve_type', data.sleeveType); // New
 
-            // Defect Map Data (Include 'side' property)
-            const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, x: p.defectMeta.x, y: p.defectMeta.y, side: p.defectMeta.side }));
+            const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
 
             const kpiEnd = new Date(); fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
