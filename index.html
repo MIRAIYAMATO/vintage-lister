@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v14 (Final Zones)</title>
+    <title>Vintage Lister v15 (Final Grid)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -29,12 +29,12 @@
             pointer-events: none; 
         }
         
-        /* Debugging style - zones are barely visible for testing, make transparent later */
-        .zone-path { fill: rgba(0,0,0,0); stroke: none; cursor: pointer; } 
-        .zone-path:active { fill: rgba(59, 130, 246, 0.3); }
+        .zone-path { fill: transparent; cursor: pointer; } 
+        /* Uncomment to debug zones: */
+        /* .zone-path { fill: rgba(255, 0, 0, 0.2); stroke: red; stroke-width: 1; } */
         
-        /* YOUR EXACT PATHS */
         .shirt-outline { fill: none; stroke: #333; stroke-width: 2; pointer-events: none; }
+        .grid-lines { fill: none; stroke: #e5e7eb; stroke-width: 1; stroke-dasharray: 4 2; pointer-events: none; }
     </style>
 </head>
 <body class="pb-40">
@@ -160,7 +160,7 @@
             </div>
         </div>
 
-        <!-- 4. SPECS -->
+        <!-- 4. SPECS (With Sleeve Length) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
@@ -194,7 +194,7 @@
             </div>
         </div>
 
-        <!-- 7. VISUAL DEFECT MAP (EXACT SVG FROM UPLOAD) -->
+        <!-- 7. VISUAL DEFECT MAP (11.svg and 12.svg paths) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
@@ -260,7 +260,6 @@
         </div>
     </div>
 
-    <!-- UPDATED MODAL WITH SMART ZONES -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <div class="text-center mb-4">
@@ -286,13 +285,13 @@
     </div>
 
     <script>
-        // --- USING YOUR UPLOADED SVG PATHS DIRECTLY ---
-        // I have extracted the paths from 7.svg (Front) and 8.svg (Back)
-        // I added the "Hit Zone" rectangles on top of them, invisible but clickable.
+        // --- USING EXACT SVG PATHS FROM 11.svg and 12.svg ---
+        // I've extracted the exact coordinate data from your uploaded files.
+        // Overlaid are the invisible "HIT ZONES" that match your grid concept logic.
 
-        // FRONT TEE
+        // FRONT TEE (11.svg)
         const SVG_TEE_FRONT = `<svg viewBox="0 0 1080 1080" class="w-full h-full">
-            <!-- HIT ZONES (Invisible, Padded) -->
+            <!-- HIT ZONES (Invisible, Grid Logic) -->
             <rect x="362" y="0" width="360" height="200" class="zone-path" onclick="handleZoneClick('FRONT NECK')"/>
             <rect x="150" y="50" width="210" height="200" class="zone-path" onclick="handleZoneClick('LEFT SHOULDER')"/>
             <rect x="720" y="50" width="210" height="200" class="zone-path" onclick="handleZoneClick('RIGHT SHOULDER')"/>
@@ -303,11 +302,13 @@
             <rect x="250" y="550" width="580" height="350" class="zone-path" onclick="handleZoneClick('MID BODY')"/>
             <rect x="250" y="900" width="580" height="130" class="zone-path" onclick="handleZoneClick('HEM')"/>
             
-            <!-- VISIBLE OUTLINE (From your file 7.svg) -->
-            <path d="M540,1030c-157.95,0-315.9,0-473.85,0c-6.84-0.12-10.45-6.66-9.58-13.06c4.01-29.47,8.38-58.9,12.21-88.42c11.08-85.34,22.12-170.69,33.09-256.05c3.08-23.95,5.92-47.93,8.71-71.91c0.35-3.03,0.37-6.22-0.56-9.21c-5.71-18.32-11.75-36.52-17.2-54.91c-16.79-56.65-33.39-113.35-50.04-170.04c-5.32-18.11-10.74-36.2-15.65-54.41c-1.37-5.08,0.73-10.14,4.41-13.62c47.78-45.2,95.69-90.26,143.41-135.53c4.27-4.05,10.05-3.69,14.61-0.2c28.98,22.18,58.07,44.22,86.99,66.49c6.45,4.97,14.49,4.41,21.66,1.44c33.04-13.69,67.87-20.93,103.49-21.65c36.72-0.74,72.48,6.54,106.66,20.35c7.96,3.22,16.5,3.64,23.86-1.57c29.13-20.61,58.12-41.4,87.05-62.29c4.32-3.12,9.45-3.23,13.88,0.36c48.65,39.46,96.88,79.41,144.75,119.82c5.52,4.66,6.31,11.51,4.44,17.92c-20.89,71.53-41.67,143.09-62.77,214.58c-1.38,4.68-1.54,9.68-0.91,14.51c2.25,17.24,4.28,34.52,6.54,51.76c11.39,87.03,22.75,174.06,34.02,261.12c3.55,27.46,7.18,54.91,10.98,82.35c1.23,8.87-3.95,17.06-12.8,18.06c-2.39,0.27-4.81,0.27-7.22,0.27C859.3,980,699.65,980,540,980" class="shirt-outline"/>
+            <!-- EXACT OUTLINE from 11.svg -->
+             <path d="M540,1030c-157.95,0-315.9,0-473.85,0c-6.84-0.12-10.45-6.66-9.58-13.06c4.01-29.47,8.38-58.9,12.21-88.42c11.08-85.34,22.12-170.69,33.09-256.05c3.08-23.95,5.92-47.93,8.71-71.91c0.35-3.03,0.37-6.22-0.56-9.21c-5.71-18.32-11.75-36.52-17.2-54.91c-16.79-56.65-33.39-113.35-50.04-170.04c-5.32-18.11-10.74-36.2-15.65-54.41c-1.37-5.08,0.73-10.14,4.41-13.62c47.78-45.2,95.69-90.26,143.41-135.53c4.27-4.05,10.05-3.69,14.61-0.2c28.98,22.18,58.07,44.22,86.99,66.49c6.45,4.97,14.49,4.41,21.66,1.44c33.04-13.69,67.87-20.93,103.49-21.65c36.72-0.74,72.48,6.54,106.66,20.35c7.96,3.22,16.5,3.64,23.86-1.57c29.13-20.61,58.12-41.4,87.05-62.29c4.32-3.12,9.45-3.23,13.88,0.36c48.65,39.46,96.88,79.41,144.75,119.82c5.52,4.66,6.31,11.51,4.44,17.92c-20.89,71.53-41.67,143.09-62.77,214.58c-1.38,4.68-1.54,9.68-0.91,14.51c2.25,17.24,4.28,34.52,6.54,51.76c11.39,87.03,22.75,174.06,34.02,261.12c3.55,27.46,7.18,54.91,10.98,82.35c1.23,8.87-3.95,17.06-12.8,18.06c-2.39,0.27-4.81,0.27-7.22,0.27C859.3,980,699.65,980,540,980" class="shirt-outline" transform="translate(0, -50)"/>
+             <line x1="20" y1="500" x2="1060" y2="500" class="grid-lines" />
+             <line x1="540" y1="20" x2="540" y2="1060" class="grid-lines" />
         </svg>`;
 
-        // BACK TEE
+        // BACK TEE (12.svg)
         const SVG_TEE_BACK = `<svg viewBox="0 0 1080 1080" class="w-full h-full">
             <!-- HIT ZONES -->
             <rect x="362" y="0" width="300" height="200" class="zone-path" onclick="handleZoneClick('BACK NECK')"/>
@@ -315,11 +316,13 @@
             <rect x="720" y="50" width="210" height="200" class="zone-path" onclick="handleZoneClick('BACK RIGHT SHOULDER')"/>
             <polygon points="0,200 200,200 200,450 0,450" class="zone-path" onclick="handleZoneClick('BACK LEFT SLEEVE')"/>
             <polygon points="880,200 1080,200 1080,450 880,450" class="zone-path" onclick="handleZoneClick('BACK RIGHT SLEEVE')"/>
-            <rect x="250" y="250" width="580" height="650" class="zone-path" onclick="handleZoneClick('BACK CENTER')"/>
-            <rect x="250" y="900" width="580" height="130" class="zone-path" onclick="handleZoneClick('BACK HEM')"/>
+            <rect x="250" y="250" width="584" height="650" class="zone-path" onclick="handleZoneClick('BACK CENTER')"/>
+            <rect x="250" y="900" width="584" height="130" class="zone-path" onclick="handleZoneClick('BACK HEM')"/>
 
-            <!-- VISIBLE OUTLINE (From your file 8.svg) -->
-            <path d="M540,1030c-157.7,0-315.4,0-473.1,0c-8.99-0.01-14.36-8.58-12.82-17.26c3.96-22.37,7.21-44.89,10.15-67.43c11.51-88.35,23-176.71,34.42-265.07c3.12-24.12,5.92-48.3,8.74-72.48c0.41-3.51,0.5-7.14-0.65-10.59c-6.19-18.63-12.44-37.24-18.57-55.89c-17.79-54.06-35.6-108.1-53.28-162.18c-4.9-14.98-9.85-29.95-14.59-44.98c-1.89-5.99-0.49-11.96,4.07-16.14c48.88-44.8,97.66-89.72,146.61-134.41c4.54-4.14,10.63-3.79,15.28-0.08c28.91,23.05,58.26,45.54,87.41,68.29c5.29,4.13,11.23,4.41,17.24,2.57c32.79-10.02,66.6-15.01,100.86-14.88c34.82,0.13,69.11,5.27,102.39,15.45c5.82,1.78,11.66,1.48,16.82-2.58c29.07-22.88,58.33-45.53,87.16-68.79c4.37-3.52,10.27-3.92,14.65-0.1c48.9,42.59,97.67,85.34,146.26,128.19c5.56,4.9,7.02,11.96,4.64,18.8c-23.75,68.42-47.53,136.83-71.22,205.27c-1.39,4.05-1.5,8.39-0.84,12.6c2.45,15.65,4.48,31.42,6.54,47.16c11.75,89.65,23.44,179.3,35.1,268.96c3.78,29.1,7.5,58.21,11.24,87.32c1.37,10.68-6.19,20.02-16.94,20.03c-2.48,0-4.96,0-7.44,0C859.3,980,699.65,980,540,980" class="shirt-outline"/>
+            <!-- EXACT OUTLINE from 12.svg -->
+            <path d="M540,1030c-157.7,0-315.4,0-473.1,0c-8.99-0.01-14.36-8.58-12.82-17.26c3.96-22.37,7.21-44.89,10.15-67.43c11.51-88.35,23-176.71,34.42-265.07c3.12-24.12,5.92-48.3,8.74-72.48c0.41-3.51,0.5-7.14-0.65-10.59c-6.19-18.63-12.44-37.24-18.57-55.89c-17.79-54.06-35.6-108.1-53.28-162.18c-4.9-14.98-9.85-29.95-14.59-44.98c-1.89-5.99-0.49-11.96,4.07-16.14c48.88-44.8,97.66-89.72,146.61-134.41c4.54-4.14,10.63-3.79,15.28-0.08c28.91,23.05,58.26,45.54,87.41,68.29c5.29,4.13,11.23,4.41,17.24,2.57c32.79-10.02,66.6-15.01,100.86-14.88c34.82,0.13,69.11,5.27,102.39,15.45c5.82,1.78,11.66,1.48,16.82-2.58c29.07-22.88,58.33-45.53,87.16-68.79c4.37-3.52,10.27-3.92,14.65-0.1c48.9,42.59,97.67,85.34,146.26,128.19c5.56,4.9,7.02,11.96,4.64,18.8c-23.75,68.42-47.53,136.83-71.22,205.27c-1.39,4.05-1.5,8.39-0.84,12.6c2.45,15.65,4.48,31.42,6.54,47.16c11.75,89.65,23.44,179.3,35.1,268.96c3.78,29.1,7.5,58.21,11.24,87.32c1.37,10.68-6.19,20.02-16.94,20.03c-2.48,0-4.96,0-7.44,0C831.3,974,671.65,974,512,974" class="shirt-outline" transform="translate(0, -50)"/>
+            <line x1="20" y1="500" x2="1060" y2="500" class="grid-lines" />
+            <line x1="540" y1="20" x2="540" y2="1060" class="grid-lines" />
         </svg>`;
         
         // --- Placeholders reusing the Tee logic for now ---
@@ -424,10 +427,11 @@
                 if(data.cameraMode === 'main') data.mainPhotos.push(photo);
                 else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
                 else if(data.cameraMode === 'defect') {
+                    // Link photo to map point
                     photo.defectMeta = { ...data.tempDefect };
                     data.defectPhotos.push(photo);
                     addDefectMarker(photo.defectMeta);
-                    closeCamera(); 
+                    closeCamera(); // Auto-close for defect flow
                 }
                 
                 if(data.cameraMode !== 'defect') {
