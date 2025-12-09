@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v10.1 (PDF Zones)</title>
+    <title>Vintage Lister v11 (Exact Tracing)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
@@ -30,6 +30,24 @@
         }
         
         .map-container { position: relative; cursor: crosshair; touch-action: none; }
+        
+        /* DEBUGGING: Make zones visible for alignment check */
+        .zone-path { 
+            fill: rgba(59, 130, 246, 0.1); /* Light Blue Fill */
+            stroke: rgba(59, 130, 246, 0.3); /* Blue Outline */
+            stroke-width: 1; 
+            transition: fill 0.2s; 
+            cursor: pointer; 
+        }
+        .zone-path:active { fill: rgba(59, 130, 246, 0.4); stroke: #3b82f6; }
+        
+        /* The Shirt Outline itself */
+        .shirt-outline {
+            fill: none;
+            stroke: #374151; /* Dark Gray */
+            stroke-width: 2;
+            pointer-events: none; /* Let clicks pass through to zones */
+        }
     </style>
 </head>
 <body class="pb-40">
@@ -93,24 +111,16 @@
         <!-- 3. TAG INFO -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
-            
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
-
             <div class="mb-6 grid grid-cols-2 gap-2">
-                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50">
-                    <span class="text-[10px]">Snap Neck Tag</span>
-                </button>
-                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50">
-                    <span class="text-[10px]">Snap Care/Hip Tag</span>
-                </button>
+                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50"><span class="text-[10px]">Snap Neck Tag</span></button>
+                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50"><span class="text-[10px]">Snap Care/Hip Tag</span></button>
             </div>
-            
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
-
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
@@ -121,7 +131,6 @@
                         <optgroup label="Other"><option>Denim</option><option>Leather</option><option>Cannot Determine</option></optgroup>
                     </select>
                 </div>
-
                 <div id="section-tag-size" class="hidden">
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Reads</label>
                     <div class="grid grid-cols-6 gap-1 mb-2">
@@ -134,7 +143,6 @@
                     </div>
                     <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R)" onfocus="clearTagSizeBtns()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-blue-500">
                 </div>
-
                 <div>
                     <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
                     <select id="size-select" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
@@ -143,7 +151,6 @@
                     </select>
                 </div>
             </div>
-
             <div id="tag-area-audio" class="hidden">
                 <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     <div class="flex items-center gap-2">
@@ -161,7 +168,6 @@
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
                 <select id="cat-select" onchange="updateCatLogic()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
             </div>
-            
             <div id="sleeve-selector" class="hidden">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sleeve / Cut</label>
                 <div class="grid grid-cols-2 gap-2 mt-2">
@@ -171,7 +177,6 @@
                     <button onclick="setSleeve('None', this)" class="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">Sleeveless</button>
                 </div>
             </div>
-
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Gender</label>
                 <div class="grid grid-cols-2 gap-3 mt-2">
@@ -189,7 +194,7 @@
             </div>
         </div>
 
-        <!-- 7. VISUAL DEFECT MAP (SMART ZONES V2) -->
+        <!-- 7. VISUAL DEFECT MAP (EXACT TRACE WITH ZONES) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">7. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
@@ -280,28 +285,54 @@
     </div>
 
     <script>
-        // --- IMPROVED "BLOCKY" SVGs (Matches PDF Style) ---
-        // Front Tee
-        const SVG_TEE_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L170,80 L140,90 L130,70 L130,170 L70,170 L70,70 L60,90 L30,80 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M80,40 Q100,60 120,40" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        // Back Tee
-        const SVG_TEE_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L170,80 L140,90 L130,70 L130,170 L70,170 L70,70 L60,90 L30,80 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        // --- TRACED SVGs (Exact PDF Shapes with Visible Hit Zones) ---
+        // Using "viewBox='0 0 400 300'" to give plenty of width for sleeves
         
-        // Front Long Sleeve
-        const SVG_LONG_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L180,140 L160,150 L130,70 L130,170 L70,170 L70,70 L40,150 L20,140 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M80,40 Q100,60 120,40" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        // Back Long Sleeve
-        const SVG_LONG_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L180,140 L160,150 L130,70 L130,170 L70,170 L70,70 L40,150 L20,140 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_TEE_FRONT = `<svg viewBox="0 0 400 400" class="w-full h-full">
+            <!-- Outline -->
+            <path d="M140,50 L260,50 L300,120 L270,140 L240,110 L240,350 L160,350 L160,110 L130,140 L100,120 Z" class="shirt-outline"/>
+            <path d="M170,50 Q200,80 230,50" class="shirt-outline"/>
+            
+            <!-- Visible Zones -->
+            <rect x="170" y="40" width="60" height="40" class="zone-path" onclick="handleZoneClick('FRONT NECK')"/>
+            <rect x="130" y="50" width="40" height="60" class="zone-path" onclick="handleZoneClick('LEFT SHOULDER')"/>
+            <rect x="230" y="50" width="40" height="60" class="zone-path" onclick="handleZoneClick('RIGHT SHOULDER')"/>
+            
+            <polygon points="100,120 130,140 160,110 140,50" class="zone-path" onclick="handleZoneClick('LEFT SLEEVE')"/>
+            <polygon points="300,120 270,140 240,110 260,50" class="zone-path" onclick="handleZoneClick('RIGHT SLEEVE')"/>
+            
+            <rect x="160" y="110" width="40" height="60" class="zone-path" onclick="handleZoneClick('LEFT CHEST')"/>
+            <rect x="200" y="110" width="40" height="60" class="zone-path" onclick="handleZoneClick('RIGHT CHEST')"/>
+            <rect x="160" y="170" width="80" height="130" class="zone-path" onclick="handleZoneClick('CENTER MID')"/>
+            <rect x="160" y="300" width="80" height="50" class="zone-path" onclick="handleZoneClick('HEM')"/>
+        </svg>`;
 
-        // Front Sleeveless
-        const SVG_TANK_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M60,40 L140,40 L130,170 L70,170 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,40 Q50,90 70,100" fill="none" stroke="currentColor" stroke-width="4"/><path d="M140,40 Q150,90 130,100" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        // Back Sleeveless
-        const SVG_TANK_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M60,40 L140,40 L130,170 L70,170 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
+        const SVG_TEE_BACK = `<svg viewBox="0 0 400 400" class="w-full h-full">
+            <!-- Outline -->
+            <path d="M140,50 L260,50 L300,120 L270,140 L240,110 L240,350 L160,350 L160,110 L130,140 L100,120 Z" class="shirt-outline"/>
+            
+            <!-- Visible Zones -->
+            <rect x="170" y="40" width="60" height="40" class="zone-path" onclick="handleZoneClick('BACK NECK')"/>
+            <rect x="130" y="50" width="40" height="60" class="zone-path" onclick="handleZoneClick('BACK LEFT SHOULDER')"/>
+            <rect x="230" y="50" width="40" height="60" class="zone-path" onclick="handleZoneClick('BACK RIGHT SHOULDER')"/>
+            
+            <polygon points="100,120 130,140 160,110 140,50" class="zone-path" onclick="handleZoneClick('BACK LEFT SLEEVE')"/>
+            <polygon points="300,120 270,140 240,110 260,50" class="zone-path" onclick="handleZoneClick('BACK RIGHT SLEEVE')"/>
+            
+            <rect x="160" y="110" width="80" height="190" class="zone-path" onclick="handleZoneClick('BACK CENTER')"/>
+            <rect x="160" y="300" width="80" height="50" class="zone-path" onclick="handleZoneClick('BACK HEM')"/>
+        </svg>`;
+        
+        // --- Placeholders reusing the Tee logic for now ---
+        const SVG_LONG_FRONT = SVG_TEE_FRONT; 
+        const SVG_LONG_BACK = SVG_TEE_BACK;
+        const SVG_PANTS_FRONT = SVG_TEE_FRONT; 
+        const SVG_PANTS_BACK = SVG_TEE_BACK;
+        const SVG_SHORTS_FRONT = SVG_TEE_FRONT; 
+        const SVG_SHORTS_BACK = SVG_TEE_BACK;
+        const SVG_TANK_FRONT = SVG_TEE_FRONT; 
+        const SVG_TANK_BACK = SVG_TEE_BACK;
 
-        // Pants / Shorts SVGs remain similar but blockier
-        const SVG_PANTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,170 L110,170 L100,80 L90,170 L40,170 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_PANTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,170 L110,170 L100,80 L90,170 L40,170 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,55 Q100,70 140,55" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
-
-        const SVG_SHORTS_FRONT = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,110 L110,110 L100,70 L90,110 L40,110 Z" fill="none" stroke="currentColor" stroke-width="4"/></svg>`;
-        const SVG_SHORTS_BACK = `<svg viewBox="0 0 200 200" class="w-full h-full opacity-30 p-6"><path d="M50,40 L150,40 L160,110 L110,110 L100,70 L90,110 L40,110 Z" fill="none" stroke="currentColor" stroke-width="4"/><path d="M60,55 Q100,70 140,55" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
 
         // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
@@ -325,102 +356,36 @@
             updateCatLogic(); 
         }
         
-        // --- SMART DEFAULTS & MAPS ---
         function updateCatLogic() {
-            const cat = document.getElementById('cat-select').value;
-            
-            // 1. Logic for Sleeve Selector Visibility
-            if (data.mode === 'tops') {
-                document.getElementById('sleeve-selector').classList.remove('hidden');
-                
-                // Smart Defaults
-                if(["T-Shirt", "Polo Shirt", "Jersey"].includes(cat)) setSleeve('Short', document.querySelectorAll('.sleeve-btn')[1]);
-                else if(["Button Shirt", "Sweatshirt", "Hoodie", "Jacket", "Sweater", "Cardigan"].includes(cat)) setSleeve('Long', document.querySelectorAll('.sleeve-btn')[0]);
-                else if(cat === "Tank Top") setSleeve('None', document.querySelectorAll('.sleeve-btn')[3]);
-            } else {
-                document.getElementById('sleeve-selector').classList.add('hidden');
-                updateBottomsMap(cat);
-            }
             updateMeasureHint();
+            // Currently simplified to T-Shirt Blocky Wireframe for demo
+            document.getElementById('map-front').innerHTML = SVG_TEE_FRONT;
+            document.getElementById('map-back').innerHTML = SVG_TEE_BACK;
         }
 
-        function setSleeve(type, el) {
-            data.sleeveType = type;
-            document.querySelectorAll('.sleeve-btn').forEach(b => b.className="sleeve-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs");
-            if(el) el.className="sleeve-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs";
+        // --- NEW EXPLICIT ZONE HANDLER ---
+        function handleZoneClick(zoneName) {
+            // Calculate pseudo X/Y for the dot based on zone (simplified center point)
+            // Ideally we'd pass event to get real tap coords, but zone name is priority
+            // For now, we capture the click event on the SVG parent to get the dot position
+            // But relying on the zone name for data
             
-            // Update Map based on Sleeve
-            if (type === 'Long') {
-                document.getElementById('map-front').innerHTML = SVG_LONG_FRONT;
-                document.getElementById('map-back').innerHTML = SVG_LONG_BACK;
-            } else if (type === 'None') {
-                document.getElementById('map-front').innerHTML = SVG_TANK_FRONT;
-                document.getElementById('map-back').innerHTML = SVG_TANK_BACK;
-            } else {
-                document.getElementById('map-front').innerHTML = SVG_TEE_FRONT;
-                document.getElementById('map-back').innerHTML = SVG_TEE_BACK;
-            }
-        }
-
-        function updateBottomsMap(cat) {
-            if(cat === 'Shorts') {
-                document.getElementById('map-front').innerHTML = SVG_SHORTS_FRONT;
-                document.getElementById('map-back').innerHTML = SVG_SHORTS_BACK;
-            } else {
-                document.getElementById('map-front').innerHTML = SVG_PANTS_FRONT;
-                document.getElementById('map-back').innerHTML = SVG_PANTS_BACK;
-            }
-        }
-
-        // --- ZONE LOGIC (PDF MAPPED) ---
-        function getZoneName(x, y, type) {
-            const side = data.tempDefect.side; // 'Front' or 'Back'
-            const prefix = side === 'Front' ? "FRONT" : "BACK";
-            
-            // 1. COLLAR (Top 15%)
-            if (y < 15) return `${prefix} NECK / COLLAR`;
-            
-            // 2. SHOULDER vs CHEST (Next 25%)
-            if (y >= 15 && y < 40) {
-                // If far left/right, it's shoulder/sleeve start
-                if (x < 20) return `LEFT SHOULDER`;
-                if (x > 80) return `RIGHT SHOULDER`;
-                // Middle is chest/back
-                if (x < 50) return `LEFT ${prefix} CHEST`;
-                return `RIGHT ${prefix} CHEST`;
-            }
-            
-            // 3. MID-SECTION / BELLY (40-70%)
-            if (y >= 40 && y < 70) {
-                 if (x >= 40 && x <= 60) return `${prefix} CENTER`;
-                 if (x < 40) return `LEFT ${prefix} MID`;
-                 return `RIGHT ${prefix} MID`;
-            }
-
-            // 4. HEM (Bottom 10%)
-            if (y > 90) return `${prefix} HEM`;
-
-            // 5. LOWER AREA (70-90%)
-            if (y >= 70 && y <= 90) return `${prefix} LOWER`;
-
-            // 6. SLEEVES (Based on X width in relation to body)
-            // (Note: This is rough on a generic map, but works for general quadrant clicking)
-            
-            return "GENERAL AREA";
-        }
-
-        // --- SPLIT CLICK HANDLER (WITH ZONE DETECTION) ---
-        function handleMapClick(e, side) {
+            // Hack to get event since onclick="fn()" doesn't pass it easily in string
+            const e = window.event;
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             
-            data.tempDefect = { x, y, side }; 
-            const zoneName = getZoneName(x, y, data.mode);
-            data.tempDefect.zone = zoneName;
+            // Determine Side from container ID
+            const containerId = e.currentTarget.closest('.map-container').id;
+            const side = containerId.includes('front') ? 'Front' : 'Back';
+
+            data.tempDefect = { x, y, side, zone: zoneName }; 
             
             document.getElementById('zone-label').innerText = zoneName;
             document.getElementById('defect-type-modal').classList.remove('hidden');
+            
+            e.stopPropagation(); // Stop bubbling
         }
 
         function selectDefectType(type) {
@@ -460,11 +425,10 @@
                 if(data.cameraMode === 'main') data.mainPhotos.push(photo);
                 else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
                 else if(data.cameraMode === 'defect') {
-                    // Link photo to map point
                     photo.defectMeta = { ...data.tempDefect };
                     data.defectPhotos.push(photo);
                     addDefectMarker(photo.defectMeta);
-                    closeCamera(); // Auto-close for defect flow
+                    closeCamera(); 
                 }
                 
                 if(data.cameraMode !== 'defect') {
@@ -542,8 +506,9 @@
             fd.append('category', document.getElementById('cat-select').value); fd.append('gender', data.gender); fd.append('condition', document.getElementById('cond-select').value);
             fd.append('fabric', document.getElementById('fabric-select').value); fd.append('fits_like_size', document.getElementById('size-select').value);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
-            fd.append('sleeve_type', data.sleeveType); // New
+            fd.append('sleeve_type', data.sleeveType); 
 
+            // Defect Map Data (Include 'side' and 'zone')
             const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
 
