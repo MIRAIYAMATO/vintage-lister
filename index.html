@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v29 (Super Categories)</title>
+    <title>Vintage Lister v34 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* BASE STYLES */
@@ -34,7 +33,7 @@
         .zone-hit {
             cursor: pointer;
             transition: fill 0.05s;
-            fill: rgba(220, 38, 38, 0.25); /* More visible red guide */
+            fill: rgba(220, 38, 38, 0.25);
             stroke: rgba(220, 38, 38, 0.6);
             stroke-width: 2px;
         }
@@ -90,38 +89,43 @@
 </head>
 <body class="pb-40">
 
-    <!-- CONFIG -->
     <script>
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c"; 
         const APP_PIN = "1234";
     </script>
 
-    <!-- LOGIN SCREEN -->
     <div id="login-screen" class="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-4">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Locked</h2>
             <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN</p>
             <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••">
+            
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Photographer</label>
+                <select id="photographer-select" class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800">
+                    <option value="P01">P01 – Jeff Koga</option>
+                    <option value="P02" selected>P02 – Elaine Donato</option>
+                    <option value="P03">P03 – Kobe Gaza</option>
+                </select>
+            </div>
+            
             <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl active:bg-blue-700">UNLOCK</button>
         </div>
     </div>
 
-    <!-- HEADER -->
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v29</div>
-        <!-- SUPER-CATEGORY SWITCHER -->
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v34</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
             <button onclick="setSuperCategory('outer')" id="mode-outer" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">OUTER</button>
         </div>
+        <button onclick="showPhotographerChange()" id="photographer-badge" class="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
     </div>
 
-    <!-- MAIN FLOW -->
     <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto pt-4">
 
-        <!-- 1. CATEGORY & SKU (MERGED FOR SPEED) -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+        <div id="section-1" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
             <div>
                 <label class="text-xs font-bold text-blue-600 uppercase tracking-wide">1. Category (Master Switch)</label>
                 <select id="cat-select" onchange="handleCategoryChange()" class="w-full mt-1 p-3 border-2 border-blue-100 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800"></select>
@@ -137,15 +141,13 @@
                 </div>
             </div>
             
-            <!-- Hidden Scanner -->
             <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-56">
                 <div id="reader" class="w-full h-full"></div>
                 <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">CLOSE</button>
             </div>
         </div>
 
-        <!-- 3. MAIN PHOTOS -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-photos" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div class="flex justify-between items-center mb-3">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Main Photos (Money Shots)</label>
                 <span id="count-main" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
@@ -157,56 +159,146 @@
             <div id="thumbs-main" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 4. KEY FEATURES & AUTHENTICATION (DYNAMIC) -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-features" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div class="flex items-center justify-between mb-2">
                 <label class="text-xs font-bold text-indigo-500 uppercase tracking-wide">4. Key Features & Auth</label>
                 <span id="feature-hint" class="text-[10px] text-gray-400 font-medium">Select Category First</span>
             </div>
             <div id="features-container" class="feature-grid">
-                <!-- Javascript will populate this based on category -->
-            </div>
+                </div>
             <div id="thumbs-feature" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-20 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 5. TAG INFO -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Tag Info</label>
-            <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
+        <div id="section-tag" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Tag Info & Origin</label>
+            <div class="grid grid-cols-3 gap-2 mt-3 mb-3">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
+            
+            <!-- TAG READS - Moved up, shows when Has Tag selected -->
+            <div id="section-tag-size" class="hidden mb-4 bg-amber-50 p-3 rounded-xl border border-amber-200">
+                <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Reads</label>
+                <div class="grid grid-cols-6 gap-1 mb-2">
+                    <button onclick="setTagSize('XS', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XS</button>
+                    <button onclick="setTagSize('S', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">S</button>
+                    <button onclick="setTagSize('M', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">M</button>
+                    <button onclick="setTagSize('L', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">L</button>
+                    <button onclick="setTagSize('XL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
+                    <button onclick="setTagSize('XXL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
+                </div>
+                <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R, 32x30)" onfocus="clearTagSizeBtns()" onchange="persistData()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-amber-500 bg-white">
+            </div>
+            
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button onclick="setOrigin('usa', this)" id="btn-origin-usa" class="origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all flex items-center justify-center gap-2"><span class="text-base">🇺🇸</span> USA Made</button>
+                    <button onclick="setOrigin('import', this)" id="btn-origin-import" class="origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all flex items-center justify-center gap-2"><span class="text-base">🌍</span> Import</button>
+                </div>
+                <select id="country-select" onchange="data.madeInCountry=this.value; persistData();" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                    <option value="" disabled selected>Select Country...</option>
+                    <option>China</option><option>Vietnam</option><option>Bangladesh</option><option>India</option><option>Indonesia</option><option>Mexico</option><option>Honduras</option><option>Cambodia</option><option>Pakistan</option><option>Turkey</option><option>Sri Lanka</option><option>Philippines</option><option>Taiwan</option><option>South Korea</option><option>Japan</option><option>Italy</option><option>Portugal</option><option>United Kingdom</option><option>Canada</option><option>Other / Unknown</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Copyright / Date Year (Optional)</label>
+                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" onchange="data.copyrightYear=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none focus:border-blue-500 mb-2" maxlength="4">
+                
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Era / Decade Estimate</label>
+                <div class="grid grid-cols-5 gap-1">
+                    <button onclick="setEra('1970s', this)" class="era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white">70s</button>
+                    <button onclick="setEra('1980s', this)" class="era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white">80s</button>
+                    <button onclick="setEra('1990s', this)" class="era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white">90s</button>
+                    <button onclick="setEra('2000s', this)" class="era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white">Y2K</button>
+                    <button onclick="toggleEraDropdown()" id="btn-era-other" class="era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white">Other</button>
+                </div>
+                <select id="era-dropdown" onchange="setEraFromDropdown(this.value)" class="hidden w-full mt-2 p-2 border border-gray-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                    <option value="" disabled selected>Select Era...</option>
+                    <option>2020-2029</option><option>2010-2019</option><option>2000-2009</option><option>1990-1999</option><option>1980-1989</option><option>1970-1979</option><option>1960-1969</option><option>1950-1959</option><option>1940-1949</option><option>1930-1939</option><option>1920-1929</option><option>1910-1919</option><option>1900-1909</option><option>Pre-1900s</option>
+                </select>
+            </div>
+            
             <div class="mb-6 grid grid-cols-2 gap-2">
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50"><span class="text-[10px]">Snap Neck Tag</span></button>
                 <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50"><span class="text-[10px]">Snap Care/Hip Tag</span></button>
             </div>
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
+            
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
-                    <select id="fabric-select" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
+                    <select id="fabric-select" onchange="persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
                         <optgroup label="Common"><option>100% Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
                         <optgroup label="Vintage"><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option></optgroup>
                         <optgroup label="Other"><option>Denim</option><option>Leather</option><option>Cannot Determine</option></optgroup>
                     </select>
                 </div>
-                <div id="section-tag-size" class="hidden">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Reads</label>
-                    <div class="grid grid-cols-6 gap-1 mb-2">
-                        <button onclick="setTagSize('XS', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XS</button>
-                        <button onclick="setTagSize('S', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">S</button>
-                        <button onclick="setTagSize('M', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">M</button>
-                        <button onclick="setTagSize('L', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">L</button>
-                        <button onclick="setTagSize('XL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
-                        <button onclick="setTagSize('XXL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
+                
+                <div class="mt-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Weight (Touch)</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setFabricWeight('Light', this)" id="btn-weight-Light" class="weight-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white transition-all">Light</button>
+                        <button onclick="setFabricWeight('Mid', this)" id="btn-weight-Mid" class="weight-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white transition-all">Mid</button>
+                        <button onclick="setFabricWeight('Heavy', this)" id="btn-weight-Heavy" class="weight-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white transition-all">Heavy</button>
                     </div>
-                    <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R)" onfocus="clearTagSizeBtns()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-blue-500">
                 </div>
-                <div>
-                    <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Fits Like / Estimate</label>
-                    <select id="size-select" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
+                
+                <div class="mt-3">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Primary Color</label>
+                    <select id="color-primary" onchange="data.colorPrimary=this.value; persistData();" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                        <option value="" disabled selected>Select Color...</option>
+                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Clear</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Multicolor</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option>
+                    </select>
+                </div>
+                
+                <div class="mt-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Secondary Color <span class="text-gray-300 font-normal">(optional)</span></label>
+                    <select id="color-secondary" onchange="data.colorSecondary=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                        <option value="" selected>None / N/A</option>
+                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Clear</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Multicolor</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option>
+                    </select>
+                </div>
+                
+                <!-- PRINT TYPE - For Tops/Outer only -->
+                <div id="print-type-section" class="mt-3">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Print Type</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setPrintType('Screen', this)" id="btn-print-Screen" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Screen</button>
+                        <button onclick="setPrintType('Heat Transfer', this)" id="btn-print-Heat" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heat</button>
+                        <button onclick="setPrintType('Puff', this)" id="btn-print-Puff" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Puff</button>
+                        <button onclick="setPrintType('Embroidered', this)" id="btn-print-Embroider" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Embroider</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1 mt-1">
+                        <button onclick="setPrintType('Sublimation', this)" id="btn-print-AOP" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">AOP</button>
+                        <button onclick="setPrintType('Patch', this)" id="btn-print-Patch" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Patch</button>
+                        <button onclick="setPrintType('None', this)" id="btn-print-None" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">None</button>
+                        <button onclick="setPrintType('Other', this)" id="btn-print-Other" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Other</button>
+                    </div>
+                </div>
+                
+                <!-- WASH - For Bottoms only -->
+                <div id="wash-section" class="mt-3 hidden">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Denim Wash</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setWash('Light', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Light</button>
+                        <button onclick="setWash('Medium', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Medium</button>
+                        <button onclick="setWash('Dark', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Dark</button>
+                        <button onclick="setWash('Raw', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Raw</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1 mt-1">
+                        <button onclick="setWash('Acid Wash', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Acid</button>
+                        <button onclick="setWash('Stone', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Stone</button>
+                        <button onclick="setWash('Rinse', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Rinse</button>
+                        <button onclick="setWash('Charcoal Wash', this)" class="wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Charcoal</button>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Modern Fit Estimate</label>
+                    <select id="size-select" onchange="persistData()" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Fit...</option>
                         <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option><option>Cannot Determine</option>
                     </select>
@@ -219,24 +311,20 @@
                         <i data-lucide="mic" class="w-5 h-5"></i>
                         <span>Record Brand & Origin</span>
                     </div>
-                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">BRAND • STYLE (Check Side!) • MADE IN • RN</div>
+                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">BRAND • STYLE (Check Side!) • RN #</div>
                 </button>
             </div>
         </div>
 
-        <!-- 6. SPECS & FIT -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
+        <div id="section-specs" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
             
-            <!-- SLEEVE SELECTOR (Right-Hand Optimized) - FOR TOPS/OUTER ONLY -->
             <div id="sleeve-selector">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Sleeve Length</label>
                 <div class="grid grid-cols-2 gap-2 mt-2">
-                    <!-- Left Column -->
                     <div class="space-y-2">
                         <button onclick="setSleeve('None', this)" id="btn-sleeve-none" class="sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-default">Sleeveless</button>
                         <button onclick="setSleeve('3/4', this)" id="btn-sleeve-34" class="sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-default">3/4 Sleeve</button>
                     </div>
-                    <!-- Right Column (Primary Thumb Zone) -->
                     <div class="space-y-2">
                         <button onclick="setSleeve('Short', this)" id="btn-sleeve-short" class="sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-selected">Short Sleeve</button>
                         <button onclick="setSleeve('Long', this)" id="btn-sleeve-long" class="sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-default">Long Sleeve</button>
@@ -244,42 +332,35 @@
                 </div>
             </div>
 
-            <!-- TOPS FIT / SILHOUETTE SELECTOR -->
             <div id="fit-selector-tops">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Fit / Cut / Style</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Fit / Cut / Style <span class="text-gray-300 font-normal">(select all that apply)</span></label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
-                    <button onclick="toggleFit('Regular', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Regular</button>
-                    <button onclick="toggleFit('Boxy', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Boxy</button>
                     <button onclick="toggleFit('Crop', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Crop</button>
+                    <button onclick="toggleFit('Boxy', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Boxy</button>
+                    <button onclick="toggleFit('Regular', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected">Regular</button>
                     <button onclick="toggleFit('Slim', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Slim Fit</button>
-                    <button onclick="toggleFit('Oversized', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Oversized</button>
                     <button onclick="toggleFit('Tapered', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Tapered</button>
+                    <button onclick="toggleFit('Oversized', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Oversized</button>
                 </div>
             </div>
 
-            <!-- BOTTOMS STYLE SELECTOR (Smart Dynamic List) -->
             <div id="fit-selector-bottoms" class="hidden">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Style / Fit</label>
                 <div id="bottoms-style-grid" class="style-chip-grid mt-2">
-                    <!-- Javascript populates this -->
-                </div>
+                    </div>
             </div>
 
-            <!-- UPDATED GENDER SECTION (Right-Hand Optimized) -->
-            <div>
+            <div id="section-gender">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Gender / Department</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
-                    <!-- Left: Unisex (Least Frequent?) -->
                     <div class="space-y-2">
                         <button onclick="setGender('Adult Unisex', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Adult Unisex</button>
                         <button onclick="setGender('Kids Unisex', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Kids Unisex</button>
                     </div>
-                    <!-- Center: Kids -->
                     <div class="space-y-2">
                         <button onclick="setGender('Boys', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Boys</button>
                         <button onclick="setGender('Girls', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Girls</button>
                     </div>
-                    <!-- Right: Men/Women (Primary Thumb Zone) -->
                     <div class="space-y-2">
                         <button onclick="setGender('Men', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Men</button>
                         <button onclick="setGender('Women', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Women</button>
@@ -287,16 +368,15 @@
                 </div>
             </div>
 
-            <div>
+            <div id="section-condition">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">9. Condition</label>
-                <select id="cond-select" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
+                <select id="cond-select" onchange="persistData()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
                     <option>Pre-owned excellent</option><option>Pre-owned good</option><option>Pre-owned fair</option><option>Poor – major flaws</option><option>New with tag</option><option>New without tag</option>
                 </select>
             </div>
         </div>
 
-        <!-- 10. VISUAL DEFECT MAP (Dynamic) -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-defects" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">10. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
                 <button onclick="setDefectState(false)" id="btn-no-defects" class="flex-1 py-4 border border-green-200 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner">No Defects</button>
@@ -305,13 +385,11 @@
             <div id="defect-content" class="hidden">
                 <div class="text-center mb-3 text-xs text-gray-500 font-medium">Tap EXACT location on Map</div>
                 <div class="space-y-3 mb-4">
-                    <!-- Front Map -->
                     <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
                          <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest z-30">FRONT</div>
                          <div id="map-front" class="map-wrapper"></div>
                          <div id="dots-front" class="absolute inset-0 w-full h-full pointer-events-none z-30"></div>
                     </div>
-                    <!-- Back Map -->
                     <div class="relative w-full bg-white rounded-xl border border-gray-200 overflow-hidden h-64">
                          <div class="absolute top-2 left-3 text-[10px] font-bold text-gray-400 tracking-widest z-30">BACK</div>
                          <div id="map-back" class="map-wrapper"></div>
@@ -322,8 +400,7 @@
             </div>
         </div>
 
-        <!-- 11. MEASUREMENTS -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-measure" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">11. Measurements</label>
             <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed"></div>
             <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
@@ -332,15 +409,25 @@
             </button>
         </div>
 
-        <!-- SUBMIT -->
+        <div id="section-weight" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <div class="flex justify-between items-center mb-3">
+                <label class="text-xs font-bold text-purple-600 uppercase tracking-wide">12. Weight Scale Verification</label>
+                <div id="weight-status" class="text-[10px] font-bold text-gray-300 bg-gray-100 px-2 py-1 rounded">PENDING</div>
+            </div>
+            <button onclick="openCamera('weight')" class="w-full h-24 border-2 border-dashed border-purple-300 bg-purple-50 rounded-xl flex flex-col items-center justify-center gap-1 text-purple-600 font-bold active:bg-purple-100 transition-all shadow-sm">
+                <i data-lucide="scale" class="w-6 h-6"></i>
+                <span>SNAP SCALE</span>
+                <span class="text-[9px] opacity-70 font-normal">Place folded item on scale</span>
+            </button>
+            <div id="thumbs-weight" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+        </div>
+
         <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
             <button onclick="submitData()" id="btn-submit" class="w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">PROCESS LISTING</button>
         </div>
 
     </div>
 
-    <!-- OVERLAYS (CAM, MODAL, UPLOAD) -->
-    <!-- ... (Previous Overlay Code) ... -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
         <div class="flex-1 bg-black"></div>
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
@@ -357,7 +444,6 @@
         </div>
     </div>
 
-    <!-- DEFECT MODAL -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <div class="text-center mb-4">
@@ -374,7 +460,6 @@
         </div>
     </div>
 
-    <!-- UPLOAD MODAL -->
     <div id="upload-modal" class="fixed inset-0 z-[80] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
@@ -384,12 +469,7 @@
     </div>
 
     <script>
-        // --- SVG ASSETS (ALL PREVIOUS SVGS HERE) ---
-        // I will truncate for brevity but the Full SVGS from v25 go here
-        
-        // ... (SVG_SHORT_FRONT, SVG_SHORT_BACK, etc.) ...
-        
-        // RE-INSERTING THE SVGS FOR COMPLETENESS IN THE FILE
+        // --- SVG ASSETS ---
         const SVG_SHORT_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT SLEEVE" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="LEFT SLEEVE" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/></svg>`;
         const SVG_SHORT_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT SLEEVE" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="RIGHT SLEEVE" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70"/></svg>`;
         const SVG_LONG_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="70" y="140" width="71" height="138"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="628" y="139" width="70" height="141"/><polygon class="zone-hit" data-zone="RIGHT PIT" points="141,210 279,210 279,348 209,348 209,280 141,280"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><polygon class="zone-hit" data-zone="LEFT PIT" points="489,210 489,349 560,349 560,280 629,280 629,210"/><rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="70" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="628" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="RIGHT CUFF" x="69" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT CUFF" x="628" y="558" width="70" height="70"/></svg>`;
@@ -404,19 +484,81 @@
         const SVG_SHORTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="280" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="280" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT WAIST" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="CENTER WAIST" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="RIGHT WAIST" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="LEFT HIP" x="140" y="140" width="72" height="70"/><rect class="zone-hit" data-zone="LEFT BACK POCKET" x="211" y="140" width="69" height="70"/><rect class="zone-hit" data-zone="BACK SEAT" x="281" y="140" width="208" height="72"/><rect class="zone-hit" data-zone="RIGHT BACK POCKET" x="489" y="140" width="68" height="70"/><rect class="zone-hit" data-zone="RIGHT HIP" x="557" y="140" width="71" height="70"/><rect class="zone-hit" data-zone="BACK CROTCH" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="LEFT HAMSTRING" x="140" y="210" width="209" height="210"/><rect class="zone-hit" data-zone="RIGHT HAMSTRING" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="LEFT LEG OPENING" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="RIGHT LEG OPENING" x="418" y="417" width="209" height="72"/></svg>`;
 
         document.addEventListener("DOMContentLoaded", () => {
-            const savedPin = localStorage.getItem('vintage_lister_auth');
-            if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
+            try {
+                const savedPin = localStorage.getItem('vintage_lister_auth');
+                const savedPhotographer = localStorage.getItem('vl_photographer');
+                if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
+                if (savedPhotographer) {
+                    data.photographer = savedPhotographer;
+                    document.getElementById('photographer-select').value = savedPhotographer;
+                    document.getElementById('photographer-badge').innerText = savedPhotographer;
+                }
+            } catch(e) { document.getElementById('login-screen').classList.add('hidden'); }
             lucide.createIcons();
-            // Default to Tops Super Category
-            setSuperCategory('tops');
-            setTagState('has'); 
-            setDefectState(false);
+            
+            // BATCH PERSISTENCE: Check if we have a "Batch Mode" saved
+            const batchMode = localStorage.getItem('vl_batch_mode');
+            
+            // Check for saved session data (Poka-yoke)
+            restoreSession();
+            
+            // If no session data for category, use batch mode or default
+            if(!data.superCategory) setSuperCategory(batchMode || 'tops');
+            
+            setTagState(data.tagStatus);
+            setDefectState(data.hasDefects);
+            
+            // Initialize defaults
+            initializeDefaults();
         });
-        function checkPin() { if(document.getElementById('pin-input').value === APP_PIN) { localStorage.setItem('vintage_lister_auth', APP_PIN); document.getElementById('login-screen').classList.add('hidden'); } else alert("Bad PIN"); }
-
-        let data = { mode: 'tops', superCategory: 'tops', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], cameraMode: 'main', gender: '', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitType: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null };
         
-        // --- DATA STRUCTURES FOR SUPER CATEGORIES ---
+        function initializeDefaults() {
+            // Pre-select USA Made
+            setOrigin('usa', document.getElementById('btn-origin-usa'));
+            // Pre-select Men gender
+            const menBtn = document.querySelector('.g-btn');
+            document.querySelectorAll('.g-btn').forEach(b => {
+                if(b.innerText === 'Men') {
+                    b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-selected";
+                }
+            });
+            // Pre-select Pre-owned excellent condition
+            document.getElementById('cond-select').value = 'Pre-owned excellent';
+            // Pre-select Screen print type for tops/outer (not bottoms)
+            if(data.superCategory !== 'bottoms') {
+                setPrintType('Screen', document.getElementById('btn-print-Screen'));
+            }
+        }
+        
+        function checkPin() { 
+            if(document.getElementById('pin-input').value === APP_PIN) { 
+                try { 
+                    localStorage.setItem('vintage_lister_auth', APP_PIN);
+                    // Save photographer selection
+                    const photographer = document.getElementById('photographer-select').value;
+                    localStorage.setItem('vl_photographer', photographer);
+                    data.photographer = photographer;
+                    document.getElementById('photographer-badge').innerText = photographer;
+                } catch(e) {}
+                document.getElementById('login-screen').classList.add('hidden'); 
+            } else alert("Bad PIN"); 
+        }
+        
+        function showPhotographerChange() {
+            // Show a simple prompt to change photographer (rare use case)
+            const current = data.photographer;
+            const options = ['P01', 'P02', 'P03'];
+            const newPhotographer = prompt(`Current: ${current}\nEnter new photographer code (P01, P02, P03):`, current);
+            if(newPhotographer && options.includes(newPhotographer.toUpperCase())) {
+                data.photographer = newPhotographer.toUpperCase();
+                document.getElementById('photographer-badge').innerText = data.photographer;
+                try { localStorage.setItem('vl_photographer', data.photographer); } catch(e) {}
+            }
+        }
+
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, cameraMode: 'main', gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        const recorders = {};
+
         const superCategories = {
             'tops': ["T-Shirt", "Button Shirt", "Polo Shirt", "Tank Top", "Jersey", "Blouse", "Tunic", "Other Top"],
             'bottoms': ["Jeans", "Pants", "Shorts", "Sweatpants", "Overall / Jumpsuit", "Trousers"],
@@ -456,87 +598,152 @@
             "default": ["Logo/Patch", "Hardware Brand", "Fabric Texture", "Unique Stitching"]
         };
 
-        window.onload = () => { setSuperCategory('tops'); document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); }); };
+        function persistData() {
+            try {
+                const session = {
+                    sku: document.getElementById('sku-input').value,
+                    superCategory: data.superCategory,
+                    category: document.getElementById('cat-select').value,
+                    tagStatus: data.tagStatus,
+                    tagSize: data.tagSize,
+                    fabric: document.getElementById('fabric-select').value,
+                    fabricWeight: data.fabricWeight, // New
+                    fitSize: document.getElementById('size-select').value,
+                    gender: data.gender,
+                    condition: document.getElementById('cond-select').value,
+                    sleeveType: data.sleeveType,
+                    fitTypes: data.fitTypes,
+                    hasDefects: data.hasDefects
+                };
+                localStorage.setItem('vl_session_v34', JSON.stringify(session));
+            } catch(e) {}
+        }
 
-        // NEW: Super Category Logic
+        function restoreSession() {
+            try {
+                const saved = localStorage.getItem('vl_session_v34');
+                if(saved) {
+                    const session = JSON.parse(saved);
+                    if(session.sku) document.getElementById('sku-input').value = session.sku;
+                    if(session.superCategory) setSuperCategory(session.superCategory);
+                    if(session.category) { document.getElementById('cat-select').value = session.category; handleCategoryChange(); }
+                    if(session.tagStatus) setTagState(session.tagStatus);
+                    if(session.tagSize) { setTagSize(session.tagSize); document.getElementById('tag-size-input').value = session.tagSize; }
+                    if(session.fabric) document.getElementById('fabric-select').value = session.fabric;
+                    if(session.fabricWeight) setFabricWeight(session.fabricWeight); // New
+                    if(session.fitSize) document.getElementById('size-select').value = session.fitSize;
+                    if(session.gender) {
+                        data.gender = session.gender;
+                        document.querySelectorAll('.g-btn').forEach(b => { if(b.innerText === session.gender) b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-selected"; });
+                    }
+                    if(session.condition) document.getElementById('cond-select').value = session.condition;
+                    if(session.sleeveType) {
+                        data.sleeveType = session.sleeveType;
+                        document.querySelectorAll('.sleeve-btn').forEach(b => { if(b.innerText.includes(session.sleeveType)) b.className = "sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-selected"; });
+                        renderDefectMaps();
+                    }
+                    if(session.hasDefects !== undefined) setDefectState(session.hasDefects);
+                }
+            } catch(e) {}
+        }
+
+        function scrollToNext(id) {
+            const el = document.getElementById(id);
+            if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
         function setSuperCategory(sc) {
             data.superCategory = sc;
-            data.mode = sc === 'bottoms' ? 'bottoms' : 'tops'; // General mode logic remains for some UI elements
+            data.mode = sc; 
 
-            // Update UI Buttons
             ['tops', 'bottoms', 'outer'].forEach(k => {
                 const btn = document.getElementById(`mode-${k}`);
-                if (k === sc) {
-                    btn.className = "flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all";
-                } else {
-                    btn.className = "flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all bg-gray-100";
-                }
+                btn.className = k === sc ? "flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all" : "flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all bg-gray-100";
             });
 
-            // Populate Dropdown based on Super Category
             const select = document.getElementById('cat-select');
             select.innerHTML = '<option disabled selected>Select Category...</option>';
             const cats = superCategories[sc] || [];
             cats.forEach(c => select.add(new Option(c, c)));
 
-            // Handle specific UI visibility
             const sleeveSelector = document.getElementById('sleeve-selector');
             const fitSelectorTops = document.getElementById('fit-selector-tops');
             const fitSelectorBottoms = document.getElementById('fit-selector-bottoms');
+            const printTypeSection = document.getElementById('print-type-section');
+            const washSection = document.getElementById('wash-section');
 
             if (sc === 'bottoms') {
                 sleeveSelector.classList.add('hidden');
                 fitSelectorTops.classList.add('hidden');
                 fitSelectorBottoms.classList.remove('hidden');
+                // Hide print type, show wash for bottoms
+                printTypeSection.classList.add('hidden');
+                washSection.classList.remove('hidden');
+                // Clear print type for bottoms
+                data.printType = '';
             } else {
-                // Tops AND Outerwear show Sleeve selector
                 sleeveSelector.classList.remove('hidden');
                 fitSelectorTops.classList.remove('hidden');
                 fitSelectorBottoms.classList.add('hidden');
+                // Show print type, hide wash for tops/outer
+                printTypeSection.classList.remove('hidden');
+                washSection.classList.add('hidden');
+                // Pre-select Screen for tops/outer, clear wash
+                data.printType = 'Screen';
+                data.wash = '';
+                setPrintType('Screen', document.getElementById('btn-print-Screen'));
             }
-            
-            // Clear current selection effects
             updateCatLogic();
+            persistData();
         }
 
         function handleCategoryChange() {
+            data.timestamps.category = new Date();
             const cat = document.getElementById('cat-select').value;
-            
-            if (data.superCategory === 'bottoms') {
-                updateBottomsStyles();
-            } else {
-                autoSelectSleeve();
-            }
-            
+            if (data.superCategory === 'bottoms') updateBottomsStyles();
+            else autoSelectSleeve();
             updateMeasureHint();
             renderDefectMaps();
             updateFeatureButtons(cat);
+            autoSelectGender(cat);
+            persistData();
+        }
+        
+        function autoSelectGender(category) {
+            // Women-specific categories
+            const womenCategories = ['Tunic', 'Blouse', 'Camisole', 'Bodysuit'];
+            const isWomenCategory = womenCategories.some(w => category && category.includes(w));
+            
+            if(isWomenCategory) {
+                setGenderSilent('Women');
+            } else {
+                setGenderSilent('Men');
+            }
+        }
+        
+        function setGenderSilent(g) {
+            // Set gender without scrolling (for auto-selection)
+            data.gender = g;
+            document.querySelectorAll('.g-btn').forEach(b => {
+                if(b.innerText === g) {
+                    b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-selected";
+                } else {
+                    b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-default";
+                }
+            });
+            persistData();
         }
         
         function updateFeatureButtons(category) {
             const container = document.getElementById('features-container');
             const hint = document.getElementById('feature-hint');
             container.innerHTML = '';
-            
-            if(!category) {
-                hint.innerText = "Select Category First";
-                return;
-            }
-            hint.innerText = category; // Show selected category name
-
-            // Find best match in featuresMap
+            if(!category) { hint.innerText = "Select Category First"; return; }
+            hint.innerText = category; 
             let key = "default";
-            for (const k in featuresMap) {
-                if (category.includes(k) || k.includes(category)) { 
-                    key = k;
-                    break;
-                }
-            }
-            // Fallback nuances
+            for (const k in featuresMap) { if (category.includes(k) || k.includes(category)) { key = k; break; } }
             if (category === 'Pants' && !featuresMap[category]) key = 'Pants';
-            
             const features = featuresMap[key] || featuresMap["default"];
-            
             features.forEach(feat => {
                 const btn = document.createElement('button');
                 btn.className = "py-3 px-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg text-[11px] font-bold active:bg-indigo-100 active:scale-95 transition-all flex flex-col items-center justify-center text-center leading-tight shadow-sm";
@@ -552,7 +759,7 @@
             const container = document.getElementById('bottoms-style-grid');
             container.innerHTML = '';
             const styles = bottomsStyleMap[cat] || ["Regular", "Other"];
-            data.fitType = styles[0];
+            data.bottomsStyle = styles[0];
             styles.forEach(style => {
                 const btn = document.createElement('button');
                 const isActive = style === styles[0];
@@ -561,7 +768,9 @@
                 btn.onclick = function() {
                     Array.from(container.children).forEach(c => c.className = "py-2 px-1 rounded-lg font-medium text-[11px] border btn-default");
                     this.className = "py-2 px-1 rounded-lg font-medium text-[11px] border btn-selected";
-                    data.fitType = style;
+                    data.bottomsStyle = style;
+                    persistData();
+                    scrollToNext('section-gender'); 
                 };
                 container.appendChild(btn);
             });
@@ -569,9 +778,9 @@
         
         function autoSelectSleeve() {
             const cat = document.getElementById('cat-select').value;
-            if(cat.includes("Hoodie") || cat.includes("Sweat") || cat.includes("Jacket") || cat.includes("Cardigan") || cat.includes("Button") || cat.includes("Coat")) {
+            if(cat.includes("Hoodie") || cat.includes("Sweat") || cat.includes("Jacket") || cat.includes("Cardigan") || cat.includes("Button") || cat.includes("Coat") || cat.includes("Windbreaker")) {
                 setSleeve('Long', document.getElementById('btn-sleeve-long'));
-            } else if (cat.includes("Tank")) {
+            } else if (cat.includes("Tank") || cat.includes("Vest")) {
                 setSleeve('None', document.getElementById('btn-sleeve-none'));
             } else {
                 setSleeve('Short', document.getElementById('btn-sleeve-short'));
@@ -583,18 +792,74 @@
             document.querySelectorAll('.sleeve-btn').forEach(b => b.className = "sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-default");
             if(el) el.className = "sleeve-btn w-full py-3 rounded-md font-bold text-xs btn-selected";
             renderDefectMaps();
+            persistData();
+            if(data.superCategory !== 'bottoms') scrollToNext('fit-selector-tops');
         }
 
         function toggleFit(fit, el) {
-            data.fitType = fit; 
-            document.querySelectorAll('.fit-btn').forEach(b => b.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-default");
-            el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected";
+            const index = data.fitTypes.indexOf(fit);
+            if(index > -1) {
+                if(data.fitTypes.length > 1) {
+                    data.fitTypes.splice(index, 1);
+                    el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-default";
+                }
+            } else {
+                data.fitTypes.push(fit);
+                el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected";
+            }
+            persistData();
         }
 
         function setGender(g, el) { 
             data.gender = g; 
             document.querySelectorAll('.g-btn').forEach(b => b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-default"); 
             el.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-selected"; 
+            persistData();
+            scrollToNext('section-condition');
+        }
+
+        function setFabricWeight(w, el) {
+            data.fabricWeight = w;
+            // Clear all buttons first
+            document.querySelectorAll('.weight-btn').forEach(b => b.className = "weight-btn py-3 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white transition-all");
+            // If passed element is null (restoring session), find the button
+            if(!el) el = document.getElementById(`btn-weight-${w}`);
+            if(el) el.className = "weight-btn py-3 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs shadow-inner transition-all";
+            persistData();
+        }
+        
+        function setEra(era, el) {
+            data.era = era;
+            document.querySelectorAll('.era-btn').forEach(b => b.className = "era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white");
+            if(el) el.className = "era-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[10px] shadow-inner";
+            document.getElementById('era-dropdown').classList.add('hidden');
+            persistData();
+        }
+        
+        function toggleEraDropdown() {
+            const dropdown = document.getElementById('era-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+        
+        function setEraFromDropdown(era) {
+            data.era = era;
+            document.querySelectorAll('.era-btn').forEach(b => b.className = "era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[10px] bg-white");
+            document.getElementById('btn-era-other').className = "era-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[10px] shadow-inner";
+            persistData();
+        }
+        
+        function setPrintType(type, el) {
+            data.printType = type;
+            document.querySelectorAll('.print-btn').forEach(b => b.className = "print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "print-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
+        }
+        
+        function setWash(wash, el) {
+            data.wash = wash;
+            document.querySelectorAll('.wash-btn').forEach(b => b.className = "wash-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "wash-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
         }
 
         function updateCatLogic() {
@@ -608,27 +873,13 @@
             let svgFront, svgBack;
             if (data.superCategory === 'bottoms') {
                 const cat = document.getElementById('cat-select').value;
-                if (cat === 'Shorts') {
-                    svgFront = SVG_SHORTS_FRONT;
-                    svgBack = SVG_SHORTS_BACK;
-                } else {
-                    svgFront = SVG_PANTS_FRONT;
-                    svgBack = SVG_PANTS_BACK;
-                }
+                if (cat === 'Shorts') { svgFront = SVG_SHORTS_FRONT; svgBack = SVG_SHORTS_BACK; } 
+                else { svgFront = SVG_PANTS_FRONT; svgBack = SVG_PANTS_BACK; }
             } else {
-                // Tops AND Outerwear logic
-                svgFront = SVG_SHORT_FRONT;
-                svgBack = SVG_SHORT_BACK;
-                if (data.sleeveType === 'Long') {
-                    svgFront = SVG_LONG_FRONT;
-                    svgBack = SVG_LONG_BACK;
-                } else if (data.sleeveType === '3/4') {
-                    svgFront = SVG_34_FRONT;
-                    svgBack = SVG_34_BACK;
-                } else if (data.sleeveType === 'None') {
-                    svgFront = SVG_SLEEVELESS_FRONT;
-                    svgBack = SVG_SLEEVELESS_BACK;
-                }
+                svgFront = SVG_SHORT_FRONT; svgBack = SVG_SHORT_BACK;
+                if (data.sleeveType === 'Long') { svgFront = SVG_LONG_FRONT; svgBack = SVG_LONG_BACK; } 
+                else if (data.sleeveType === '3/4') { svgFront = SVG_34_FRONT; svgBack = SVG_34_BACK; } 
+                else if (data.sleeveType === 'None') { svgFront = SVG_SLEEVELESS_FRONT; svgBack = SVG_SLEEVELESS_BACK; }
             }
             const mapFront = document.getElementById('map-front');
             mapFront.innerHTML = svgFront;
@@ -675,12 +926,10 @@
             container.appendChild(dot);
         }
 
-        // --- CAMERA ---
         let stream;
         async function openCamera(mode, featureName = null) {
             data.cameraMode = mode;
             if(featureName) data.currentFeatureName = featureName;
-            
             document.getElementById('cam-mode-label').innerText = mode === 'feature' ? `FEATURE: ${featureName}` : mode.toUpperCase();
             
             let countText = "0";
@@ -688,31 +937,47 @@
             else if(mode === 'tag') countText = data.tagPhotos.length;
             else if(mode === 'defect') countText = data.defectPhotos.length;
             else if(mode === 'feature') countText = data.featurePhotos.length;
-            
+            else if(mode === 'weight') countText = data.weightPhoto ? "1" : "0";
             document.getElementById('cam-count').innerText = countText;
             
-            try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } }); document.getElementById('cam-feed').srcObject = stream; document.getElementById('cam-overlay').classList.remove('hidden'); } catch(e) { alert("Cam Error"); }
+            try { 
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 2160 }, height: { ideal: 2160 } } }); 
+                document.getElementById('cam-feed').srcObject = stream; 
+                document.getElementById('cam-overlay').classList.remove('hidden'); 
+            } catch(e) { alert("Cam Error: " + e.message); }
         }
 
         function takeSnap() {
             const v = document.getElementById('cam-feed'); const c = document.createElement('canvas');
-            const size = Math.min(v.videoWidth, v.videoHeight); c.width = size; c.height = size;
+            const size = Math.min(v.videoWidth, v.videoHeight); 
+            c.width = size; c.height = size;
             c.getContext('2d').drawImage(v, (v.videoWidth-size)/2, (v.videoHeight-size)/2, size, size, 0, 0, size, size);
+            
             const f = document.getElementById('flash'); f.classList.add('trigger-flash'); setTimeout(()=>f.classList.remove('trigger-flash'),150);
+            
             c.toBlob(blob => {
                 const photo = { blob, ts: new Date() };
+                if(data.cameraMode === 'main' && data.mainPhotos.length === 0) data.timestamps.first_photo = new Date();
+                
                 if(data.cameraMode === 'main') data.mainPhotos.push(photo);
                 else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
                 else if(data.cameraMode === 'defect') {
                     photo.defectMeta = { ...data.tempDefect };
                     data.defectPhotos.push(photo);
                     addDefectMarker(photo.defectMeta);
-                    closeCamera();
+                    closeCamera(); 
                 }
                 else if(data.cameraMode === 'feature') {
                     photo.featureName = data.currentFeatureName;
                     data.featurePhotos.push(photo);
                     closeCamera(); 
+                }
+                else if(data.cameraMode === 'weight') {
+                    data.weightPhoto = photo;
+                    data.timestamps.weight_taken = new Date();
+                    document.getElementById('weight-status').innerText = "CAPTURED";
+                    document.getElementById('weight-status').className = "text-[10px] font-bold text-white bg-purple-600 px-2 py-1 rounded";
+                    closeCamera();
                 }
                 
                 let countText = "0";
@@ -721,33 +986,34 @@
                 else if(data.cameraMode === 'defect') countText = data.defectPhotos.length;
                 else if(data.cameraMode === 'feature') countText = data.featurePhotos.length;
                 
-                if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature') 
+                if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature' && data.cameraMode !== 'weight') 
                     document.getElementById('cam-count').innerText = countText;
                     
                 updateThumbs(data.cameraMode);
-            }, 'image/jpeg', 0.7);
+            }, 'image/jpeg', 0.85); 
         }
 
         function updateThumbs(mode) {
             const targetId = mode === 'feature' ? 'thumbs-feature' : `thumbs-${mode}`;
             const div = document.getElementById(targetId); 
             if(!div) return;
-            
             div.innerHTML='';
             
             let list = [];
-            if(mode === 'main') list = data.mainPhotos;
+            if(mode === 'main') {
+                list = data.mainPhotos;
+                document.getElementById('count-main').innerText = data.mainPhotos.length;
+            }
             else if(mode === 'tag') list = data.tagPhotos;
             else if(mode === 'defect') list = data.defectPhotos;
             else if(mode === 'feature') list = data.featurePhotos;
+            else if(mode === 'weight' && data.weightPhoto) list = [data.weightPhoto];
             
             list.forEach((p,i) => {
                 const img = document.createElement('img'); img.src = URL.createObjectURL(p.blob);
                 img.className = "h-20 w-20 object-cover rounded border-2 border-gray-200 flex-shrink-0";
-                
                 const wrap = document.createElement('div'); wrap.className="relative flex-shrink-0";
                 wrap.appendChild(img);
-
                 if(mode==='defect') {
                      const badge = document.createElement('div'); badge.className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold"; badge.innerText = i+1;
                      wrap.appendChild(badge);
@@ -758,22 +1024,17 @@
                     label.innerText = p.featureName;
                     wrap.appendChild(label);
                 }
-                
                 div.appendChild(wrap);
             });
         }
         
         function closeCamera() { if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById('cam-overlay').classList.add('hidden'); }
 
-        // --- COMMON ---
         function updateMeasureHint() {
             let list = categoryMeasures[data.superCategory];
-            if(!list) list = categoryMeasures['tops']; // Fallback
-            
-            // Logic for Neck measure on Button Shirts
+            if(!list) list = categoryMeasures['tops']; 
             const cat = document.getElementById('cat-select').value;
             if(cat==="Button Shirt") list = [...list, "NECK MEASUREMENT"];
-            
             let html = '<div class="grid grid-cols-1 gap-1">';
             list.forEach((m,i) => html += `<div class="${m.includes('NECK')?'text-red-600 font-bold bg-red-50 p-1':''}">${i+1}. ${m}</div>`);
             document.getElementById('measure-hint').innerHTML = html + '</div>';
@@ -787,74 +1048,212 @@
                 active.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.remove('hidden');
                 document.getElementById('tag-area-audio').classList.remove('hidden');
-                document.getElementById('label-fits-like').innerText = "FITS LIKE (Expert Guess)";
+                document.getElementById('label-fits-like').innerText = "MODERN FIT ESTIMATE";
             } else {
                 active.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.add('hidden');
                 document.getElementById('tag-area-audio').classList.add('hidden');
                 document.getElementById('label-fits-like').innerText = "ESTIMATED SIZE";
             }
+            persistData();
         }
 
-        function setTagSize(size, el) { data.tagSize = size; document.getElementById('tag-size-input').value=""; document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); if(el) el.className="size-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs"; }
-        function clearTagSizeBtns() { document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); data.tagSize=""; }
+        function setOrigin(type, el) {
+            data.origin = type;
+            document.querySelectorAll('.origin-btn').forEach(b => b.className = "origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all flex items-center justify-center gap-2");
+            if(type === 'usa') {
+                el.className = "origin-btn py-3 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner flex items-center justify-center gap-2";
+                document.getElementById('country-select').classList.add('hidden');
+                data.madeInCountry = 'USA';
+            } else {
+                el.className = "origin-btn py-3 border border-green-600 bg-green-50 text-green-600 rounded-xl font-bold text-xs shadow-inner flex items-center justify-center gap-2";
+                document.getElementById('country-select').classList.remove('hidden');
+                data.madeInCountry = '';
+            }
+            persistData();
+        }
+
+        function setTagSize(size, el) { 
+            data.tagSize = size; 
+            document.getElementById('tag-size-input').value=""; 
+            document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); 
+            if(el) el.className="size-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs"; 
+            persistData();
+        }
         
-        function setDefectState(h) { data.hasDefects=h; if(h) { document.getElementById('btn-has-defects').className="flex-1 py-4 border border-red-500 bg-red-50 text-red-600 rounded-xl font-bold shadow-inner"; document.getElementById('btn-no-defects').className="flex-1 py-4 border border-gray-200 bg-white text-gray-400 font-bold"; document.getElementById('defect-content').classList.remove('hidden'); } else { document.getElementById('btn-no-defects').className="flex-1 py-4 border border-green-500 bg-green-50 text-green-700 rounded-xl font-bold shadow-inner"; document.getElementById('btn-has-defects').className="flex-1 py-4 border border-gray-200 bg-white text-gray-400 font-bold"; document.getElementById('defect-content').classList.add('hidden'); }}
+        function clearTagSizeBtns() { document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); data.tagSize=""; persistData(); }
+        
+        function setDefectState(h) { 
+            data.hasDefects=h; 
+            if(h) { 
+                document.getElementById('btn-has-defects').className="flex-1 py-4 border border-red-500 bg-red-50 text-red-600 rounded-xl font-bold shadow-inner"; 
+                document.getElementById('btn-no-defects').className="flex-1 py-4 border border-gray-200 bg-white text-gray-400 font-bold"; 
+                document.getElementById('defect-content').classList.remove('hidden'); 
+            } else { 
+                document.getElementById('btn-no-defects').className="flex-1 py-4 border border-green-500 bg-green-50 text-green-700 rounded-xl font-bold shadow-inner"; 
+                document.getElementById('btn-has-defects').className="flex-1 py-4 border border-gray-200 bg-white text-gray-400 font-bold"; 
+                document.getElementById('defect-content').classList.add('hidden'); 
+                scrollToNext('section-measure');
+            }
+            persistData();
+        }
 
         async function recordAudio(key) {
             const btn = document.getElementById(`rec-${key}`);
-            if(recorders[key] && recorders[key].state==='recording') { recorders[key].stop(); btn.classList.remove('recording'); if(key==='tag') btn.innerHTML=`<i data-lucide="check" class="w-6 h-6"></i><span>Audio Saved</span>`; else document.getElementById('lbl-measure').innerText="Saved"; lucide.createIcons(); return; }
-            try { const s = await navigator.mediaDevices.getUserMedia({audio:true}); const r = new MediaRecorder(s); let chunks=[]; r.ondataavailable=e=>chunks.push(e.data); r.onstop=()=>{ const blob=new Blob(chunks,{type:'audio/webm'}); if(key==='tag') data.audioTag=blob; else data.audioMeasure=blob; s.getTracks().forEach(t=>t.stop()); }; r.start(); recorders[key]=r; btn.classList.add('recording'); if(key==='tag') btn.innerHTML=`<span>RECORDING...</span>`; else document.getElementById('lbl-measure').innerText="RECORDING..."; } catch(e) { alert("Mic Denied"); }
+            if(recorders[key] && recorders[key].state==='recording') { 
+                recorders[key].stop(); 
+                btn.classList.remove('recording'); 
+                if(key==='tag') btn.innerHTML=`<i data-lucide="check" class="w-6 h-6"></i><span>Audio Saved</span>`; 
+                else document.getElementById('lbl-measure').innerText="Saved"; 
+                lucide.createIcons(); 
+                return; 
+            }
+            if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return alert("Audio recording not supported");
+            
+            try { 
+                const s = await navigator.mediaDevices.getUserMedia({audio:true}); 
+                const r = new MediaRecorder(s); 
+                let chunks=[]; 
+                r.ondataavailable=e=>chunks.push(e.data); 
+                r.onstop=()=>{ 
+                    const blob=new Blob(chunks,{type:'audio/webm'}); 
+                    if(key==='tag') data.audioTag=blob; else data.audioMeasure=blob; 
+                    s.getTracks().forEach(t=>t.stop()); 
+                }; 
+                r.start(); recorders[key]=r; 
+                btn.classList.add('recording'); 
+                if(key==='tag') btn.innerHTML=`<span>RECORDING...</span>`; 
+                else document.getElementById('lbl-measure').innerText="RECORDING..."; 
+            } catch(e) { alert("Microphone access denied: " + e.message); }
         }
 
-        function submitData() {
+        // SAFETY NET: Helper to stop active recordings
+        function stopActiveRecordings() {
+            return new Promise(resolve => {
+                let pending = 0;
+                ['tag', 'measure'].forEach(key => {
+                    if(recorders[key] && recorders[key].state === 'recording') {
+                        pending++;
+                        // Hook into onstop to resolve when done
+                        const originalOnStop = recorders[key].onstop;
+                        recorders[key].onstop = () => {
+                            if(originalOnStop) originalOnStop();
+                            pending--;
+                            if(pending === 0) resolve();
+                        };
+                        recorders[key].stop();
+                        document.getElementById(`rec-${key}`).classList.remove('recording');
+                    }
+                });
+                if(pending === 0) resolve();
+            });
+        }
+
+        async function submitData() {
+            // 1. SAFETY NET: Stop any audio recording before submitting
+            await stopActiveRecordings();
+
+            data.timestamps.submit_pressed = new Date();
+
             const sku = document.getElementById('sku-input').value;
             if(!sku) return alert("Missing SKU");
             if(data.mainPhotos.length === 0) return alert("Take Main Photos");
+            if(!data.weightPhoto) return alert("Missing Scale Photo (Section 12)");
             if(!document.getElementById('fabric-select').value) return alert("Select Fabric");
+            if(!data.colorPrimary) return alert("Select Primary Color");
             
             const modal = document.getElementById('upload-modal'); modal.classList.remove('hidden');
             const fd = new FormData();
             fd.append('sku', sku); fd.append('auth_pin', APP_PIN);
+            fd.append('photographer', data.photographer);
             fd.append('mode', data.mode); 
-            fd.append('super_category', data.superCategory); // NEW
+            fd.append('super_category', data.superCategory); 
             fd.append('tag_status', data.tagStatus); fd.append('has_defects', data.hasDefects);
             fd.append('category', document.getElementById('cat-select').value); fd.append('gender', data.gender); fd.append('condition', document.getElementById('cond-select').value);
-            fd.append('fabric', document.getElementById('fabric-select').value); fd.append('fits_like_size', document.getElementById('size-select').value);
+            fd.append('fabric', document.getElementById('fabric-select').value); 
+            fd.append('fabric_weight', data.fabricWeight);
+            fd.append('color_primary', data.colorPrimary);
+            fd.append('color_secondary', data.colorSecondary);
+            fd.append('print_type', data.printType);
+            fd.append('wash', data.wash);
+            fd.append('fits_like_size', document.getElementById('size-select').value);
+            fd.append('origin', data.origin); fd.append('made_in_country', data.madeInCountry); 
+            fd.append('copyright_year', data.copyrightYear);
+            fd.append('era', data.era);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
             fd.append('sleeve_type', data.sleeveType); 
-            fd.append('fit_type', data.fitType); 
+            fd.append('fit_types', JSON.stringify(data.fitTypes)); 
+            if(data.bottomsStyle) fd.append('bottoms_style', data.bottomsStyle); 
 
             const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
             
             const featuresMetadata = data.featurePhotos.map((p, i) => ({ index: i+1, feature: p.featureName }));
             fd.append('features_json', JSON.stringify(featuresMetadata));
-
-            const kpiEnd = new Date(); fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
+            
+            // Photo counts for QC
+            fd.append('photo_count_main', data.mainPhotos.length);
+            fd.append('photo_count_tag', data.tagPhotos.length);
+            fd.append('photo_count_defect', data.defectPhotos.length);
+            fd.append('photo_count_feature', data.featurePhotos.length);
+            fd.append('photo_count_total', data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.featurePhotos.length + 1);
+            
+            fd.append('kpi_timestamps_json', JSON.stringify(data.timestamps));
+            if(data.scanTime) {
+                fd.append('scan_time', data.scanTime.toISOString());
+                const kpiEnd = new Date(); 
+                fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
+            }
 
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
-            
             data.featurePhotos.forEach((p, i) => fd.append(`feature_photo_${i+1}_${p.featureName.replace(/\s+/g, '_')}`, p.blob, `${sku}_feature_${i+1}.jpg`));
+            
+            if(data.weightPhoto) fd.append('weight_scale_photo', data.weightPhoto.blob, `${sku}_weight.jpg`);
             
             if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
 
             const xhr = new XMLHttpRequest(); xhr.open("POST", N8N_WEBHOOK_URL, true);
             xhr.upload.onprogress = e => { if(e.lengthComputable) document.getElementById('progress-bar').style.width = `${Math.round((e.loaded/e.total)*100)}%`; };
-            xhr.onload = () => { if(xhr.status >= 200 && xhr.status < 300) { document.getElementById('progress-bar').style.backgroundColor="#22c55e"; setTimeout(() => location.reload(), 500); } else { alert("Error"); modal.classList.add('hidden'); } };
+            xhr.onload = () => { 
+                if(xhr.status >= 200 && xhr.status < 300) { 
+                    document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
+                    localStorage.removeItem('vl_session_v34'); // Clear session
+                    
+                    // BATCH PERSISTENCE: Save the last mode for next reload
+                    localStorage.setItem('vl_batch_mode', data.superCategory);
+                    
+                    setTimeout(() => location.reload(), 500); 
+                } else { alert("Error"); modal.classList.add('hidden'); } 
+            };
             xhr.onerror = () => { alert("Network Error"); modal.classList.add('hidden'); };
             xhr.send(fd);
         }
         
+        let html5QrCode = null;
         function toggleScanner() { 
             if(!data.scanTime) data.scanTime=new Date(); 
             const v=document.getElementById('scanner-view'); 
-            if(!v.classList.contains('hidden')) return; 
+            if(!v.classList.contains('hidden')) {
+                // Close scanner
+                if(html5QrCode) {
+                    html5QrCode.stop().catch(e => console.log("Scanner stop error:", e));
+                    html5QrCode = null;
+                }
+                v.classList.add('hidden');
+                return;
+            }
             v.classList.remove('hidden'); 
-            new Html5Qrcode("reader").start({facingMode:"environment"}, {fps:10, qrbox:250}, txt=>{ document.getElementById('sku-input').value=txt; v.classList.add('hidden'); });
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({facingMode:"environment"}, {fps:10, qrbox:250}, txt=>{ 
+                document.getElementById('sku-input').value=txt; 
+                html5QrCode.stop().catch(e => console.log("Scanner stop error:", e));
+                html5QrCode = null;
+                v.classList.add('hidden'); 
+                persistData(); 
+            });
         }
     </script>
 </body>
