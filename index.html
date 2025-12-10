@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v23.2 (Right-Hand Optimization)</title>
+    <title>Vintage Lister v29 (Super Categories)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- Lucide Icons -->
@@ -34,7 +34,7 @@
         .zone-hit {
             cursor: pointer;
             transition: fill 0.05s;
-            fill: rgba(220, 38, 38, 0.25); /* Visible red guide */
+            fill: rgba(220, 38, 38, 0.25); /* More visible red guide */
             stroke: rgba(220, 38, 38, 0.6);
             stroke-width: 2px;
         }
@@ -73,6 +73,18 @@
             border: 1px solid #e5e7eb; 
             transition: all 0.1s;
         }
+        
+        .style-chip-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
 
     </style>
 </head>
@@ -96,35 +108,46 @@
 
     <!-- HEADER -->
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight">Vintage<span class="text-blue-600">Lister</span> v23.2</div>
-        <div class="flex bg-gray-100 rounded-lg p-1">
-            <button onclick="setMode('tops')" id="mode-tops" class="px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm transition-all">TOPS</button>
-            <button onclick="setMode('bottoms')" id="mode-bottoms" class="px-4 py-2 rounded text-gray-500 font-bold text-sm transition-all">BOTTOMS</button>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v29</div>
+        <!-- SUPER-CATEGORY SWITCHER -->
+        <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
+            <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
+            <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
+            <button onclick="setSuperCategory('outer')" id="mode-outer" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">OUTER</button>
         </div>
     </div>
 
     <!-- MAIN FLOW -->
     <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto pt-4">
 
-        <!-- 1. SKU -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">1. SKU Identification</label>
-            <div class="flex gap-2 mt-2">
-                <input type="number" id="sku-input" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
-                <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 transition-transform shadow-lg">
-                    <i data-lucide="scan-barcode" class="w-8 h-8"></i>
-                </button>
+        <!-- 1. CATEGORY & SKU (MERGED FOR SPEED) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+            <div>
+                <label class="text-xs font-bold text-blue-600 uppercase tracking-wide">1. Category (Master Switch)</label>
+                <select id="cat-select" onchange="handleCategoryChange()" class="w-full mt-1 p-3 border-2 border-blue-100 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800"></select>
             </div>
+            
+            <div>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">2. SKU Identification</label>
+                <div class="flex gap-2 mt-1">
+                    <input type="number" id="sku-input" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
+                    <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 transition-transform shadow-lg">
+                        <i data-lucide="scan-barcode" class="w-8 h-8"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Hidden Scanner -->
             <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-56">
                 <div id="reader" class="w-full h-full"></div>
                 <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">CLOSE</button>
             </div>
         </div>
 
-        <!-- 2. MAIN PHOTOS -->
+        <!-- 3. MAIN PHOTOS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">2. Main Photos (Visuals)</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Main Photos (Money Shots)</label>
                 <span id="count-main" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
             </div>
             <button onclick="openCamera('main')" class="w-full h-20 border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl flex items-center justify-center gap-2 text-blue-600 font-bold active:bg-blue-100 transition-all shadow-sm">
@@ -134,9 +157,21 @@
             <div id="thumbs-main" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <!-- 3. TAG INFO -->
+        <!-- 4. KEY FEATURES & AUTHENTICATION (DYNAMIC) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Tag Info</label>
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-indigo-500 uppercase tracking-wide">4. Key Features & Auth</label>
+                <span id="feature-hint" class="text-[10px] text-gray-400 font-medium">Select Category First</span>
+            </div>
+            <div id="features-container" class="feature-grid">
+                <!-- Javascript will populate this based on category -->
+            </div>
+            <div id="thumbs-feature" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-20 empty:hidden snap-x"></div>
+        </div>
+
+        <!-- 5. TAG INFO -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Tag Info</label>
             <div class="grid grid-cols-3 gap-2 mt-3 mb-4">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
@@ -189,16 +224,12 @@
             </div>
         </div>
 
-        <!-- 4. SPECS & FIT -->
+        <!-- 6. SPECS & FIT -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-5">
-            <div>
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">4. Category</label>
-                <select id="cat-select" onchange="autoSelectSleeve()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500"></select>
-            </div>
             
-            <!-- SLEEVE SELECTOR (Right-Hand Optimized) -->
+            <!-- SLEEVE SELECTOR (Right-Hand Optimized) - FOR TOPS/OUTER ONLY -->
             <div id="sleeve-selector">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Sleeve Length</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Sleeve Length</label>
                 <div class="grid grid-cols-2 gap-2 mt-2">
                     <!-- Left Column -->
                     <div class="space-y-2">
@@ -213,9 +244,9 @@
                 </div>
             </div>
 
-            <!-- NEW FIT / SILHOUETTE SELECTOR -->
-            <div id="fit-selector">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">6. Fit / Cut / Style</label>
+            <!-- TOPS FIT / SILHOUETTE SELECTOR -->
+            <div id="fit-selector-tops">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Fit / Cut / Style</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
                     <button onclick="toggleFit('Regular', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Regular</button>
                     <button onclick="toggleFit('Boxy', this)" class="fit-btn py-2 rounded-lg font-medium text-[11px] btn-default">Boxy</button>
@@ -226,9 +257,17 @@
                 </div>
             </div>
 
+            <!-- BOTTOMS STYLE SELECTOR (Smart Dynamic List) -->
+            <div id="fit-selector-bottoms" class="hidden">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Style / Fit</label>
+                <div id="bottoms-style-grid" class="style-chip-grid mt-2">
+                    <!-- Javascript populates this -->
+                </div>
+            </div>
+
             <!-- UPDATED GENDER SECTION (Right-Hand Optimized) -->
             <div>
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">7. Gender / Department</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Gender / Department</label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
                     <!-- Left: Unisex (Least Frequent?) -->
                     <div class="space-y-2">
@@ -249,16 +288,16 @@
             </div>
 
             <div>
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Condition</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">9. Condition</label>
                 <select id="cond-select" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
                     <option>Pre-owned excellent</option><option>Pre-owned good</option><option>Pre-owned fair</option><option>Poor – major flaws</option><option>New with tag</option><option>New without tag</option>
                 </select>
             </div>
         </div>
 
-        <!-- 9. VISUAL DEFECT MAP (Dynamic) -->
+        <!-- 10. VISUAL DEFECT MAP (Dynamic) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">9. Defects & Issues</label>
+            <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">10. Defects & Issues</label>
             <div class="flex gap-3 mb-4">
                 <button onclick="setDefectState(false)" id="btn-no-defects" class="flex-1 py-4 border border-green-200 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner">No Defects</button>
                 <button onclick="setDefectState(true)" id="btn-has-defects" class="flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all">Has Defects</button>
@@ -283,9 +322,9 @@
             </div>
         </div>
 
-        <!-- 10. MEASUREMENTS -->
+        <!-- 11. MEASUREMENTS -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">10. Measurements</label>
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">11. Measurements</label>
             <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed"></div>
             <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
                 <i data-lucide="ruler" class="w-8 h-8 text-gray-300"></i>
@@ -301,6 +340,7 @@
     </div>
 
     <!-- OVERLAYS (CAM, MODAL, UPLOAD) -->
+    <!-- ... (Previous Overlay Code) ... -->
     <div id="cam-overlay" class="fixed inset-0 z-50 bg-black hidden flex flex-col justify-center">
         <div class="flex-1 bg-black"></div>
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
@@ -317,6 +357,7 @@
         </div>
     </div>
 
+    <!-- DEFECT MODAL -->
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <div class="text-center mb-4">
@@ -327,12 +368,13 @@
                 <button onclick="selectDefectType('Stain')" class="defect-btn-stain py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center justify-center gap-1"><span class="text-lg">STAIN</span><span class="text-[10px] opacity-70">☝️ 1 Finger</span></button>
                 <button onclick="selectDefectType('Hole')" class="defect-btn-hole py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center justify-center gap-1"><span class="text-lg">HOLE</span><span class="text-[10px] opacity-70">✌️ 2 Fingers</span></button>
                 <button onclick="selectDefectType('Repair')" class="defect-btn-repair py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center justify-center gap-1"><span class="text-lg">REPAIR</span><span class="text-[10px] opacity-70">🤟 3 Fingers</span></button>
-                <button onclick="selectDefectType('Fade/Wear')" class="defect-btn-fade py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center justify-center gap-1"><span class="text-lg">WEAR</span><span class="text-[10px] opacity-70">👋 Open Hand</span></button>
+                <button onclick="selectDefectType('Other Defect')" class="defect-btn-fade py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center justify-center gap-1"><span class="text-lg">OTHER DEFECT</span><span class="text-[10px] opacity-70">🖖 4 Fingers</span></button>
             </div>
             <button onclick="document.getElementById('defect-type-modal').classList.add('hidden')" class="w-full mt-4 text-gray-400 font-bold text-sm py-2">Cancel</button>
         </div>
     </div>
 
+    <!-- UPLOAD MODAL -->
     <div id="upload-modal" class="fixed inset-0 z-[80] bg-black/80 hidden flex items-center justify-center backdrop-blur-sm p-4">
         <div class="bg-white rounded-2xl p-8 w-full max-w-sm text-center shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Uploading...</h2>
@@ -342,333 +384,198 @@
     </div>
 
     <script>
-        // --- ASSETS: SHORT SLEEVE MAPS ---
-        // Zone names match exactly what's labeled in the user's SVG files (v1.2)
+        // --- SVG ASSETS (ALL PREVIOUS SVGS HERE) ---
+        // I will truncate for brevity but the Full SVGS from v25 go here
         
-        const SVG_SHORT_FRONT = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/>
-                <rect x="559" y="139" width="140" height="140" fill="#1a1a1a"/>
-                <!-- ZONES -->
-                <rect class="zone-hit" data-zone="RIGHT SLEEVE" x="70" y="140" width="140" height="138" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="209" y="140" width="140" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="139" height="70" />
-                <rect class="zone-hit" data-zone="LEFT SLEEVE" x="559" y="139" width="139" height="140" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139" />
-                <rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70" />
-            </svg>
-        `;
-
-        const SVG_SHORT_BACK = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/>
-                <rect x="559" y="139" width="140" height="140" fill="#1a1a1a"/>
-                <!-- ZONES (Mirrored - LEFT on visual left) -->
-                <rect class="zone-hit" data-zone="LEFT SLEEVE" x="70" y="140" width="140" height="138" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="209" y="140" width="140" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="139" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT SLEEVE" x="559" y="139" width="139" height="140" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70" />
-            </svg>
-        `;
-
-        // --- ASSETS: LONG SLEEVE MAPS ---
-        // Based on user's LONG_SLEEVE_TOP_ICON_VER1_0 files
-        // L-shaped PIT zones (2 rects with same data-zone)
+        // ... (SVG_SHORT_FRONT, SVG_SHORT_BACK, etc.) ...
         
-        const SVG_LONG_FRONT = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Main body -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <!-- Silhouette - Right sleeve area (upper + lower + L-transition) -->
-                <rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/>
-                <rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/>
-                <!-- Silhouette - Left sleeve area (upper + lower + L-transition) -->
-                <rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/>
-                <rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/>
-                
-                <!-- ZONES -->
-                <rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="70" y="140" width="71" height="138" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="141" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="208" height="70" />
-                <rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="628" y="139" width="70" height="141" />
-                
-                <!-- L-shaped RIGHT PIT (2 rects) -->
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="141" y="210" width="71" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="138" />
-                <rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139" />
-                <rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140" />
-                <!-- L-shaped LEFT PIT (2 rects) -->
-                <rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="71" height="139" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="558" y="210" width="71" height="70" />
-                
-                <rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="70" y="280" width="70" height="278" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="628" y="280" width="70" height="278" />
-                
-                <rect class="zone-hit" data-zone="RIGHT CUFF" x="69" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT CUFF" x="628" y="558" width="70" height="70" />
-            </svg>
-        `;
+        // RE-INSERTING THE SVGS FOR COMPLETENESS IN THE FILE
+        const SVG_SHORT_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT SLEEVE" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="LEFT SLEEVE" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_SHORT_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT SLEEVE" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="RIGHT SLEEVE" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_LONG_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="70" y="140" width="71" height="138"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="628" y="139" width="70" height="141"/><rect class="zone-hit" data-zone="RIGHT PIT" x="141" y="210" width="71" height="70"/><rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="138"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="71" height="139"/><rect class="zone-hit" data-zone="LEFT PIT" x="558" y="210" width="71" height="70"/><rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="70" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="628" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="RIGHT CUFF" x="69" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT CUFF" x="628" y="558" width="70" height="70"/></svg>`;
+        const SVG_LONG_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="70" y="140" width="70" height="138"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="628" y="139" width="70" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="141" y="210" width="68" height="69"/><rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="71" height="139"/><rect class="zone-hit" data-zone="RIGHT PIT" x="560" y="210" width="68" height="69"/><rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="70" y="279" width="70" height="280"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="629" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="LEFT CUFF" x="70" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT CUFF" x="628" y="559" width="70" height="70"/></svg>`;
+        const SVG_34_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="212" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="212" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="70" y="140" width="71" height="138"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="628" y="139" width="70" height="141"/><rect class="zone-hit" data-zone="RIGHT PIT" x="141" y="210" width="71" height="70"/><rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="138"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="71" height="139"/><rect class="zone-hit" data-zone="LEFT PIT" x="558" y="210" width="71" height="70"/><rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="70" y="280" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="628" y="280" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT CUFF" x="70" y="421" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT CUFF" x="628" y="421" width="70" height="70"/></svg>`;
+        const SVG_34_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="212" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="212" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="70" y="140" width="70" height="138"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="628" y="139" width="70" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="141" y="210" width="68" height="69"/><rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="71" height="139"/><rect class="zone-hit" data-zone="RIGHT PIT" x="560" y="210" width="68" height="69"/><rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="70" y="279" width="70" height="140"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="629" y="280" width="70" height="139"/><rect class="zone-hit" data-zone="LEFT CUFF" x="70" y="421" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT CUFF" x="628" y="421" width="70" height="70"/></svg>`;
+        const SVG_SLEEVELESS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_SLEEVELESS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT SHOULDER" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_PANTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="488" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="488" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT WAIST" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="CENTER WAIST" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="LEFT WAIST" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="RIGHT HIP" x="140" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="FLY" x="348" y="139" width="71" height="70"/><rect class="zone-hit" data-zone="LEFT HIP" x="419" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="CROTCH" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="RIGHT OUTER THIGH" x="140" y="209" width="74" height="210"/><rect class="zone-hit" data-zone="RIGHT CENTER THIGH" x="211" y="209" width="68" height="210"/><rect class="zone-hit" data-zone="RIGHT INNER THIGH" x="279" y="209" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT INNER THIGH" x="420" y="209" width="72" height="210"/><rect class="zone-hit" data-zone="LEFT CENTER THIGH" x="491" y="209" width="69" height="210"/><rect class="zone-hit" data-zone="LEFT OUTER THIGH" x="558" y="210" width="70" height="209"/><rect class="zone-hit" data-zone="RIGHT KNEE" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="LEFT KNEE" x="419" y="417" width="209" height="72"/><rect class="zone-hit" data-zone="RIGHT SHIN" x="140" y="489" width="210" height="136"/><rect class="zone-hit" data-zone="LEFT SHIN" x="419" y="489" width="209" height="136"/><rect class="zone-hit" data-zone="RIGHT LEG OPENING" x="140" y="625" width="210" height="72"/><rect class="zone-hit" data-zone="LEFT LEG OPENING" x="419" y="625" width="209" height="72"/></svg>`;
+        const SVG_PANTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="488" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="488" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT WAIST" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="CENTER WAIST" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="RIGHT WAIST" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="LEFT HIP" x="140" y="140" width="72" height="70"/><rect class="zone-hit" data-zone="LEFT BACK POCKET" x="211" y="140" width="69" height="70"/><rect class="zone-hit" data-zone="BACK SEAT" x="281" y="140" width="208" height="72"/><rect class="zone-hit" data-zone="RIGHT BACK POCKET" x="489" y="140" width="68" height="70"/><rect class="zone-hit" data-zone="RIGHT HIP" x="557" y="140" width="71" height="70"/><rect class="zone-hit" data-zone="BACK CROTCH" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="LEFT HAMSTRING" x="140" y="210" width="209" height="210"/><rect class="zone-hit" data-zone="RIGHT HAMSTRING" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="LEFT BACK KNEE" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="RIGHT BACK KNEE" x="419" y="417" width="209" height="72"/><rect class="zone-hit" data-zone="LEFT SHIN" x="140" y="489" width="210" height="136"/><rect class="zone-hit" data-zone="RIGHT SHIN" x="419" y="489" width="209" height="136"/><rect class="zone-hit" data-zone="LEFT LEG OPENING" x="140" y="625" width="210" height="72"/><rect class="zone-hit" data-zone="RIGHT LEG OPENING" x="419" y="625" width="209" height="72"/></svg>`;
+        const SVG_SHORTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="280" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="280" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="RIGHT WAIST" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="CENTER WAIST" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="LEFT WAIST" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="RIGHT HIP" x="140" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="FLY" x="348" y="139" width="71" height="70"/><rect class="zone-hit" data-zone="LEFT HIP" x="419" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="CROTCH" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="RIGHT OUTER THIGH" x="140" y="209" width="74" height="210"/><rect class="zone-hit" data-zone="RIGHT CENTER THIGH" x="211" y="209" width="68" height="210"/><rect class="zone-hit" data-zone="RIGHT INNER THIGH" x="279" y="209" width="70" height="208"/><rect class="zone-hit" data-zone="LEFT INNER THIGH" x="420" y="209" width="72" height="210"/><rect class="zone-hit" data-zone="LEFT CENTER THIGH" x="491" y="209" width="69" height="210"/><rect class="zone-hit" data-zone="LEFT OUTER THIGH" x="558" y="210" width="70" height="209"/><rect class="zone-hit" data-zone="RIGHT LEG OPENING" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="LEFT LEG OPENING" x="419" y="417" width="209" height="72"/></svg>`;
+        const SVG_SHORTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="280" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="280" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="LEFT WAIST" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="CENTER WAIST" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="RIGHT WAIST" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="LEFT HIP" x="140" y="140" width="72" height="70"/><rect class="zone-hit" data-zone="LEFT BACK POCKET" x="211" y="140" width="69" height="70"/><rect class="zone-hit" data-zone="BACK SEAT" x="281" y="140" width="208" height="72"/><rect class="zone-hit" data-zone="RIGHT BACK POCKET" x="489" y="140" width="68" height="70"/><rect class="zone-hit" data-zone="RIGHT HIP" x="557" y="140" width="71" height="70"/><rect class="zone-hit" data-zone="BACK CROTCH" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="LEFT HAMSTRING" x="140" y="210" width="209" height="210"/><rect class="zone-hit" data-zone="RIGHT HAMSTRING" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="LEFT LEG OPENING" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="RIGHT LEG OPENING" x="418" y="417" width="209" height="72"/></svg>`;
 
-        const SVG_LONG_BACK = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Main body -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <!-- Silhouette - Left sleeve area (upper + lower + L-transition) -->
-                <rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/>
-                <rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/>
-                <!-- Silhouette - Right sleeve area (upper + lower + L-transition) -->
-                <rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/>
-                <rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/>
-                
-                <!-- ZONES (Mirrored - LEFT on visual left) -->
-                <rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="70" y="140" width="70" height="138" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="141" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="628" y="139" width="70" height="140" />
-                
-                <!-- L-shaped LEFT PIT (2 rects) - on visual left for BACK -->
-                <rect class="zone-hit" data-zone="LEFT PIT" x="141" y="210" width="68" height="69" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140" />
-                <!-- L-shaped RIGHT PIT (2 rects) - on visual right for BACK -->
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="71" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="560" y="210" width="68" height="69" />
-                
-                <rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="70" y="279" width="70" height="280" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="629" y="280" width="70" height="278" />
-                
-                <rect class="zone-hit" data-zone="LEFT CUFF" x="70" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT CUFF" x="628" y="559" width="70" height="70" />
-            </svg>
-        `;
-
-        // --- ASSETS: 3/4 SLEEVE MAPS ---
-        // Same as long sleeve but with shorter sleeves (cuff at Y=421 instead of Y=559)
-        
-        const SVG_34_FRONT = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Main body -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <!-- Silhouette - Right sleeve area (upper + mid + L-transition) -->
-                <rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="69" y="279" width="71" height="212" fill="#1a1a1a"/>
-                <rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/>
-                <!-- Silhouette - Left sleeve area (upper + mid + L-transition) -->
-                <rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="628" y="279" width="71" height="212" fill="#1a1a1a"/>
-                <rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/>
-                
-                <!-- ZONES -->
-                <rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="70" y="140" width="71" height="138" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="141" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="208" height="70" />
-                <rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="628" y="139" width="70" height="141" />
-                
-                <!-- L-shaped RIGHT PIT (2 rects) -->
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="141" y="210" width="71" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="138" />
-                <rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139" />
-                <rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140" />
-                <!-- L-shaped LEFT PIT (2 rects) -->
-                <rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="71" height="139" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="558" y="210" width="71" height="70" />
-                
-                <rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="70" y="280" width="70" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="628" y="280" width="70" height="139" />
-                
-                <rect class="zone-hit" data-zone="RIGHT CUFF" x="70" y="421" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT CUFF" x="628" y="421" width="70" height="70" />
-            </svg>
-        `;
-
-        const SVG_34_BACK = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Main body -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                <!-- Silhouette - Left sleeve area (upper + mid + L-transition) -->
-                <rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="69" y="279" width="71" height="212" fill="#1a1a1a"/>
-                <rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/>
-                <!-- Silhouette - Right sleeve area (upper + mid + L-transition) -->
-                <rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/>
-                <rect x="628" y="279" width="71" height="212" fill="#1a1a1a"/>
-                <rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/>
-                
-                <!-- ZONES (Mirrored - LEFT on visual left) -->
-                <rect class="zone-hit" data-zone="LEFT UPPER SLEEVE" x="70" y="140" width="70" height="138" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="141" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="209" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT UPPER SLEEVE" x="628" y="139" width="70" height="140" />
-                
-                <!-- L-shaped LEFT PIT (2 rects) - on visual left for BACK -->
-                <rect class="zone-hit" data-zone="LEFT PIT" x="141" y="210" width="68" height="69" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140" />
-                <!-- L-shaped RIGHT PIT (2 rects) - on visual right for BACK -->
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="71" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="560" y="210" width="68" height="69" />
-                
-                <rect class="zone-hit" data-zone="LEFT MID SLEEVE" x="70" y="279" width="70" height="140" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SLEEVE" x="629" y="280" width="70" height="139" />
-                
-                <rect class="zone-hit" data-zone="LEFT CUFF" x="70" y="421" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT CUFF" x="628" y="421" width="70" height="70" />
-            </svg>
-        `;
-
-        // --- ASSETS: SLEEVELESS MAPS ---
-        // No sleeves - body only (tank tops, vests, etc.)
-        
-        const SVG_SLEEVELESS_FRONT = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Body only, no sleeves -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                
-                <!-- ZONES (10 zones) -->
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="209" y="140" width="140" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="420" y="140" width="139" height="70" />
-                
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="RIGHT CHEST" x="279" y="210" width="105" height="139" />
-                <rect class="zone-hit" data-zone="LEFT CHEST" x="385" y="210" width="105" height="140" />
-                <rect class="zone-hit" data-zone="LEFT PIT" x="489" y="210" width="70" height="139" />
-                
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="MID SECTION" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="489" y="349" width="70" height="208" />
-                
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="LEFT HEM" x="489" y="559" width="70" height="70" />
-            </svg>
-        `;
-
-        const SVG_SLEEVELESS_BACK = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
-                <!-- Silhouette - Body only, no sleeves -->
-                <rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/>
-                
-                <!-- ZONES (Mirrored - LEFT on visual left) -->
-                <rect class="zone-hit" data-zone="LEFT SHOULDER" x="209" y="140" width="140" height="70" />
-                <rect class="zone-hit" data-zone="NECK" x="349" y="140" width="70" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT SHOULDER" x="420" y="140" width="139" height="70" />
-                
-                <rect class="zone-hit" data-zone="LEFT PIT" x="209" y="210" width="70" height="139" />
-                <rect class="zone-hit" data-zone="UPPER BACK" x="279" y="210" width="210" height="140" />
-                <rect class="zone-hit" data-zone="RIGHT PIT" x="489" y="210" width="70" height="139" />
-                
-                <rect class="zone-hit" data-zone="LEFT MID SECTION" x="209" y="350" width="70" height="207" />
-                <rect class="zone-hit" data-zone="LOWER BACK" x="279" y="349" width="210" height="208" />
-                <rect class="zone-hit" data-zone="RIGHT MID SECTION" x="489" y="349" width="70" height="208" />
-                
-                <rect class="zone-hit" data-zone="LEFT HEM" x="209" y="559" width="70" height="70" />
-                <rect class="zone-hit" data-zone="CENTER HEM" x="279" y="557" width="210" height="70" />
-                <rect class="zone-hit" data-zone="RIGHT HEM" x="489" y="559" width="70" height="70" />
-            </svg>
-        `;
-
-        // --- SECURITY ---
         document.addEventListener("DOMContentLoaded", () => {
             const savedPin = localStorage.getItem('vintage_lister_auth');
             if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
             lucide.createIcons();
-            setMode('tops'); 
+            // Default to Tops Super Category
+            setSuperCategory('tops');
             setTagState('has'); 
             setDefectState(false);
         });
         function checkPin() { if(document.getElementById('pin-input').value === APP_PIN) { localStorage.setItem('vintage_lister_auth', APP_PIN); document.getElementById('login-screen').classList.add('hidden'); } else alert("Bad PIN"); }
 
-        let data = { mode: 'tops', mainPhotos: [], tagPhotos: [], defectPhotos: [], cameraMode: 'main', gender: '', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitType: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null };
+        let data = { mode: 'tops', superCategory: 'tops', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], cameraMode: 'main', gender: '', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitType: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null };
         
-        const config = { 
-            tops: { 
-                cats: ["Blouse", "Button Shirt", "Cardigan", "Hoodie", "Jacket", "Jersey", "Polo Shirt", "Sweater", "Sweatshirt", "T-Shirt", "Tank Top", "Tunic", "Other Top"], 
-                measures: ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Neck to Shoulder", "Sleeve Length", "Arm Opening"] 
-            }, 
-            bottoms: { 
-                cats: ["Jeans", "Joggers", "Pants", "Shorts", "Sweatpants", "Other Bottom"], 
-                measures: ["Waist", "Inseam", "Front Rise", "Hips", "Leg Opening"] 
-            } 
+        // --- DATA STRUCTURES FOR SUPER CATEGORIES ---
+        const superCategories = {
+            'tops': ["T-Shirt", "Button Shirt", "Polo Shirt", "Tank Top", "Jersey", "Blouse", "Tunic", "Other Top"],
+            'bottoms': ["Jeans", "Pants", "Shorts", "Sweatpants", "Overall / Jumpsuit", "Trousers"],
+            'outer': ["Jacket", "Hoodie", "Sweatshirt", "Cardigan", "Coat", "Vest", "Windbreaker"]
         };
 
-        window.onload = () => { setMode('tops'); document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); }); };
+        const categoryMeasures = {
+            'tops': ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Neck to Shoulder", "Sleeve Length", "Arm Opening"],
+            'bottoms': ["Waist", "Inseam", "Front Rise", "Hips", "Leg Opening"],
+            'outer': ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Sleeve Length"]
+        };
+        
+        const bottomsStyleMap = {
+            "Jeans": ["Regular", "Straight", "Slim", "Skinny", "Bootcut", "Wide-Leg", "Mom Jeans", "Boyfriend", "Carpenter", "Baggy"],
+            "Pants": ["Regular", "Chino", "Cargo", "Dress", "Work", "Carpenter", "Corduroy", "Pleated", "Track"],
+            "Shorts": ["Regular", "Cargo", "Chino", "Denim", "Athletic", "Board", "Biker", "Carpenter", "Sweat"],
+            "Sweatpants": ["Regular", "Jogger", "Wide-Leg", "Straight", "Open Hem", "Cargo"],
+            "Overall / Jumpsuit": ["Regular", "Short", "Bib", "Utility"],
+            "Trousers": ["Pleated", "Flat Front", "Cuffed", "Straight", "Wide-Leg"]
+        };
 
-        function setMode(m) {
-            data.mode = m;
-            document.getElementById('mode-tops').className = m === 'tops' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
-            document.getElementById('mode-bottoms').className = m === 'bottoms' ? "px-4 py-2 rounded shadow bg-blue-600 text-white font-bold text-sm" : "px-4 py-2 rounded text-gray-500 font-bold text-sm";
-            const s = document.getElementById('cat-select'); s.innerHTML = '<option disabled selected>Select...</option>';
-            config[m].cats.forEach(c => s.add(new Option(c, c)));
-            updateCatLogic(); 
+        const featuresMap = {
+            "Jeans": ["Hem/Selvage", "Inside Tag/Stamp", "Back Pocket Bar Tacks", "Red Tab/Tag", "Rivet Back"],
+            "Pants": ["Hem/Inseam Allowance", "Waist Closure", "Pocket Detail", "Belt Loops", "Zipper Brand"],
+            "Trousers": ["Hem/Inseam Allowance", "Waist Closure", "Pocket Detail", "Belt Loops", "Suspender Buttons"],
+            "Shorts": ["Pocket Detail", "Waist Closure", "Hem Stitch"],
+            "Sweatpants": ["Waist/Elastic", "Cuff/Ankle", "Drawstring", "Pockets"],
+            "Jacket": ["Zipper Pull/Brand", "Cuff Hardware", "Lining Print", "Chest Patch/Logo", "Collar Stitch"],
+            "T-Shirt": ["Copyright Year", "Sleeve Stitch", "Hem Stitch", "Neck Tag"],
+            "Tank Top": ["Copyright Year", "Single Stitch", "Neck Tag"],
+            "Button Shirt": ["Cuff Buttons", "Collar Stay", "Chest Pocket", "Side Gusset"],
+            "Sweatshirt": ["Cuff Ribbing", "V-Stitch (Neck)", "Side Panels", "Fleece Lining"],
+            "Hoodie": ["Drawstrings/Aglets", "Hood Construction", "Cuff Ribbing", "Zipper Pull"],
+            "Blouse": ["Shoulder Pads", "Button/Closure", "Collar/Neck"],
+            "Polo Shirt": ["Button Placket", "Hem Stitch", "Collar Detail"],
+            "Coat": ["Lining", "Buttons/Toggles", "Fabric Texture", "Label"],
+            "default": ["Logo/Patch", "Hardware Brand", "Fabric Texture", "Unique Stitching"]
+        };
+
+        window.onload = () => { setSuperCategory('tops'); document.getElementById('sku-input').addEventListener('focus', () => { if(!data.scanTime) data.scanTime = new Date(); }); };
+
+        // NEW: Super Category Logic
+        function setSuperCategory(sc) {
+            data.superCategory = sc;
+            data.mode = sc === 'bottoms' ? 'bottoms' : 'tops'; // General mode logic remains for some UI elements
+
+            // Update UI Buttons
+            ['tops', 'bottoms', 'outer'].forEach(k => {
+                const btn = document.getElementById(`mode-${k}`);
+                if (k === sc) {
+                    btn.className = "flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all";
+                } else {
+                    btn.className = "flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all bg-gray-100";
+                }
+            });
+
+            // Populate Dropdown based on Super Category
+            const select = document.getElementById('cat-select');
+            select.innerHTML = '<option disabled selected>Select Category...</option>';
+            const cats = superCategories[sc] || [];
+            cats.forEach(c => select.add(new Option(c, c)));
+
+            // Handle specific UI visibility
+            const sleeveSelector = document.getElementById('sleeve-selector');
+            const fitSelectorTops = document.getElementById('fit-selector-tops');
+            const fitSelectorBottoms = document.getElementById('fit-selector-bottoms');
+
+            if (sc === 'bottoms') {
+                sleeveSelector.classList.add('hidden');
+                fitSelectorTops.classList.add('hidden');
+                fitSelectorBottoms.classList.remove('hidden');
+            } else {
+                // Tops AND Outerwear show Sleeve selector
+                sleeveSelector.classList.remove('hidden');
+                fitSelectorTops.classList.remove('hidden');
+                fitSelectorBottoms.classList.add('hidden');
+            }
+            
+            // Clear current selection effects
+            updateCatLogic();
+        }
+
+        function handleCategoryChange() {
+            const cat = document.getElementById('cat-select').value;
+            
+            if (data.superCategory === 'bottoms') {
+                updateBottomsStyles();
+            } else {
+                autoSelectSleeve();
+            }
+            
+            updateMeasureHint();
+            renderDefectMaps();
+            updateFeatureButtons(cat);
+        }
+        
+        function updateFeatureButtons(category) {
+            const container = document.getElementById('features-container');
+            const hint = document.getElementById('feature-hint');
+            container.innerHTML = '';
+            
+            if(!category) {
+                hint.innerText = "Select Category First";
+                return;
+            }
+            hint.innerText = category; // Show selected category name
+
+            // Find best match in featuresMap
+            let key = "default";
+            for (const k in featuresMap) {
+                if (category.includes(k) || k.includes(category)) { 
+                    key = k;
+                    break;
+                }
+            }
+            // Fallback nuances
+            if (category === 'Pants' && !featuresMap[category]) key = 'Pants';
+            
+            const features = featuresMap[key] || featuresMap["default"];
+            
+            features.forEach(feat => {
+                const btn = document.createElement('button');
+                btn.className = "py-3 px-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg text-[11px] font-bold active:bg-indigo-100 active:scale-95 transition-all flex flex-col items-center justify-center text-center leading-tight shadow-sm";
+                btn.innerHTML = `<span class="mb-1">${feat}</span><i data-lucide="camera" class="w-3 h-3 opacity-50"></i>`;
+                btn.onclick = () => openCamera('feature', feat);
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
+        }
+        
+        function updateBottomsStyles() {
+            const cat = document.getElementById('cat-select').value;
+            const container = document.getElementById('bottoms-style-grid');
+            container.innerHTML = '';
+            const styles = bottomsStyleMap[cat] || ["Regular", "Other"];
+            data.fitType = styles[0];
+            styles.forEach(style => {
+                const btn = document.createElement('button');
+                const isActive = style === styles[0];
+                btn.className = `py-2 px-1 rounded-lg font-medium text-[11px] border ${isActive ? 'btn-selected' : 'btn-default'}`;
+                btn.innerText = style;
+                btn.onclick = function() {
+                    Array.from(container.children).forEach(c => c.className = "py-2 px-1 rounded-lg font-medium text-[11px] border btn-default");
+                    this.className = "py-2 px-1 rounded-lg font-medium text-[11px] border btn-selected";
+                    data.fitType = style;
+                };
+                container.appendChild(btn);
+            });
         }
         
         function autoSelectSleeve() {
             const cat = document.getElementById('cat-select').value;
-            // Simple Logic for auto-selecting to save clicks
-            if(cat.includes("Hoodie") || cat.includes("Sweat") || cat.includes("Jacket") || cat.includes("Cardigan") || cat.includes("Button Shirt")) {
+            if(cat.includes("Hoodie") || cat.includes("Sweat") || cat.includes("Jacket") || cat.includes("Cardigan") || cat.includes("Button") || cat.includes("Coat")) {
                 setSleeve('Long', document.getElementById('btn-sleeve-long'));
             } else if (cat.includes("Tank")) {
                 setSleeve('None', document.getElementById('btn-sleeve-none'));
             } else {
                 setSleeve('Short', document.getElementById('btn-sleeve-short'));
             }
-            updateMeasureHint();
         }
 
         function setSleeve(type, el) {
@@ -679,7 +586,7 @@
         }
 
         function toggleFit(fit, el) {
-            data.fitType = fit; // Single select for now
+            data.fitType = fit; 
             document.querySelectorAll('.fit-btn').forEach(b => b.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-default");
             el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected";
         }
@@ -693,30 +600,39 @@
         function updateCatLogic() {
             updateMeasureHint();
             renderDefectMaps();
+            const cat = document.getElementById('cat-select').value;
+            if(cat && cat !== 'Select Category...') updateFeatureButtons(cat);
         }
 
         function renderDefectMaps() {
-            // Logic to choose SVG based on Sleeve Type
-            let svgFront = SVG_SHORT_FRONT;
-            let svgBack = SVG_SHORT_BACK;
-
-            if (data.sleeveType === 'Long') {
-                svgFront = SVG_LONG_FRONT;
-                svgBack = SVG_LONG_BACK;
-            } else if (data.sleeveType === '3/4') {
-                svgFront = SVG_34_FRONT;
-                svgBack = SVG_34_BACK;
-            } else if (data.sleeveType === 'None') {
-                svgFront = SVG_SLEEVELESS_FRONT;
-                svgBack = SVG_SLEEVELESS_BACK;
+            let svgFront, svgBack;
+            if (data.superCategory === 'bottoms') {
+                const cat = document.getElementById('cat-select').value;
+                if (cat === 'Shorts') {
+                    svgFront = SVG_SHORTS_FRONT;
+                    svgBack = SVG_SHORTS_BACK;
+                } else {
+                    svgFront = SVG_PANTS_FRONT;
+                    svgBack = SVG_PANTS_BACK;
+                }
+            } else {
+                // Tops AND Outerwear logic
+                svgFront = SVG_SHORT_FRONT;
+                svgBack = SVG_SHORT_BACK;
+                if (data.sleeveType === 'Long') {
+                    svgFront = SVG_LONG_FRONT;
+                    svgBack = SVG_LONG_BACK;
+                } else if (data.sleeveType === '3/4') {
+                    svgFront = SVG_34_FRONT;
+                    svgBack = SVG_34_BACK;
+                } else if (data.sleeveType === 'None') {
+                    svgFront = SVG_SLEEVELESS_FRONT;
+                    svgBack = SVG_SLEEVELESS_BACK;
+                }
             }
-
-            // Front Map
             const mapFront = document.getElementById('map-front');
             mapFront.innerHTML = svgFront;
             attachZoneListeners(mapFront, 'Front');
-
-            // Back Map
             const mapBack = document.getElementById('map-back');
             mapBack.innerHTML = svgBack;
             attachZoneListeners(mapBack, 'Back');
@@ -761,10 +677,20 @@
 
         // --- CAMERA ---
         let stream;
-        async function openCamera(mode) {
+        async function openCamera(mode, featureName = null) {
             data.cameraMode = mode;
-            document.getElementById('cam-mode-label').innerText = mode;
-            document.getElementById('cam-count').innerText = mode==='main'?data.mainPhotos.length:(mode==='tag'?data.tagPhotos.length:data.defectPhotos.length);
+            if(featureName) data.currentFeatureName = featureName;
+            
+            document.getElementById('cam-mode-label').innerText = mode === 'feature' ? `FEATURE: ${featureName}` : mode.toUpperCase();
+            
+            let countText = "0";
+            if(mode === 'main') countText = data.mainPhotos.length;
+            else if(mode === 'tag') countText = data.tagPhotos.length;
+            else if(mode === 'defect') countText = data.defectPhotos.length;
+            else if(mode === 'feature') countText = data.featurePhotos.length;
+            
+            document.getElementById('cam-count').innerText = countText;
+            
             try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 } } }); document.getElementById('cam-feed').srcObject = stream; document.getElementById('cam-overlay').classList.remove('hidden'); } catch(e) { alert("Cam Error"); }
         }
 
@@ -783,21 +709,57 @@
                     addDefectMarker(photo.defectMeta);
                     closeCamera();
                 }
-                if(data.cameraMode !== 'defect') document.getElementById('cam-count').innerText = data.cameraMode === 'main' ? data.mainPhotos.length : data.tagPhotos.length;
+                else if(data.cameraMode === 'feature') {
+                    photo.featureName = data.currentFeatureName;
+                    data.featurePhotos.push(photo);
+                    closeCamera(); 
+                }
+                
+                let countText = "0";
+                if(data.cameraMode === 'main') countText = data.mainPhotos.length;
+                else if(data.cameraMode === 'tag') countText = data.tagPhotos.length;
+                else if(data.cameraMode === 'defect') countText = data.defectPhotos.length;
+                else if(data.cameraMode === 'feature') countText = data.featurePhotos.length;
+                
+                if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature') 
+                    document.getElementById('cam-count').innerText = countText;
+                    
                 updateThumbs(data.cameraMode);
             }, 'image/jpeg', 0.7);
         }
 
         function updateThumbs(mode) {
-            const div = document.getElementById(`thumbs-${mode}`); div.innerHTML='';
-            const list = mode==='main'?data.mainPhotos:(mode==='tag'?data.tagPhotos:data.defectPhotos);
+            const targetId = mode === 'feature' ? 'thumbs-feature' : `thumbs-${mode}`;
+            const div = document.getElementById(targetId); 
+            if(!div) return;
+            
+            div.innerHTML='';
+            
+            let list = [];
+            if(mode === 'main') list = data.mainPhotos;
+            else if(mode === 'tag') list = data.tagPhotos;
+            else if(mode === 'defect') list = data.defectPhotos;
+            else if(mode === 'feature') list = data.featurePhotos;
+            
             list.forEach((p,i) => {
                 const img = document.createElement('img'); img.src = URL.createObjectURL(p.blob);
                 img.className = "h-20 w-20 object-cover rounded border-2 border-gray-200 flex-shrink-0";
+                
+                const wrap = document.createElement('div'); wrap.className="relative flex-shrink-0";
+                wrap.appendChild(img);
+
                 if(mode==='defect') {
                      const badge = document.createElement('div'); badge.className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold"; badge.innerText = i+1;
-                     const wrap = document.createElement('div'); wrap.className="relative"; wrap.appendChild(img); wrap.appendChild(badge); div.appendChild(wrap);
-                } else div.appendChild(img);
+                     wrap.appendChild(badge);
+                }
+                else if(mode === 'feature') {
+                    const label = document.createElement('div');
+                    label.className = "absolute bottom-0 inset-x-0 bg-black/70 text-white text-[8px] text-center truncate px-1 py-0.5";
+                    label.innerText = p.featureName;
+                    wrap.appendChild(label);
+                }
+                
+                div.appendChild(wrap);
             });
         }
         
@@ -805,9 +767,13 @@
 
         // --- COMMON ---
         function updateMeasureHint() {
+            let list = categoryMeasures[data.superCategory];
+            if(!list) list = categoryMeasures['tops']; // Fallback
+            
+            // Logic for Neck measure on Button Shirts
             const cat = document.getElementById('cat-select').value;
-            let list = [...config[data.mode].measures];
-            if(cat==="Button Shirt") list.push("NECK MEASUREMENT");
+            if(cat==="Button Shirt") list = [...list, "NECK MEASUREMENT"];
+            
             let html = '<div class="grid grid-cols-1 gap-1">';
             list.forEach((m,i) => html += `<div class="${m.includes('NECK')?'text-red-600 font-bold bg-red-50 p-1':''}">${i+1}. ${m}</div>`);
             document.getElementById('measure-hint').innerHTML = html + '</div>';
@@ -850,21 +816,28 @@
             const modal = document.getElementById('upload-modal'); modal.classList.remove('hidden');
             const fd = new FormData();
             fd.append('sku', sku); fd.append('auth_pin', APP_PIN);
-            fd.append('mode', data.mode); fd.append('tag_status', data.tagStatus); fd.append('has_defects', data.hasDefects);
+            fd.append('mode', data.mode); 
+            fd.append('super_category', data.superCategory); // NEW
+            fd.append('tag_status', data.tagStatus); fd.append('has_defects', data.hasDefects);
             fd.append('category', document.getElementById('cat-select').value); fd.append('gender', data.gender); fd.append('condition', document.getElementById('cond-select').value);
             fd.append('fabric', document.getElementById('fabric-select').value); fd.append('fits_like_size', document.getElementById('size-select').value);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
             fd.append('sleeve_type', data.sleeveType); 
-            fd.append('fit_type', data.fitType); // New Fit Field
+            fd.append('fit_type', data.fitType); 
 
             const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
+            
+            const featuresMetadata = data.featurePhotos.map((p, i) => ({ index: i+1, feature: p.featureName }));
+            fd.append('features_json', JSON.stringify(featuresMetadata));
 
             const kpiEnd = new Date(); fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
 
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
+            
+            data.featurePhotos.forEach((p, i) => fd.append(`feature_photo_${i+1}_${p.featureName.replace(/\s+/g, '_')}`, p.blob, `${sku}_feature_${i+1}.jpg`));
             
             if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
