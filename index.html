@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v44 (Batch Ready)</title>
+    <title>Vintage Lister v46 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v44</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v46</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -259,9 +259,8 @@
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
                     <select id="fabric-select" onchange="persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
-                        <optgroup label="Common"><option>100% Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
-                        <optgroup label="Vintage"><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option></optgroup>
-                        <optgroup label="Other"><option>Denim</option><option>Leather</option><option>Cannot Determine</option></optgroup>
+                        <optgroup label="Common"><option>100% Cotton</option><option>Pima Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
+                        <optgroup label="Other"><option>Canvas</option><option>Twill</option><option>Denim</option><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option><option>Leather</option><option>Cannot Determine</option></optgroup>
                     </select>
                 </div>
                 
@@ -439,15 +438,48 @@
 
         <div id="section-weight" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
             <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-purple-600 uppercase tracking-wide">12. Weight Scale Verification</label>
-                <div id="weight-status" class="text-[10px] font-bold text-gray-300 bg-gray-100 px-2 py-1 rounded">PENDING</div>
+                <label class="text-xs font-bold text-purple-600 uppercase tracking-wide">12. Estimated Weight</label>
             </div>
-            <button onclick="openCamera('weight')" class="w-full h-24 border-2 border-dashed border-purple-300 bg-purple-50 rounded-xl flex flex-col items-center justify-center gap-1 text-purple-600 font-bold active:bg-purple-100 transition-all shadow-sm">
-                <i data-lucide="scale" class="w-6 h-6"></i>
-                <span>SNAP SCALE</span>
-                <span class="text-[9px] opacity-70 font-normal">Place folded item on scale</span>
-            </button>
-            <div id="thumbs-weight" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
+            
+            <!-- Weight hint based on category -->
+            <div id="weight-hint" class="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-100">
+                <p class="text-[10px] text-purple-600 font-medium text-center">💡 Select category to see typical weight range</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Pounds (lb)</label>
+                    <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl text-gray-800 font-bold outline-none focus:border-purple-500 text-sm">
+                        <option value="0" selected>0 lb</option>
+                        <option value="1">1 lb</option>
+                        <option value="2">2 lb</option>
+                        <option value="3">3 lb</option>
+                        <option value="4">4 lb</option>
+                        <option value="5">5 lb</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Ounces (oz)</label>
+                    <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl text-gray-800 font-bold outline-none focus:border-purple-500 text-sm">
+                        <option value="0" selected>0 oz</option>
+                        <option value="1">1 oz</option>
+                        <option value="2">2 oz</option>
+                        <option value="3">3 oz</option>
+                        <option value="4">4 oz</option>
+                        <option value="5">5 oz</option>
+                        <option value="6">6 oz</option>
+                        <option value="7">7 oz</option>
+                        <option value="8">8 oz</option>
+                        <option value="9">9 oz</option>
+                        <option value="10">10 oz</option>
+                        <option value="11">11 oz</option>
+                        <option value="12">12 oz</option>
+                        <option value="13">13 oz</option>
+                        <option value="14">14 oz</option>
+                        <option value="15">15 oz</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
         <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
@@ -622,7 +654,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: '', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -665,6 +697,25 @@
             "default": ["Logo/Patch", "Hardware Brand", "Fabric Texture", "Unique Stitching"]
         };
 
+        // Weight hints by category (in oz)
+        const weightHintsMap = {
+            "T-Shirt": { min: 4, max: 8, hint: "Light tee: 4-5oz • Heavy tee: 6-8oz" },
+            "Tank Top": { min: 3, max: 5, hint: "Typical range: 3-5oz" },
+            "Polo Shirt": { min: 6, max: 10, hint: "Typical range: 6-10oz" },
+            "Button Shirt": { min: 5, max: 10, hint: "Light: 5-6oz • Heavy flannel: 8-10oz" },
+            "Sweatshirt": { min: 12, max: 24, hint: "Light crew: 12oz • Heavy: 18-24oz" },
+            "Hoodie": { min: 16, max: 32, hint: "Midweight: 16-20oz • Heavy: 24-32oz" },
+            "Jersey": { min: 8, max: 16, hint: "Typical range: 8-16oz" },
+            "Blouse": { min: 4, max: 8, hint: "Typical range: 4-8oz" },
+            "Jacket": { min: 16, max: 48, hint: "Light: 1-2lb • Heavy: 2-3lb" },
+            "Coat": { min: 32, max: 80, hint: "Typical range: 2-5lb" },
+            "Jeans": { min: 16, max: 32, hint: "Light: 1lb • Heavy selvedge: 2lb+" },
+            "Pants": { min: 12, max: 24, hint: "Typical range: 12oz-1.5lb" },
+            "Shorts": { min: 6, max: 14, hint: "Typical range: 6-14oz" },
+            "Sweatpants": { min: 14, max: 28, hint: "Typical range: 14oz-1.75lb" },
+            "default": { min: 6, max: 16, hint: "Typical range: 6oz-1lb" }
+        };
+
         function persistData() {
             try {
                 const session = {
@@ -682,13 +733,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v44', JSON.stringify(session));
+                localStorage.setItem('vl_session_v46', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v44');
+                const saved = localStorage.getItem('vl_session_v46');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -773,6 +824,7 @@
             renderDefectMaps();
             updateFeatureButtons(cat);
             autoSelectGender(cat);
+            updateWeightHint(cat);
             persistData();
         }
         
@@ -871,16 +923,10 @@
         }
 
         function toggleFit(fit, el) {
-            const index = data.fitTypes.indexOf(fit);
-            if(index > -1) {
-                if(data.fitTypes.length > 1) {
-                    data.fitTypes.splice(index, 1);
-                    el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-default";
-                }
-            } else {
-                data.fitTypes.push(fit);
-                el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected";
-            }
+            // Single select - only one fit at a time
+            data.fitTypes = [fit];
+            document.querySelectorAll('.fit-btn').forEach(b => b.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-default");
+            el.className = "fit-btn py-2 rounded-lg font-medium text-[11px] btn-selected";
             persistData();
         }
 
@@ -900,6 +946,33 @@
             if(!el) el = document.getElementById(`btn-weight-${w}`);
             if(el) el.className = "weight-btn py-3 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs shadow-inner transition-all";
             persistData();
+        }
+        
+        function updateWeight() {
+            const lb = parseInt(document.getElementById('weight-lb').value) || 0;
+            const oz = parseInt(document.getElementById('weight-oz').value) || 0;
+            data.itemWeightLb = lb;
+            data.itemWeightOz = oz;
+            data.itemWeightTotalOz = (lb * 16) + oz;
+            persistData();
+        }
+        
+        function updateWeightHint(category) {
+            const hintEl = document.getElementById('weight-hint');
+            if (!hintEl) return;
+            
+            let hints = weightHintsMap[category] || weightHintsMap["default"];
+            // Check for partial matches
+            if (!weightHintsMap[category]) {
+                for (const key in weightHintsMap) {
+                    if (category && (category.includes(key) || key.includes(category))) {
+                        hints = weightHintsMap[key];
+                        break;
+                    }
+                }
+            }
+            
+            hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category || 'Item'}: ${hints.hint}</p>`;
         }
         
         function setEra(era, el) {
@@ -1019,7 +1092,6 @@
             else if(mode === 'tag') countText = data.tagPhotos.length;
             else if(mode === 'defect') countText = data.defectPhotos.length;
             else if(mode === 'feature') countText = data.featurePhotos.length;
-            else if(mode === 'weight') countText = data.weightPhoto ? "1" : "0";
             document.getElementById('cam-count').innerText = countText;
             
             try { 
@@ -1159,6 +1231,9 @@
                 
                 let modeLabel = data.cameraMode.toUpperCase();
                 if(data.cameraMode === 'feature') modeLabel = `FEATURE: ${data.currentFeatureName}`;
+                if(data.cameraMode === 'defect' && data.tempDefect) modeLabel = `DEFECT: ${data.tempDefect.type}`;
+                if(data.cameraMode === 'tag' && data.currentTagType === 'neck') modeLabel = 'NECK TAG';
+                if(data.cameraMode === 'tag' && data.currentTagType === 'care') modeLabel = 'CARE/HIP TAG';
                 document.getElementById('preview-mode-label').innerText = modeLabel;
                 
                 document.getElementById('photo-preview-modal').classList.remove('hidden');
@@ -1189,12 +1264,6 @@
                 photo.featureName = data.currentFeatureName;
                 data.featurePhotos.push(photo);
             }
-            else if(data.cameraMode === 'weight') {
-                data.weightPhoto = photo;
-                data.timestamps.weight_taken = new Date();
-                document.getElementById('weight-status').innerText = "CAPTURED";
-                document.getElementById('weight-status').className = "text-[10px] font-bold text-white bg-purple-600 px-2 py-1 rounded";
-            }
             
             // Update count display
             let countText = "0";
@@ -1203,7 +1272,7 @@
             else if(data.cameraMode === 'defect') countText = data.defectPhotos.length;
             else if(data.cameraMode === 'feature') countText = data.featurePhotos.length;
             
-            if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature' && data.cameraMode !== 'weight') 
+            if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature') 
                 document.getElementById('cam-count').innerText = countText;
             
             updateThumbs(data.cameraMode);
@@ -1211,7 +1280,7 @@
             document.getElementById('photo-preview-modal').classList.add('hidden');
             
             // Close camera for single-shot modes
-            if(data.cameraMode === 'defect' || data.cameraMode === 'feature' || data.cameraMode === 'weight') {
+            if(data.cameraMode === 'defect' || data.cameraMode === 'feature') {
                 closeCamera();
             }
         }
@@ -1249,7 +1318,6 @@
             else if(mode === 'tag') list = data.tagPhotos;
             else if(mode === 'defect') list = data.defectPhotos;
             else if(mode === 'feature') list = data.featurePhotos;
-            else if(mode === 'weight' && data.weightPhoto) list = [data.weightPhoto];
             
             list.forEach((p,i) => {
                 const img = document.createElement('img'); img.src = URL.createObjectURL(p.blob);
@@ -1265,8 +1333,12 @@
                 wrap.appendChild(deleteBtn);
                 
                 if(mode==='defect') {
-                     const badge = document.createElement('div'); badge.className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold"; badge.innerText = i+1;
-                     wrap.appendChild(badge);
+                    // Label showing defect type and number
+                    const label = document.createElement('div');
+                    label.className = "absolute bottom-0 inset-x-0 bg-orange-600/90 text-white text-[8px] text-center truncate px-1 py-0.5 font-bold";
+                    const defectType = p.defectMeta ? p.defectMeta.type : 'Defect';
+                    label.innerText = `#${i+1} ${defectType}`;
+                    wrap.appendChild(label);
                 }
                 else if(mode === 'feature') {
                     const label = document.createElement('div');
@@ -1288,7 +1360,17 @@
             if(mode === 'main') {
                 data.mainPhotos.splice(index, 1);
             } else if(mode === 'tag') {
+                // Get the tag type before deleting
+                const photo = data.tagPhotos[index];
+                const tagType = photo ? photo.tagType : null;
                 data.tagPhotos.splice(index, 1);
+                // Reset the button if no more photos of that type
+                if(tagType) {
+                    const hasMoreOfType = data.tagPhotos.some(p => p.tagType === tagType);
+                    if(!hasMoreOfType) {
+                        resetTagButton(tagType);
+                    }
+                }
             } else if(mode === 'defect') {
                 // Also remove the marker from the SVG
                 const photo = data.defectPhotos[index];
@@ -1298,14 +1380,22 @@
                 data.defectPhotos.splice(index, 1);
             } else if(mode === 'feature') {
                 data.featurePhotos.splice(index, 1);
-            } else if(mode === 'weight') {
-                data.weightPhoto = null;
-                document.getElementById('weight-status').innerText = "NOT TAKEN";
-                document.getElementById('weight-status').className = "text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded";
             }
             
             updateThumbs(mode);
             persistData();
+        }
+        
+        function resetTagButton(tagType) {
+            if(tagType === 'neck') {
+                const btn = document.getElementById('btn-snap-neck');
+                btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50";
+                btn.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span>';
+            } else if(tagType === 'care') {
+                const btn = document.getElementById('btn-snap-care');
+                btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50";
+                btn.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span>';
+            }
         }
         
         function removeDefectMarker(meta) {
@@ -1452,7 +1542,7 @@
             const sku = document.getElementById('sku-input').value;
             if(!sku) return alert("Missing SKU");
             if(data.mainPhotos.length === 0) return alert("Take Main Photos");
-            if(!data.weightPhoto) return alert("Missing Scale Photo (Section 12)");
+            if(data.itemWeightTotalOz === 0) return alert("Enter Item Weight (Section 12)");
             if(!document.getElementById('fabric-select').value) return alert("Select Fabric");
             if(!data.colorPrimary) return alert("Select Primary Color");
             
@@ -1505,7 +1595,10 @@
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
             data.featurePhotos.forEach((p, i) => fd.append(`feature_photo_${i+1}_${p.featureName.replace(/\s+/g, '_')}`, p.blob, `${sku}_feature_${i+1}.jpg`));
             
-            if(data.weightPhoto) fd.append('weight_scale_photo', data.weightPhoto.blob, `${sku}_weight.jpg`);
+            // Weight data
+            fd.append('item_weight_lb', data.itemWeightLb);
+            fd.append('item_weight_oz', data.itemWeightOz);
+            fd.append('item_weight_total_oz', data.itemWeightTotalOz);
             
             if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
@@ -1515,7 +1608,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v44'); // Clear session
+                    localStorage.removeItem('vl_session_v46'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
