@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v43 (Batch Ready)</title>
+    <title>Vintage Lister v44 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v43</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v44</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -164,6 +164,34 @@
                 <label class="text-xs font-bold text-indigo-500 uppercase tracking-wide">4. Key Features & Auth</label>
                 <span id="feature-hint" class="text-[10px] text-gray-400 font-medium">Select Category First</span>
             </div>
+            
+            <!-- Pattern Dropdown -->
+            <div class="mb-4">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Pattern</label>
+                <select id="pattern-select" onchange="data.pattern = this.value; persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                    <option value="" disabled selected>Select Pattern...</option>
+                    <option>Solid</option>
+                    <option>Striped</option>
+                    <option>Plaid</option>
+                    <option>Check</option>
+                    <option>Polka Dot</option>
+                    <option>Floral</option>
+                    <option>Paisley</option>
+                    <option>Geometric</option>
+                    <option>Abstract</option>
+                    <option>Graphic Print</option>
+                    <option>Animal Print</option>
+                    <option>Camouflage</option>
+                    <option>Tie Dye</option>
+                    <option>Colorblock</option>
+                    <option>Argyle/Diamond</option>
+                    <option>Fair Isle</option>
+                    <option>Herringbone</option>
+                    <option>Houndstooth</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            
             <div id="features-container" class="feature-grid">
                 </div>
             <div id="thumbs-feature" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-20 empty:hidden snap-x"></div>
@@ -221,8 +249,8 @@
             </div>
             
             <div class="mb-6 grid grid-cols-2 gap-2">
-                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50"><span class="text-[10px]">Snap Neck Tag</span></button>
-                <button onclick="openCamera('tag')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50"><span class="text-[10px]">Snap Care/Hip Tag</span></button>
+                <button id="btn-snap-neck" onclick="openCamera('tag', 'neck')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50"><span class="text-[10px]">Snap Neck Tag</span></button>
+                <button id="btn-snap-care" onclick="openCamera('tag', 'care')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50"><span class="text-[10px]">Snap Care/Hip Tag</span></button>
             </div>
             <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
             
@@ -594,7 +622,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, pendingPhoto: null, cameraMode: 'main', gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -627,12 +655,13 @@
             "Jacket": ["Zipper Pull/Brand", "Cuff Hardware", "Lining Print", "Chest Patch/Logo", "Collar Stitch"],
             "T-Shirt": ["Copyright Year", "Hem Stitch", "Sleeve Stitch"],
             "Tank Top": ["Copyright Year", "Single Stitch", "Hem Stitch"],
-            "Button Shirt": ["Cuff Buttons", "Collar Style", "Extra Buttons", "Side Gusset"],
+            "Button Shirt": ["Cuff Buttons", "Collar Style", "Extra Buttons", "Fabric Texture", "Elbow Patch", "Side Gusset"],
             "Sweatshirt": ["Cuff Ribbing", "V-Stitch (Neck)", "Side Panels", "Fleece Lining"],
             "Hoodie": ["Drawstrings/Aglets", "Hood Construction", "Cuff Ribbing", "Zipper Pull"],
             "Blouse": ["Shoulder Pads", "Button/Closure", "Collar/Neck"],
             "Polo Shirt": ["Chest Pocket", "Special Logos", "Extra Button", "Ribbed Cuff", "Side Slits Hem", "Collar Detail"],
             "Coat": ["Lining", "Buttons/Toggles", "Fabric Texture", "Label"],
+            "Other Top": ["Copyright Year", "Hem Stitch", "Sleeve Stitch", "Collar Style", "Cuff Buttons", "Chest Pocket", "Special Logos", "Fabric Texture", "Side Gusset", "Unique Stitching"],
             "default": ["Logo/Patch", "Hardware Brand", "Fabric Texture", "Unique Stitching"]
         };
 
@@ -653,13 +682,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v43', JSON.stringify(session));
+                localStorage.setItem('vl_session_v44', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v43');
+                const saved = localStorage.getItem('vl_session_v44');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -974,10 +1003,16 @@
         }
 
         let stream;
-        async function openCamera(mode, featureName = null) {
+        async function openCamera(mode, subType = null) {
             data.cameraMode = mode;
-            if(featureName) data.currentFeatureName = featureName;
-            document.getElementById('cam-mode-label').innerText = mode === 'feature' ? `FEATURE: ${featureName}` : mode.toUpperCase();
+            if(mode === 'feature' && subType) data.currentFeatureName = subType;
+            if(mode === 'tag' && subType) data.currentTagType = subType;
+            
+            let modeLabel = mode.toUpperCase();
+            if(mode === 'feature') modeLabel = `FEATURE: ${subType}`;
+            if(mode === 'tag' && subType === 'neck') modeLabel = 'NECK TAG';
+            if(mode === 'tag' && subType === 'care') modeLabel = 'CARE/HIP TAG';
+            document.getElementById('cam-mode-label').innerText = modeLabel;
             
             let countText = "0";
             if(mode === 'main') countText = data.mainPhotos.length;
@@ -1139,7 +1174,12 @@
                 if(data.mainPhotos.length === 0) data.timestamps.first_photo = new Date();
                 data.mainPhotos.push(photo);
             }
-            else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
+            else if(data.cameraMode === 'tag') {
+                photo.tagType = data.currentTagType;
+                data.tagPhotos.push(photo);
+                // Update tag button to show checkmark
+                updateTagButton(data.currentTagType);
+            }
             else if(data.cameraMode === 'defect') {
                 photo.defectMeta = { ...data.tempDefect };
                 data.defectPhotos.push(photo);
@@ -1173,6 +1213,18 @@
             // Close camera for single-shot modes
             if(data.cameraMode === 'defect' || data.cameraMode === 'feature' || data.cameraMode === 'weight') {
                 closeCamera();
+            }
+        }
+        
+        function updateTagButton(tagType) {
+            if(tagType === 'neck') {
+                const btn = document.getElementById('btn-snap-neck');
+                btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
+                btn.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span><span class="text-green-500">✓</span>';
+            } else if(tagType === 'care') {
+                const btn = document.getElementById('btn-snap-care');
+                btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
+                btn.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span><span class="text-green-500">✓</span>';
             }
         }
         
@@ -1418,6 +1470,7 @@
             fd.append('color_secondary', data.colorSecondary);
             fd.append('print_type', data.printType);
             fd.append('wash', data.wash);
+            fd.append('pattern', data.pattern);
             fd.append('fits_like_size', document.getElementById('size-select').value);
             fd.append('origin', data.origin); fd.append('made_in_country', data.madeInCountry); 
             fd.append('copyright_year', data.copyrightYear);
@@ -1462,7 +1515,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v43'); // Clear session
+                    localStorage.removeItem('vl_session_v44'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
