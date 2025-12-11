@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v37 (Batch Ready)</title>
+    <title>Vintage Lister v38 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v37</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v38</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -445,13 +445,18 @@
                     <div class="absolute left-1/2 top-0 bottom-0 w-px bg-white/50"></div>
                 </div>
             </div>
+            <!-- Stabilizer Indicator -->
+            <div id="stabilizer-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-full">
+                <div id="stabilizer-dot" class="w-3 h-3 rounded-full bg-red-500 transition-colors duration-200"></div>
+                <span id="stabilizer-text" class="text-white text-xs font-bold">HOLD STEADY</span>
+            </div>
             <div id="flash" class="flash"></div>
         </div>
         <div class="flex-1 bg-black flex flex-col items-center justify-start pt-8 pb-8">
             <p class="text-gray-400 text-sm font-mono tracking-widest mb-6"><span id="cam-mode-label" class="text-blue-400 font-bold uppercase">MAIN</span> PHOTOS: <span id="cam-count" class="text-white font-bold text-lg">0</span></p>
             <div class="flex items-center justify-evenly w-full px-4 max-w-sm">
                 <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-gray-800 text-gray-300 font-bold text-[10px] active:bg-gray-700 border border-gray-700">CANCEL</button>
-                <button onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 flex items-center justify-center relative"><div class="w-20 h-20 rounded-full border-2 border-gray-100"></div></button>
+                <button id="shutter-btn" onclick="takeSnap()" class="w-24 h-24 rounded-full bg-white border-[6px] border-gray-300 shadow-2xl active:scale-90 active:border-blue-500 flex items-center justify-center relative disabled:opacity-50 disabled:active:scale-100"><div class="w-20 h-20 rounded-full border-2 border-gray-100"></div></button>
                 <button onclick="closeCamera()" class="flex flex-col items-center justify-center w-16 h-16 rounded-full bg-green-600 text-white font-bold text-[10px] active:bg-green-700 shadow-lg border border-green-500">DONE</button>
             </div>
         </div>
@@ -628,13 +633,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v37', JSON.stringify(session));
+                localStorage.setItem('vl_session_v38', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v37');
+                const saved = localStorage.getItem('vl_session_v38');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -964,11 +969,106 @@
                     } 
                 }); 
                 document.getElementById('cam-feed').srcObject = stream; 
-                document.getElementById('cam-overlay').classList.remove('hidden'); 
+                document.getElementById('cam-overlay').classList.remove('hidden');
+                // Start stabilizer
+                startStabilizer();
             } catch(e) { alert("Cam Error: " + e.message); }
+        }
+        
+        // ========== STABILIZER ==========
+        let stabilizerInterval = null;
+        let previousFrame = null;
+        let stableFrameCount = 0;
+        const STABLE_THRESHOLD = 3;  // Frames needed to be considered stable
+        const MOTION_THRESHOLD = 15; // Pixel difference threshold (lower = more sensitive)
+        let isStable = false;
+        
+        function startStabilizer() {
+            isStable = false;
+            stableFrameCount = 0;
+            previousFrame = null;
+            updateStabilizerUI(false);
+            
+            const video = document.getElementById('cam-feed');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            
+            // Use small sample size for performance (64x64)
+            canvas.width = 64;
+            canvas.height = 64;
+            
+            stabilizerInterval = setInterval(() => {
+                if (video.readyState < 2) return; // Video not ready
+                
+                // Draw scaled down frame
+                ctx.drawImage(video, 0, 0, 64, 64);
+                const currentFrame = ctx.getImageData(0, 0, 64, 64).data;
+                
+                if (previousFrame) {
+                    const motion = calculateMotion(previousFrame, currentFrame);
+                    
+                    if (motion < MOTION_THRESHOLD) {
+                        stableFrameCount++;
+                        if (stableFrameCount >= STABLE_THRESHOLD && !isStable) {
+                            isStable = true;
+                            updateStabilizerUI(true);
+                        }
+                    } else {
+                        stableFrameCount = 0;
+                        if (isStable) {
+                            isStable = false;
+                            updateStabilizerUI(false);
+                        }
+                    }
+                }
+                
+                previousFrame = currentFrame;
+            }, 100); // Check 10 times per second
+        }
+        
+        function calculateMotion(prev, curr) {
+            let diff = 0;
+            const sampleStep = 16; // Sample every 16th pixel for speed
+            for (let i = 0; i < prev.length; i += sampleStep * 4) {
+                diff += Math.abs(prev[i] - curr[i]);     // R
+                diff += Math.abs(prev[i+1] - curr[i+1]); // G
+                diff += Math.abs(prev[i+2] - curr[i+2]); // B
+            }
+            return diff / (prev.length / sampleStep / 4) / 3; // Average per sampled pixel
+        }
+        
+        function updateStabilizerUI(stable) {
+            const dot = document.getElementById('stabilizer-dot');
+            const text = document.getElementById('stabilizer-text');
+            
+            if (stable) {
+                dot.className = 'w-3 h-3 rounded-full bg-green-500 transition-colors duration-200 animate-pulse';
+                text.innerText = 'STABLE ✓';
+                text.className = 'text-green-400 text-xs font-bold';
+            } else {
+                dot.className = 'w-3 h-3 rounded-full bg-red-500 transition-colors duration-200';
+                text.innerText = 'HOLD STEADY';
+                text.className = 'text-white text-xs font-bold';
+            }
+        }
+        
+        function stopStabilizer() {
+            if (stabilizerInterval) {
+                clearInterval(stabilizerInterval);
+                stabilizerInterval = null;
+            }
+            previousFrame = null;
+            stableFrameCount = 0;
+            isStable = false;
         }
 
         function takeSnap() {
+            // Check if stable - warn but still allow photo
+            if (!isStable) {
+                // Vibrate to warn user (if supported)
+                if (navigator.vibrate) navigator.vibrate(100);
+            }
+            
             const v = document.getElementById('cam-feed'); 
             const c = document.createElement('canvas');
             
@@ -1058,7 +1158,11 @@
             });
         }
         
-        function closeCamera() { if(stream) stream.getTracks().forEach(t=>t.stop()); document.getElementById('cam-overlay').classList.add('hidden'); }
+        function closeCamera() { 
+            stopStabilizer();
+            if(stream) stream.getTracks().forEach(t=>t.stop()); 
+            document.getElementById('cam-overlay').classList.add('hidden'); 
+        }
 
         function updateMeasureHint() {
             let list = categoryMeasures[data.superCategory];
@@ -1250,7 +1354,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v37'); // Clear session
+                    localStorage.removeItem('vl_session_v38'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
