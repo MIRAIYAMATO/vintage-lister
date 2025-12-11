@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v39 (Batch Ready)</title>
+    <title>Vintage Lister v40 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v39</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v40</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -216,7 +216,7 @@
                 </div>
                 <select id="era-dropdown" onchange="setEraFromDropdown(this.value)" class="hidden w-full mt-2 p-2 border border-gray-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
                     <option value="" disabled selected>Select Era...</option>
-                    <option>2020-2029</option><option>2010-2019</option><option>2000-2009</option><option>1990-1999</option><option>1980-1989</option><option>1970-1979</option><option>1960-1969</option><option>1950-1959</option><option>1940-1949</option><option>1930-1939</option><option>1920-1929</option><option>1910-1919</option><option>1900-1909</option><option>Pre-1900s</option>
+                    <option>2020-2029</option><option>2010-2019</option><option>2000-2009</option><option>1960-1969</option><option>1950-1959</option><option>1940-1949</option><option>1930-1939</option><option>1920-1929</option><option>1910-1919</option><option>1900-1909</option><option>Pre-1900s</option>
                 </select>
             </div>
             
@@ -462,6 +462,26 @@
         </div>
     </div>
 
+    <!-- Photo Preview Modal -->
+    <div id="photo-preview-modal" class="fixed inset-0 z-[80] bg-black hidden flex flex-col">
+        <div class="flex-1 flex items-center justify-center p-4">
+            <img id="preview-image" class="max-w-full max-h-full object-contain rounded-lg" src="" alt="Preview">
+        </div>
+        <div class="bg-black p-6 pb-8">
+            <p class="text-center text-gray-400 text-sm mb-4"><span id="preview-mode-label" class="text-white font-bold">MAIN</span> PHOTO</p>
+            <div class="flex items-center justify-center gap-6">
+                <button onclick="rejectPhoto()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-red-600 text-white font-bold text-xs active:bg-red-700 shadow-lg">
+                    <span class="text-2xl mb-1">✕</span>
+                    RETAKE
+                </button>
+                <button onclick="acceptPhoto()" class="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-green-600 text-white font-bold text-xs active:bg-green-700 shadow-lg">
+                    <span class="text-2xl mb-1">✓</span>
+                    KEEP
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="defect-type-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center sm:items-center p-4">
         <div class="bg-white w-full max-w-sm rounded-2xl p-6 pb-8 animate-slide-up">
             <div class="text-center mb-4">
@@ -574,7 +594,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, cameraMode: 'main', gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], weightPhoto: null, pendingPhoto: null, cameraMode: 'main', gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -633,13 +653,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v39', JSON.stringify(session));
+                localStorage.setItem('vl_session_v40', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v39');
+                const saved = localStorage.getItem('vl_session_v40');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -1095,41 +1115,72 @@
             const f = document.getElementById('flash'); f.classList.add('trigger-flash'); setTimeout(()=>f.classList.remove('trigger-flash'),150);
             
             c.toBlob(blob => {
-                const photo = { blob, ts: new Date() };
-                if(data.cameraMode === 'main' && data.mainPhotos.length === 0) data.timestamps.first_photo = new Date();
+                // Store pending photo for preview
+                data.pendingPhoto = { blob, ts: new Date() };
                 
-                if(data.cameraMode === 'main') data.mainPhotos.push(photo);
-                else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
-                else if(data.cameraMode === 'defect') {
-                    photo.defectMeta = { ...data.tempDefect };
-                    data.defectPhotos.push(photo);
-                    addDefectMarker(photo.defectMeta);
-                    closeCamera(); 
-                }
-                else if(data.cameraMode === 'feature') {
-                    photo.featureName = data.currentFeatureName;
-                    data.featurePhotos.push(photo);
-                    closeCamera(); 
-                }
-                else if(data.cameraMode === 'weight') {
-                    data.weightPhoto = photo;
-                    data.timestamps.weight_taken = new Date();
-                    document.getElementById('weight-status').innerText = "CAPTURED";
-                    document.getElementById('weight-status').className = "text-[10px] font-bold text-white bg-purple-600 px-2 py-1 rounded";
-                    closeCamera();
-                }
+                // Show preview modal
+                const previewImg = document.getElementById('preview-image');
+                previewImg.src = URL.createObjectURL(blob);
                 
-                let countText = "0";
-                if(data.cameraMode === 'main') countText = data.mainPhotos.length;
-                else if(data.cameraMode === 'tag') countText = data.tagPhotos.length;
-                else if(data.cameraMode === 'defect') countText = data.defectPhotos.length;
-                else if(data.cameraMode === 'feature') countText = data.featurePhotos.length;
+                let modeLabel = data.cameraMode.toUpperCase();
+                if(data.cameraMode === 'feature') modeLabel = `FEATURE: ${data.currentFeatureName}`;
+                document.getElementById('preview-mode-label').innerText = modeLabel;
                 
-                if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature' && data.cameraMode !== 'weight') 
-                    document.getElementById('cam-count').innerText = countText;
-                    
-                updateThumbs(data.cameraMode);
+                document.getElementById('photo-preview-modal').classList.remove('hidden');
             }, 'image/jpeg', 0.92);  // High quality JPEG (92%) 
+        }
+        
+        // Accept photo from preview
+        function acceptPhoto() {
+            const photo = data.pendingPhoto;
+            if(!photo) return;
+            
+            if(data.cameraMode === 'main') {
+                if(data.mainPhotos.length === 0) data.timestamps.first_photo = new Date();
+                data.mainPhotos.push(photo);
+            }
+            else if(data.cameraMode === 'tag') data.tagPhotos.push(photo);
+            else if(data.cameraMode === 'defect') {
+                photo.defectMeta = { ...data.tempDefect };
+                data.defectPhotos.push(photo);
+                addDefectMarker(photo.defectMeta);
+            }
+            else if(data.cameraMode === 'feature') {
+                photo.featureName = data.currentFeatureName;
+                data.featurePhotos.push(photo);
+            }
+            else if(data.cameraMode === 'weight') {
+                data.weightPhoto = photo;
+                data.timestamps.weight_taken = new Date();
+                document.getElementById('weight-status').innerText = "CAPTURED";
+                document.getElementById('weight-status').className = "text-[10px] font-bold text-white bg-purple-600 px-2 py-1 rounded";
+            }
+            
+            // Update count display
+            let countText = "0";
+            if(data.cameraMode === 'main') countText = data.mainPhotos.length;
+            else if(data.cameraMode === 'tag') countText = data.tagPhotos.length;
+            else if(data.cameraMode === 'defect') countText = data.defectPhotos.length;
+            else if(data.cameraMode === 'feature') countText = data.featurePhotos.length;
+            
+            if(data.cameraMode !== 'defect' && data.cameraMode !== 'feature' && data.cameraMode !== 'weight') 
+                document.getElementById('cam-count').innerText = countText;
+            
+            updateThumbs(data.cameraMode);
+            data.pendingPhoto = null;
+            document.getElementById('photo-preview-modal').classList.add('hidden');
+            
+            // Close camera for single-shot modes
+            if(data.cameraMode === 'defect' || data.cameraMode === 'feature' || data.cameraMode === 'weight') {
+                closeCamera();
+            }
+        }
+        
+        // Reject photo and retake
+        function rejectPhoto() {
+            data.pendingPhoto = null;
+            document.getElementById('photo-preview-modal').classList.add('hidden');
+            // Camera stays open for retake
         }
 
         function updateThumbs(mode) {
@@ -1411,7 +1462,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v39'); // Clear session
+                    localStorage.removeItem('vl_session_v40'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
