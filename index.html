@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v50 (Batch Ready)</title>
+    <title>Vintage Lister v51 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v50</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v51</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -324,12 +324,27 @@
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <label id="label-fits-like" class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1 block">Modern Fit Estimate</label>
-                    <select id="size-select" onchange="persistData()" class="w-full p-2 border border-blue-200 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
-                        <option value="" disabled selected>Select Fit...</option>
-                        <option>XXS</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>3XL+</option><option>One Size</option><option>Cannot Determine</option>
-                    </select>
+                <!-- Visual Tag Audit Grid -->
+                <div class="mt-4" id="visual-tag-audit">
+                    <label class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-2 block">Visual Tag Audit</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setTagAudit('true_to_size', this)" class="tag-audit-btn py-3 px-2 rounded-lg font-bold text-xs border-2 border-green-200 bg-green-50 text-green-700 transition-all active:scale-95">
+                            ✓ True to Size
+                        </button>
+                        <button onclick="setTagAudit('runs_small', this)" class="tag-audit-btn py-3 px-2 rounded-lg font-bold text-xs border-2 border-yellow-200 bg-yellow-50 text-yellow-700 transition-all active:scale-95">
+                            ↓ Runs Small
+                        </button>
+                        <button onclick="setTagAudit('runs_big', this)" class="tag-audit-btn py-3 px-2 rounded-lg font-bold text-xs border-2 border-yellow-200 bg-yellow-50 text-yellow-700 transition-all active:scale-95">
+                            ↑ Runs Big
+                        </button>
+                        <button onclick="setTagAudit('shape_distortion', this)" class="tag-audit-btn py-3 px-2 rounded-lg font-bold text-xs border-2 border-red-200 bg-red-50 text-red-700 transition-all active:scale-95">
+                            ⚠ Shape Distortion
+                        </button>
+                        <button onclick="setTagAudit('not_sure', this)" class="tag-audit-btn py-3 px-2 rounded-lg font-bold text-xs border-2 border-gray-200 bg-gray-50 text-gray-600 transition-all active:scale-95 col-span-2">
+                            ? Not Sure
+                        </button>
+                    </div>
+                    <p class="text-[9px] text-gray-400 mt-2 text-center">Compare tag size to actual measurements</p>
                 </div>
             </div>
             
@@ -655,7 +670,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: 'Solid', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: 'Solid', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, visualTagCheck: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -789,21 +804,21 @@
                     tagStatus: data.tagStatus,
                     tagSize: data.tagSize,
                     fabric: document.getElementById('fabric-select').value,
-                    fabricWeight: data.fabricWeight, // New
-                    fitSize: document.getElementById('size-select').value,
+                    fabricWeight: data.fabricWeight,
+                    visualTagCheck: data.visualTagCheck,
                     gender: data.gender,
                     condition: document.getElementById('cond-select').value,
                     sleeveType: data.sleeveType,
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v50', JSON.stringify(session));
+                localStorage.setItem('vl_session_v51', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v50');
+                const saved = localStorage.getItem('vl_session_v51');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -812,8 +827,8 @@
                     if(session.tagStatus) setTagState(session.tagStatus);
                     if(session.tagSize) { setTagSize(session.tagSize); document.getElementById('tag-size-input').value = session.tagSize; }
                     if(session.fabric) document.getElementById('fabric-select').value = session.fabric;
-                    if(session.fabricWeight) setFabricWeight(session.fabricWeight); // New
-                    if(session.fitSize) document.getElementById('size-select').value = session.fitSize;
+                    if(session.fabricWeight) setFabricWeight(session.fabricWeight);
+                    if(session.visualTagCheck) data.visualTagCheck = session.visualTagCheck;
                     if(session.gender) {
                         data.gender = session.gender;
                         document.querySelectorAll('.g-btn').forEach(b => { if(b.innerText === session.gender) b.className = "g-btn w-full py-3 rounded-xl font-bold text-xs btn-selected"; });
@@ -1559,13 +1574,24 @@
                 active.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.remove('hidden');
                 document.getElementById('tag-area-audio').classList.remove('hidden');
-                document.getElementById('label-fits-like').innerText = "MODERN FIT ESTIMATE";
+                document.getElementById('visual-tag-audit').classList.remove('hidden');
             } else {
                 active.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.add('hidden');
                 document.getElementById('tag-area-audio').classList.add('hidden');
-                document.getElementById('label-fits-like').innerText = "ESTIMATED SIZE";
+                document.getElementById('visual-tag-audit').classList.add('hidden');
             }
+            persistData();
+        }
+        
+        function setTagAudit(value, el) {
+            data.visualTagCheck = value;
+            // Reset all buttons
+            document.querySelectorAll('.tag-audit-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-offset-2', 'ring-blue-500', 'scale-105');
+            });
+            // Highlight selected
+            el.classList.add('ring-2', 'ring-offset-2', 'ring-blue-500', 'scale-105');
             persistData();
         }
 
@@ -1688,7 +1714,7 @@
             fd.append('print_type', data.printType);
             fd.append('wash', data.wash);
             fd.append('pattern', data.pattern);
-            fd.append('fits_like_size', document.getElementById('size-select').value);
+            fd.append('visual_tag_check', data.visualTagCheck);
             fd.append('origin', data.origin); fd.append('made_in_country', data.madeInCountry); 
             fd.append('copyright_year', data.copyrightYear);
             fd.append('era', data.era);
@@ -1735,7 +1761,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v50'); // Clear session
+                    localStorage.removeItem('vl_session_v51'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
