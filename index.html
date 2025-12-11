@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v46 (Batch Ready)</title>
+    <title>Vintage Lister v50 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v46</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v50</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -169,7 +169,8 @@
             <div class="mb-4">
                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Pattern</label>
                 <select id="pattern-select" onchange="data.pattern = this.value; persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
-                    <option value="" disabled selected>Select Pattern...</option>
+                    <option value="" disabled>Select Pattern...</option>
+                    <option selected>Solid</option>
                     <option>Solid</option>
                     <option>Striped</option>
                     <option>Plaid</option>
@@ -654,7 +655,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: '', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: 'Solid', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -669,6 +670,69 @@
             'outer': ["Shoulder to Shoulder", "Pit to Pit (Chest)", "Waist", "Bottom Hem", "Length", "Sleeve Length"]
         };
         
+        // Detailed measurements by specific category (for audio hints)
+        const detailedMeasures = {
+            "Jeans": [
+                "1. WAIST: UNSTRETCHED",
+                "2. WAIST: STRETCHED", 
+                "3. HIP",
+                "4. THIGH",
+                "5. KNEE",
+                "6. LEG OPENING: UNSTRETCHED",
+                "7. LEG OPENING: STRETCHED",
+                "8. OUTSEAM",
+                "9. INSEAM",
+                "10. FRONT RISE"
+            ],
+            "Pants": [
+                "1. WAIST: UNSTRETCHED",
+                "2. WAIST: STRETCHED", 
+                "3. HIP",
+                "4. THIGH",
+                "5. KNEE",
+                "6. LEG OPENING: UNSTRETCHED",
+                "7. LEG OPENING: STRETCHED",
+                "8. OUTSEAM",
+                "9. INSEAM",
+                "10. FRONT RISE"
+            ],
+            "Trousers": [
+                "1. WAIST: UNSTRETCHED",
+                "2. WAIST: STRETCHED", 
+                "3. HIP",
+                "4. THIGH",
+                "5. KNEE",
+                "6. LEG OPENING: UNSTRETCHED",
+                "7. LEG OPENING: STRETCHED",
+                "8. OUTSEAM",
+                "9. INSEAM",
+                "10. FRONT RISE"
+            ],
+            "Shorts": [
+                "1. WAIST: UNSTRETCHED",
+                "2. WAIST: STRETCHED",
+                "3. HIP",
+                "4. THIGH",
+                "5. LEG OPENING: UNSTRETCHED",
+                "6. LEG OPENING: STRETCHED",
+                "7. OUTSEAM",
+                "8. INSEAM",
+                "9. FRONT RISE"
+            ],
+            "Sweatpants": [
+                "1. WAIST: UNSTRETCHED",
+                "2. WAIST: STRETCHED", 
+                "3. HIP",
+                "4. THIGH",
+                "5. KNEE",
+                "6. LEG OPENING: UNSTRETCHED",
+                "7. LEG OPENING: STRETCHED",
+                "8. OUTSEAM",
+                "9. INSEAM",
+                "10. FRONT RISE"
+            ]
+        };
+        
         const bottomsStyleMap = {
             "Jeans": ["Regular", "Straight", "Slim", "Skinny", "Bootcut", "Wide-Leg", "Mom Jeans", "Boyfriend", "Carpenter", "Baggy"],
             "Pants": ["Regular", "Chino", "Cargo", "Dress", "Work", "Carpenter", "Corduroy", "Pleated", "Track"],
@@ -679,7 +743,7 @@
         };
 
         const featuresMap = {
-            "Jeans": ["Hem/Selvage", "Inside Tag/Stamp", "Back Pocket Bar Tacks", "Red Tab/Tag", "Rivet Back"],
+            "Jeans": ["Hem/Selvage", "Inside Tag/Stamp", "Back Pocket Bar Tacks", "Red Tab/Tag", "Rivet Back", "Back Patch"],
             "Pants": ["Hem/Inseam Allowance", "Waist Closure", "Pocket Detail", "Belt Loops", "Zipper Brand"],
             "Trousers": ["Hem/Inseam Allowance", "Waist Closure", "Pocket Detail", "Belt Loops", "Suspender Buttons"],
             "Shorts": ["Pocket Detail", "Waist Closure", "Hem Stitch"],
@@ -733,13 +797,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v46', JSON.stringify(session));
+                localStorage.setItem('vl_session_v50', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v46');
+                const saved = localStorage.getItem('vl_session_v50');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -825,7 +889,37 @@
             updateFeatureButtons(cat);
             autoSelectGender(cat);
             updateWeightHint(cat);
+            updateTagLabels(cat);
+            applyCategoryDefaults(cat);
             persistData();
+        }
+        
+        function updateTagLabels(category) {
+            const btnNeck = document.getElementById('btn-snap-neck');
+            const btnCare = document.getElementById('btn-snap-care');
+            if (!btnNeck || !btnCare) return;
+            
+            // Check if bottoms category
+            const isBottoms = ['Jeans', 'Pants', 'Shorts', 'Trousers', 'Sweatpants'].some(b => category && category.includes(b));
+            
+            if (isBottoms) {
+                btnNeck.innerHTML = '<span class="text-[10px]">Snap Inside Tag</span>';
+                btnCare.innerHTML = '<span class="text-[10px]">Snap Care/Waist Tag</span>';
+            } else {
+                btnNeck.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span>';
+                btnCare.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span>';
+            }
+        }
+        
+        function applyCategoryDefaults(category) {
+            // Jeans defaults
+            if (category === 'Jeans') {
+                // Set fabric to Denim
+                document.getElementById('fabric-select').value = 'Denim';
+                // Set primary color to Blue
+                data.colorPrimary = 'Blue';
+                document.getElementById('color-primary').value = 'Blue';
+            }
         }
         
         function autoSelectGender(category) {
@@ -961,18 +1055,28 @@
             const hintEl = document.getElementById('weight-hint');
             if (!hintEl) return;
             
-            let hints = weightHintsMap[category] || weightHintsMap["default"];
-            // Check for partial matches
-            if (!weightHintsMap[category]) {
+            let hints = null;
+            
+            // Direct match first
+            if (category && weightHintsMap[category]) {
+                hints = weightHintsMap[category];
+            } else if (category) {
+                // Check for partial matches
                 for (const key in weightHintsMap) {
-                    if (category && (category.includes(key) || key.includes(category))) {
+                    if (key !== 'default' && (category.includes(key) || key.includes(category))) {
                         hints = weightHintsMap[key];
                         break;
                     }
                 }
             }
             
-            hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category || 'Item'}: ${hints.hint}</p>`;
+            // Fallback to default
+            if (!hints) {
+                hints = weightHintsMap["default"];
+            }
+            
+            const hintText = hints && hints.hint ? hints.hint : "Typical range: 6oz-1lb";
+            hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category || 'Item'}: ${hintText}</p>`;
         }
         
         function setEra(era, el) {
@@ -1286,14 +1390,19 @@
         }
         
         function updateTagButton(tagType) {
+            const cat = document.getElementById('cat-select').value;
+            const isBottoms = ['Jeans', 'Pants', 'Shorts', 'Trousers', 'Sweatpants'].some(b => cat && cat.includes(b));
+            
             if(tagType === 'neck') {
                 const btn = document.getElementById('btn-snap-neck');
+                const label = isBottoms ? 'Snap Inside Tag' : 'Snap Neck Tag';
                 btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
-                btn.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span><span class="text-green-500">✓</span>';
+                btn.innerHTML = `<span class="text-[10px]">${label}</span><span class="text-green-500">✓</span>`;
             } else if(tagType === 'care') {
                 const btn = document.getElementById('btn-snap-care');
+                const label = isBottoms ? 'Snap Care/Waist Tag' : 'Snap Care/Hip Tag';
                 btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
-                btn.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span><span class="text-green-500">✓</span>';
+                btn.innerHTML = `<span class="text-[10px]">${label}</span><span class="text-green-500">✓</span>`;
             }
         }
         
@@ -1387,14 +1496,19 @@
         }
         
         function resetTagButton(tagType) {
+            const cat = document.getElementById('cat-select').value;
+            const isBottoms = ['Jeans', 'Pants', 'Shorts', 'Trousers', 'Sweatpants'].some(b => cat && cat.includes(b));
+            
             if(tagType === 'neck') {
                 const btn = document.getElementById('btn-snap-neck');
+                const label = isBottoms ? 'Snap Inside Tag' : 'Snap Neck Tag';
                 btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50";
-                btn.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span>';
+                btn.innerHTML = `<span class="text-[10px]">${label}</span>`;
             } else if(tagType === 'care') {
                 const btn = document.getElementById('btn-snap-care');
+                const label = isBottoms ? 'Snap Care/Waist Tag' : 'Snap Care/Hip Tag';
                 btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50";
-                btn.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span>';
+                btn.innerHTML = `<span class="text-[10px]">${label}</span>`;
             }
         }
         
@@ -1415,12 +1529,25 @@
         }
 
         function updateMeasureHint() {
-            let list = categoryMeasures[data.superCategory];
-            if(!list) list = categoryMeasures['tops']; 
             const cat = document.getElementById('cat-select').value;
-            if(cat==="Button Shirt") list = [...list, "NECK MEASUREMENT"];
-            let html = '<div class="grid grid-cols-1 gap-1">';
-            list.forEach((m,i) => html += `<div class="${m.includes('NECK')?'text-red-600 font-bold bg-red-50 p-1':''}">${i+1}. ${m}</div>`);
+            
+            // Check if we have detailed measures for this specific category
+            let list = detailedMeasures[cat];
+            
+            if (!list) {
+                // Fall back to general category measures
+                list = categoryMeasures[data.superCategory];
+                if(!list) list = categoryMeasures['tops'];
+                if(cat==="Button Shirt") list = [...list, "NECK MEASUREMENT"];
+                // Format with numbers
+                list = list.map((m, i) => `${i+1}. ${m}`);
+            }
+            
+            let html = '<div class="grid grid-cols-1 gap-1 text-[11px]">';
+            list.forEach(m => {
+                const isSpecial = m.includes('NECK') || m.includes('STRETCHED');
+                html += `<div class="${isSpecial ? 'text-blue-600 font-bold' : ''}">${m}</div>`;
+            });
             document.getElementById('measure-hint').innerHTML = html + '</div>';
         }
 
@@ -1608,7 +1735,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v46'); // Clear session
+                    localStorage.removeItem('vl_session_v50'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
