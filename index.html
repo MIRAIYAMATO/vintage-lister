@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v38 (Batch Ready)</title>
+    <title>Vintage Lister v39 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v38</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v39</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -605,8 +605,8 @@
             "Shorts": ["Pocket Detail", "Waist Closure", "Hem Stitch"],
             "Sweatpants": ["Waist/Elastic", "Cuff/Ankle", "Drawstring", "Pockets"],
             "Jacket": ["Zipper Pull/Brand", "Cuff Hardware", "Lining Print", "Chest Patch/Logo", "Collar Stitch"],
-            "T-Shirt": ["Copyright Year", "Sleeve Stitch", "Hem Stitch", "Neck Tag"],
-            "Tank Top": ["Copyright Year", "Single Stitch", "Neck Tag"],
+            "T-Shirt": ["Copyright Year", "Sleeve Stitch", "Hem Stitch"],
+            "Tank Top": ["Copyright Year", "Single Stitch", "Hem Stitch"],
             "Button Shirt": ["Cuff Buttons", "Collar Stay", "Chest Pocket", "Side Gusset"],
             "Sweatshirt": ["Cuff Ribbing", "V-Stitch (Neck)", "Side Panels", "Fleece Lining"],
             "Hoodie": ["Drawstrings/Aglets", "Hood Construction", "Cuff Ribbing", "Zipper Pull"],
@@ -633,13 +633,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v38', JSON.stringify(session));
+                localStorage.setItem('vl_session_v39', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v38');
+                const saved = localStorage.getItem('vl_session_v39');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -764,8 +764,15 @@
             const features = featuresMap[key] || featuresMap["default"];
             features.forEach(feat => {
                 const btn = document.createElement('button');
-                btn.className = "py-3 px-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg text-[11px] font-bold active:bg-indigo-100 active:scale-95 transition-all flex flex-col items-center justify-center text-center leading-tight shadow-sm";
-                btn.innerHTML = `<span class="mb-1">${feat}</span><i data-lucide="camera" class="w-3 h-3 opacity-50"></i>`;
+                const hasPhoto = data.featurePhotos.some(p => p.featureName === feat);
+                btn.id = `feature-btn-${feat.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                if (hasPhoto) {
+                    btn.className = "py-3 px-2 border-2 border-green-500 bg-green-50 text-green-700 rounded-lg text-[11px] font-bold transition-all flex flex-col items-center justify-center text-center leading-tight shadow-sm";
+                    btn.innerHTML = `<span class="mb-1">${feat}</span><span class="text-green-500 text-sm">✓</span>`;
+                } else {
+                    btn.className = "py-3 px-2 border border-indigo-100 bg-indigo-50 text-indigo-700 rounded-lg text-[11px] font-bold active:bg-indigo-100 active:scale-95 transition-all flex flex-col items-center justify-center text-center leading-tight shadow-sm";
+                    btn.innerHTML = `<span class="mb-1">${feat}</span><i data-lucide="camera" class="w-3 h-3 opacity-50"></i>`;
+                }
                 btn.onclick = () => openCamera('feature', feat);
                 container.appendChild(btn);
             });
@@ -936,10 +943,12 @@
 
         function addDefectMarker(defect) {
             const dot = document.createElement('div');
-            dot.className = "defect-dot";
+            dot.className = "defect-dot defect-marker-dot";
             dot.style.left = `${defect.x}%`;
             dot.style.top = `${defect.y}%`;
             dot.innerText = data.defectPhotos.length;
+            dot.dataset.zone = defect.zone;
+            dot.dataset.side = defect.side;
             const container = defect.side === 'Front' ? document.getElementById('dots-front') : document.getElementById('dots-back');
             container.appendChild(dot);
         }
@@ -1142,10 +1151,18 @@
             list.forEach((p,i) => {
                 const img = document.createElement('img'); img.src = URL.createObjectURL(p.blob);
                 img.className = "h-20 w-20 object-cover rounded border-2 border-gray-200 flex-shrink-0";
-                const wrap = document.createElement('div'); wrap.className="relative flex-shrink-0";
+                const wrap = document.createElement('div'); wrap.className="relative flex-shrink-0 group";
                 wrap.appendChild(img);
+                
+                // Delete button (X) - shows on tap/hover
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = "absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-lg active:bg-red-700 z-10";
+                deleteBtn.innerHTML = '×';
+                deleteBtn.onclick = (e) => { e.stopPropagation(); deletePhoto(mode, i); };
+                wrap.appendChild(deleteBtn);
+                
                 if(mode==='defect') {
-                     const badge = document.createElement('div'); badge.className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold"; badge.innerText = i+1;
+                     const badge = document.createElement('div'); badge.className="absolute -top-2 -right-2 bg-orange-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold"; badge.innerText = i+1;
                      wrap.appendChild(badge);
                 }
                 else if(mode === 'feature') {
@@ -1155,6 +1172,46 @@
                     wrap.appendChild(label);
                 }
                 div.appendChild(wrap);
+            });
+            
+            // Update feature button checkmarks if we just changed feature photos
+            if(mode === 'feature') {
+                const cat = document.getElementById('cat-select').value;
+                if(cat) updateFeatureButtons(cat);
+            }
+        }
+        
+        function deletePhoto(mode, index) {
+            if(mode === 'main') {
+                data.mainPhotos.splice(index, 1);
+            } else if(mode === 'tag') {
+                data.tagPhotos.splice(index, 1);
+            } else if(mode === 'defect') {
+                // Also remove the marker from the SVG
+                const photo = data.defectPhotos[index];
+                if(photo && photo.defectMeta) {
+                    removeDefectMarker(photo.defectMeta);
+                }
+                data.defectPhotos.splice(index, 1);
+            } else if(mode === 'feature') {
+                data.featurePhotos.splice(index, 1);
+            } else if(mode === 'weight') {
+                data.weightPhoto = null;
+                document.getElementById('weight-status').innerText = "NOT TAKEN";
+                document.getElementById('weight-status').className = "text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded";
+            }
+            
+            updateThumbs(mode);
+            persistData();
+        }
+        
+        function removeDefectMarker(meta) {
+            // Find and remove the marker dot from the SVG
+            const markers = document.querySelectorAll('.defect-marker-dot');
+            markers.forEach(m => {
+                if(m.dataset.zone === meta.zone && m.dataset.side === meta.side) {
+                    m.remove();
+                }
             });
         }
         
@@ -1354,7 +1411,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v38'); // Clear session
+                    localStorage.removeItem('vl_session_v39'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
