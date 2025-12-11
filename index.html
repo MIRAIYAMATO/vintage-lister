@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v35 (Batch Ready)</title>
+    <title>Vintage Lister v37 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v35</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v37</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -432,6 +432,19 @@
         <div class="flex-1 bg-black"></div>
         <div class="relative w-full aspect-square bg-gray-900 overflow-hidden shadow-2xl border-y-2 border-gray-800">
             <video id="cam-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
+            <!-- Photo Grid Overlay -->
+            <div id="photo-grid" class="absolute inset-0 pointer-events-none">
+                <!-- Rule of thirds grid lines -->
+                <div class="absolute top-1/3 left-0 right-0 h-px bg-white/30"></div>
+                <div class="absolute top-2/3 left-0 right-0 h-px bg-white/30"></div>
+                <div class="absolute left-1/3 top-0 bottom-0 w-px bg-white/30"></div>
+                <div class="absolute left-2/3 top-0 bottom-0 w-px bg-white/30"></div>
+                <!-- Center crosshair -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8">
+                    <div class="absolute top-1/2 left-0 right-0 h-px bg-white/50"></div>
+                    <div class="absolute left-1/2 top-0 bottom-0 w-px bg-white/50"></div>
+                </div>
+            </div>
             <div id="flash" class="flash"></div>
         </div>
         <div class="flex-1 bg-black flex flex-col items-center justify-start pt-8 pb-8">
@@ -615,13 +628,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v35', JSON.stringify(session));
+                localStorage.setItem('vl_session_v37', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v35');
+                const saved = localStorage.getItem('vl_session_v37');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -941,17 +954,34 @@
             document.getElementById('cam-count').innerText = countText;
             
             try { 
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 2160 }, height: { ideal: 2160 } } }); 
+                // Request highest possible resolution - 4K preferred
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "environment", 
+                        width: { ideal: 4032, min: 1920 },  
+                        height: { ideal: 3024, min: 1080 },
+                        aspectRatio: { ideal: 4/3 }
+                    } 
+                }); 
                 document.getElementById('cam-feed').srcObject = stream; 
                 document.getElementById('cam-overlay').classList.remove('hidden'); 
             } catch(e) { alert("Cam Error: " + e.message); }
         }
 
         function takeSnap() {
-            const v = document.getElementById('cam-feed'); const c = document.createElement('canvas');
+            const v = document.getElementById('cam-feed'); 
+            const c = document.createElement('canvas');
+            
+            // Use full video dimensions for maximum quality
             const size = Math.min(v.videoWidth, v.videoHeight); 
-            c.width = size; c.height = size;
-            c.getContext('2d').drawImage(v, (v.videoWidth-size)/2, (v.videoHeight-size)/2, size, size, 0, 0, size, size);
+            c.width = size; 
+            c.height = size;
+            
+            // Center crop to square at full resolution
+            const ctx = c.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(v, (v.videoWidth-size)/2, (v.videoHeight-size)/2, size, size, 0, 0, size, size);
             
             const f = document.getElementById('flash'); f.classList.add('trigger-flash'); setTimeout(()=>f.classList.remove('trigger-flash'),150);
             
@@ -990,7 +1020,7 @@
                     document.getElementById('cam-count').innerText = countText;
                     
                 updateThumbs(data.cameraMode);
-            }, 'image/jpeg', 0.85); 
+            }, 'image/jpeg', 0.92);  // High quality JPEG (92%) 
         }
 
         function updateThumbs(mode) {
@@ -1220,7 +1250,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v35'); // Clear session
+                    localStorage.removeItem('vl_session_v37'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
