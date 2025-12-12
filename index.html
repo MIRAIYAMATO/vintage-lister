@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v51 (Batch Ready)</title>
+    <title>Vintage Lister v58 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v51</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v58</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -134,7 +134,7 @@
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">2. SKU Identification</label>
                 <div class="flex gap-2 mt-1">
-                    <input type="number" id="sku-input" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
+                    <input type="number" id="sku-input" inputmode="numeric" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
                     <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 transition-transform shadow-lg">
                         <i data-lucide="scan-barcode" class="w-8 h-8"></i>
                     </button>
@@ -168,10 +168,9 @@
             <!-- Pattern Dropdown -->
             <div class="mb-4">
                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Pattern</label>
-                <select id="pattern-select" onchange="data.pattern = this.value; persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                <select id="pattern-select" onchange="handlePatternChange()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
                     <option value="" disabled>Select Pattern...</option>
                     <option selected>Solid</option>
-                    <option>Solid</option>
                     <option>Striped</option>
                     <option>Plaid</option>
                     <option>Check</option>
@@ -189,8 +188,83 @@
                     <option>Fair Isle</option>
                     <option>Herringbone</option>
                     <option>Houndstooth</option>
+                    <option>Embroidered</option>
                     <option>Other</option>
                 </select>
+            </div>
+            
+            <!-- Print/Graphic Type - Always visible, smart defaults -->
+            <div class="mb-4">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Print / Graphic Type</label>
+                <div class="grid grid-cols-5 gap-1">
+                    <button onclick="setPrintType('N/A', this)" id="btn-print-NA" class="print-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner">N/A</button>
+                    <button onclick="setPrintType('Screen', this)" id="btn-print-Screen" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Screen</button>
+                    <button onclick="setPrintType('Heat', this)" id="btn-print-Heat" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heat</button>
+                    <button onclick="setPrintType('Puff', this)" id="btn-print-Puff" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Puff</button>
+                    <button onclick="setPrintType('Embroidered', this)" id="btn-print-Embroidered" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Emb</button>
+                </div>
+                <div class="grid grid-cols-5 gap-1 mt-1">
+                    <button onclick="setPrintType('DTG', this)" id="btn-print-DTG" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">DTG</button>
+                    <button onclick="setPrintType('Sublimation', this)" id="btn-print-Sublimation" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">AOP</button>
+                    <button onclick="setPrintType('Patch', this)" id="btn-print-Patch" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Patch</button>
+                    <button onclick="setPrintType('Painted', this)" id="btn-print-Painted" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Paint</button>
+                    <button onclick="setPrintType('Other', this)" id="btn-print-Other" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Other</button>
+                </div>
+            </div>
+            
+            <!-- Graphic Category - Shows when pattern has graphics -->
+            <div id="graphic-category-section" class="mb-4 hidden">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Graphic Category</label>
+                <div class="grid grid-cols-4 gap-1">
+                    <button onclick="setGraphicCategory('Band/Music', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Band</button>
+                    <button onclick="setGraphicCategory('Movie/TV', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Movie/TV</button>
+                    <button onclick="setGraphicCategory('Sports', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Sports</button>
+                    <button onclick="setGraphicCategory('Brand/Logo', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Brand</button>
+                </div>
+                <div class="grid grid-cols-4 gap-1 mt-1">
+                    <button onclick="setGraphicCategory('Art/Promo', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Art/Promo</button>
+                    <button onclick="setGraphicCategory('Tourist', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Tourist</button>
+                    <button onclick="setGraphicCategory('Humor', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Humor</button>
+                    <button onclick="setGraphicCategory('Other', this)" class="graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Other</button>
+                </div>
+            </div>
+            
+            <!-- Print Condition - Shows when has print -->
+            <div id="print-condition-section" class="mb-4 hidden">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Print Condition</label>
+                <div class="grid grid-cols-4 gap-1">
+                    <button onclick="setPrintCondition('Crisp', this)" class="print-cond-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Crisp</button>
+                    <button onclick="setPrintCondition('Light Crack', this)" class="print-cond-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Lt Crack</button>
+                    <button onclick="setPrintCondition('Heavy Crack', this)" class="print-cond-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Hvy Crack</button>
+                    <button onclick="setPrintCondition('Faded', this)" class="print-cond-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Faded</button>
+                </div>
+            </div>
+            
+            <!-- Collar Style - For tops -->
+            <div id="collar-style-section" class="mb-4">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Collar Style</label>
+                <div class="grid grid-cols-5 gap-1">
+                    <button onclick="setCollarStyle('Crew', this)" id="btn-collar-Crew" class="collar-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner">Crew</button>
+                    <button onclick="setCollarStyle('V-Neck', this)" id="btn-collar-VNeck" class="collar-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">V-Neck</button>
+                    <button onclick="setCollarStyle('Ringer', this)" id="btn-collar-Ringer" class="collar-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Ringer</button>
+                    <button onclick="setCollarStyle('Scoop', this)" id="btn-collar-Scoop" class="collar-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Scoop</button>
+                    <button onclick="setCollarStyle('Henley', this)" id="btn-collar-Henley" class="collar-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Henley</button>
+                </div>
+            </div>
+            
+            <!-- Single Stitch Toggle - CRITICAL for vintage value -->
+            <div id="stitch-type-section" class="mb-4">
+                <label class="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1 block">⭐ Stitch Type (Hem & Sleeves)</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setStitchType('Single', this)" id="btn-stitch-Single" class="stitch-btn py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-500 text-sm bg-white transition-all">
+                        <span class="block">Single Stitch</span>
+                        <span class="text-[9px] text-amber-600">Pre-1995 • Higher Value</span>
+                    </button>
+                    <button onclick="setStitchType('Double', this)" id="btn-stitch-Double" class="stitch-btn py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-500 text-sm bg-white transition-all">
+                        <span class="block">Double Stitch</span>
+                        <span class="text-[9px] text-gray-400">Modern Standard</span>
+                    </button>
+                </div>
             </div>
             
             <div id="features-container" class="feature-grid">
@@ -217,7 +291,7 @@
                     <button onclick="setTagSize('XL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
                     <button onclick="setTagSize('XXL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
                 </div>
-                <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R, 32x30)" onfocus="clearTagSizeBtns()" onchange="persistData()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-amber-500 bg-white">
+                <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R, 32x30)" onfocus="clearTagSizeBtns()" onchange="persistData()" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none focus:border-amber-500 bg-white">
             </div>
             
             <div class="mb-4">
@@ -233,7 +307,7 @@
             
             <div class="mb-4">
                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Copyright / Date Year (Optional)</label>
-                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" onchange="data.copyrightYear=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none focus:border-blue-500 mb-2" maxlength="4">
+                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" onchange="data.copyrightYear=this.value; persistData();" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none focus:border-blue-500 mb-2" maxlength="4">
                 
                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Era / Decade Estimate</label>
                 <div class="grid grid-cols-5 gap-1">
@@ -258,11 +332,15 @@
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fabric Type</label>
-                    <select id="fabric-select" onchange="persistData()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
+                    <select id="fabric-select" onchange="handleFabricChange()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px] tracking-tight">
                         <option value="" disabled selected>Select Material...</option>
                         <optgroup label="Common"><option>100% Cotton</option><option>Pima Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
                         <optgroup label="Other"><option>Canvas</option><option>Twill</option><option>Denim</option><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option><option>Leather</option><option>Cannot Determine</option></optgroup>
+                        <optgroup label="Custom"><option value="Custom Blend">Custom Blend (type below)</option></optgroup>
                     </select>
+                    <div id="custom-blend-input" class="hidden mt-2">
+                        <input type="text" id="fabric-custom" placeholder="e.g. 70% Cotton, 30% Polyester" onchange="persistData()" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-blue-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
+                    </div>
                 </div>
                 
                 <div class="mt-2">
@@ -290,20 +368,14 @@
                     </select>
                 </div>
                 
-                <!-- PRINT TYPE - For Tops/Outer only -->
-                <div id="print-type-section" class="mt-3">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Print Type</label>
+                <!-- Fade Level - Important for vintage value -->
+                <div id="fade-level-section" class="mt-3">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Fade Level <span class="text-amber-500">(Vintage Patina)</span></label>
                     <div class="grid grid-cols-4 gap-1">
-                        <button onclick="setPrintType('Screen', this)" id="btn-print-Screen" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Screen</button>
-                        <button onclick="setPrintType('Heat Transfer', this)" id="btn-print-Heat" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heat</button>
-                        <button onclick="setPrintType('Puff', this)" id="btn-print-Puff" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Puff</button>
-                        <button onclick="setPrintType('Embroidered', this)" id="btn-print-Embroider" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Embroider</button>
-                    </div>
-                    <div class="grid grid-cols-4 gap-1 mt-1">
-                        <button onclick="setPrintType('Sublimation', this)" id="btn-print-AOP" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">AOP</button>
-                        <button onclick="setPrintType('Patch', this)" id="btn-print-Patch" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Patch</button>
-                        <button onclick="setPrintType('None', this)" id="btn-print-None" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">None</button>
-                        <button onclick="setPrintType('Other', this)" id="btn-print-Other" class="print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Other</button>
+                        <button onclick="setFadeLevel('None', this)" id="btn-fade-None" class="fade-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner">None</button>
+                        <button onclick="setFadeLevel('Light', this)" id="btn-fade-Light" class="fade-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Light</button>
+                        <button onclick="setFadeLevel('Sun Fade', this)" id="btn-fade-Sun" class="fade-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Sun Fade</button>
+                        <button onclick="setFadeLevel('Heavy', this)" id="btn-fade-Heavy" class="fade-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heavy</button>
                     </div>
                 </div>
                 
@@ -348,14 +420,64 @@
                 </div>
             </div>
             
-            <div id="tag-area-audio" class="hidden">
-                <button id="rec-tag" onclick="recordAudio('tag')" class="w-full py-5 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="mic" class="w-5 h-5"></i>
-                        <span>Record Brand & Origin</span>
+            <!-- Brand & Manufacturer Info - replaces audio -->
+            <div id="brand-info-section" class="hidden mt-4 space-y-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Blank / Manufacturer</label>
+                    <select id="brand-select" onchange="handleBrandChange()" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 font-normal outline-none focus:border-blue-500 text-[11px]">
+                        <option value="" selected>Select or type below...</option>
+                        <optgroup label="Vintage (Pre-1995)">
+                            <option>Screen Stars</option>
+                            <option>Hanes Beefy-T</option>
+                            <option>Fruit of the Loom</option>
+                            <option>Oneita</option>
+                            <option>Tennessee River</option>
+                            <option>Sportswear</option>
+                            <option>Tultex</option>
+                            <option>Signal</option>
+                            <option>Best</option>
+                            <option>Stedman</option>
+                        </optgroup>
+                        <optgroup label="90s-2000s">
+                            <option>Hanes</option>
+                            <option>Anvil</option>
+                            <option>Jerzees</option>
+                            <option>Russell</option>
+                            <option>Delta</option>
+                            <option>Alstyle</option>
+                            <option>AAA</option>
+                        </optgroup>
+                        <optgroup label="Modern">
+                            <option>Gildan</option>
+                            <option>Next Level</option>
+                            <option>Bella+Canvas</option>
+                            <option>American Apparel</option>
+                            <option>Comfort Colors</option>
+                            <option>Champion</option>
+                            <option>Port & Company</option>
+                        </optgroup>
+                        <optgroup label="Premium/Streetwear">
+                            <option>Supreme</option>
+                            <option>Stussy</option>
+                            <option>BAPE</option>
+                            <option>Palace</option>
+                            <option>Fear of God</option>
+                        </optgroup>
+                        <option value="Custom">Other (type below)</option>
+                    </select>
+                    <input type="text" id="brand-custom" placeholder="Type brand if not listed..." onchange="data.brandCustom=this.value; persistData();" onkeydown="if(event.key==='Enter'){this.blur();}" class="hidden w-full mt-2 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">RN # (Optional)</label>
+                        <input type="text" id="rn-number" placeholder="e.g. 14806" maxlength="10" onchange="data.rnNumber=this.value; persistData();" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 font-mono">
                     </div>
-                    <div class="text-[10px] text-red-800 font-mono mt-1 opacity-70 text-center">BRAND • STYLE (Check Side!) • RN #</div>
-                </button>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Style (Optional)</label>
+                        <input type="text" id="style-name" placeholder="e.g. Heavy Cotton" onchange="data.styleName=this.value; persistData();" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -413,7 +535,7 @@
 
             <div id="section-condition">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">9. Condition</label>
-                <select id="cond-select" onchange="persistData()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
+                <select id="cond-select" onchange="handleConditionChange()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
                     <option>Pre-owned excellent</option><option>Pre-owned good</option><option>Pre-owned fair</option><option>Poor – major flaws</option><option>New with tag</option><option>New without tag</option>
                 </select>
             </div>
@@ -670,7 +792,7 @@
             }
         }
 
-        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'Screen', wash: '', pattern: 'Solid', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, visualTagCheck: '', hasDefects: false, audioTag: null, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
+        let data = { mode: 'tops', superCategory: '', mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [], pendingPhoto: null, cameraMode: 'main', currentTagType: null, gender: 'Men', tagStatus: 'has', tagSize: '', sleeveType: 'Short', fitTypes: ['Regular'], bottomsStyle: '', origin: 'usa', madeInCountry: 'USA', copyrightYear: '', era: '', fabricWeight: '', colorPrimary: '', colorSecondary: '', printType: 'N/A', graphicCategory: '', printCondition: '', collarStyle: 'Crew', stitchType: '', fadeLevel: 'None', brand: '', brandCustom: '', rnNumber: '', styleName: '', wash: '', pattern: 'Solid', itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0, visualTagCheck: '', hasDefects: false, audioMeasure: null, scanTime: null, tempDefect: null, photographer: 'P02', timestamps: {} };
         const recorders = {};
 
         const superCategories = {
@@ -776,23 +898,105 @@
             "default": ["Logo/Patch", "Hardware Brand", "Fabric Texture", "Unique Stitching"]
         };
 
-        // Weight hints by category (in oz)
+        // Weight reference by category, weight class, and size (in oz unless noted)
+        // Sizes: XS/W28, S/W30, M/W32, L/W34, XL/W36, 2XL/W38, 3XL/W40
+        const weightTable = {
+            "T-Shirt": {
+                "Light": [3.0, 3.5, 4.5, 5.0, 5.5, 6.5, 7.5],
+                "Mid": [4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.5],
+                "Heavy": [5.5, 6.5, 7.5, 8.5, 10.0, 12.0, 14.0],
+                "desc": "Light=50/50 • Mid=Gildan • Heavy=Beefy"
+            },
+            "Tank Top": {
+                "Light": [2.5, 3.0, 4.0, 4.5, 5.0, 6.0, 7.0],
+                "Mid": [2.5, 3.0, 4.0, 4.5, 5.0, 6.0, 7.0],
+                "Heavy": [3.0, 3.5, 4.5, 5.0, 5.5, 6.5, 7.5],
+                "desc": "Standard tank weights"
+            },
+            "Polo Shirt": {
+                "Light": [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 12.0],
+                "Mid": [6.0, 7.0, 8.0, 9.0, 10.5, 12.0, 14.0],
+                "Heavy": [7.0, 8.0, 9.0, 10.0, 12.0, 14.0, 16.0],
+                "desc": "Light=Performance • Heavy=Pique Cotton"
+            },
+            "Button Shirt": {
+                "Light": [5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0],
+                "Mid": [7.0, 8.0, 9.5, 11.0, 12.5, 14.0, 15.5],
+                "Heavy": [9.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0],
+                "desc": "Light=Dress • Heavy=Flannel/Twill"
+            },
+            "Sweatshirt": {
+                "Light": [8.0, 9.0, 10.0, 12.0, 13.0, 15.0, 17.0],
+                "Mid": [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0],
+                "Heavy": [14.0, 16.0, 18.0, 22.0, 24.0, 28.0, 32.0],
+                "desc": "Light=80s Raglan • Mid=College • Heavy=Reverse Weave"
+            },
+            "Hoodie": {
+                "Light": [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0],
+                "Mid": [14.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0],
+                "Heavy": [20.0, 24.0, 28.0, 32.0, 36.0, 40.0, 44.0],
+                "desc": "Light=French Terry • Mid=Standard • Heavy=Workwear"
+            },
+            "Jacket": {
+                "Light": [6.0, 8.0, 10.0, 12.0, 13.0, 14.0, 15.0],
+                "Mid": [20.0, 24.0, 28.0, 32.0, 36.0, 40.0, 44.0],
+                "Heavy": [32.0, 36.0, 40.0, 48.0, 52.0, 56.0, 60.0],
+                "desc": "Light=Windbreaker • Mid=Denim • Heavy=Varsity"
+            },
+            "Coat": {
+                "Light": [24.0, 32.0, 40.0, 48.0, 56.0, 64.0, 72.0],
+                "Mid": [32.0, 40.0, 48.0, 56.0, 64.0, 72.0, 80.0],
+                "Heavy": [32.0, 40.0, 48.0, 56.0, 64.0, 72.0, 80.0],
+                "desc": "Wool/Trench: 2-5lb • Parka: 1.5-4.5lb"
+            },
+            "Jeans": {
+                "Light": [14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0],
+                "Mid": [18.0, 20.0, 22.0, 24.0, 26.0, 28.0, 30.0],
+                "Heavy": [24.0, 26.0, 28.0, 30.0, 34.0, 36.0, 40.0],
+                "desc": "Light=Stretch • Mid=Levi's 501 • Heavy=Selvedge"
+            },
+            "Pants": {
+                "Light": [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0],
+                "Mid": [14.0, 15.5, 17.0, 18.5, 20.0, 21.5, 23.0],
+                "Heavy": [18.0, 20.0, 22.0, 24.0, 26.0, 28.0, 30.0],
+                "desc": "Light=Chino/Dress • Heavy=Duck Canvas"
+            },
+            "Shorts": {
+                "Light": [6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+                "Mid": [8.0, 9.0, 10.0, 11.0, 12.0, 13.5, 15.0],
+                "Heavy": [10.0, 11.0, 12.0, 13.0, 14.0, 16.0, 18.0],
+                "desc": "Light=Standard • Heavy=Cargo/Denim"
+            },
+            "Sweatpants": {
+                "Light": [10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0],
+                "Mid": [13.0, 15.0, 17.0, 20.0, 22.0, 25.0, 27.0],
+                "Heavy": [16.0, 18.0, 20.0, 24.0, 26.0, 30.0, 32.0],
+                "desc": "Standard vs Reverse Weave"
+            }
+        };
+        
+        const sizeIndexMap = {
+            "XS": 0, "S": 1, "M": 2, "L": 3, "XL": 4, "XXL": 5, "2XL": 5, "3XL": 6, "3XL+": 6,
+            "28": 0, "30": 1, "32": 2, "34": 3, "36": 4, "38": 5, "40": 6
+        };
+        
+        // Legacy simple hints (fallback)
         const weightHintsMap = {
-            "T-Shirt": { min: 4, max: 8, hint: "Light tee: 4-5oz • Heavy tee: 6-8oz" },
-            "Tank Top": { min: 3, max: 5, hint: "Typical range: 3-5oz" },
-            "Polo Shirt": { min: 6, max: 10, hint: "Typical range: 6-10oz" },
-            "Button Shirt": { min: 5, max: 10, hint: "Light: 5-6oz • Heavy flannel: 8-10oz" },
-            "Sweatshirt": { min: 12, max: 24, hint: "Light crew: 12oz • Heavy: 18-24oz" },
-            "Hoodie": { min: 16, max: 32, hint: "Midweight: 16-20oz • Heavy: 24-32oz" },
-            "Jersey": { min: 8, max: 16, hint: "Typical range: 8-16oz" },
-            "Blouse": { min: 4, max: 8, hint: "Typical range: 4-8oz" },
-            "Jacket": { min: 16, max: 48, hint: "Light: 1-2lb • Heavy: 2-3lb" },
-            "Coat": { min: 32, max: 80, hint: "Typical range: 2-5lb" },
-            "Jeans": { min: 16, max: 32, hint: "Light: 1lb • Heavy selvedge: 2lb+" },
-            "Pants": { min: 12, max: 24, hint: "Typical range: 12oz-1.5lb" },
-            "Shorts": { min: 6, max: 14, hint: "Typical range: 6-14oz" },
-            "Sweatpants": { min: 14, max: 28, hint: "Typical range: 14oz-1.75lb" },
-            "default": { min: 6, max: 16, hint: "Typical range: 6oz-1lb" }
+            "T-Shirt": { hint: "Light: 3-5oz • Mid: 5-8oz • Heavy: 6-14oz" },
+            "Tank Top": { hint: "Typical: 2.5-7oz" },
+            "Polo Shirt": { hint: "Light: 5-10oz • Heavy: 7-16oz" },
+            "Button Shirt": { hint: "Light: 5-11oz • Heavy: 9-20oz" },
+            "Sweatshirt": { hint: "Light: 8-17oz • Mid: 10-22oz • Heavy: 14-32oz" },
+            "Hoodie": { hint: "Light: 10-22oz • Mid: 14-26oz • Heavy: 20-44oz" },
+            "Jersey": { hint: "Typical: 8-16oz" },
+            "Blouse": { hint: "Typical: 4-8oz" },
+            "Jacket": { hint: "Windbreaker: 6-15oz • Denim: 20-44oz • Varsity: 32-60oz" },
+            "Coat": { hint: "Typical: 1.5-5lb" },
+            "Jeans": { hint: "Light: 14-20oz • Mid: 18-30oz • Heavy: 24-40oz" },
+            "Pants": { hint: "Light: 10-16oz • Heavy: 18-30oz" },
+            "Shorts": { hint: "Standard: 6-12oz • Cargo: 10-18oz" },
+            "Sweatpants": { hint: "Standard: 10-22oz • Heavy: 16-32oz" },
+            "default": { hint: "Typical: 6oz-1lb" }
         };
 
         function persistData() {
@@ -804,6 +1008,7 @@
                     tagStatus: data.tagStatus,
                     tagSize: data.tagSize,
                     fabric: document.getElementById('fabric-select').value,
+                    fabricCustom: document.getElementById('fabric-custom').value,
                     fabricWeight: data.fabricWeight,
                     visualTagCheck: data.visualTagCheck,
                     gender: data.gender,
@@ -812,13 +1017,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v51', JSON.stringify(session));
+                localStorage.setItem('vl_session_v58', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v51');
+                const saved = localStorage.getItem('vl_session_v58');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -826,7 +1031,13 @@
                     if(session.category) { document.getElementById('cat-select').value = session.category; handleCategoryChange(); }
                     if(session.tagStatus) setTagState(session.tagStatus);
                     if(session.tagSize) { setTagSize(session.tagSize); document.getElementById('tag-size-input').value = session.tagSize; }
-                    if(session.fabric) document.getElementById('fabric-select').value = session.fabric;
+                    if(session.fabric) {
+                        document.getElementById('fabric-select').value = session.fabric;
+                        if(session.fabric === 'Custom Blend') {
+                            document.getElementById('custom-blend-input').classList.remove('hidden');
+                        }
+                    }
+                    if(session.fabricCustom) document.getElementById('fabric-custom').value = session.fabricCustom;
                     if(session.fabricWeight) setFabricWeight(session.fabricWeight);
                     if(session.visualTagCheck) data.visualTagCheck = session.visualTagCheck;
                     if(session.gender) {
@@ -866,29 +1077,21 @@
             const sleeveSelector = document.getElementById('sleeve-selector');
             const fitSelectorTops = document.getElementById('fit-selector-tops');
             const fitSelectorBottoms = document.getElementById('fit-selector-bottoms');
-            const printTypeSection = document.getElementById('print-type-section');
             const washSection = document.getElementById('wash-section');
 
             if (sc === 'bottoms') {
                 sleeveSelector.classList.add('hidden');
                 fitSelectorTops.classList.add('hidden');
                 fitSelectorBottoms.classList.remove('hidden');
-                // Hide print type, show wash for bottoms
-                printTypeSection.classList.add('hidden');
+                // Show wash for bottoms (print type always visible now)
                 washSection.classList.remove('hidden');
-                // Clear print type for bottoms
-                data.printType = '';
             } else {
                 sleeveSelector.classList.remove('hidden');
                 fitSelectorTops.classList.remove('hidden');
                 fitSelectorBottoms.classList.add('hidden');
-                // Show print type, hide wash for tops/outer
-                printTypeSection.classList.remove('hidden');
+                // Hide wash for tops/outer
                 washSection.classList.add('hidden');
-                // Pre-select Screen for tops/outer, clear wash
-                data.printType = 'Screen';
                 data.wash = '';
-                setPrintType('Screen', document.getElementById('btn-print-Screen'));
             }
             updateCatLogic();
             persistData();
@@ -1047,6 +1250,20 @@
             // scrollToNext('section-condition');
         }
 
+        function handleFabricChange() {
+            const select = document.getElementById('fabric-select');
+            const customInput = document.getElementById('custom-blend-input');
+            
+            if (select.value === 'Custom Blend') {
+                customInput.classList.remove('hidden');
+                document.getElementById('fabric-custom').focus();
+            } else {
+                customInput.classList.add('hidden');
+                document.getElementById('fabric-custom').value = '';
+            }
+            persistData();
+        }
+        
         function setFabricWeight(w, el) {
             data.fabricWeight = w;
             // Clear all buttons first
@@ -1054,6 +1271,9 @@
             // If passed element is null (restoring session), find the button
             if(!el) el = document.getElementById(`btn-weight-${w}`);
             if(el) el.className = "weight-btn py-3 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs shadow-inner transition-all";
+            // Update weight hint with new fabric weight
+            const cat = document.getElementById('cat-select').value;
+            if(cat) updateWeightHint(cat);
             persistData();
         }
         
@@ -1070,13 +1290,67 @@
             const hintEl = document.getElementById('weight-hint');
             if (!hintEl) return;
             
-            let hints = null;
+            // Get current size and fabric weight
+            const tagSize = data.tagSize || '';
+            const fabricWeight = data.fabricWeight || 'Mid';
             
-            // Direct match first
-            if (category && weightHintsMap[category]) {
-                hints = weightHintsMap[category];
+            // Find matching category in weightTable
+            let tableData = null;
+            if (category && weightTable[category]) {
+                tableData = weightTable[category];
             } else if (category) {
                 // Check for partial matches
+                for (const key in weightTable) {
+                    if (category.includes(key) || key.includes(category)) {
+                        tableData = weightTable[key];
+                        break;
+                    }
+                }
+            }
+            
+            // If we have table data and can determine size index
+            if (tableData) {
+                // Try to get size index from tag size
+                let sizeIdx = -1;
+                for (const [sizeKey, idx] of Object.entries(sizeIndexMap)) {
+                    if (tagSize.toUpperCase().includes(sizeKey)) {
+                        sizeIdx = idx;
+                        break;
+                    }
+                }
+                
+                // Get weight class data
+                const weightClass = fabricWeight || 'Mid';
+                const weights = tableData[weightClass] || tableData['Mid'] || tableData['Light'];
+                
+                if (weights && sizeIdx >= 0 && sizeIdx < weights.length) {
+                    // Show specific weight for this size
+                    const expectedOz = weights[sizeIdx];
+                    const displayWeight = expectedOz >= 32 ? `${(expectedOz/16).toFixed(1)}lb` : `${expectedOz}oz`;
+                    hintEl.innerHTML = `
+                        <p class="text-[11px] text-purple-700 font-bold text-center">💡 ${category} (${tagSize}, ${weightClass})</p>
+                        <p class="text-[13px] text-purple-900 font-black text-center">Expected: ~${displayWeight}</p>
+                        <p class="text-[9px] text-purple-500 text-center mt-1">${tableData.desc || ''}</p>
+                    `;
+                    return;
+                }
+                
+                // No size selected - show range
+                const minW = Math.min(...(tableData['Light'] || tableData['Mid']));
+                const maxW = Math.max(...(tableData['Heavy'] || tableData['Mid']));
+                const minDisplay = minW >= 32 ? `${(minW/16).toFixed(1)}lb` : `${minW}oz`;
+                const maxDisplay = maxW >= 32 ? `${(maxW/16).toFixed(1)}lb` : `${maxW}oz`;
+                hintEl.innerHTML = `
+                    <p class="text-[11px] text-purple-700 font-bold text-center">💡 ${category}</p>
+                    <p class="text-[12px] text-purple-800 font-bold text-center">Range: ${minDisplay} - ${maxDisplay}</p>
+                    <p class="text-[9px] text-purple-500 text-center mt-1">${tableData.desc || ''}</p>
+                `;
+                return;
+            }
+            
+            // Fallback to simple hints
+            let hints = weightHintsMap[category] || weightHintsMap["default"];
+            if (!hints && category) {
                 for (const key in weightHintsMap) {
                     if (key !== 'default' && (category.includes(key) || key.includes(category))) {
                         hints = weightHintsMap[key];
@@ -1084,11 +1358,7 @@
                     }
                 }
             }
-            
-            // Fallback to default
-            if (!hints) {
-                hints = weightHintsMap["default"];
-            }
+            if (!hints) hints = weightHintsMap["default"];
             
             const hintText = hints && hints.hint ? hints.hint : "Typical range: 6oz-1lb";
             hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category || 'Item'}: ${hintText}</p>`;
@@ -1118,6 +1388,96 @@
             data.printType = type;
             document.querySelectorAll('.print-btn').forEach(b => b.className = "print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
             if(el) el.className = "print-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            
+            // Show/hide print condition and graphic category based on print type
+            const hasPrint = type !== 'N/A';
+            document.getElementById('print-condition-section').classList.toggle('hidden', !hasPrint);
+            
+            persistData();
+        }
+        
+        function handlePatternChange() {
+            const pattern = document.getElementById('pattern-select').value;
+            data.pattern = pattern;
+            
+            // Smart defaults based on pattern
+            const noPrintPatterns = ['Solid', 'Striped', 'Plaid', 'Check', 'Tie Dye', 'Colorblock', 'Argyle/Diamond', 'Fair Isle', 'Herringbone', 'Houndstooth'];
+            const graphicPatterns = ['Graphic Print', 'Abstract', 'Animal Print', 'Camouflage'];
+            
+            // Show/hide graphic category section
+            const showGraphicCategory = graphicPatterns.includes(pattern) || pattern === 'Other';
+            document.getElementById('graphic-category-section').classList.toggle('hidden', !showGraphicCategory);
+            
+            if (noPrintPatterns.includes(pattern)) {
+                // Auto-select N/A for patterns that don't have prints
+                setPrintType('N/A', document.getElementById('btn-print-NA'));
+                document.getElementById('print-condition-section').classList.add('hidden');
+            } else if (pattern === 'Embroidered') {
+                // Auto-select Embroidered
+                setPrintType('Embroidered', document.getElementById('btn-print-Embroidered'));
+            } else if (graphicPatterns.includes(pattern)) {
+                // Auto-select Screen Print for graphic patterns
+                setPrintType('Screen', document.getElementById('btn-print-Screen'));
+                document.getElementById('print-condition-section').classList.remove('hidden');
+            }
+            
+            persistData();
+        }
+        
+        function setGraphicCategory(cat, el) {
+            data.graphicCategory = cat;
+            document.querySelectorAll('.graphic-cat-btn').forEach(b => b.className = "graphic-cat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "graphic-cat-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
+        }
+        
+        function setPrintCondition(cond, el) {
+            data.printCondition = cond;
+            document.querySelectorAll('.print-cond-btn').forEach(b => b.className = "print-cond-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "print-cond-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
+        }
+        
+        function setCollarStyle(style, el) {
+            data.collarStyle = style;
+            document.querySelectorAll('.collar-btn').forEach(b => b.className = "collar-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "collar-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
+        }
+        
+        function setStitchType(type, el) {
+            data.stitchType = type;
+            document.querySelectorAll('.stitch-btn').forEach(b => b.className = "stitch-btn py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-500 text-sm bg-white transition-all");
+            if(el) {
+                if(type === 'Single') {
+                    el.className = "stitch-btn py-3 border-2 border-amber-500 bg-amber-50 text-amber-700 rounded-xl font-bold text-sm shadow-inner transition-all";
+                } else {
+                    el.className = "stitch-btn py-3 border-2 border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm shadow-inner transition-all";
+                }
+            }
+            persistData();
+        }
+        
+        function setFadeLevel(level, el) {
+            data.fadeLevel = level;
+            document.querySelectorAll('.fade-btn').forEach(b => b.className = "fade-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white");
+            if(el) el.className = "fade-btn py-2 border border-blue-600 bg-blue-50 text-blue-600 rounded-lg font-bold text-[9px] shadow-inner";
+            persistData();
+        }
+        
+        function handleBrandChange() {
+            const select = document.getElementById('brand-select');
+            const customInput = document.getElementById('brand-custom');
+            data.brand = select.value;
+            
+            if (select.value === 'Custom') {
+                customInput.classList.remove('hidden');
+                customInput.focus();
+            } else {
+                customInput.classList.add('hidden');
+                customInput.value = '';
+                data.brandCustom = '';
+            }
             persistData();
         }
         
@@ -1573,12 +1933,12 @@
             if(state === 'has') {
                 active.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.remove('hidden');
-                document.getElementById('tag-area-audio').classList.remove('hidden');
+                document.getElementById('brand-info-section').classList.remove('hidden');
                 document.getElementById('visual-tag-audit').classList.remove('hidden');
             } else {
                 active.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
                 document.getElementById('section-tag-size').classList.add('hidden');
-                document.getElementById('tag-area-audio').classList.add('hidden');
+                document.getElementById('brand-info-section').classList.add('hidden');
                 document.getElementById('visual-tag-audit').classList.add('hidden');
             }
             persistData();
@@ -1615,10 +1975,28 @@
             document.getElementById('tag-size-input').value=""; 
             document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); 
             if(el) el.className="size-btn py-3 border border-blue-600 bg-blue-600 text-white rounded-md font-bold shadow text-xs"; 
+            // Update weight hint with new size
+            const cat = document.getElementById('cat-select').value;
+            if(cat) updateWeightHint(cat);
             persistData();
         }
         
-        function clearTagSizeBtns() { document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); data.tagSize=""; persistData(); }
+        function clearTagSizeBtns() { 
+            document.querySelectorAll('.size-btn').forEach(b=>b.className="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs"); 
+            data.tagSize=""; 
+            const cat = document.getElementById('cat-select').value;
+            if(cat) updateWeightHint(cat);
+            persistData(); 
+        }
+        
+        function handleConditionChange() {
+            const condition = document.getElementById('cond-select').value;
+            // Auto-select "Has Defects" when Poor condition is chosen
+            if (condition === 'Poor – major flaws') {
+                setDefectState(true);
+            }
+            persistData();
+        }
         
         function setDefectState(h) { 
             data.hasDefects=h; 
@@ -1707,17 +2085,29 @@
             fd.append('super_category', data.superCategory); 
             fd.append('tag_status', data.tagStatus); fd.append('has_defects', data.hasDefects);
             fd.append('category', document.getElementById('cat-select').value); fd.append('gender', data.gender); fd.append('condition', document.getElementById('cond-select').value);
-            fd.append('fabric', document.getElementById('fabric-select').value); 
+            const fabricValue = document.getElementById('fabric-select').value;
+            const customBlend = document.getElementById('fabric-custom').value;
+            fd.append('fabric', fabricValue === 'Custom Blend' && customBlend ? customBlend : fabricValue); 
             fd.append('fabric_weight', data.fabricWeight);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
+            fd.append('fade_level', data.fadeLevel);
             fd.append('print_type', data.printType);
+            fd.append('graphic_category', data.graphicCategory);
+            fd.append('print_condition', data.printCondition);
+            fd.append('collar_style', data.collarStyle);
+            fd.append('stitch_type', data.stitchType);
             fd.append('wash', data.wash);
             fd.append('pattern', data.pattern);
             fd.append('visual_tag_check', data.visualTagCheck);
             fd.append('origin', data.origin); fd.append('made_in_country', data.madeInCountry); 
             fd.append('copyright_year', data.copyrightYear);
             fd.append('era', data.era);
+            // Brand info (replaces audio)
+            const brandValue = data.brand === 'Custom' && data.brandCustom ? data.brandCustom : data.brand;
+            fd.append('brand', brandValue);
+            fd.append('rn_number', data.rnNumber);
+            fd.append('style_name', data.styleName);
             if(data.tagStatus === 'has') fd.append('tag_size', data.tagSize);
             fd.append('sleeve_type', data.sleeveType); 
             fd.append('fit_types', JSON.stringify(data.fitTypes)); 
@@ -1753,7 +2143,6 @@
             fd.append('item_weight_oz', data.itemWeightOz);
             fd.append('item_weight_total_oz', data.itemWeightTotalOz);
             
-            if(data.audioTag) fd.append('audio_tag', data.audioTag, `${sku}_tag.webm`);
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
 
             const xhr = new XMLHttpRequest(); xhr.open("POST", N8N_WEBHOOK_URL, true);
@@ -1761,7 +2150,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v51'); // Clear session
+                    localStorage.removeItem('vl_session_v58'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
