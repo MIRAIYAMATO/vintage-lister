@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v60 (Batch Ready)</title>
+    <title>Vintage Lister v61 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v60</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v61</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -352,10 +352,59 @@
                         <option value="" disabled selected>Select Material...</option>
                         <optgroup label="Common"><option>100% Cotton</option><option>Pima Cotton</option><option>50/50 (Cotton/Poly)</option><option>Tri-Blend</option><option>100% Polyester</option></optgroup>
                         <optgroup label="Other"><option>Canvas</option><option>Twill</option><option>Denim</option><option>Dacron / Poly</option><option>Acrylic</option><option>Acrylic/Poly Blend</option><option>Nylon</option><option>Rayon</option><option>Wool</option><option>Silk</option><option>Linen</option><option>Velour</option><option>Terry Cloth</option><option>Leather</option><option>Cannot Determine</option></optgroup>
-                        <optgroup label="Custom"><option value="Custom Blend">Custom Blend (type below)</option></optgroup>
+                        <optgroup label="Custom"><option value="Custom Blend">Custom Blend (build below)</option></optgroup>
                     </select>
-                    <div id="custom-blend-input" class="hidden mt-2">
-                        <input type="text" id="fabric-custom" placeholder="e.g. 70% Cotton, 30% Polyester" onchange="persistData()" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full p-2 border border-blue-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
+                    
+                    <!-- Blend Builder -->
+                    <div id="custom-blend-input" class="hidden mt-3 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                        <label class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2 block">Build Your Blend</label>
+                        
+                        <!-- Material 1 -->
+                        <div class="flex gap-2 mb-2 items-center">
+                            <select id="blend-mat-1" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white">
+                                <option value="">Material 1...</option>
+                                <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Elastane</option><option>Other</option>
+                            </select>
+                            <select id="blend-pct-1" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white font-bold text-center">
+                                <option value="">%</option>
+                                <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option><option>100</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Material 2 -->
+                        <div class="flex gap-2 mb-2 items-center">
+                            <select id="blend-mat-2" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white">
+                                <option value="">Material 2...</option>
+                                <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Elastane</option><option>Other</option>
+                            </select>
+                            <select id="blend-pct-2" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white font-bold text-center">
+                                <option value="">%</option>
+                                <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option><option>100</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Material 3 (optional, for tri-blends) -->
+                        <div id="blend-row-3" class="hidden flex gap-2 mb-2 items-center">
+                            <select id="blend-mat-3" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white">
+                                <option value="">Material 3...</option>
+                                <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Elastane</option><option>Other</option>
+                            </select>
+                            <select id="blend-pct-3" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-[11px] outline-none focus:border-blue-500 bg-white font-bold text-center">
+                                <option value="">%</option>
+                                <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option><option>100</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Add 3rd material button -->
+                        <button id="btn-add-mat-3" onclick="showThirdMaterial()" class="text-[10px] text-blue-600 font-medium mb-2">+ Add 3rd material (tri-blend)</button>
+                        
+                        <!-- Preview -->
+                        <div id="blend-preview" class="mt-2 p-2 bg-white rounded-lg border border-blue-300 text-center">
+                            <span class="text-[10px] text-gray-400">Select materials above</span>
+                        </div>
+                        
+                        <!-- Hidden field to store the blend string -->
+                        <input type="hidden" id="fabric-custom" value="">
                     </div>
                 </div>
                 
@@ -1089,13 +1138,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v60', JSON.stringify(session));
+                localStorage.setItem('vl_session_v61', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v60');
+                const saved = localStorage.getItem('vl_session_v61');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -1333,11 +1382,61 @@
             
             if (select.value === 'Custom Blend') {
                 customInput.classList.remove('hidden');
-                document.getElementById('fabric-custom').focus();
+                // Reset blend builder
+                document.getElementById('blend-mat-1').value = '';
+                document.getElementById('blend-pct-1').value = '';
+                document.getElementById('blend-mat-2').value = '';
+                document.getElementById('blend-pct-2').value = '';
+                document.getElementById('blend-mat-3').value = '';
+                document.getElementById('blend-pct-3').value = '';
+                document.getElementById('blend-row-3').classList.add('hidden');
+                document.getElementById('btn-add-mat-3').classList.remove('hidden');
+                document.getElementById('fabric-custom').value = '';
+                updateBlendPreview();
             } else {
                 customInput.classList.add('hidden');
                 document.getElementById('fabric-custom').value = '';
             }
+            persistData();
+        }
+        
+        function showThirdMaterial() {
+            document.getElementById('blend-row-3').classList.remove('hidden');
+            document.getElementById('btn-add-mat-3').classList.add('hidden');
+        }
+        
+        function updateBlendPreview() {
+            const mat1 = document.getElementById('blend-mat-1').value;
+            const pct1 = document.getElementById('blend-pct-1').value;
+            const mat2 = document.getElementById('blend-mat-2').value;
+            const pct2 = document.getElementById('blend-pct-2').value;
+            const mat3 = document.getElementById('blend-mat-3').value;
+            const pct3 = document.getElementById('blend-pct-3').value;
+            
+            const preview = document.getElementById('blend-preview');
+            let parts = [];
+            
+            if (mat1 && pct1) parts.push(`${pct1}% ${mat1}`);
+            if (mat2 && pct2) parts.push(`${pct2}% ${mat2}`);
+            if (mat3 && pct3) parts.push(`${pct3}% ${mat3}`);
+            
+            if (parts.length > 0) {
+                const blendStr = parts.join(' / ');
+                preview.innerHTML = `<span class="text-sm font-bold text-blue-700">${blendStr}</span>`;
+                document.getElementById('fabric-custom').value = blendStr;
+                
+                // Check if percentages add up to 100
+                const total = (parseInt(pct1) || 0) + (parseInt(pct2) || 0) + (parseInt(pct3) || 0);
+                if (total !== 100 && parts.length > 1) {
+                    preview.innerHTML += `<br><span class="text-[9px] text-amber-600">⚠️ Total: ${total}% (should be 100%)</span>`;
+                } else if (total === 100) {
+                    preview.innerHTML += `<br><span class="text-[9px] text-green-600">✓ 100%</span>`;
+                }
+            } else {
+                preview.innerHTML = `<span class="text-[10px] text-gray-400">Select materials above</span>`;
+                document.getElementById('fabric-custom').value = '';
+            }
+            
             persistData();
         }
         
@@ -2280,7 +2379,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v60'); // Clear session
+                    localStorage.removeItem('vl_session_v61'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
