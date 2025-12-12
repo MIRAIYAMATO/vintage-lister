@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v71 (Outerwear System)</title>
+    <title>Vintage Lister v72 (n8n Normalized)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -5869,7 +5869,7 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v71', JSON.stringify(session));
+                localStorage.setItem('vl_session_v72', JSON.stringify(session));
             } catch(e) {}
             updateProgress();
         }
@@ -6045,7 +6045,7 @@
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v71');
+                const saved = localStorage.getItem('vl_session_v72');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -8205,6 +8205,14 @@
                 fd.append('kpi_duration_sec', Math.round((kpiEnd - data.scanTime)/1000));
             }
 
+            // ═══════════════════════════════════════════════════════════════
+            // V72: NORMALIZED PAYLOAD FOR n8n
+            // This sends the entire payload in a normalized structure
+            // Backend can use either flat FormData fields OR this JSON
+            // ═══════════════════════════════════════════════════════════════
+            const normalizedPayload = prepareForN8N(data);
+            fd.append('normalized_json', JSON.stringify(normalizedPayload));
+
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
@@ -8222,7 +8230,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v71'); // Clear session
+                    localStorage.removeItem('vl_session_v72'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
@@ -8257,6 +8265,666 @@
                 persistData(); 
             });
         }
+
+        // ════════════════════════════════════════════════════════════════════════════
+        // V72: n8n PAYLOAD TRANSFORMER MODULE
+        // Transforms flat data structure to normalized format for n8n/Airtable/AI
+        // ════════════════════════════════════════════════════════════════════════════
+
+        /**
+         * Detect category from type fields
+         */
+        function detectCategory(data) {
+            if (data.buttonShirtType) return 'Button Shirt';
+            if (data.poloShirtType) return 'Polo Shirt';
+            if (data.tankStyle) return 'Tank Top';
+            if (data.jerseyType) return 'Jersey';
+            if (data.blouseType) return 'Blouse';
+            if (data.tunicType) return 'Tunic';
+            if (data.jeansType) return 'Jeans';
+            if (data.pantsType) return 'Pants';
+            if (data.shortsType) return 'Shorts';
+            if (data.sweatpantsType) return 'Sweatpants';
+            if (data.overallsType) return 'Overalls';
+            if (data.jumpsuitType) return 'Jumpsuit';
+            if (data.jacketType) return 'Jacket';
+            if (data.coatType) return 'Coat';
+            if (data.hoodieType) return 'Hoodie';
+            if (data.sweatshirtType) return 'Sweatshirt';
+            if (data.sweaterType) return 'Sweater';
+            if (data.cardiganType) return 'Cardigan';
+            if (data.vestType) return 'Vest';
+            if (data.isCutOff) return 'T-Shirt';
+            return 'T-Shirt';
+        }
+
+        /**
+         * Detect sub-type from type fields
+         */
+        function detectSubType(data) {
+            return data.buttonShirtType || data.poloShirtType || data.tankStyle ||
+                   data.jerseyType || data.blouseType || data.tunicType ||
+                   data.jeansType || data.pantsType || data.shortsType ||
+                   data.sweatpantsType || data.overallsType || data.jumpsuitType ||
+                   data.jacketType || data.coatType || data.hoodieType ||
+                   data.sweatshirtType || data.sweaterType || data.cardiganType ||
+                   data.vestType || (data.isCutOff ? 'Cut-Off' : 'Standard');
+        }
+
+        /**
+         * Extract category-specific attributes into normalized object
+         */
+        function extractAttributes(data) {
+            const attrs = {};
+            const category = detectCategory(data);
+            const subType = detectSubType(data);
+            
+            // Button Shirt
+            if (category === 'Button Shirt') {
+                if (subType === 'Western') {
+                    if (data.westernClosure) attrs.closure = data.westernClosure;
+                    if (data.westernYoke) attrs.yoke = data.westernYoke;
+                    if (data.westernPocket) attrs.pocket = data.westernPocket;
+                    if (data.westernEmbroidery) attrs.embroidery = data.westernEmbroidery;
+                    if (data.westernChainStitch) attrs.chainStitch = data.westernChainStitch;
+                } else if (subType === 'Dress') {
+                    if (data.dressNeckSize) attrs.neckSize = data.dressNeckSize;
+                    if (data.dressSleeveSize) attrs.sleeveSize = data.dressSleeveSize;
+                    if (data.dressCollar) attrs.collar = data.dressCollar;
+                    if (data.dressCuff) attrs.cuff = data.dressCuff;
+                    if (data.dressButtons) attrs.buttons = data.dressButtons;
+                    if (data.dressPleat) attrs.pleat = data.dressPleat;
+                } else if (subType === 'Camp') {
+                    if (data.campCollar) attrs.collar = data.campCollar;
+                    if (data.campFabric) attrs.fabricType = data.campFabric;
+                    if (data.campButtons) attrs.buttons = data.campButtons;
+                    if (data.campPrint) attrs.print = data.campPrint;
+                    if (data.campHem) attrs.hem = data.campHem;
+                } else if (subType === 'Flannel') {
+                    if (data.flannelWeight) attrs.weight = data.flannelWeight;
+                    if (data.flannelPlaidType) attrs.plaidType = data.flannelPlaidType;
+                    if (data.flannelPlaidStyle) attrs.plaidStyle = data.flannelPlaidStyle;
+                    if (data.flannelPatternMatch) attrs.patternMatch = data.flannelPatternMatch;
+                    if (data.flannelButtons) attrs.buttons = data.flannelButtons;
+                } else if (subType === 'Work') {
+                    if (data.workFabric) attrs.fabricType = data.workFabric;
+                    if (data.workPockets) attrs.pockets = data.workPockets;
+                    if (data.workConstruction) attrs.construction = data.workConstruction;
+                    if (data.workFeatures?.length) attrs.features = data.workFeatures;
+                    if (data.workColor) attrs.color = data.workColor;
+                } else if (subType === 'Casual') {
+                    if (data.casualCollar) attrs.collar = data.casualCollar;
+                    if (data.casualHem) attrs.hem = data.casualHem;
+                    if (data.casualPocket) attrs.pocket = data.casualPocket;
+                }
+            }
+            
+            // Polo Shirt
+            if (category === 'Polo Shirt') {
+                if (subType === 'Classic') {
+                    if (data.poloPlacket) attrs.placket = data.poloPlacket;
+                    if (data.poloCollar) attrs.collar = data.poloCollar;
+                    if (data.poloKnit) attrs.knit = data.poloKnit;
+                    if (data.poloButton) attrs.button = data.poloButton;
+                    if (data.poloLogo) attrs.logo = data.poloLogo;
+                    if (data.poloSleeveBand) attrs.sleeveBand = data.poloSleeveBand;
+                    if (data.poloHem) attrs.hem = data.poloHem;
+                    if (data.poloSilhouette) attrs.silhouette = data.poloSilhouette;
+                } else if (subType === 'Rugby') {
+                    if (data.rugbyCollar) attrs.collar = data.rugbyCollar;
+                    if (data.rugbyButton) attrs.button = data.rugbyButton;
+                    if (data.rugbyPlacket) attrs.placket = data.rugbyPlacket;
+                    if (data.rugbyStripe) attrs.stripe = data.rugbyStripe;
+                    if (data.rugbyCuff) attrs.cuff = data.rugbyCuff;
+                    if (data.rugbyTeamElements?.length) attrs.teamElements = data.rugbyTeamElements;
+                    if (data.rugbyHem) attrs.hem = data.rugbyHem;
+                    if (data.rugbySilhouette) attrs.silhouette = data.rugbySilhouette;
+                }
+            }
+            
+            // Tank Top
+            if (category === 'Tank Top') {
+                if (data.tankStrap) attrs.strap = data.tankStrap;
+                if (data.tankArmhole) attrs.armhole = data.tankArmhole;
+                if (data.tankBinding) attrs.binding = data.tankBinding;
+                if (data.tankConstruction) attrs.construction = data.tankConstruction;
+            }
+            
+            // T-Shirt Cut-Off
+            if (category === 'T-Shirt' && data.isCutOff) {
+                attrs.cutOff = true;
+                if (data.cutOffArmhole) attrs.armhole = data.cutOffArmhole;
+            }
+            
+            // Jersey
+            if (category === 'Jersey') {
+                if (data.jerseyNameNum) attrs.nameNum = data.jerseyNameNum;
+                if (subType === 'Baseball') {
+                    if (data.baseballStyle) attrs.style = data.baseballStyle;
+                    if (data.baseballFabric) attrs.fabricType = data.baseballFabric;
+                    if (data.baseballLettering) attrs.lettering = data.baseballLettering;
+                } else if (subType === 'Basketball') {
+                    if (data.basketballStyle) attrs.style = data.basketballStyle;
+                    if (data.basketballMesh) attrs.mesh = data.basketballMesh;
+                    if (data.basketballNumbers) attrs.numbers = data.basketballNumbers;
+                    if (data.basketballEra) attrs.era = data.basketballEra;
+                } else if (subType === 'Football') {
+                    if (data.footballStyle) attrs.style = data.footballStyle;
+                    if (data.footballMesh) attrs.mesh = data.footballMesh;
+                    if (data.footballNumbers) attrs.numbers = data.footballNumbers;
+                } else if (subType === 'Hockey') {
+                    if (data.hockeyStyle) attrs.style = data.hockeyStyle;
+                    if (data.hockeyFightStrap) attrs.fightStrap = data.hockeyFightStrap;
+                    if (data.hockeyCrest) attrs.crest = data.hockeyCrest;
+                    if (data.hockeyEra) attrs.era = data.hockeyEra;
+                } else if (subType === 'Soccer') {
+                    if (data.soccerStyle) attrs.style = data.soccerStyle;
+                    if (data.soccerSponsor) attrs.sponsor = data.soccerSponsor;
+                } else if (subType === 'Cycling') {
+                    if (data.cyclingStyle) attrs.style = data.cyclingStyle;
+                    if (data.cyclingPockets) attrs.pockets = data.cyclingPockets;
+                    if (data.cyclingFabric) attrs.fabricType = data.cyclingFabric;
+                } else if (subType === 'Racing') {
+                    if (data.racingType) attrs.type = data.racingType;
+                    if (data.racingPatches) attrs.patches = data.racingPatches;
+                } else if (subType === 'Athletic') {
+                    if (data.athleticStyle) attrs.style = data.athleticStyle;
+                    if (data.athleticReversible) attrs.reversible = data.athleticReversible;
+                    if (data.athleticTeam) attrs.team = data.athleticTeam;
+                }
+            }
+            
+            // Blouse
+            if (category === 'Blouse') {
+                if (data.blouseFabric) attrs.fabricType = data.blouseFabric;
+                if (data.blouseClosure) attrs.closure = data.blouseClosure;
+                if (data.blouseSleeve) attrs.sleeve = data.blouseSleeve;
+                if (subType === 'Pussy Bow') {
+                    if (data.pussyBowStyle) attrs.style = data.pussyBowStyle;
+                    if (data.pussyBowCollar) attrs.collar = data.pussyBowCollar;
+                } else if (subType === 'Victorian') {
+                    if (data.victorianNeck) attrs.neck = data.victorianNeck;
+                    if (data.victorianDetails?.length) attrs.details = data.victorianDetails;
+                } else if (subType === 'Peasant') {
+                    if (data.peasantNeck) attrs.neck = data.peasantNeck;
+                    if (data.peasantEmbellish) attrs.embellish = data.peasantEmbellish;
+                } else if (subType === 'Button-Front') {
+                    if (data.buttonFrontCollar) attrs.collar = data.buttonFrontCollar;
+                    if (data.buttonFrontCuff) attrs.cuff = data.buttonFrontCuff;
+                } else if (subType === 'Wrap') {
+                    if (data.wrapType) attrs.type = data.wrapType;
+                    if (data.wrapNeckline) attrs.neckline = data.wrapNeckline;
+                } else if (subType === 'Dressy') {
+                    if (data.dressyEmbellish) attrs.embellish = data.dressyEmbellish;
+                    if (data.dressySheer) attrs.sheer = data.dressySheer;
+                } else if (subType === 'Western') {
+                    if (data.westernBlouseClosure) attrs.closure = data.westernBlouseClosure;
+                    if (data.westernBlouseDetails?.length) attrs.details = data.westernBlouseDetails;
+                } else if (subType === 'Casual') {
+                    if (data.casualBlouseStyle) attrs.style = data.casualBlouseStyle;
+                    if (data.casualBlouseNeck) attrs.neck = data.casualBlouseNeck;
+                }
+            }
+            
+            // Tunic
+            if (category === 'Tunic') {
+                if (data.tunicOrigin) attrs.origin = data.tunicOrigin;
+                if (data.tunicFabric) attrs.fabricType = data.tunicFabric;
+                if (data.tunicLength) attrs.length = data.tunicLength;
+                if (subType === 'Dashiki') {
+                    if (data.dashikiNeck) attrs.neck = data.dashikiNeck;
+                    if (data.dashikiPrint) attrs.print = data.dashikiPrint;
+                } else if (subType === 'Indian') {
+                    if (data.indianEmbellish) attrs.embellish = data.indianEmbellish;
+                    if (data.indianNeck) attrs.neck = data.indianNeck;
+                } else if (subType === 'Moroccan') {
+                    if (data.moroccanEmbellish) attrs.embellish = data.moroccanEmbellish;
+                    if (data.moroccanClosure) attrs.closure = data.moroccanClosure;
+                } else if (subType === 'Peasant') {
+                    if (data.peasantTunicEmbellish) attrs.embellish = data.peasantTunicEmbellish;
+                    if (data.peasantTunicSleeve) attrs.sleeve = data.peasantTunicSleeve;
+                } else if (subType === 'Asian') {
+                    if (data.asianClosure) attrs.closure = data.asianClosure;
+                    if (data.asianDetails?.length) attrs.details = data.asianDetails;
+                } else if (subType === 'Beach') {
+                    if (data.beachFabric) attrs.fabricType = data.beachFabric;
+                    if (data.beachCoverage) attrs.coverage = data.beachCoverage;
+                } else if (subType === 'Modern') {
+                    if (data.modernStyle) attrs.style = data.modernStyle;
+                    if (data.modernNeck) attrs.neck = data.modernNeck;
+                }
+            }
+            
+            // Jeans
+            if (category === 'Jeans') {
+                if (data.jeansSelvedge) attrs.selvedge = data.jeansSelvedge;
+                if (data.jeansFly) attrs.fly = data.jeansFly;
+                if (data.jeansOrigin) attrs.origin = data.jeansOrigin;
+                if (data.jeansWeight) attrs.weight = data.jeansWeight;
+                if (subType === 'Levis') {
+                    if (data.levisModel) attrs.model = data.levisModel;
+                    if (data.levisTab) attrs.tab = data.levisTab;
+                } else if (subType === 'Lee') {
+                    if (data.leeStyle) attrs.style = data.leeStyle;
+                } else if (subType === 'Wrangler') {
+                    if (data.wranglerStyle) attrs.style = data.wranglerStyle;
+                } else if (subType === 'Designer80s') {
+                    if (data.designer80sBrand) attrs.brandName = data.designer80sBrand;
+                    if (data.designer80sStyle) attrs.style = data.designer80sStyle;
+                } else if (subType === 'Y2KPremium') {
+                    if (data.y2kPremiumBrand) attrs.brandName = data.y2kPremiumBrand;
+                    if (data.y2kPremiumRise) attrs.rise = data.y2kPremiumRise;
+                    if (data.y2kPremiumDetail) attrs.detail = data.y2kPremiumDetail;
+                } else if (subType === 'Y2KMall') {
+                    if (data.y2kMallBrand) attrs.brandName = data.y2kMallBrand;
+                    if (data.y2kMallLeg) attrs.leg = data.y2kMallLeg;
+                    if (data.y2kMallEmbellish) attrs.embellish = data.y2kMallEmbellish;
+                } else if (subType === 'Japanese') {
+                    if (data.japaneseBrand) attrs.brandName = data.japaneseBrand;
+                    if (data.japaneseWeight) attrs.weight = data.japaneseWeight;
+                    if (data.japaneseSelvedgeColor) attrs.selvedgeColor = data.japaneseSelvedgeColor;
+                } else if (subType === 'Workwear') {
+                    if (data.workwearBrand) attrs.brandName = data.workwearBrand;
+                    if (data.workwearConstruction) attrs.construction = data.workwearConstruction;
+                }
+            }
+            
+            // Pants
+            if (category === 'Pants') {
+                if (data.pantsRise) attrs.rise = data.pantsRise;
+                if (data.pantsLeg) attrs.leg = data.pantsLeg;
+                if (data.pantsOrigin) attrs.origin = data.pantsOrigin;
+                if (subType === 'Military') {
+                    if (data.militaryStyle) attrs.style = data.militaryStyle;
+                    if (data.militaryFabric) attrs.fabricType = data.militaryFabric;
+                } else if (subType === 'Work') {
+                    if (data.workPantsBrand) attrs.brandName = data.workPantsBrand;
+                } else if (subType === 'Track') {
+                    if (data.trackBrand) attrs.brandName = data.trackBrand;
+                    if (data.trackStyle) attrs.style = data.trackStyle;
+                    if (data.trackEra) attrs.era = data.trackEra;
+                } else if (subType === '80sFashion') {
+                    if (data.p80sStyle) attrs.style = data.p80sStyle;
+                    if (data.p80sFabric) attrs.fabricType = data.p80sFabric;
+                } else if (subType === 'Y2K') {
+                    if (data.y2kPantsStyle) attrs.style = data.y2kPantsStyle;
+                    if (data.y2kPantsBrand) attrs.brandName = data.y2kPantsBrand;
+                } else if (subType === 'Corduroy') {
+                    if (data.cordWale) attrs.wale = data.cordWale;
+                } else if (subType === 'Dress') {
+                    if (data.dressPantsStyle) attrs.style = data.dressPantsStyle;
+                    if (data.dressPantsDetails?.length) attrs.details = data.dressPantsDetails;
+                } else if (subType === 'Cargo') {
+                    if (data.cargoStyle) attrs.style = data.cargoStyle;
+                    if (data.cargoPockets) attrs.pockets = data.cargoPockets;
+                } else if (subType === 'Chino') {
+                    if (data.chinoStyle) attrs.style = data.chinoStyle;
+                    if (data.chinoEra) attrs.era = data.chinoEra;
+                }
+            }
+            
+            // Shorts
+            if (category === 'Shorts') {
+                if (data.shortsLength) attrs.length = data.shortsLength;
+                if (data.shortsOrigin) attrs.origin = data.shortsOrigin;
+                if (subType === 'Board') {
+                    if (data.boardBrand) attrs.brandName = data.boardBrand;
+                } else if (subType === 'Denim') {
+                    if (data.denimShortsType) attrs.type = data.denimShortsType;
+                    if (data.denimShortsBrand) attrs.brandName = data.denimShortsBrand;
+                } else if (subType === 'Athletic') {
+                    if (data.athleticShortsBrand) attrs.brandName = data.athleticShortsBrand;
+                    if (data.athleticShortsEra) attrs.era = data.athleticShortsEra;
+                } else if (subType === 'Y2K') {
+                    if (data.y2kShortsStyle) attrs.style = data.y2kShortsStyle;
+                }
+            }
+            
+            // Sweatpants
+            if (category === 'Sweatpants') {
+                if (data.sweatsCuff) attrs.cuff = data.sweatsCuff;
+                if (data.sweatsOrigin) attrs.origin = data.sweatsOrigin;
+                if (subType === 'Vintage') {
+                    if (data.vintageSweetsBrand) attrs.brandName = data.vintageSweetsBrand;
+                } else if (subType === 'Y2KVelour') {
+                    if (data.y2kVelourBrand) attrs.brandName = data.y2kVelourBrand;
+                    if (data.y2kVelourDetail) attrs.detail = data.y2kVelourDetail;
+                } else if (subType === 'Y2KLogo') {
+                    if (data.y2kLogoBrand) attrs.brandName = data.y2kLogoBrand;
+                }
+            }
+            
+            // Overalls
+            if (category === 'Overalls') {
+                if (data.overallsBrand) attrs.brandName = data.overallsBrand;
+                if (data.overallsFabric) attrs.fabricType = data.overallsFabric;
+            }
+            
+            // Jumpsuit
+            if (category === 'Jumpsuit') {
+                if (data.jumpsuitClosure) attrs.closure = data.jumpsuitClosure;
+                if (data.jumpsuitOrigin) attrs.origin = data.jumpsuitOrigin;
+                if (subType === 'Flight') {
+                    if (data.flightType) attrs.type = data.flightType;
+                    if (data.flightPatches) attrs.patches = data.flightPatches;
+                } else if (subType === 'Boiler') {
+                    if (data.boilerBrand) attrs.brandName = data.boilerBrand;
+                    if (data.boilerEra) attrs.era = data.boilerEra;
+                } else if (subType === 'Ski') {
+                    if (data.skiBrand) attrs.brandName = data.skiBrand;
+                    if (data.skiEra) attrs.era = data.skiEra;
+                } else if (subType === 'Disco') {
+                    if (data.discoStyle) attrs.style = data.discoStyle;
+                    if (data.discoFabric) attrs.fabricType = data.discoFabric;
+                }
+            }
+            
+            // Jacket
+            if (category === 'Jacket') {
+                if (data.jacketClosure) attrs.closure = data.jacketClosure;
+                if (data.jacketOrigin) attrs.origin = data.jacketOrigin;
+                if (subType === 'Denim') {
+                    if (data.denimJacketBrand) attrs.brandName = data.denimJacketBrand;
+                    if (data.denimJacketLevisType) attrs.levisType = data.denimJacketLevisType;
+                    if (data.denimJacketTab) attrs.tab = data.denimJacketTab;
+                    if (data.denimJacketLining) attrs.lining = data.denimJacketLining;
+                    if (data.denimJacketEra) attrs.era = data.denimJacketEra;
+                } else if (subType === 'Varsity') {
+                    if (data.varsityBody) attrs.body = data.varsityBody;
+                    if (data.varsitySleeve) attrs.sleeve = data.varsitySleeve;
+                    if (data.varsityPatches) attrs.patches = data.varsityPatches;
+                    if (data.varsityEra) attrs.era = data.varsityEra;
+                } else if (subType === 'Bomber') {
+                    if (data.bomberType) attrs.type = data.bomberType;
+                    if (data.bomberIssue) attrs.issue = data.bomberIssue;
+                    if (data.bomberPatches) attrs.patches = data.bomberPatches;
+                    if (data.bomberEra) attrs.era = data.bomberEra;
+                } else if (subType === 'Leather') {
+                    if (data.leatherStyle) attrs.style = data.leatherStyle;
+                    if (data.leatherBrand) attrs.brandName = data.leatherBrand;
+                    if (data.leatherFeatures?.length) attrs.features = data.leatherFeatures;
+                } else if (subType === 'Track') {
+                    if (data.trackJacketBrand) attrs.brandName = data.trackJacketBrand;
+                    if (data.trackJacketStyle) attrs.style = data.trackJacketStyle;
+                    if (data.trackJacketEra) attrs.era = data.trackJacketEra;
+                } else if (subType === 'Ski') {
+                    if (data.skiJacketBrand) attrs.brandName = data.skiJacketBrand;
+                    if (data.skiJacketFill) attrs.fill = data.skiJacketFill;
+                    if (data.skiJacketEra) attrs.era = data.skiJacketEra;
+                } else if (subType === 'Work') {
+                    if (data.workJacketBrand) attrs.brandName = data.workJacketBrand;
+                    if (data.workJacketStyle) attrs.style = data.workJacketStyle;
+                    if (data.workJacketLining) attrs.lining = data.workJacketLining;
+                } else if (subType === 'Racing') {
+                    if (data.racingJktType) attrs.type = data.racingJktType;
+                    if (data.racingJktPatches) attrs.patches = data.racingJktPatches;
+                    if (data.racingJktEra) attrs.era = data.racingJktEra;
+                } else if (subType === 'Starter') {
+                    if (data.starterBrand) attrs.brandName = data.starterBrand;
+                    if (data.starterLeague) attrs.league = data.starterLeague;
+                    if (data.starterStyle) attrs.style = data.starterStyle;
+                } else if (subType === 'Windbreaker') {
+                    if (data.windbreakerStyle) attrs.style = data.windbreakerStyle;
+                    if (data.windbreakerEra) attrs.era = data.windbreakerEra;
+                } else if (subType === 'Harrington') {
+                    if (data.harringtonBrand) attrs.brandName = data.harringtonBrand;
+                    if (data.harringtonOrigin) attrs.origin = data.harringtonOrigin;
+                } else if (subType === 'Band') {
+                    if (data.bandJacketStyle) attrs.style = data.bandJacketStyle;
+                    if (data.bandJacketEra) attrs.era = data.bandJacketEra;
+                }
+            }
+            
+            // Coat
+            if (category === 'Coat') {
+                if (data.coatLength) attrs.length = data.coatLength;
+                if (data.coatOrigin) attrs.origin = data.coatOrigin;
+                if (subType === 'Trench') {
+                    if (data.trenchBrand) attrs.brandName = data.trenchBrand;
+                    if (data.trenchFeatures?.length) attrs.features = data.trenchFeatures;
+                } else if (subType === 'Peacoat') {
+                    if (data.peacoatIssue) attrs.issue = data.peacoatIssue;
+                    if (data.peacoatEra) attrs.era = data.peacoatEra;
+                    if (data.peacoatButtons) attrs.buttons = data.peacoatButtons;
+                } else if (subType === 'Parka') {
+                    if (data.parkaType) attrs.type = data.parkaType;
+                    if (data.parkaIssue) attrs.issue = data.parkaIssue;
+                    if (data.parkaHood) attrs.hood = data.parkaHood;
+                }
+            }
+            
+            // Hoodie
+            if (category === 'Hoodie') {
+                if (data.hoodieClosure) attrs.closure = data.hoodieClosure;
+                if (data.hoodieOrigin) attrs.origin = data.hoodieOrigin;
+                if (subType === 'Vintage') {
+                    if (data.vintageHoodieBrand) attrs.brandName = data.vintageHoodieBrand;
+                    if (data.vintageHoodieStyle) attrs.style = data.vintageHoodieStyle;
+                } else if (subType === 'Y2K') {
+                    if (data.y2kHoodieBrand) attrs.brandName = data.y2kHoodieBrand;
+                    if (data.y2kHoodieStyle) attrs.style = data.y2kHoodieStyle;
+                }
+            }
+            
+            // Sweatshirt
+            if (category === 'Sweatshirt') {
+                if (data.sweatshirtNeck) attrs.neck = data.sweatshirtNeck;
+                if (data.sweatshirtOrigin) attrs.origin = data.sweatshirtOrigin;
+                if (subType === 'Vintage') {
+                    if (data.vintageSweatshirtBrand) attrs.brandName = data.vintageSweatshirtBrand;
+                    if (data.vintageSweatshirtStyle) attrs.style = data.vintageSweatshirtStyle;
+                    if (data.vintageSweatshirtEra) attrs.era = data.vintageSweatshirtEra;
+                }
+            }
+            
+            // Sweater
+            if (category === 'Sweater') {
+                if (data.sweaterMaterial) attrs.material = data.sweaterMaterial;
+                if (data.sweaterOrigin) attrs.origin = data.sweaterOrigin;
+                if (data.sweaterEra) attrs.era = data.sweaterEra;
+                if (subType === 'FairIsle') {
+                    if (data.fairIslePattern) attrs.pattern = data.fairIslePattern;
+                    if (data.fairIsleOriginStyle) attrs.originStyle = data.fairIsleOriginStyle;
+                } else if (subType === 'Cowichan') {
+                    if (data.cowichanStyle) attrs.style = data.cowichanStyle;
+                    if (data.cowichanHandknit) attrs.handknit = data.cowichanHandknit;
+                } else if (subType === 'Tennis') {
+                    if (data.tennisSweaterBrand) attrs.brandName = data.tennisSweaterBrand;
+                    if (data.tennisSweaterStyle) attrs.style = data.tennisSweaterStyle;
+                }
+            }
+            
+            // Cardigan
+            if (category === 'Cardigan') {
+                if (data.cardiganStyle) attrs.style = data.cardiganStyle;
+                if (data.cardiganMaterial) attrs.material = data.cardiganMaterial;
+                if (data.cardiganOrigin) attrs.origin = data.cardiganOrigin;
+                if (data.cardiganFeatures?.length) attrs.features = data.cardiganFeatures;
+            }
+            
+            // Vest
+            if (category === 'Vest') {
+                if (data.vestClosure) attrs.closure = data.vestClosure;
+                if (data.vestOrigin) attrs.origin = data.vestOrigin;
+                if (subType === 'Leather') {
+                    if (data.leatherVestStyle) attrs.style = data.leatherVestStyle;
+                    if (data.leatherVestPatches) attrs.patches = data.leatherVestPatches;
+                } else if (subType === 'Puffer') {
+                    if (data.pufferVestBrand) attrs.brandName = data.pufferVestBrand;
+                    if (data.pufferVestFill) attrs.fill = data.pufferVestFill;
+                }
+            }
+            
+            return attrs;
+        }
+
+        /**
+         * Extract era indicators from category-specific fields
+         */
+        function extractEraIndicators(data) {
+            const indicators = [];
+            if (data.jerseyEraIndicators?.length) indicators.push(...data.jerseyEraIndicators);
+            if (data.levisEraIndicators?.length) indicators.push(...data.levisEraIndicators);
+            if (data.leeEraIndicators?.length) indicators.push(...data.leeEraIndicators);
+            if (data.wranglerEraIndicators?.length) indicators.push(...data.wranglerEraIndicators);
+            if (data.militaryEraIndicators?.length) indicators.push(...data.militaryEraIndicators);
+            if (data.workPantsEraIndicators?.length) indicators.push(...data.workPantsEraIndicators);
+            if (data.cordEraIndicators?.length) indicators.push(...data.cordEraIndicators);
+            if (data.overallsEraIndicators?.length) indicators.push(...data.overallsEraIndicators);
+            return [...new Set(indicators)];
+        }
+
+        /**
+         * MAIN FUNCTION: Transform VintageLister data to n8n-friendly payload
+         * @param {Object} data - The VintageLister data object
+         * @returns {Object} - Normalized payload for n8n webhook
+         */
+        function prepareForN8N(data) {
+            const sku = document.getElementById('sku-input')?.value || data.sku || '';
+            const category = detectCategory(data);
+            const subType = detectSubType(data);
+            const attributes = extractAttributes(data);
+            const eraIndicators = extractEraIndicators(data);
+            
+            const fabricEl = document.getElementById('fabric-select');
+            const fabricCustomEl = document.getElementById('fabric-custom');
+            const fabricValue = fabricEl?.value === 'Custom Blend' && fabricCustomEl?.value 
+                ? fabricCustomEl.value : fabricEl?.value || data.fabric || '';
+            
+            const brandValue = data.brand === 'Custom' && data.brandCustom 
+                ? data.brandCustom : data.brand || '';
+            
+            return {
+                // Identity
+                sku: sku,
+                photographer: data.photographer || 'P02',
+                submitted_at: new Date().toISOString(),
+                
+                // Classification
+                mode: data.mode || 'tops',
+                super_category: data.superCategory || data.mode || 'tops',
+                category: category,
+                sub_type: subType,
+                gender: data.gender || '',
+                
+                // Condition & Tag
+                condition: document.getElementById('cond-select')?.value || data.condition || '',
+                has_defects: data.hasDefects || false,
+                tag_status: data.tagStatus || '',
+                tag_size: data.tagSize || '',
+                visual_tag_check: data.visualTagCheck || '',
+                
+                // Material
+                fabric: fabricValue,
+                thickness: data.thickness || '',
+                texture: data.texture || '',
+                construction: data.construction || 'Single',
+                
+                // Appearance
+                color_primary: data.colorPrimary || '',
+                color_secondary: data.colorSecondary || '',
+                pattern: data.pattern || 'Solid',
+                fade_level: data.fadeLevel || 'None',
+                wash: data.wash || '',
+                
+                // Graphics
+                print_type: data.printType || '',
+                graphic_category: data.graphicCategory || '',
+                print_condition: data.printCondition || '',
+                
+                // Provenance
+                brand: brandValue,
+                rn_number: data.rnNumber || '',
+                style_name: data.styleName || '',
+                copyright_year: data.copyrightYear || '',
+                origin: data.origin || 'usa',
+                made_in_country: data.madeInCountry || 'USA',
+                era: data.era || '',
+                
+                // Fit
+                sleeve_type: data.sleeveType || '',
+                sleeve_style: data.sleeveStyle || '',
+                collar_style: data.collarStyle || '',
+                stitch_type: data.stitchType || '',
+                fit_types: (data.fitTypes || []).join(', '),
+                bottoms_style: data.bottomsStyle || '',
+                
+                // Measurements
+                weight_lb: data.itemWeightLb || 0,
+                weight_oz: data.itemWeightOz || 0,
+                weight_total_oz: data.itemWeightTotalOz || 0,
+                
+                // Attributes (THE KEY NORMALIZED PART)
+                attributes_json: JSON.stringify(attributes),
+                attr_closure: attributes.closure || '',
+                attr_style: attributes.style || '',
+                attr_type: attributes.type || '',
+                attr_brand_name: attributes.brandName || '',
+                
+                // Era indicators
+                era_indicators_json: JSON.stringify(eraIndicators),
+                
+                // Photo counts
+                photo_count_main: data.mainPhotos?.length || 0,
+                photo_count_tag: data.tagPhotos?.length || 0,
+                photo_count_defect: data.defectPhotos?.length || 0,
+                photo_count_feature: data.featurePhotos?.length || 0,
+                photo_count_total: (data.mainPhotos?.length || 0) + 
+                                  (data.tagPhotos?.length || 0) + 
+                                  (data.defectPhotos?.length || 0) + 
+                                  (data.featurePhotos?.length || 0),
+                
+                // Photos metadata
+                photos_json: JSON.stringify({
+                    main: (data.mainPhotos || []).map((p, i) => ({ order: i + 1 })),
+                    tag: (data.tagPhotos || []).map((p, i) => ({ order: i + 1 })),
+                    defect: (data.defectPhotos || []).map((p, i) => ({
+                        order: i + 1,
+                        type: p.defectMeta?.type,
+                        zone: p.defectMeta?.zone,
+                        side: p.defectMeta?.side
+                    })),
+                    feature: (data.featurePhotos || []).map((p, i) => ({
+                        order: i + 1,
+                        name: p.featureName
+                    }))
+                }),
+                
+                // Defects detail
+                defects_json: JSON.stringify(
+                    (data.defectPhotos || []).map((p, i) => ({
+                        index: i + 1,
+                        type: p.defectMeta?.type || '',
+                        zone: p.defectMeta?.zone || '',
+                        side: p.defectMeta?.side || ''
+                    }))
+                ),
+                
+                // Features detail
+                features_list_json: JSON.stringify(
+                    (data.featurePhotos || []).map((p, i) => ({
+                        index: i + 1,
+                        feature: p.featureName || ''
+                    }))
+                ),
+                
+                // AI fields (for GPT/Gemini - populated by n8n)
+                ai_title: '',
+                ai_description: '',
+                ai_keywords_json: '[]',
+                ai_hashtags: '',
+                ai_suggested_price_low: null,
+                ai_suggested_price_high: null,
+                ai_model_used: '',
+                ai_generated_at: '',
+                
+                // Timestamps
+                scan_time: data.scanTime ? data.scanTime.toISOString() : '',
+                timestamps_json: JSON.stringify(data.timestamps || {})
+            };
+        }
+
+        console.log('VintageLister V72 loaded with n8n transformer. Use prepareForN8N(data) to test.');
     </script>
 </body>
 </html>
