@@ -113,28 +113,45 @@
         </div>
     </div>
 
-    <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v71</div>
-        <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
-            <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
-            <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
-            <button onclick="setSuperCategory('outer')" id="mode-outer" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">OUTER</button>
+    <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 border-b border-gray-200" style="padding-top: max(0.5rem, env(safe-area-inset-top));">
+        <div class="px-4 py-2 flex justify-between items-center">
+            <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v71</div>
+            <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
+                <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
+                <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
+                <button onclick="setSuperCategory('outer')" id="mode-outer" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">OUTER</button>
+            </div>
+            <button onclick="showPhotographerChange()" id="photographer-badge" class="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
         </div>
-        <button onclick="showPhotographerChange()" id="photographer-badge" class="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
+        <!-- Progress Bar -->
+        <div class="px-4 pb-2">
+            <div class="flex items-center gap-2">
+                <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span id="progress-text" class="text-[10px] font-bold text-gray-500 w-16 text-right">0 / 7</span>
+            </div>
+        </div>
     </div>
 
-    <div class="mt-20 px-4 space-y-6 max-w-lg mx-auto pt-4">
+    <div class="mt-24 px-4 space-y-6 max-w-lg mx-auto pt-4">
 
-        <div id="section-1" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+        <div id="section-1" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4 transition-all">
             <div>
-                <label class="text-xs font-bold text-blue-600 uppercase tracking-wide">1. Category (Master Switch)</label>
+                <label class="text-xs font-bold text-blue-600 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-category" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    1. Category (Master Switch)
+                </label>
                 <select id="cat-select" onchange="handleCategoryChange()" class="w-full mt-1 p-3 border-2 border-blue-100 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800"></select>
             </div>
             
             <div>
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">2. SKU Identification</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-sku" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    2. SKU Identification
+                </label>
                 <div class="flex gap-2 mt-1">
-                    <input type="number" id="sku-input" inputmode="numeric" onkeydown="if(event.key==='Enter'){this.blur();}" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
+                    <input type="number" id="sku-input" inputmode="numeric" onkeydown="if(event.key==='Enter'){this.blur();}" oninput="updateProgress()" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300" placeholder="Scan SKU">
                     <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 transition-transform shadow-lg">
                         <i data-lucide="scan-barcode" class="w-8 h-8"></i>
                     </button>
@@ -147,9 +164,12 @@
             </div>
         </div>
 
-        <div id="section-photos" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-photos" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
             <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">3. Main Photos (Money Shots)</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-photos" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    3. Main Photos (Money Shots)
+                </label>
                 <span id="count-main" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">0</span>
             </div>
             <button onclick="openCamera('main')" class="w-full h-20 border-2 border-dashed border-blue-400 bg-blue-50 rounded-xl flex items-center justify-center gap-2 text-blue-600 font-bold active:bg-blue-100 transition-all shadow-sm">
@@ -159,9 +179,12 @@
             <div id="thumbs-main" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-24 empty:hidden snap-x"></div>
         </div>
 
-        <div id="section-features" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-features" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
             <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-bold text-indigo-500 uppercase tracking-wide">4. Key Features & Auth</label>
+                <label class="text-xs font-bold text-indigo-500 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-features" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    4. Key Features & Auth
+                </label>
                 <span id="feature-hint" class="text-[10px] text-gray-400 font-medium">Select Category First</span>
             </div>
             
@@ -2707,7 +2730,7 @@
                 </div>
                 
                 <div class="mb-3">
-                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Type (Levi's)</label>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Style/Type</label>
                     <div class="grid grid-cols-4 gap-1">
                         <button onclick="setDenimJacketLevisType('Type I', this)" class="denim-jkt-type-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[8px]">Type I⭐⭐</button>
                         <button onclick="setDenimJacketLevisType('Type II', this)" class="denim-jkt-type-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[8px]">Type II⭐⭐</button>
@@ -2717,12 +2740,22 @@
                 </div>
                 
                 <div class="mb-3">
-                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Tab (Levi's)</label>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Tab</label>
                     <div class="grid grid-cols-4 gap-1">
                         <button onclick="setDenimJacketTab('Big E', this)" class="denim-jkt-tab-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[8px]">Big E⭐⭐</button>
                         <button onclick="setDenimJacketTab('small e', this)" class="denim-jkt-tab-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[8px]">small e⭐</button>
                         <button onclick="setDenimJacketTab('Orange', this)" class="denim-jkt-tab-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">Orange</button>
-                        <button onclick="setDenimJacketTab('None', this)" class="denim-jkt-tab-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">None</button>
+                        <button onclick="setDenimJacketTab('None', this)" class="denim-jkt-tab-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">N/A</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Era</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setDenimJacketEra('Pre-1971', this)" class="denim-jkt-era-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[8px]">Pre-71⭐⭐</button>
+                        <button onclick="setDenimJacketEra('70s', this)" class="denim-jkt-era-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[8px]">70s⭐</button>
+                        <button onclick="setDenimJacketEra('80s', this)" class="denim-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">80s</button>
+                        <button onclick="setDenimJacketEra('90s+', this)" class="denim-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">90s+</button>
                     </div>
                 </div>
                 
@@ -2961,18 +2994,27 @@
                 <div class="mb-3">
                     <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Type</label>
                     <div class="grid grid-cols-3 gap-1">
-                        <button onclick="setRacingType('NASCAR', this)" class="racing-type-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">NASCAR⭐</button>
-                        <button onclick="setRacingType('F1', this)" class="racing-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">F1</button>
-                        <button onclick="setRacingType('Motocross', this)" class="racing-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Motocross</button>
+                        <button onclick="setRacingJktType('NASCAR', this)" class="racing-jkt-type-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">NASCAR⭐</button>
+                        <button onclick="setRacingJktType('F1', this)" class="racing-jkt-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">F1</button>
+                        <button onclick="setRacingJktType('Motocross', this)" class="racing-jkt-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Motocross</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Sponsor Patches</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setRacingJktPatches('Heavy', this)" class="racing-jkt-patch-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Heavy⭐</button>
+                        <button onclick="setRacingJktPatches('Light', this)" class="racing-jkt-patch-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Light</button>
+                        <button onclick="setRacingJktPatches('None', this)" class="racing-jkt-patch-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">None</button>
                     </div>
                 </div>
                 
                 <div>
                     <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Era</label>
                     <div class="grid grid-cols-3 gap-1">
-                        <button onclick="setRacingEra('Vintage', this)" class="racing-era-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Vintage⭐</button>
-                        <button onclick="setRacingEra('90s', this)" class="racing-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">90s</button>
-                        <button onclick="setRacingEra('Modern', this)" class="racing-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Modern</button>
+                        <button onclick="setRacingJktEra('Vintage', this)" class="racing-jkt-era-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Vintage⭐</button>
+                        <button onclick="setRacingJktEra('90s', this)" class="racing-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">90s</button>
+                        <button onclick="setRacingJktEra('Modern', this)" class="racing-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Modern</button>
                     </div>
                 </div>
             </div>
@@ -3419,6 +3461,158 @@
                 </div>
             </div>
             
+            <!-- ========== SWEATER SUB-TYPE SYSTEM ========== -->
+            <div id="sweater-type-section" class="hidden mb-4">
+                <label class="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-2 block">🧶 Sweater Type</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="setSweaterType('Crewneck', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">🧶</span>
+                        <span class="text-[8px]">Crewneck</span>
+                    </button>
+                    <button onclick="setSweaterType('V-Neck', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">👔</span>
+                        <span class="text-[8px]">V-Neck</span>
+                    </button>
+                    <button onclick="setSweaterType('Turtleneck', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">🧣</span>
+                        <span class="text-[8px]">Turtleneck</span>
+                    </button>
+                    <button onclick="setSweaterType('Cable', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">🪢</span>
+                        <span class="text-[8px]">Cable Knit</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mt-2">
+                    <button onclick="setSweaterType('FairIsle', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">❄️</span>
+                        <span class="text-[8px]">Fair Isle</span>
+                    </button>
+                    <button onclick="setSweaterType('Ski', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">⛷️</span>
+                        <span class="text-[8px]">Ski/Novelty</span>
+                    </button>
+                    <button onclick="setSweaterType('Tennis', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">🎾</span>
+                        <span class="text-[8px]">Tennis/Cricket</span>
+                    </button>
+                    <button onclick="setSweaterType('Cowichan', this)" class="btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center">
+                        <span class="text-lg">🏔️</span>
+                        <span class="text-[8px]">Cowichan</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- SWEATER UNIVERSAL FIELDS -->
+            <div id="sweater-universal-fields" class="hidden mb-4 p-3 bg-purple-50 rounded-xl border border-purple-200">
+                <label class="text-[10px] font-bold text-purple-700 uppercase tracking-widest mb-2 block">🧶 Sweater Details</label>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Material</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setSweaterMaterial('Wool', this)" class="sweater-mat-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Wool⭐</button>
+                        <button onclick="setSweaterMaterial('Cashmere', this)" class="sweater-mat-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">Cashmere⭐⭐</button>
+                        <button onclick="setSweaterMaterial('Mohair', this)" class="sweater-mat-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Mohair⭐</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 mt-1">
+                        <button onclick="setSweaterMaterial('Cotton', this)" class="sweater-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Cotton</button>
+                        <button onclick="setSweaterMaterial('Acrylic', this)" class="sweater-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Acrylic</button>
+                        <button onclick="setSweaterMaterial('Blend', this)" class="sweater-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Blend</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Made In</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setSweaterOrigin('Scotland', this)" class="sweater-origin-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">Scotland⭐⭐</button>
+                        <button onclick="setSweaterOrigin('Ireland', this)" class="sweater-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Ireland⭐</button>
+                        <button onclick="setSweaterOrigin('UK', this)" class="sweater-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">UK⭐</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 mt-1">
+                        <button onclick="setSweaterOrigin('Italy', this)" class="sweater-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Italy⭐</button>
+                        <button onclick="setSweaterOrigin('USA', this)" class="sweater-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">USA⭐</button>
+                        <button onclick="setSweaterOrigin('Import', this)" class="sweater-origin-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Import</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Era</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setSweaterEra('50s-60s', this)" class="sweater-era-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">50s-60s⭐⭐</button>
+                        <button onclick="setSweaterEra('70s', this)" class="sweater-era-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">70s⭐</button>
+                        <button onclick="setSweaterEra('80s-90s', this)" class="sweater-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">80s-90s</button>
+                        <button onclick="setSweaterEra('Modern', this)" class="sweater-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Modern</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- FAIR ISLE/NORDIC SWEATER DETAILS -->
+            <div id="fairisle-sweater-details" class="hidden mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
+                <label class="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-2 block">❄️ Fair Isle/Nordic Details</label>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Pattern</label>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button onclick="setFairIslePattern('Traditional', this)" class="fairisle-pattern-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Traditional⭐</button>
+                        <button onclick="setFairIslePattern('Modern', this)" class="fairisle-pattern-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Modern</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Origin Style</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setFairIsleOriginStyle('Scottish', this)" class="fairisle-style-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">Scottish⭐⭐</button>
+                        <button onclick="setFairIsleOriginStyle('Norwegian', this)" class="fairisle-style-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Norwegian⭐</button>
+                        <button onclick="setFairIsleOriginStyle('Icelandic', this)" class="fairisle-style-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Icelandic⭐</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- COWICHAN/CHUNKY SWEATER DETAILS -->
+            <div id="cowichan-sweater-details" class="hidden mb-4 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">🏔️ Cowichan/Chunky Details</label>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Style</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setCowichanStyle('Cowichan', this)" class="cowichan-style-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">Cowichan⭐⭐</button>
+                        <button onclick="setCowichanStyle('Shawl Collar', this)" class="cowichan-style-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Shawl Collar⭐</button>
+                        <button onclick="setCowichanStyle('Chunky', this)" class="cowichan-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Chunky</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Construction</label>
+                    <div class="grid grid-cols-2 gap-1">
+                        <button onclick="setCowichanHandknit('Yes', this)" class="cowichan-knit-btn py-2 border-2 border-red-500 bg-red-100 rounded-lg font-bold text-red-700 text-[9px]">Handknit⭐⭐</button>
+                        <button onclick="setCowichanHandknit('No', this)" class="cowichan-knit-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Machine</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- TENNIS/CRICKET SWEATER DETAILS -->
+            <div id="tennis-sweater-details" class="hidden mb-4 p-3 bg-green-50 rounded-xl border border-green-200">
+                <label class="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2 block">🎾 Tennis/Cricket Details</label>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Brand</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setTennisSweaterBrand('Lacoste', this)" class="tennis-brand-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[8px]">Lacoste⭐</button>
+                        <button onclick="setTennisSweaterBrand('Fred Perry', this)" class="tennis-brand-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[8px]">Fred Perry⭐</button>
+                        <button onclick="setTennisSweaterBrand('Ralph Lauren', this)" class="tennis-brand-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">Ralph Lauren</button>
+                        <button onclick="setTennisSweaterBrand('Other', this)" class="tennis-brand-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white">Other</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Style</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button onclick="setTennisSweaterStyle('Cable V-Neck', this)" class="tennis-style-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Cable V-Neck⭐</button>
+                        <button onclick="setTennisSweaterStyle('Cricket', this)" class="tennis-style-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Cricket⭐</button>
+                        <button onclick="setTennisSweaterStyle('Plain', this)" class="tennis-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Plain</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- ========== CARDIGAN SUB-TYPE SYSTEM ========== -->
             <div id="cardigan-type-section" class="hidden mb-4">
                 <label class="text-[10px] font-bold text-teal-600 uppercase tracking-widest mb-2 block">🧶 Cardigan Type</label>
@@ -3466,6 +3660,16 @@
                         <button onclick="setCardiganMaterial('Mohair', this)" class="cardigan-mat-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Mohair⭐</button>
                         <button onclick="setCardiganMaterial('Acrylic', this)" class="cardigan-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Acrylic</button>
                         <button onclick="setCardiganMaterial('Cotton', this)" class="cardigan-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Cotton</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="text-[9px] font-bold text-gray-500 uppercase mb-1 block">Made In</label>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button onclick="setCardiganOrigin('UK', this)" class="cardigan-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">UK⭐</button>
+                        <button onclick="setCardiganOrigin('USA', this)" class="cardigan-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">USA⭐</button>
+                        <button onclick="setCardiganOrigin('Italy', this)" class="cardigan-origin-btn py-2 border-2 border-amber-400 bg-amber-50 rounded-lg font-bold text-amber-700 text-[9px]">Italy⭐</button>
+                        <button onclick="setCardiganOrigin('Other', this)" class="cardigan-origin-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white">Other</button>
                     </div>
                 </div>
                 
@@ -4009,8 +4213,11 @@
             <div id="thumbs-feature" class="flex gap-2 mt-4 overflow-x-auto pb-2 h-20 empty:hidden snap-x"></div>
         </div>
 
-        <div id="section-tag" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">5. Tag Info & Origin</label>
+        <div id="section-tag" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                <span id="check-tag" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                5. Tag Info & Origin
+            </label>
             <div class="grid grid-cols-3 gap-2 mt-3 mb-3">
                 <button onclick="setTagState('has')" id="btn-tag-has" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Has Tag</button>
                 <button onclick="setTagState('unreadable')" id="btn-tag-unreadable" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">Unreadable</button>
@@ -4366,7 +4573,10 @@
             </div>
 
             <div id="section-gender">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">8. Gender / Department</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-gender" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    8. Gender / Department
+                </label>
                 <div class="grid grid-cols-3 gap-2 mt-2">
                     <div class="space-y-2">
                         <button onclick="setGender('Adult Unisex', this)" class="g-btn w-full py-3 rounded-xl font-bold text-xs btn-default">Adult Unisex</button>
@@ -4384,15 +4594,21 @@
             </div>
 
             <div id="section-condition">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">9. Condition</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-condition" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    9. Condition
+                </label>
                 <select id="cond-select" onchange="handleConditionChange()" class="w-full mt-2 p-2 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500">
                     <option>Pre-owned excellent</option><option>Pre-owned good</option><option>Pre-owned fair</option><option>Poor – major flaws</option><option>New with tag</option><option>New without tag</option>
                 </select>
             </div>
         </div>
 
-        <div id="section-defects" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 block">10. Defects & Issues</label>
+        <div id="section-defects" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
+            <label class="text-xs font-bold text-red-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <span id="check-defects" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                10. Defects & Issues
+            </label>
             <div class="flex gap-3 mb-4">
                 <button onclick="setDefectState(false)" id="btn-no-defects" class="flex-1 py-4 border border-green-200 bg-green-50 text-green-700 rounded-xl font-bold transition-all shadow-inner">No Defects</button>
                 <button onclick="setDefectState(true)" id="btn-has-defects" class="flex-1 py-4 border border-gray-200 bg-white text-gray-400 rounded-xl font-bold transition-all">Has Defects</button>
@@ -4415,8 +4631,11 @@
             </div>
         </div>
 
-        <div id="section-measure" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">11. Measurements</label>
+        <div id="section-measure" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+                <span id="check-measure" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                11. Measurements
+            </label>
             <div id="measure-hint" class="text-xs font-mono text-gray-600 mb-3 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed"></div>
             <button id="rec-measure" onclick="recordAudio('measure')" class="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50 transition-colors">
                 <i data-lucide="ruler" class="w-8 h-8 text-gray-300"></i>
@@ -4489,9 +4708,12 @@
             </div>
         </div>
 
-        <div id="section-weight" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div id="section-weight" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 transition-all">
             <div class="flex justify-between items-center mb-3">
-                <label class="text-xs font-bold text-purple-600 uppercase tracking-wide">12. Estimated Weight</label>
+                <label class="text-xs font-bold text-purple-600 uppercase tracking-wide flex items-center gap-2">
+                    <span id="check-weight" class="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-white text-[10px] transition-all">○</span>
+                    12. Estimated Weight
+                </label>
             </div>
             
             <!-- Weight hint based on category -->
@@ -4536,7 +4758,11 @@
         </div>
 
         <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-30" style="padding-bottom: max(1rem, env(safe-area-inset-bottom));">
-            <button onclick="submitData()" id="btn-submit" class="w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">PROCESS LISTING</button>
+            <button onclick="submitData()" id="btn-submit" class="w-full bg-gray-400 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all">
+                <span id="submit-icon">⚠️</span>
+                <span id="submit-text">COMPLETE REQUIRED FIELDS</span>
+                <span id="submit-count" class="bg-white/20 px-2 py-0.5 rounded text-sm">7</span>
+            </button>
         </div>
 
     </div>
@@ -4661,6 +4887,9 @@
             
             // Initialize defaults
             initializeDefaults();
+            
+            // Initialize progress display
+            setTimeout(updateProgress, 100);
         });
         
         function initializeDefaults() {
@@ -4679,6 +4908,8 @@
             if(data.superCategory !== 'bottoms') {
                 setPrintType('Screen', document.getElementById('btn-print-Screen'));
             }
+            // Update progress after defaults set
+            updateProgress();
         }
         
         function checkPin() { 
@@ -4836,14 +5067,14 @@
             discoStyle: '', discoFabric: '',
             // Jacket fields
             jacketType: '', jacketClosure: '', jacketOrigin: '',
-            denimJacketBrand: '', denimJacketLevisType: '', denimJacketTab: '', denimJacketLining: '',
+            denimJacketBrand: '', denimJacketLevisType: '', denimJacketTab: '', denimJacketLining: '', denimJacketEra: '',
             varsityBody: '', varsitySleeve: '', varsityPatches: '', varsityEra: '',
             bomberType: '', bomberIssue: '', bomberPatches: '', bomberEra: '',
             leatherStyle: '', leatherBrand: '', leatherFeatures: [],
             trackJacketBrand: '', trackJacketStyle: '', trackJacketEra: '',
             skiJacketBrand: '', skiJacketFill: '', skiJacketEra: '',
             workJacketBrand: '', workJacketStyle: '', workJacketLining: '',
-            racingType: '', racingEra: '',
+            racingJktType: '', racingJktPatches: '', racingJktEra: '',
             starterBrand: '', starterLeague: '', starterStyle: '',
             windbreakerStyle: '', windbreakerEra: '',
             harringtonBrand: '', harringtonOrigin: '',
@@ -4861,7 +5092,12 @@
             sweatshirtType: '', sweatshirtNeck: '', sweatshirtOrigin: '',
             vintageSweatshirtBrand: '', vintageSweatshirtStyle: '', vintageSweatshirtEra: '',
             // Cardigan fields
-            cardiganType: '', cardiganStyle: '', cardiganMaterial: '', cardiganFeatures: [],
+            // Sweater fields
+            sweaterType: '', sweaterMaterial: '', sweaterOrigin: '', sweaterEra: '',
+            fairIslePattern: '', fairIsleOriginStyle: '',
+            cowichanStyle: '', cowichanHandknit: '',
+            tennisSweaterBrand: '', tennisSweaterStyle: '',
+            cardiganType: '', cardiganStyle: '', cardiganMaterial: '', cardiganOrigin: '', cardiganFeatures: [],
             // Vest fields
             vestType: '', vestClosure: '', vestOrigin: '',
             leatherVestStyle: '', leatherVestPatches: '',
@@ -4872,7 +5108,7 @@
         const superCategories = {
             'tops': ["T-Shirt", "Button Shirt", "Polo Shirt", "Tank Top", "Jersey", "Blouse", "Tunic", "Other Top"],
             'bottoms': ["Jeans", "Pants", "Shorts", "Sweatpants", "Overalls", "Jumpsuit"],
-            'outer': ["Jacket", "Coat", "Hoodie", "Sweatshirt", "Cardigan", "Vest"]
+            'outer': ["Jacket", "Coat", "Hoodie", "Sweatshirt", "Sweater", "Cardigan", "Vest"]
         };
 
         const categoryMeasures = {
@@ -4974,6 +5210,7 @@
             "Coat": ["Button Style", "Lining Material", "Belt/Buckle", "Epaulettes", "Storm Flap", "Hood Type", "Pockets", "Label"],
             "Hoodie": ["Drawstrings/Aglets", "Hood Construction", "Cuff Ribbing", "Zipper Pull", "Kangaroo Pocket", "V-Stitch", "Reversible"],
             "Sweatshirt": ["Cuff Ribbing", "V-Stitch Neck", "Side Panels", "Fleece Type", "Raglan Seam", "Print/Graphic", "Tag Style"],
+            "Sweater": ["Knit Pattern", "Ribbed Trim", "Collar Style", "Shoulder Seam", "Label/Tag", "Hand/Machine Knit", "Moth Damage"],
             "Cardigan": ["Button Style", "Pocket Style", "Elbow Patches", "Ribbed Trim", "Label/Tag", "Collar Type"],
             "Vest": ["Zipper Pull", "Snap Style", "Lining", "Pockets", "Back Panel", "Label/Tag"],
             "T-Shirt": ["Copyright Year", "Hem Stitch", "Sleeve Stitch", "Reversible"],
@@ -5087,6 +5324,7 @@
             "Coat": { hint: "Peacoat: 2-4lb • Trench: 1.5-3lb • Parka: 2-5lb" },
             "Hoodie": { hint: "Light: 10-16oz • Mid: 16-24oz • Heavy: 24-36oz" },
             "Sweatshirt": { hint: "Light: 8-14oz • Mid: 14-22oz • Heavy (Reverse Weave): 22-32oz" },
+            "Sweater": { hint: "Light Cotton: 8-14oz • Wool: 14-24oz • Cowichan/Chunky: 24-48oz" },
             "Cardigan": { hint: "Light: 8-14oz • Heavy Wool: 16-28oz" },
             "Vest": { hint: "Puffer: 8-16oz • Leather: 24-40oz • Sweater: 8-14oz" },
             "Jeans": { hint: "Light: 14-20oz • Mid: 18-30oz • Heavy: 24-40oz" },
@@ -5119,6 +5357,94 @@
                 };
                 localStorage.setItem('vl_session_v71', JSON.stringify(session));
             } catch(e) {}
+            updateProgress();
+        }
+        
+        // ========== PROGRESS TRACKING SYSTEM ==========
+        function updateProgress() {
+            const checks = {
+                category: !!document.getElementById('cat-select').value,
+                sku: !!document.getElementById('sku-input').value,
+                photos: data.mainPhotos.length > 0,
+                features: !!document.getElementById('fabric-select').value && !!data.colorPrimary,
+                tag: !!data.tagStatus,
+                gender: !!data.gender,
+                weight: data.itemWeightTotalOz > 0
+            };
+            
+            // Update individual checkmarks
+            const checkElements = {
+                'check-category': checks.category,
+                'check-sku': checks.sku,
+                'check-photos': checks.photos,
+                'check-features': checks.features,
+                'check-tag': checks.tag,
+                'check-gender': checks.gender,
+                'check-condition': true, // Always has default
+                'check-defects': data.hasDefects !== null,
+                'check-weight': checks.weight
+            };
+            
+            for (const [id, complete] of Object.entries(checkElements)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (complete) {
+                        el.innerHTML = '✓';
+                        el.className = 'w-5 h-5 rounded-full bg-green-500 border-2 border-green-500 flex items-center justify-center text-white text-[10px] font-bold transition-all';
+                    } else {
+                        el.innerHTML = '○';
+                        el.className = 'w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-300 text-[10px] transition-all';
+                    }
+                }
+            }
+            
+            // Measurements is optional - show blue if recorded
+            const measureEl = document.getElementById('check-measure');
+            if (measureEl) {
+                if (data.audioMeasure) {
+                    measureEl.innerHTML = '✓';
+                    measureEl.className = 'w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-500 flex items-center justify-center text-white text-[10px] font-bold transition-all';
+                } else {
+                    measureEl.innerHTML = '○';
+                    measureEl.className = 'w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-300 text-[10px] transition-all';
+                }
+            }
+            
+            // Calculate required completions (7 required fields)
+            const requiredChecks = [checks.category, checks.sku, checks.photos, checks.features, checks.tag, checks.gender, checks.weight];
+            const completed = requiredChecks.filter(Boolean).length;
+            const total = requiredChecks.length;
+            const percent = Math.round((completed / total) * 100);
+            
+            // Update progress bar
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            if (progressBar) progressBar.style.width = percent + '%';
+            if (progressText) progressText.textContent = completed + ' / ' + total;
+            
+            // Update submit button
+            const btnSubmit = document.getElementById('btn-submit');
+            const submitIcon = document.getElementById('submit-icon');
+            const submitText = document.getElementById('submit-text');
+            const submitCount = document.getElementById('submit-count');
+            
+            const missing = total - completed;
+            
+            if (missing === 0) {
+                // Ready to submit!
+                btnSubmit.className = 'w-full bg-green-600 active:bg-green-700 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all animate-pulse';
+                submitIcon.textContent = '✓';
+                submitText.textContent = 'PROCESS LISTING';
+                submitCount.textContent = '';
+                submitCount.className = 'hidden';
+            } else {
+                // Still missing items
+                btnSubmit.className = 'w-full bg-gray-400 text-white font-bold text-xl py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all';
+                submitIcon.textContent = '⚠️';
+                submitText.textContent = missing === 1 ? '1 FIELD MISSING' : missing + ' FIELDS MISSING';
+                submitCount.textContent = '';
+                submitCount.className = 'hidden';
+            }
         }
 
         function restoreSession() {
@@ -5238,6 +5564,7 @@
             const coatTypeSection = document.getElementById('coat-type-section');
             const hoodieTypeSection = document.getElementById('hoodie-type-section');
             const sweatshirtTypeSection = document.getElementById('sweatshirt-type-section');
+            const sweaterTypeSection = document.getElementById('sweater-type-section');
             const cardiganTypeSection = document.getElementById('cardigan-type-section');
             const vestTypeSection = document.getElementById('vest-type-section');
             const collarSection = document.getElementById('collar-style-section');
@@ -5259,6 +5586,7 @@
             hideAllCoatDetails();
             hideAllHoodieDetails();
             hideAllSweatshirtDetails();
+            hideAllSweaterDetails();
             hideAllCardiganDetails();
             hideAllVestDetails();
             // Hide all type sections by default
@@ -5276,6 +5604,7 @@
             if (coatTypeSection) coatTypeSection.classList.add('hidden');
             if (hoodieTypeSection) hoodieTypeSection.classList.add('hidden');
             if (sweatshirtTypeSection) sweatshirtTypeSection.classList.add('hidden');
+            if (sweaterTypeSection) sweaterTypeSection.classList.add('hidden');
             if (cardiganTypeSection) cardiganTypeSection.classList.add('hidden');
             if (vestTypeSection) vestTypeSection.classList.add('hidden');
             // Reset tank data
@@ -5368,14 +5697,14 @@
             // Reset jacket data
             if (category !== 'Jacket') {
                 data.jacketType = ''; data.jacketClosure = ''; data.jacketOrigin = '';
-                data.denimJacketBrand = ''; data.denimJacketLevisType = ''; data.denimJacketTab = ''; data.denimJacketLining = '';
+                data.denimJacketBrand = ''; data.denimJacketLevisType = ''; data.denimJacketTab = ''; data.denimJacketLining = ''; data.denimJacketEra = '';
                 data.varsityBody = ''; data.varsitySleeve = ''; data.varsityPatches = ''; data.varsityEra = '';
                 data.bomberType = ''; data.bomberIssue = ''; data.bomberPatches = ''; data.bomberEra = '';
                 data.leatherStyle = ''; data.leatherBrand = ''; data.leatherFeatures = [];
                 data.trackJacketBrand = ''; data.trackJacketStyle = ''; data.trackJacketEra = '';
                 data.skiJacketBrand = ''; data.skiJacketFill = ''; data.skiJacketEra = '';
                 data.workJacketBrand = ''; data.workJacketStyle = ''; data.workJacketLining = '';
-                data.racingType = ''; data.racingEra = '';
+                data.racingJktType = ''; data.racingJktPatches = ''; data.racingJktEra = '';
                 data.starterBrand = ''; data.starterLeague = ''; data.starterStyle = '';
                 data.windbreakerStyle = ''; data.windbreakerEra = '';
                 data.harringtonBrand = ''; data.harringtonOrigin = '';
@@ -5399,9 +5728,16 @@
                 data.sweatshirtType = ''; data.sweatshirtNeck = ''; data.sweatshirtOrigin = '';
                 data.vintageSweatshirtBrand = ''; data.vintageSweatshirtStyle = ''; data.vintageSweatshirtEra = '';
             }
+            // Reset sweater data
+            if (category !== 'Sweater') {
+                data.sweaterType = ''; data.sweaterMaterial = ''; data.sweaterOrigin = ''; data.sweaterEra = '';
+                data.fairIslePattern = ''; data.fairIsleOriginStyle = '';
+                data.cowichanStyle = ''; data.cowichanHandknit = '';
+                data.tennisSweaterBrand = ''; data.tennisSweaterStyle = '';
+            }
             // Reset cardigan data
             if (category !== 'Cardigan') {
-                data.cardiganType = ''; data.cardiganStyle = ''; data.cardiganMaterial = ''; data.cardiganFeatures = [];
+                data.cardiganType = ''; data.cardiganStyle = ''; data.cardiganMaterial = ''; data.cardiganOrigin = ''; data.cardiganFeatures = [];
             }
             // Reset vest data
             if (category !== 'Vest') {
@@ -5516,6 +5852,13 @@
                 data.buttonShirtType = ''; data.poloShirtType = '';
             } else if (category === 'Sweatshirt') {
                 if (sweatshirtTypeSection) sweatshirtTypeSection.classList.remove('hidden');
+                btnShirtSection.classList.add('hidden');
+                if (poloShirtSection) poloShirtSection.classList.add('hidden');
+                collarSection.classList.add('hidden');
+                stitchSection.classList.add('hidden');
+                data.buttonShirtType = ''; data.poloShirtType = '';
+            } else if (category === 'Sweater') {
+                if (sweaterTypeSection) sweaterTypeSection.classList.remove('hidden');
                 btnShirtSection.classList.add('hidden');
                 if (poloShirtSection) poloShirtSection.classList.add('hidden');
                 collarSection.classList.add('hidden');
@@ -6270,6 +6613,7 @@
         function setDenimJacketLevisType(v, b) { data.denimJacketLevisType = v; document.querySelectorAll('.denim-jkt-type-btn').forEach(x => x.className = "denim-jkt-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "denim-jkt-type-btn py-2 border-2 border-indigo-500 rounded-lg font-bold text-indigo-700 text-[8px] bg-indigo-50"; persistData(); }
         function setDenimJacketTab(v, b) { data.denimJacketTab = v; document.querySelectorAll('.denim-jkt-tab-btn').forEach(x => x.className = "denim-jkt-tab-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "denim-jkt-tab-btn py-2 border-2 border-indigo-500 rounded-lg font-bold text-indigo-700 text-[8px] bg-indigo-50"; persistData(); }
         function setDenimJacketLining(v, b) { data.denimJacketLining = v; document.querySelectorAll('.denim-jkt-lining-btn').forEach(x => x.className = "denim-jkt-lining-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "denim-jkt-lining-btn py-2 border-2 border-indigo-500 rounded-lg font-bold text-indigo-700 text-[9px] bg-indigo-50"; persistData(); }
+        function setDenimJacketEra(v, b) { data.denimJacketEra = v; document.querySelectorAll('.denim-jkt-era-btn').forEach(x => x.className = "denim-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "denim-jkt-era-btn py-2 border-2 border-indigo-500 rounded-lg font-bold text-indigo-700 text-[8px] bg-indigo-50"; persistData(); }
         // Varsity jacket
         function setVarsityBody(v, b) { data.varsityBody = v; document.querySelectorAll('.varsity-body-btn').forEach(x => x.className = "varsity-body-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "varsity-body-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
         function setVarsitySleeve(v, b) { data.varsitySleeve = v; document.querySelectorAll('.varsity-sleeve-btn').forEach(x => x.className = "varsity-sleeve-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "varsity-sleeve-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
@@ -6297,8 +6641,9 @@
         function setWorkJacketStyle(v, b) { data.workJacketStyle = v; document.querySelectorAll('.work-jkt-style-btn').forEach(x => x.className = "work-jkt-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "work-jkt-style-btn py-2 border-2 border-amber-500 rounded-lg font-bold text-amber-700 text-[9px] bg-amber-50"; persistData(); }
         function setWorkJacketLining(v, b) { data.workJacketLining = v; document.querySelectorAll('.work-jkt-lining-btn').forEach(x => x.className = "work-jkt-lining-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "work-jkt-lining-btn py-2 border-2 border-amber-500 rounded-lg font-bold text-amber-700 text-[9px] bg-amber-50"; persistData(); }
         // Racing jacket
-        function setRacingType(v, b) { data.racingType = v; document.querySelectorAll('.racing-type-btn').forEach(x => x.className = "racing-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "racing-type-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
-        function setRacingEra(v, b) { data.racingEra = v; document.querySelectorAll('.racing-era-btn').forEach(x => x.className = "racing-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "racing-era-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
+        function setRacingJktType(v, b) { data.racingJktType = v; document.querySelectorAll('.racing-jkt-type-btn').forEach(x => x.className = "racing-jkt-type-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "racing-jkt-type-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
+        function setRacingJktPatches(v, b) { data.racingJktPatches = v; document.querySelectorAll('.racing-jkt-patch-btn').forEach(x => x.className = "racing-jkt-patch-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "racing-jkt-patch-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
+        function setRacingJktEra(v, b) { data.racingJktEra = v; document.querySelectorAll('.racing-jkt-era-btn').forEach(x => x.className = "racing-jkt-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "racing-jkt-era-btn py-2 border-2 border-red-500 rounded-lg font-bold text-red-700 text-[9px] bg-red-50"; persistData(); }
         // Starter jacket
         function setStarterBrand(v, b) { data.starterBrand = v; document.querySelectorAll('.starter-brand-btn').forEach(x => x.className = "starter-brand-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "starter-brand-btn py-2 border-2 border-violet-500 rounded-lg font-bold text-violet-700 text-[8px] bg-violet-50"; persistData(); }
         function setStarterLeague(v, b) { data.starterLeague = v; document.querySelectorAll('.starter-league-btn').forEach(x => x.className = "starter-league-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "starter-league-btn py-2 border-2 border-violet-500 rounded-lg font-bold text-violet-700 text-[8px] bg-violet-50"; persistData(); }
@@ -6384,6 +6729,33 @@
         function setVintageSweatshirtStyle(v, b) { data.vintageSweatshirtStyle = v; document.querySelectorAll('.vtg-sweat-style-btn').forEach(x => x.className = "vtg-sweat-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "vtg-sweat-style-btn py-2 border-2 border-gray-500 rounded-lg font-bold text-gray-700 text-[9px] bg-gray-100"; persistData(); }
         function setVintageSweatshirtEra(v, b) { data.vintageSweatshirtEra = v; document.querySelectorAll('.vtg-sweat-era-btn').forEach(x => x.className = "vtg-sweat-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "vtg-sweat-era-btn py-2 border-2 border-gray-500 rounded-lg font-bold text-gray-700 text-[9px] bg-gray-100"; persistData(); }
         
+        // ========== SWEATER HANDLERS ==========
+        function setSweaterType(type, btn) {
+            data.sweaterType = type;
+            document.querySelectorAll('.btn-sweater-type').forEach(b => b.className = "btn-sweater-type py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white transition-all flex flex-col items-center");
+            if (btn) btn.className = "btn-sweater-type py-3 border-2 border-purple-500 rounded-xl font-bold text-purple-700 text-xs bg-purple-50 transition-all flex flex-col items-center shadow-md";
+            hideAllSweaterDetails();
+            document.getElementById('sweater-universal-fields').classList.remove('hidden');
+            const sectionMap = { 'FairIsle': 'fairisle-sweater-details', 'Cowichan': 'cowichan-sweater-details', 'Tennis': 'tennis-sweater-details' };
+            if (sectionMap[type]) document.getElementById(sectionMap[type]).classList.remove('hidden');
+            persistData();
+        }
+        function hideAllSweaterDetails() {
+            const el = document.getElementById('sweater-universal-fields'); if (el) el.classList.add('hidden');
+            ['fairisle-sweater-details', 'cowichan-sweater-details', 'tennis-sweater-details'].forEach(id => {
+                const el = document.getElementById(id); if (el) el.classList.add('hidden');
+            });
+        }
+        function setSweaterMaterial(v, b) { data.sweaterMaterial = v; document.querySelectorAll('.sweater-mat-btn').forEach(x => x.className = "sweater-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "sweater-mat-btn py-2 border-2 border-purple-500 rounded-lg font-bold text-purple-700 text-[9px] bg-purple-50"; persistData(); }
+        function setSweaterOrigin(v, b) { data.sweaterOrigin = v; document.querySelectorAll('.sweater-origin-btn').forEach(x => x.className = "sweater-origin-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "sweater-origin-btn py-2 border-2 border-purple-500 rounded-lg font-bold text-purple-700 text-[9px] bg-purple-50"; persistData(); }
+        function setSweaterEra(v, b) { data.sweaterEra = v; document.querySelectorAll('.sweater-era-btn').forEach(x => x.className = "sweater-era-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "sweater-era-btn py-2 border-2 border-purple-500 rounded-lg font-bold text-purple-700 text-[9px] bg-purple-50"; persistData(); }
+        function setFairIslePattern(v, b) { data.fairIslePattern = v; document.querySelectorAll('.fairisle-pattern-btn').forEach(x => x.className = "fairisle-pattern-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "fairisle-pattern-btn py-2 border-2 border-blue-500 rounded-lg font-bold text-blue-700 text-[9px] bg-blue-50"; persistData(); }
+        function setFairIsleOriginStyle(v, b) { data.fairIsleOriginStyle = v; document.querySelectorAll('.fairisle-style-btn').forEach(x => x.className = "fairisle-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "fairisle-style-btn py-2 border-2 border-blue-500 rounded-lg font-bold text-blue-700 text-[9px] bg-blue-50"; persistData(); }
+        function setCowichanStyle(v, b) { data.cowichanStyle = v; document.querySelectorAll('.cowichan-style-btn').forEach(x => x.className = "cowichan-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "cowichan-style-btn py-2 border-2 border-amber-500 rounded-lg font-bold text-amber-700 text-[9px] bg-amber-50"; persistData(); }
+        function setCowichanHandknit(v, b) { data.cowichanHandknit = v; document.querySelectorAll('.cowichan-knit-btn').forEach(x => x.className = "cowichan-knit-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "cowichan-knit-btn py-2 border-2 border-amber-500 rounded-lg font-bold text-amber-700 text-[9px] bg-amber-50"; persistData(); }
+        function setTennisSweaterBrand(v, b) { data.tennisSweaterBrand = v; document.querySelectorAll('.tennis-brand-btn').forEach(x => x.className = "tennis-brand-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[8px] bg-white"); if(b) b.className = "tennis-brand-btn py-2 border-2 border-green-500 rounded-lg font-bold text-green-700 text-[8px] bg-green-50"; persistData(); }
+        function setTennisSweaterStyle(v, b) { data.tennisSweaterStyle = v; document.querySelectorAll('.tennis-style-btn').forEach(x => x.className = "tennis-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "tennis-style-btn py-2 border-2 border-green-500 rounded-lg font-bold text-green-700 text-[9px] bg-green-50"; persistData(); }
+        
         // ========== CARDIGAN HANDLERS ==========
         function setCardiganType(type, btn) {
             data.cardiganType = type;
@@ -6397,6 +6769,7 @@
         }
         function setCardiganStyle(v, b) { data.cardiganStyle = v; document.querySelectorAll('.cardigan-style-btn').forEach(x => x.className = "cardigan-style-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "cardigan-style-btn py-2 border-2 border-teal-500 rounded-lg font-bold text-teal-700 text-[9px] bg-teal-50"; persistData(); }
         function setCardiganMaterial(v, b) { data.cardiganMaterial = v; document.querySelectorAll('.cardigan-mat-btn').forEach(x => x.className = "cardigan-mat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "cardigan-mat-btn py-2 border-2 border-teal-500 rounded-lg font-bold text-teal-700 text-[9px] bg-teal-50"; persistData(); }
+        function setCardiganOrigin(v, b) { data.cardiganOrigin = v; document.querySelectorAll('.cardigan-origin-btn').forEach(x => x.className = "cardigan-origin-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"); if(b) b.className = "cardigan-origin-btn py-2 border-2 border-teal-500 rounded-lg font-bold text-teal-700 text-[9px] bg-teal-50"; persistData(); }
         function toggleCardiganFeature(v, b) { if(!data.cardiganFeatures) data.cardiganFeatures = []; const i = data.cardiganFeatures.indexOf(v); if(i > -1) { data.cardiganFeatures.splice(i, 1); b.className = "cardigan-feat-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-[9px] bg-white"; } else { data.cardiganFeatures.push(v); b.className = "cardigan-feat-btn py-2 border-2 border-teal-500 rounded-lg font-bold text-teal-700 text-[9px] bg-teal-50"; } persistData(); }
         
         // ========== VEST HANDLERS ==========
@@ -7374,6 +7747,9 @@
                 const cat = document.getElementById('cat-select').value;
                 if(cat) updateFeatureButtons(cat);
             }
+            
+            // Update progress after photo changes
+            updateProgress();
         }
         
         function deletePhoto(mode, index) {
@@ -7575,7 +7951,8 @@
                 r.onstop=()=>{ 
                     const blob=new Blob(chunks,{type:'audio/webm'}); 
                     if(key==='tag') data.audioTag=blob; else data.audioMeasure=blob; 
-                    s.getTracks().forEach(t=>t.stop()); 
+                    s.getTracks().forEach(t=>t.stop());
+                    updateProgress();
                 }; 
                 r.start(); recorders[key]=r; 
                 btn.classList.add('recording'); 
@@ -7999,6 +8376,7 @@
                     fd.append('denim_jacket_levis_type', data.denimJacketLevisType);
                     fd.append('denim_jacket_tab', data.denimJacketTab);
                     fd.append('denim_jacket_lining', data.denimJacketLining);
+                    fd.append('denim_jacket_era', data.denimJacketEra);
                 } else if(data.jacketType === 'Varsity') {
                     fd.append('varsity_body', data.varsityBody);
                     fd.append('varsity_sleeve', data.varsitySleeve);
@@ -8026,8 +8404,9 @@
                     fd.append('work_jacket_style', data.workJacketStyle);
                     fd.append('work_jacket_lining', data.workJacketLining);
                 } else if(data.jacketType === 'Racing') {
-                    fd.append('racing_type', data.racingType);
-                    fd.append('racing_era', data.racingEra);
+                    fd.append('racing_jkt_type', data.racingJktType);
+                    fd.append('racing_jkt_patches', data.racingJktPatches);
+                    fd.append('racing_jkt_era', data.racingJktEra);
                 } else if(data.jacketType === 'Starter') {
                     fd.append('starter_brand', data.starterBrand);
                     fd.append('starter_league', data.starterLeague);
@@ -8089,11 +8468,30 @@
                 }
             }
             
+            // Sweater fields
+            if(data.sweaterType) {
+                fd.append('sweater_type', data.sweaterType);
+                fd.append('sweater_material', data.sweaterMaterial);
+                fd.append('sweater_origin', data.sweaterOrigin);
+                fd.append('sweater_era', data.sweaterEra);
+                if(data.sweaterType === 'FairIsle') {
+                    fd.append('fairisle_pattern', data.fairIslePattern);
+                    fd.append('fairisle_origin_style', data.fairIsleOriginStyle);
+                } else if(data.sweaterType === 'Cowichan') {
+                    fd.append('cowichan_style', data.cowichanStyle);
+                    fd.append('cowichan_handknit', data.cowichanHandknit);
+                } else if(data.sweaterType === 'Tennis') {
+                    fd.append('tennis_sweater_brand', data.tennisSweaterBrand);
+                    fd.append('tennis_sweater_style', data.tennisSweaterStyle);
+                }
+            }
+            
             // Cardigan fields
             if(data.cardiganType) {
                 fd.append('cardigan_type', data.cardiganType);
                 fd.append('cardigan_style', data.cardiganStyle);
                 fd.append('cardigan_material', data.cardiganMaterial);
+                fd.append('cardigan_origin', data.cardiganOrigin);
                 fd.append('cardigan_features_json', JSON.stringify(data.cardiganFeatures || []));
             }
             
