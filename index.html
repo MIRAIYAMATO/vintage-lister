@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vintage Lister v58 (Batch Ready)</title>
+    <title>Vintage Lister v59 (Batch Ready)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -114,7 +114,7 @@
     </div>
 
     <div class="fixed top-0 inset-x-0 bg-white shadow-sm z-40 px-4 py-3 flex justify-between items-center border-b border-gray-200" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
-        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v58</div>
+        <div class="font-bold text-gray-800 text-lg tracking-tight mr-2">Vintage<span class="text-blue-600">Lister</span> v59</div>
         <div class="flex flex-1 bg-gray-100 rounded-lg p-1 gap-1">
             <button onclick="setSuperCategory('tops')" id="mode-tops" class="flex-1 py-2 rounded shadow bg-blue-600 text-white font-bold text-[10px] transition-all">TOPS</button>
             <button onclick="setSuperCategory('bottoms')" id="mode-bottoms" class="flex-1 py-2 rounded text-gray-500 font-bold text-[10px] transition-all">BOTTOMS</button>
@@ -280,7 +280,29 @@
                 <button onclick="setTagState('none')" id="btn-tag-none" class="py-4 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs transition-all">No Tag</button>
             </div>
             
-            <!-- TAG READS - Moved up, shows when Has Tag selected -->
+            <!-- TAG PHOTOS FIRST - Prominent placement -->
+            <div id="section-tag-photos" class="hidden mb-4">
+                <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border-2 border-amber-300 shadow-inner">
+                    <div class="flex items-center justify-center gap-2 mb-3">
+                        <span class="text-lg">📸</span>
+                        <label class="text-sm font-bold text-amber-800 uppercase tracking-wide">Snap Tag Photos First</label>
+                    </div>
+                    <p class="text-[10px] text-amber-700 text-center mb-3">Capture tags now — use photos as reference to fill in details below ↓</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-snap-neck" onclick="openCamera('tag', 'neck')" class="w-full py-5 rounded-xl border-2 border-amber-400 bg-white text-amber-700 font-bold flex flex-col items-center justify-center gap-2 active:bg-amber-50 shadow-md hover:shadow-lg transition-all">
+                            <i data-lucide="camera" class="w-6 h-6"></i>
+                            <span class="text-xs">NECK TAG</span>
+                        </button>
+                        <button id="btn-snap-care" onclick="openCamera('tag', 'care')" class="w-full py-5 rounded-xl border-2 border-orange-400 bg-white text-orange-700 font-bold flex flex-col items-center justify-center gap-2 active:bg-orange-50 shadow-md hover:shadow-lg transition-all">
+                            <i data-lucide="camera" class="w-6 h-6"></i>
+                            <span class="text-xs">CARE TAG</span>
+                        </button>
+                    </div>
+                    <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mt-3"></div>
+                </div>
+            </div>
+            
+            <!-- TAG SIZE - Shows after photos section -->
             <div id="section-tag-size" class="hidden mb-4 bg-amber-50 p-3 rounded-xl border border-amber-200">
                 <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Reads</label>
                 <div class="grid grid-cols-6 gap-1 mb-2">
@@ -322,12 +344,6 @@
                     <option>2020-2029</option><option>2010-2019</option><option>2000-2009</option><option>1960-1969</option><option>1950-1959</option><option>1940-1949</option><option>1930-1939</option><option>1920-1929</option><option>1910-1919</option><option>1900-1909</option><option>Pre-1900s</option>
                 </select>
             </div>
-            
-            <div class="mb-6 grid grid-cols-2 gap-2">
-                <button id="btn-snap-neck" onclick="openCamera('tag', 'neck')" class="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50"><span class="text-[10px]">Snap Neck Tag</span></button>
-                <button id="btn-snap-care" onclick="openCamera('tag', 'care')" class="w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50"><span class="text-[10px]">Snap Care/Hip Tag</span></button>
-            </div>
-            <div id="thumbs-tag" class="flex gap-2 overflow-x-auto h-20 empty:hidden snap-x mb-4"></div>
             
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
                 <div>
@@ -1017,13 +1033,13 @@
                     fitTypes: data.fitTypes,
                     hasDefects: data.hasDefects
                 };
-                localStorage.setItem('vl_session_v58', JSON.stringify(session));
+                localStorage.setItem('vl_session_v59', JSON.stringify(session));
             } catch(e) {}
         }
 
         function restoreSession() {
             try {
-                const saved = localStorage.getItem('vl_session_v58');
+                const saved = localStorage.getItem('vl_session_v59');
                 if(saved) {
                     const session = JSON.parse(saved);
                     if(session.sku) document.getElementById('sku-input').value = session.sku;
@@ -1120,13 +1136,18 @@
             // Check if bottoms category
             const isBottoms = ['Jeans', 'Pants', 'Shorts', 'Trousers', 'Sweatpants'].some(b => category && category.includes(b));
             
-            if (isBottoms) {
-                btnNeck.innerHTML = '<span class="text-[10px]">Snap Inside Tag</span>';
-                btnCare.innerHTML = '<span class="text-[10px]">Snap Care/Waist Tag</span>';
-            } else {
-                btnNeck.innerHTML = '<span class="text-[10px]">Snap Neck Tag</span>';
-                btnCare.innerHTML = '<span class="text-[10px]">Snap Care/Hip Tag</span>';
+            // Only update if not already showing checkmark (photo taken)
+            if (!btnNeck.innerHTML.includes('✓')) {
+                if (isBottoms) {
+                    btnNeck.innerHTML = '<i data-lucide="camera" class="w-6 h-6"></i><span class="text-xs">INSIDE TAG</span>';
+                } else {
+                    btnNeck.innerHTML = '<i data-lucide="camera" class="w-6 h-6"></i><span class="text-xs">NECK TAG</span>';
+                }
             }
+            if (!btnCare.innerHTML.includes('✓')) {
+                btnCare.innerHTML = '<i data-lucide="camera" class="w-6 h-6"></i><span class="text-xs">CARE TAG</span>';
+            }
+            if(typeof lucide !== 'undefined') lucide.createIcons();
         }
         
         function applyCategoryDefaults(category) {
@@ -1770,14 +1791,14 @@
             
             if(tagType === 'neck') {
                 const btn = document.getElementById('btn-snap-neck');
-                const label = isBottoms ? 'Snap Inside Tag' : 'Snap Neck Tag';
-                btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
-                btn.innerHTML = `<span class="text-[10px]">${label}</span><span class="text-green-500">✓</span>`;
+                const label = isBottoms ? 'INSIDE TAG' : 'NECK TAG';
+                btn.className = "w-full py-5 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-2 shadow-md";
+                btn.innerHTML = `<span class="text-xl">✓</span><span class="text-xs">${label}</span>`;
             } else if(tagType === 'care') {
                 const btn = document.getElementById('btn-snap-care');
-                const label = isBottoms ? 'Snap Care/Waist Tag' : 'Snap Care/Hip Tag';
-                btn.className = "w-full py-4 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-1";
-                btn.innerHTML = `<span class="text-[10px]">${label}</span><span class="text-green-500">✓</span>`;
+                const label = isBottoms ? 'CARE TAG' : 'CARE TAG';
+                btn.className = "w-full py-5 rounded-xl border-2 border-green-500 bg-green-50 text-green-700 font-bold flex flex-col items-center justify-center gap-2 shadow-md";
+                btn.innerHTML = `<span class="text-xl">✓</span><span class="text-xs">${label}</span>`;
             }
         }
         
@@ -1876,14 +1897,16 @@
             
             if(tagType === 'neck') {
                 const btn = document.getElementById('btn-snap-neck');
-                const label = isBottoms ? 'Snap Inside Tag' : 'Snap Neck Tag';
-                btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-bold flex flex-col items-center justify-center gap-1 active:bg-gray-50";
-                btn.innerHTML = `<span class="text-[10px]">${label}</span>`;
+                const label = isBottoms ? 'INSIDE TAG' : 'NECK TAG';
+                btn.className = "w-full py-5 rounded-xl border-2 border-amber-400 bg-white text-amber-700 font-bold flex flex-col items-center justify-center gap-2 active:bg-amber-50 shadow-md hover:shadow-lg transition-all";
+                btn.innerHTML = `<i data-lucide="camera" class="w-6 h-6"></i><span class="text-xs">${label}</span>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
             } else if(tagType === 'care') {
                 const btn = document.getElementById('btn-snap-care');
-                const label = isBottoms ? 'Snap Care/Waist Tag' : 'Snap Care/Hip Tag';
-                btn.className = "w-full py-4 rounded-xl border-2 border-dashed border-blue-200 text-blue-500 font-bold flex flex-col items-center justify-center gap-1 active:bg-blue-50";
-                btn.innerHTML = `<span class="text-[10px]">${label}</span>`;
+                const label = 'CARE TAG';
+                btn.className = "w-full py-5 rounded-xl border-2 border-orange-400 bg-white text-orange-700 font-bold flex flex-col items-center justify-center gap-2 active:bg-orange-50 shadow-md hover:shadow-lg transition-all";
+                btn.innerHTML = `<i data-lucide="camera" class="w-6 h-6"></i><span class="text-xs">${label}</span>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
         
@@ -1932,15 +1955,19 @@
             const active = document.getElementById(`btn-tag-${state}`);
             if(state === 'has') {
                 active.className = "py-4 border border-blue-600 bg-blue-50 text-blue-600 rounded-xl font-bold text-xs shadow-inner";
+                document.getElementById('section-tag-photos').classList.remove('hidden');
                 document.getElementById('section-tag-size').classList.remove('hidden');
                 document.getElementById('brand-info-section').classList.remove('hidden');
                 document.getElementById('visual-tag-audit').classList.remove('hidden');
             } else {
                 active.className = "py-4 border border-gray-800 bg-gray-800 text-white rounded-xl font-bold text-xs shadow-inner";
+                document.getElementById('section-tag-photos').classList.add('hidden');
                 document.getElementById('section-tag-size').classList.add('hidden');
                 document.getElementById('brand-info-section').classList.add('hidden');
                 document.getElementById('visual-tag-audit').classList.add('hidden');
             }
+            // Re-render lucide icons for newly visible elements
+            if(typeof lucide !== 'undefined') lucide.createIcons();
             persistData();
         }
         
@@ -2150,7 +2177,7 @@
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('progress-bar').style.backgroundColor="#22c55e"; 
-                    localStorage.removeItem('vl_session_v58'); // Clear session
+                    localStorage.removeItem('vl_session_v59'); // Clear session
                     
                     // BATCH PERSISTENCE: Save the last mode for next reload
                     localStorage.setItem('vl_batch_mode', data.superCategory);
