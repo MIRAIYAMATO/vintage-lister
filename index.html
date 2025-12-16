@@ -2,51 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VintageLister v75.3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VintageLister v75.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        * { -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; min-height: 100vh; }
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; margin: 0; padding: 0; overflow-x: hidden; }
         .step-container { display: none; }
         .step-container.active { display: block; }
         
-        .progress-dot { width: 12px; height: 12px; border-radius: 50%; transition: all 0.3s; }
+        .progress-dot { width: 14px; height: 14px; border-radius: 50%; transition: all 0.3s; cursor: pointer; }
+        .progress-dot:active { transform: scale(0.9); }
         .progress-dot.completed { background: #22c55e; }
-        .progress-dot.current { background: #3b82f6; transform: scale(1.3); }
+        .progress-dot.current { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
         .progress-dot.pending { background: #d1d5db; }
-        .progress-line { height: 2px; flex: 1; }
+        .progress-line { height: 3px; flex: 1; min-width: 20px; }
         .progress-line.completed { background: #22c55e; }
-        .progress-line.pending { background: #d1d5db; }
+        .progress-line.pending { background: #e5e7eb; }
         
-        .check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #d1d5db; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; transition: all 0.2s; color: #d1d5db; }
+        .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; transition: all 0.2s; color: #d1d5db; flex-shrink: 0; }
         .check-circle.complete { background: #22c55e; border-color: #22c55e; color: white; }
         
-        .section-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .section-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; }
         
         .btn-select { transition: all 0.15s; }
+        .btn-select:active { transform: scale(0.97); }
         .btn-select.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
-        .size-btn.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
         
         .defect-stain { background: #fef9c3; color: #854d0e; border: 2px solid #facc15; }
         .defect-hole { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
         .defect-repair { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
         .defect-other { background: #f3e8ff; color: #6b21a8; border: 2px solid #c084fc; }
         
-        .zone-hit { cursor: pointer; fill: rgba(100,116,139,0.15); stroke: rgba(100,116,139,0.3); stroke-width: 1px; transition: all 0.1s; }
-        .zone-hit:active { fill: rgba(59,130,246,0.5) !important; }
+        .zone-hit { cursor: pointer; fill: rgba(100,116,139,0.12); stroke: rgba(100,116,139,0.25); stroke-width: 1px; transition: all 0.1s; }
+        .zone-hit:active { fill: rgba(59,130,246,0.4) !important; }
         .map-wrapper { position: relative; width: 100%; touch-action: manipulation; }
         
-        .defect-marker { position: absolute; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; transform: translate(-50%,-50%); z-index: 30; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; animation: pop-in 0.2s ease-out; cursor: pointer; }
+        .defect-marker { position: absolute; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; transform: translate(-50%,-50%); z-index: 30; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; animation: pop-in 0.2s ease-out; cursor: pointer; }
         @keyframes pop-in { from { transform: translate(-50%,-50%) scale(0); } to { transform: translate(-50%,-50%) scale(1); } }
         .defect-marker.stain { background: #facc15; color: #713f12; }
         .defect-marker.hole { background: #f87171; color: white; }
         .defect-marker.repair { background: #60a5fa; color: white; }
         .defect-marker.other { background: #c084fc; color: white; }
         
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 15px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
         .recording { animation: pulse-red 1.5s infinite; background: #dc2626 !important; }
         
         @keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -54,8 +55,9 @@
         
         #reader video { object-fit: cover; border-radius: 0.75rem; }
         
+        .photo-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; }
+        .photo-btn { position: relative; }
         .photo-btn.captured { background: #dcfce7 !important; border-color: #22c55e !important; border-style: solid !important; }
-        .photo-btn.captured::after { content: '✓'; position: absolute; top: 4px; right: 4px; background: #22c55e; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
         
         .flag-btn { background: linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); border: 2px dashed #d97706; }
         .flag-btn.flagged { background: linear-gradient(135deg,#fde68a 0%,#fbbf24 100%); border: 2px solid #b45309; }
@@ -63,46 +65,90 @@
         .card-green { border-left: 4px solid #22c55e; background: #f0fdf4; }
         .card-yellow { border-left: 4px solid #eab308; background: #fefce8; }
         
-        /* Camera overlay */
         #camera-overlay { position: fixed; inset: 0; z-index: 100; background: black; }
         #camera-overlay video { width: 100%; height: 100%; object-fit: cover; }
-        .cam-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); }
-        .shutter-btn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid rgba(255,255,255,0.5); }
-        .shutter-btn:active { transform: scale(0.9); }
+        .cam-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 24px; padding-bottom: max(24px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.85)); }
+        .shutter-btn { width: 72px; height: 72px; border-radius: 50%; background: white; border: 4px solid rgba(255,255,255,0.5); }
+        .shutter-btn:active { transform: scale(0.9); background: #e5e7eb; }
         
-        /* Defect photo list */
-        .defect-photo-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px; }
-        .defect-photo-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .safe-top { padding-top: max(12px, env(safe-area-inset-top)); }
+        .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
+        
+        /* Upload modal */
+        #upload-modal { backdrop-filter: blur(4px); }
+        .upload-progress-bar { transition: width 0.3s ease; }
     </style>
+    <script>
+        const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
+        const APP_PIN = "1234";
+    </script>
 </head>
-<body class="pb-24">
+<body>
 
-    <!-- HEADER -->
-    <div class="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div class="flex items-center justify-between mb-2">
-            <span class="text-gray-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-            <span class="text-gray-400 text-xs">v75.3</span>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-6">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">🔒 Locked</h2>
+            <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN</p>
+            <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••" inputmode="numeric">
+            <div class="mb-4">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Photographer</label>
+                <select id="photographer-select" class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800">
+                    <option value="P01">P01 – Jeff Koga</option>
+                    <option value="P02" selected>P02 – Elaine Donato</option>
+                    <option value="P03">P03 – Kobe Gaza</option>
+                </select>
+            </div>
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl active:bg-blue-700 text-lg">UNLOCK</button>
         </div>
-        <div class="flex items-center gap-1 mb-1">
-            <div id="dot-1" class="progress-dot current"></div>
-            <div id="line-1" class="progress-line pending"></div>
-            <div id="dot-2" class="progress-dot pending"></div>
-            <div id="line-2" class="progress-line pending"></div>
-            <div id="dot-3" class="progress-dot pending"></div>
-            <div id="line-3" class="progress-line pending"></div>
-            <div id="dot-4" class="progress-dot pending"></div>
-        </div>
-        <div id="step-label" class="text-center text-gray-600 text-xs font-medium">STEP 1: IDENTIFY</div>
     </div>
 
+    <!-- UPLOAD MODAL -->
+    <div id="upload-modal" class="fixed inset-0 z-[90] bg-black/70 hidden flex items-center justify-center p-6">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm text-center">
+            <div class="text-4xl mb-4">📤</div>
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Uploading...</h3>
+            <div class="w-full bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
+                <div id="upload-progress-bar" class="upload-progress-bar bg-blue-600 h-full" style="width: 0%"></div>
+            </div>
+            <p id="upload-status" class="text-sm text-gray-500">Preparing data...</p>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm safe-top">
+        <div class="px-4 py-2">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
+                    <span class="text-gray-400 text-[10px]">v75.5</span>
+                </div>
+                <button onclick="showPhotographerChange()" id="photographer-badge" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
+            </div>
+            <div class="flex items-center gap-1">
+                <div id="dot-1" onclick="goToStep(1)" class="progress-dot current"></div>
+                <div id="line-1" class="progress-line pending"></div>
+                <div id="dot-2" onclick="goToStep(2)" class="progress-dot pending"></div>
+                <div id="line-2" class="progress-line pending"></div>
+                <div id="dot-3" onclick="goToStep(3)" class="progress-dot pending"></div>
+                <div id="line-3" class="progress-line pending"></div>
+                <div id="dot-4" onclick="goToStep(4)" class="progress-dot pending"></div>
+            </div>
+            <div id="step-label" class="text-center text-gray-500 text-[10px] font-medium mt-1 uppercase tracking-wider">Identify</div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="pt-24 safe-bottom">
+
     <!-- ========== STEP 1: IDENTIFY ========== -->
-    <div id="step-1" class="step-container active p-4 space-y-4">
+    <div id="step-1" class="step-container active px-4 space-y-3">
         
         <!-- CATEGORY -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-category" class="check-circle">○</span>
-                1. Category
+                Category
             </label>
             <div class="grid grid-cols-3 gap-2 mb-3">
                 <button onclick="setSuperCategory('tops', this)" class="btn-select super-btn py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 text-sm">👕 Tops</button>
@@ -114,17 +160,17 @@
         
         <!-- SKU -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-2">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
                 <span id="check-sku" class="check-circle">○</span>
-                2. SKU
+                SKU
             </label>
             <div class="flex gap-2">
-                <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan SKU" oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" class="w-full text-3xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300">
+                <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan SKU" oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" class="flex-1 text-2xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300">
                 <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 shadow-lg">
-                    <i data-lucide="scan-barcode" class="w-8 h-8"></i>
+                    <i data-lucide="scan-barcode" class="w-7 h-7"></i>
                 </button>
             </div>
-            <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-56">
+            <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-48">
                 <div id="reader" class="w-full h-full"></div>
                 <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">CLOSE</button>
             </div>
@@ -132,26 +178,26 @@
         
         <!-- TAG STATUS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-tag" class="check-circle">○</span>
-                3. Tag Info
+                Tag Info
             </label>
             <div class="grid grid-cols-3 gap-2 mb-3">
-                <button onclick="setTagStatus('has', this)" class="btn-select tag-status-btn py-4 border-2 border-dashed border-sky-300 bg-sky-50 text-sky-600 rounded-xl font-bold text-xs">✓ Readable</button>
-                <button onclick="setTagStatus('worn', this)" class="btn-select tag-status-btn py-4 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">👀 Worn</button>
-                <button onclick="setTagStatus('none', this)" class="btn-select tag-status-btn py-4 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">✂️ Missing</button>
+                <button onclick="setTagStatus('has', this)" class="btn-select tag-status-btn py-3 border-2 border-dashed border-sky-300 bg-sky-50 text-sky-600 rounded-xl font-bold text-xs">✓ Readable</button>
+                <button onclick="setTagStatus('worn', this)" class="btn-select tag-status-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">👀 Worn</button>
+                <button onclick="setTagStatus('none', this)" class="btn-select tag-status-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">✂️ Missing</button>
             </div>
             
             <!-- TAG SIZE -->
             <div id="tag-size-section" class="hidden bg-amber-50 p-3 rounded-xl border border-amber-200 mb-3">
                 <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Reads</label>
                 <div class="grid grid-cols-6 gap-1 mb-2">
-                    <button onclick="setTagSize('XS', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XS</button>
-                    <button onclick="setTagSize('S', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">S</button>
-                    <button onclick="setTagSize('M', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">M</button>
-                    <button onclick="setTagSize('L', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">L</button>
-                    <button onclick="setTagSize('XL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
-                    <button onclick="setTagSize('XXL', this)" class="size-btn py-3 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
+                    <button onclick="setTagSize('XS', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XS</button>
+                    <button onclick="setTagSize('S', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">S</button>
+                    <button onclick="setTagSize('M', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">M</button>
+                    <button onclick="setTagSize('L', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">L</button>
+                    <button onclick="setTagSize('XL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
+                    <button onclick="setTagSize('XXL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
                 </div>
                 <input type="text" id="tag-size-input" placeholder="Or type (e.g. 42R, 32x30)" onfocus="clearSizeBtns()" oninput="onCustomSizeInput()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none bg-white">
             </div>
@@ -159,10 +205,10 @@
             <!-- ORIGIN -->
             <div id="origin-section" class="hidden mb-3">
                 <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setOrigin('usa', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-2"><span class="text-base">🇺🇸</span> USA Made</button>
-                    <button onclick="setOrigin('import', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-2"><span class="text-base">🌍</span> Import</button>
+                    <button onclick="setOrigin('usa', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-1"><span class="text-base">🇺🇸</span> USA Made</button>
+                    <button onclick="setOrigin('import', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-1"><span class="text-base">🌍</span> Import</button>
                 </div>
-                <select id="country-select" onchange="data.madeInCountry=this.value" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
+                <select id="country-select" onchange="data.madeInCountry=this.value; persistData();" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
                     <option value="" disabled selected>Select Country...</option>
                     <option>Bangladesh</option><option>Cambodia</option><option>Canada</option><option>China</option><option>Honduras</option><option>India</option><option>Indonesia</option><option>Italy</option><option>Japan</option><option>Mexico</option><option>Pakistan</option><option>Philippines</option><option>Portugal</option><option>South Korea</option><option>Sri Lanka</option><option>Taiwan</option><option>Turkey</option><option>United Kingdom</option><option>Vietnam</option><option>Other / Unknown</option>
                 </select>
@@ -170,223 +216,267 @@
             
             <!-- COPYRIGHT -->
             <div id="copyright-section" class="hidden mb-3">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Copyright Year (Optional)</label>
-                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" oninput="data.copyrightYear=this.value" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none" maxlength="4">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Copyright Year</label>
+                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" oninput="data.copyrightYear=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none" maxlength="4">
             </div>
             
             <!-- TAG GENDER -->
             <div id="tag-gender-section" class="hidden">
                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Gender</label>
-                <div class="grid grid-cols-4 gap-2">
-                    <button onclick="setGender('Men', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Men's</button>
-                    <button onclick="setGender('Women', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Women's</button>
-                    <button onclick="setGender('Unisex', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Unisex</button>
-                    <button onclick="setGender('None', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">None</button>
+                <div class="grid grid-cols-4 gap-1">
+                    <button onclick="setGender('Men', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Men's</button>
+                    <button onclick="setGender('Women', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Women's</button>
+                    <button onclick="setGender('Unisex', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Unisex</button>
+                    <button onclick="setGender('None', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">None</button>
                 </div>
             </div>
         </div>
         
+        <!-- FABRIC -->
+        <div class="section-card p-4">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                <span id="check-fabric" class="check-circle">○</span>
+                Fabric
+            </label>
+            <select id="fabric-select" onchange="onFabricChange()" class="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none mb-2">
+                <option value="" disabled selected>Select Fabric...</option>
+                <option>100% Cotton</option>
+                <option>100% Polyester</option>
+                <option>50/50 Cotton-Poly</option>
+                <option>Tri-Blend</option>
+                <option>Cotton-Spandex</option>
+                <option>Denim</option>
+                <option>Fleece</option>
+                <option>French Terry</option>
+                <option>Jersey Knit</option>
+                <option>Linen</option>
+                <option>Mesh</option>
+                <option>Nylon</option>
+                <option>Rayon</option>
+                <option>Silk</option>
+                <option>Wool</option>
+                <option>Acrylic</option>
+                <option>Custom Blend</option>
+            </select>
+            <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" class="hidden w-full p-2 border border-gray-200 rounded-lg text-sm outline-none">
+        </div>
+        
         <!-- COLORS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-color" class="check-circle">○</span>
-                4. Colors
+                Colors
             </label>
-            <div class="mb-3">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Primary Color</label>
-                <select id="color-primary" onchange="data.colorPrimary=this.value; updateAllChecks();" class="w-full p-2 border border-gray-300 rounded-xl text-gray-800 outline-none text-[11px]">
-                    <option value="" disabled selected>Select Color...</option>
-                    <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
-                </select>
-            </div>
-            <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Secondary Color <span class="text-gray-300">(optional)</span></label>
-                <select id="color-secondary" onchange="data.colorSecondary=this.value" class="w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
-                    <option value="" selected>None / N/A</option>
-                    <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
-                </select>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Primary</label>
+                    <select id="color-primary" onchange="data.colorPrimary=this.value; persistData();" class="w-full p-2 border border-gray-300 rounded-lg text-gray-800 outline-none text-xs">
+                        <option value="" disabled selected>Select...</option>
+                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Secondary</label>
+                    <select id="color-secondary" onchange="data.colorSecondary=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-lg text-gray-800 outline-none text-xs">
+                        <option value="" selected>None</option>
+                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
+                    </select>
+                </div>
             </div>
         </div>
         
-        <!-- SLEEVE -->
+        <!-- SLEEVE (Tops) -->
         <div id="sleeve-section" class="section-card p-4 hidden">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-sleeve" class="check-circle">○</span>
-                5. Sleeve Length
+                Sleeve
             </label>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="setSleeve('Short', this)" class="btn-select sleeve-btn py-3 border-2 border-dashed border-blue-300 bg-blue-50 rounded-xl font-bold text-blue-600 text-xs">Short Sleeve</button>
-                <button onclick="setSleeve('Long', this)" class="btn-select sleeve-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-500 text-xs">Long Sleeve</button>
-                <button onclick="setSleeve('3/4', this)" class="btn-select sleeve-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-500 text-xs">3/4 Sleeve</button>
-                <button onclick="setSleeve('Sleeveless', this)" class="btn-select sleeve-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-500 text-xs">Sleeveless</button>
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="setSleeve('Short', this)" class="btn-select sleeve-btn py-2 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg font-bold text-blue-600 text-[10px]">Short</button>
+                <button onclick="setSleeve('Long', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">Long</button>
+                <button onclick="setSleeve('3/4', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">3/4</button>
+                <button onclick="setSleeve('None', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">None</button>
             </div>
-            <div id="cutoff-section" class="hidden mt-3">
-                <label class="text-xs font-bold text-orange-600 uppercase tracking-wide">🔪 Cut-off / Muscle Tee?</label>
-                <div class="mt-2 p-3 bg-orange-50 rounded-xl border border-orange-200">
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="setCutOff(true, this)" class="btn-select cutoff-btn py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white flex flex-col items-center">
-                            <span class="text-lg">✂️</span><span>DIY Cut-off</span>
-                        </button>
-                        <button onclick="setCutOff(false, this)" class="btn-select cutoff-btn py-3 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-xs bg-white flex flex-col items-center">
-                            <span class="text-lg">👕</span><span>Manufactured</span>
-                        </button>
-                    </div>
+            <div id="cutoff-section" class="hidden mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
+                <label class="text-[10px] font-bold text-orange-600 uppercase mb-2 block">🔪 Cut-off?</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setCutOff(true, this)" class="btn-select cutoff-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-xs bg-white">✂️ DIY Cut</button>
+                    <button onclick="setCutOff(false, this)" class="btn-select cutoff-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-xs bg-white">👕 Manufactured</button>
                 </div>
             </div>
         </div>
         
         <!-- FABRIC FEEL -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-teal-600 uppercase tracking-wide mb-2 block">📐 Fabric Feel</label>
-            <p class="text-[10px] text-gray-400 mb-3">You're already holding it — feel the fabric!</p>
+            <label class="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3 block">📐 Fabric Feel</label>
+            <div class="grid grid-cols-4 gap-1 mb-3">
+                <button onclick="setThickness('Paper Thin', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Paper</button>
+                <button onclick="setThickness('Light', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Light</button>
+                <button onclick="setThickness('Standard', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Standard</button>
+                <button onclick="setThickness('Heavy', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heavy</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onclick="setTexture('Stiff', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Stiff / Crisp</button>
+                <button onclick="setTexture('Soft', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Soft / Worn</button>
+            </div>
+            <div class="grid grid-cols-3 gap-1">
+                <button onclick="setConstruction('Single', this)" class="btn-select construction-btn py-2 border border-blue-500 bg-blue-50 rounded-lg font-bold text-blue-600 text-[9px] selected">Single</button>
+                <button onclick="setConstruction('Reversible', this)" class="btn-select construction-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Reversible</button>
+                <button onclick="setConstruction('Lined', this)" class="btn-select construction-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Lined</button>
+            </div>
+        </div>
+        
+        <!-- GRAPHICS (T-Shirts) -->
+        <div id="graphics-section" class="section-card p-4 hidden">
+            <label class="text-xs font-bold text-purple-600 uppercase tracking-wide mb-3 block">🎨 Graphics</label>
             <div class="mb-3">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Thickness</label>
+                <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Print Type</label>
                 <div class="grid grid-cols-4 gap-1">
-                    <button onclick="setThickness('Paper', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white flex flex-col items-center"><span>Paper</span><span class="text-[8px] text-gray-400">see-thru</span></button>
-                    <button onclick="setThickness('Light', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white flex flex-col items-center"><span>Light</span><span class="text-[8px] text-gray-400">50/50</span></button>
-                    <button onclick="setThickness('Standard', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white flex flex-col items-center"><span>Standard</span><span class="text-[8px] text-gray-400">Gildan</span></button>
-                    <button onclick="setThickness('Heavy', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white flex flex-col items-center"><span>Heavy</span><span class="text-[8px] text-gray-400">Beefy</span></button>
+                    <button onclick="setPrintType('Screen', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Screen</button>
+                    <button onclick="setPrintType('Heat', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heat</button>
+                    <button onclick="setPrintType('DTG', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">DTG</button>
+                    <button onclick="setPrintType('Blank', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Blank</button>
                 </div>
             </div>
-            <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Texture</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setTexture('Stiff', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Stiff / Crisp</button>
-                    <button onclick="setTexture('Soft', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Soft / Broken-In</button>
+            <div id="graphic-category-section" class="hidden">
+                <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Graphic Category</label>
+                <div class="grid grid-cols-3 gap-1">
+                    <button onclick="setGraphicCat('Band/Music', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Band</button>
+                    <button onclick="setGraphicCat('Sports', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Sports</button>
+                    <button onclick="setGraphicCat('Movie/TV', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Movie/TV</button>
+                    <button onclick="setGraphicCat('Brand/Logo', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Brand</button>
+                    <button onclick="setGraphicCat('Art/Abstract', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Art</button>
+                    <button onclick="setGraphicCat('Other', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Other</button>
                 </div>
             </div>
         </div>
         
-        <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]">
-            Next: INSPECT →
+        <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">
+            Next: Inspect →
         </button>
     </div>
 
-    <!-- ========== STEP 2: INSPECT (Quick assessment only) ========== -->
-    <div id="step-2" class="step-container p-4 space-y-4">
+    <!-- ========== STEP 2: INSPECT ========== -->
+    <div id="step-2" class="step-container px-4 space-y-3">
         
-        <!-- CONDITION -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-condition" class="check-circle">○</span>
-                Condition Check
+                Condition
             </label>
+            <select id="cond-select" onchange="data.condition=this.value; persistData();" class="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none mb-3">
+                <option value="" disabled selected>Select Condition...</option>
+                <option value="New with Tags">New with Tags (NWT)</option>
+                <option value="New without Tags">New without Tags (NWOT)</option>
+                <option value="Excellent">Excellent - Like New</option>
+                <option value="Very Good">Very Good - Minor wear</option>
+                <option value="Good">Good - Normal wear</option>
+                <option value="Fair">Fair - Visible wear</option>
+            </select>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="setCondition('none', this)" class="btn-select condition-btn py-5 bg-green-50 border-2 border-green-200 rounded-xl font-bold text-green-700 text-sm flex flex-col items-center gap-1">
-                    <span class="text-3xl">✓</span><span>No Flaws</span>
+                <button onclick="setHasDefects(false, this)" class="btn-select defect-toggle-btn py-4 bg-green-50 border-2 border-green-200 rounded-xl font-bold text-green-700 text-sm flex flex-col items-center gap-1">
+                    <span class="text-xl">✓</span><span>No Flaws</span>
                 </button>
-                <button onclick="setCondition('found', this)" class="btn-select condition-btn py-5 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-sm flex flex-col items-center gap-1">
-                    <span class="text-3xl">⚠️</span><span>Found Issues</span>
+                <button onclick="setHasDefects(true, this)" class="btn-select defect-toggle-btn py-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-sm flex flex-col items-center gap-1">
+                    <span class="text-xl">⚠️</span><span>Has Flaws</span>
                 </button>
             </div>
-            <p id="defect-hint" class="hidden text-[10px] text-orange-600 text-center mt-3 font-medium">📸 You'll mark & photograph defects in the next step</p>
+            <p id="defect-hint" class="hidden text-[10px] text-orange-600 text-center mt-3 font-medium">📸 You'll mark & photo defects next</p>
         </div>
         
-        <!-- FADE -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-fade" class="check-circle">○</span>
                 Fade Level
             </label>
             <div class="grid grid-cols-4 gap-2">
-                <button onclick="setFade('None', this)" class="btn-select fade-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-600 text-xs">None</button>
-                <button onclick="setFade('Light', this)" class="btn-select fade-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-600 text-xs">Light</button>
-                <button onclick="setFade('Sun', this)" class="btn-select fade-btn py-3 bg-amber-50 border border-amber-300 rounded-xl font-bold text-amber-700 text-xs">Sun ⭐</button>
-                <button onclick="setFade('Heavy', this)" class="btn-select fade-btn py-3 bg-white border border-gray-200 rounded-xl font-bold text-gray-600 text-xs">Heavy</button>
+                <button onclick="setFade('None', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">None</button>
+                <button onclick="setFade('Light', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Light</button>
+                <button onclick="setFade('Sun', this)" class="btn-select fade-btn py-2 bg-amber-50 border border-amber-300 rounded-lg font-bold text-amber-700 text-xs">Sun⭐</button>
+                <button onclick="setFade('Heavy', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Heavy</button>
             </div>
         </div>
         
-        <!-- VISUAL TAG AUDIT -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 block">Visual Tag Audit</label>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">Visual Size Check</label>
             <div class="grid grid-cols-3 gap-2">
-                <button onclick="setAudit('True', this)" class="btn-select audit-btn py-3 bg-green-50 border border-green-200 rounded-xl font-bold text-green-700 text-xs">True to Size ✓</button>
-                <button onclick="setAudit('Small', this)" class="btn-select audit-btn py-3 bg-amber-50 border border-amber-200 rounded-xl font-bold text-amber-700 text-xs">Runs Small</button>
-                <button onclick="setAudit('Big', this)" class="btn-select audit-btn py-3 bg-amber-50 border border-amber-200 rounded-xl font-bold text-amber-700 text-xs">Runs Big</button>
+                <button onclick="setVisualCheck('True to Size', this)" class="btn-select visual-btn py-2 bg-green-50 border border-green-200 rounded-lg font-bold text-green-700 text-xs">True ✓</button>
+                <button onclick="setVisualCheck('Runs Small', this)" class="btn-select visual-btn py-2 bg-amber-50 border border-amber-200 rounded-lg font-bold text-amber-700 text-xs">Small</button>
+                <button onclick="setVisualCheck('Runs Big', this)" class="btn-select visual-btn py-2 bg-amber-50 border border-amber-200 rounded-lg font-bold text-amber-700 text-xs">Big</button>
             </div>
         </div>
         
-        <!-- FLAG -->
         <button id="flag-btn" onclick="flagUnusual()" class="flag-btn w-full py-4 rounded-2xl text-amber-800 font-bold">
-            <div class="flex items-center justify-center gap-2 text-lg">🤔 THIS SEEMS UNUSUAL</div>
-            <div class="text-xs font-normal mt-1 opacity-70">Brand you don't recognize • Special construction</div>
+            <div class="flex items-center justify-center gap-2">🤔 FLAG AS UNUSUAL</div>
         </button>
         
         <div class="flex gap-3">
             <button onclick="goToStep(1)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Next: DOCUMENT →</button>
+            <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Next: Document →</button>
         </div>
     </div>
 
-    <!-- ========== STEP 3: DOCUMENT (ALL photos here) ========== -->
-    <div id="step-3" class="step-container p-4 space-y-4">
+    <!-- ========== STEP 3: DOCUMENT ========== -->
+    <div id="step-3" class="step-container px-4 space-y-3">
         
-        <!-- ITEM PHOTOS -->
+        <!-- MAIN PHOTOS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-photos" class="check-circle">○</span>
-                📸 Item Photos
+                📸 Main Photos
             </label>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <button onclick="openCamera('front')" id="photo-front" class="photo-btn relative py-5 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-xs flex flex-col items-center gap-1">📷 Full Front</button>
-                <button onclick="openCamera('back')" id="photo-back" class="photo-btn relative py-5 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-xs flex flex-col items-center gap-1">📷 Full Back</button>
-            </div>
+            <div class="flex gap-2 flex-wrap mb-2" id="main-photos-thumbs"></div>
+            <button onclick="openCamera('main')" class="w-full py-4 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-sm active:scale-[0.98]">+ Add Photo</button>
+        </div>
+        
+        <!-- TAG PHOTOS -->
+        <div class="section-card p-4">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Tag Photos</label>
+            <div class="flex gap-2 flex-wrap mb-2" id="tag-photos-thumbs"></div>
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="openCamera('brandTag')" id="photo-brandTag" class="photo-btn relative py-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] flex flex-col items-center">📷 Brand Tag</button>
-                <button onclick="openCamera('careLabel')" id="photo-careLabel" class="photo-btn relative py-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] flex flex-col items-center">📷 Care Label</button>
+                <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] font-bold">📷 Neck Tag</button>
+                <button onclick="openCamera('tag', 'care')" id="btn-tag-care" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] font-bold">📷 Care Label</button>
             </div>
         </div>
         
-        <!-- DEFECT MAPPING (only shows if hasDefects) -->
+        <!-- DEFECT MAPPING -->
         <div id="defect-section" class="section-card p-4 hidden">
-            <label class="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2 block">
-                🔍 Defect Photos — Tap location → Select type → Snap photo
-            </label>
-            <div class="flex gap-1 mb-3 justify-center text-[10px] text-gray-500">
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-400"></span>Stain</span>
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-400"></span>Hole</span>
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-400"></span>Repair</span>
-                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-purple-400"></span>Other</span>
-            </div>
-            
-            <!-- Body Maps -->
+            <label class="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2 block">🔍 Mark Defects</label>
+            <p class="text-[10px] text-gray-500 mb-3">Tap location → Select type → Snap photo</p>
             <div class="mb-3">
-                <div class="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 bg-gray-100 rounded py-1">FRONT</div>
-                <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:180px;"><div id="defect-svg-front"></div><div id="defect-markers-front"></div></div>
+                <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">FRONT</div>
+                <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:160px;"><div id="defect-svg-front"></div><div id="defect-markers-front"></div></div>
             </div>
             <div class="mb-3">
-                <div class="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 bg-gray-100 rounded py-1">BACK</div>
-                <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:180px;"><div id="defect-svg-back"></div><div id="defect-markers-back"></div></div>
+                <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">BACK</div>
+                <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:160px;"><div id="defect-svg-back"></div><div id="defect-markers-back"></div></div>
             </div>
-            
-            <!-- Defect Photo List -->
-            <div id="defect-list" class="space-y-2">
-                <p class="text-gray-400 text-xs text-center py-2">Tap on the body map above to mark defects</p>
-            </div>
+            <div id="defect-list" class="space-y-2"></div>
         </div>
         
         <!-- FEATURE PHOTOS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3 block">📸 Feature Photos</label>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Features</label>
+            <div class="flex gap-2 flex-wrap mb-2" id="feature-photos-thumbs"></div>
             <div id="features-grid" class="grid grid-cols-3 gap-2"></div>
         </div>
         
         <!-- MEASUREMENTS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-3">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-measure" class="check-circle">○</span>
                 🎤 Measurements
             </label>
-            <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-gray-700 text-xs"></div>
+            <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-gray-700 text-xs"></div>
             <div id="record-section">
-                <button id="record-btn" onclick="toggleRecording()" class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-2 shadow-lg active:scale-[0.98]">
+                <button id="record-btn" onclick="toggleRecording()" class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-1 shadow-lg active:scale-[0.98]">
                     <span class="text-2xl">🎤</span><span>TAP TO RECORD</span>
                 </button>
             </div>
             <div id="post-record-section" class="hidden">
                 <div class="bg-green-50 border border-green-300 rounded-xl p-4 mb-3">
-                    <div class="text-green-700 font-bold mb-1">✓ RECORDING SAVED</div>
-                    <div class="text-green-600 text-sm">Duration: <span id="recording-duration">0:00</span></div>
+                    <div class="text-green-700 font-bold mb-1">✓ SAVED</div>
+                    <div class="text-green-600 text-sm"><span id="recording-duration">0:00</span></div>
                 </div>
                 <button onclick="reRecord()" class="text-gray-500 text-sm underline">Re-record</button>
             </div>
@@ -394,60 +484,54 @@
         
         <!-- WEIGHT -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-400 uppercase tracking-wide flex items-center gap-2 mb-2">
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
                 <span id="check-weight" class="check-circle">○</span>
                 ⚖️ Weight
             </label>
-            <div id="weight-hint" class="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-100">
-                <p class="text-[10px] text-purple-600 font-medium text-center">💡 Select category for weight hint</p>
-            </div>
+            <div id="weight-hint" class="mb-2 p-2 bg-purple-50 rounded-lg border border-purple-100"></div>
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Pounds</label>
-                    <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
-                        <option value="0" selected>0 lb</option><option value="1">1 lb</option><option value="2">2 lb</option><option value="3">3 lb</option><option value="4">4 lb</option><option value="5">5 lb</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Ounces</label>
-                    <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
-                        <option value="0" selected>0 oz</option><option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
-                    </select>
-                </div>
+                <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
+                    <option value="0" selected>0 lb</option><option value="1">1 lb</option><option value="2">2 lb</option><option value="3">3 lb</option><option value="4">4 lb</option><option value="5">5 lb</option>
+                </select>
+                <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
+                    <option value="0" selected>0 oz</option><option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
+                </select>
             </div>
         </div>
         
         <div class="flex gap-3">
             <button onclick="goToStep(2)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Next: REVIEW →</button>
+            <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Review →</button>
         </div>
     </div>
 
     <!-- ========== STEP 4: REVIEW ========== -->
-    <div id="step-4" class="step-container p-4 space-y-4">
-        <div class="text-gray-800 font-bold text-lg text-center mb-2">REVIEW BEFORE SUBMIT</div>
+    <div id="step-4" class="step-container px-4 space-y-3">
+        <div class="text-gray-800 font-bold text-lg text-center mb-2">Review & Submit</div>
         <div class="grid grid-cols-2 gap-3">
-            <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-3 cursor-pointer">
+            <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-identify">🟡</span><span class="font-bold text-sm">IDENTIFY</span></div>
-                <div id="summary-identify" class="text-gray-600 text-xs"></div>
+                <div id="summary-identify" class="text-gray-600 text-[10px]"></div>
             </div>
-            <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-3 cursor-pointer">
+            <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-inspect">🟡</span><span class="font-bold text-sm">INSPECT</span></div>
-                <div id="summary-inspect" class="text-gray-600 text-xs"></div>
+                <div id="summary-inspect" class="text-gray-600 text-[10px]"></div>
             </div>
-            <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-3 cursor-pointer">
+            <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-document">🟡</span><span class="font-bold text-sm">DOCUMENT</span></div>
-                <div id="summary-document" class="text-gray-600 text-xs"></div>
+                <div id="summary-document" class="text-gray-600 text-[10px]"></div>
             </div>
             <div id="card-ready" class="card-yellow rounded-xl p-3">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-ready">🟡</span><span class="font-bold text-sm">READY</span></div>
-                <div id="summary-ready" class="text-gray-600 text-xs"></div>
+                <div id="summary-ready" class="text-gray-600 text-[10px]"></div>
             </div>
         </div>
-        <div id="flag-status" class="hidden bg-amber-50 border border-amber-400 rounded-xl p-3 text-amber-700 text-sm font-medium">✓ FLAGGED FOR SPECIALIST REVIEW</div>
-        <button onclick="submitListing()" class="w-full py-5 bg-green-600 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98]">PROCESS LISTING ✓</button>
+        <div id="flag-status" class="hidden bg-amber-50 border border-amber-400 rounded-xl p-3 text-amber-700 text-sm font-medium text-center">✓ FLAGGED FOR REVIEW</div>
+        <button onclick="submitData()" class="w-full py-5 bg-green-600 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98]">SUBMIT ✓</button>
         <button onclick="goToStep(3)" class="w-full py-3 bg-gray-200 rounded-2xl text-gray-600 font-medium">← Back</button>
     </div>
+
+    </div><!-- end main content -->
 
     <!-- DEFECT TYPE MODAL -->
     <div id="defect-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center p-4" onclick="closeDefectModal(event)">
@@ -457,10 +541,10 @@
                 <h3 id="zone-label" class="text-lg font-black text-gray-800"></h3>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="selectDefectType('Stain')" class="defect-stain py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center"><span class="text-lg">STAIN</span><span class="text-[10px] opacity-70">☝️ 1 Finger</span></button>
-                <button onclick="selectDefectType('Hole')" class="defect-hole py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center"><span class="text-lg">HOLE</span><span class="text-[10px] opacity-70">✌️ 2 Fingers</span></button>
-                <button onclick="selectDefectType('Repair')" class="defect-repair py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center"><span class="text-lg">REPAIR</span><span class="text-[10px] opacity-70">🤟 3 Fingers</span></button>
-                <button onclick="selectDefectType('Other')" class="defect-other py-4 rounded-xl font-bold active:scale-95 flex flex-col items-center"><span class="text-lg">OTHER</span><span class="text-[10px] opacity-70">🖖 4 Fingers</span></button>
+                <button onclick="selectDefectType('Stain')" class="defect-stain py-4 rounded-xl font-bold active:scale-95">STAIN</button>
+                <button onclick="selectDefectType('Hole')" class="defect-hole py-4 rounded-xl font-bold active:scale-95">HOLE</button>
+                <button onclick="selectDefectType('Repair')" class="defect-repair py-4 rounded-xl font-bold active:scale-95">REPAIR</button>
+                <button onclick="selectDefectType('Other')" class="defect-other py-4 rounded-xl font-bold active:scale-95">OTHER</button>
             </div>
         </div>
     </div>
@@ -469,13 +553,14 @@
     <div id="camera-overlay" class="hidden">
         <video id="cam-feed" autoplay playsinline></video>
         <div class="cam-controls">
-            <div class="text-center mb-3">
-                <span id="cam-mode-label" class="text-white font-bold text-sm bg-black/50 px-3 py-1 rounded-full"></span>
+            <div class="text-center mb-4">
+                <span id="cam-mode-label" class="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full"></span>
+                <span id="cam-count" class="ml-2 text-white bg-blue-600 px-2 py-1 rounded-full text-xs font-bold">0</span>
             </div>
-            <div class="flex items-center justify-center gap-6">
-                <button onclick="closeCamera()" class="text-white text-3xl">✕</button>
+            <div class="flex items-center justify-center gap-8">
+                <button onclick="closeCamera()" class="text-white text-4xl">✕</button>
                 <button onclick="capturePhoto()" class="shutter-btn"></button>
-                <div class="w-10"></div>
+                <div class="w-12"></div>
             </div>
         </div>
     </div>
@@ -483,63 +568,148 @@
     <canvas id="photo-canvas" class="hidden"></canvas>
 
     <script>
+        // ============ WEIGHT TABLES (from V73) ============
+        const weightTable = {
+            "T-Shirt": { "Light": [3.0,3.5,4.5,5.0,5.5,6.5,7.5], "Mid": [4.5,5.0,6.0,7.0,8.0,9.0,10.5], "Heavy": [5.5,6.5,7.5,8.5,10.0,12.0,14.0], desc: "Light=50/50 • Mid=Gildan • Heavy=Beefy" },
+            "Tank Top": { "Light": [2.5,3.0,4.0,4.5,5.0,6.0,7.0], "Mid": [2.5,3.0,4.0,4.5,5.0,6.0,7.0], "Heavy": [3.0,3.5,4.5,5.0,5.5,6.5,7.5], desc: "Standard tank weights" },
+            "Polo Shirt": { "Light": [5.0,6.0,7.0,8.0,9.0,10.0,12.0], "Mid": [6.0,7.0,8.0,9.0,10.5,12.0,14.0], "Heavy": [7.0,8.0,9.0,10.0,12.0,14.0,16.0], desc: "Light=Performance • Heavy=Pique" },
+            "Sweatshirt": { "Light": [8.0,9.0,10.0,12.0,13.0,15.0,17.0], "Mid": [10.0,12.0,14.0,16.0,18.0,20.0,22.0], "Heavy": [14.0,16.0,18.0,22.0,24.0,28.0,32.0], desc: "Light=80s Raglan • Heavy=Reverse Weave" },
+            "Hoodie": { "Light": [10.0,12.0,14.0,16.0,18.0,20.0,22.0], "Mid": [14.0,16.0,18.0,20.0,22.0,24.0,26.0], "Heavy": [20.0,24.0,28.0,32.0,36.0,40.0,44.0], desc: "Light=French Terry • Heavy=Workwear" },
+            "Jeans": { "Light": [14.0,15.0,16.0,17.0,18.0,19.0,20.0], "Mid": [18.0,20.0,22.0,24.0,26.0,28.0,30.0], "Heavy": [24.0,26.0,28.0,30.0,34.0,36.0,40.0], desc: "Light=Stretch • Heavy=Selvedge" },
+            "Jacket": { "Light": [6.0,8.0,10.0,12.0,13.0,14.0,15.0], "Mid": [20.0,24.0,28.0,32.0,36.0,40.0,44.0], "Heavy": [32.0,36.0,40.0,48.0,52.0,56.0,60.0], desc: "Light=Windbreaker • Heavy=Varsity" }
+        };
+        const sizeIndexMap = { "XS":0, "S":1, "M":2, "L":3, "XL":4, "XXL":5, "2XL":5, "3XL":6 };
+        const thicknessToWeight = { 'Paper Thin':'Light', 'Light':'Light', 'Standard':'Mid', 'Heavy':'Heavy' };
+
+        // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
-        let cameraStream = null, cameraMode = null;
+        let cameraStream = null, cameraMode = null, cameraSubType = null;
 
         const data = {
             superCategory: '', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA', copyrightYear: '',
+            fabric: '', fabricCustom: '',
             colorPrimary: '', colorSecondary: '',
             sleeveType: '', isCutOff: null,
-            thickness: '', texture: '',
-            condition: '', defects: [], fadeLevel: '', visualAudit: '',
+            thickness: '', texture: '', construction: 'Single',
+            printType: '', graphicCategory: '',
+            condition: '', hasDefects: null, fadeLevel: '', visualTagCheck: '',
             flagged: false,
-            photos: { front: null, back: null, brandTag: null, careLabel: null, features: {} },
-            audioBlob: null, audioDuration: 0,
-            weightLb: 0, weightOz: 0, weightTotalOz: 0,
+            mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [],
+            audioMeasure: null, audioDuration: 0,
+            itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0,
+            photographer: 'P02', scanTime: null,
             timestamps: {}
         };
 
-        const categoryOptions = { tops: ['T-Shirt','Tank Top','Polo','Button Shirt','Sweatshirt','Hoodie','Sweater','Blouse','Jersey'], bottoms: ['Jeans','Pants','Shorts','Sweatpants','Skirt'], outer: ['Jacket','Coat','Vest','Cardigan'] };
-        const featuresMap = { "T-Shirt":["Copyright","Hem Stitch","Sleeve Stitch"], "Jeans":["Hem/Selvage","Inside Tag","Red Tab"], "Sweatshirt":["V-Stitch","Cuff Rib"], "Hoodie":["Drawstrings","Hood"], "Jacket":["Zipper","Lining"], "default":["Logo","Detail"] };
-        const measureMap = { tops:["SHOULDER","PIT TO PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG OPENING"], outer:["SHOULDER","PIT TO PIT","LENGTH","SLEEVE"] };
-        const weightHints = { 'T-Shirt':'💡 T-Shirts: 4-8 oz', 'Sweatshirt':'💡 Sweatshirts: 12-20 oz', 'Hoodie':'💡 Hoodies: 1-1.5 lbs', 'Jeans':'💡 Jeans: 1-1.5 lbs', 'Jacket':'💡 Jackets: 1-2 lbs' };
+        const categoryOptions = { tops: ['T-Shirt','Tank Top','Polo','Button Shirt','Sweatshirt','Hoodie','Sweater','Jersey','Blouse'], bottoms: ['Jeans','Pants','Shorts','Sweatpants','Skirt'], outer: ['Jacket','Coat','Vest','Cardigan'] };
+        const featuresMap = { "T-Shirt":["Copyright","Hem","Sleeve"], "Jeans":["Hem","Tag","Patch"], "Sweatshirt":["V-Stitch","Cuff"], "default":["Logo","Detail"] };
+        const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
 
         const SVG_TOP_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="6"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="6"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="6"/><rect class="zone-hit" data-zone="R SLEEVE" data-side="front" x="70" y="140" width="139" height="138" rx="4"/><rect class="zone-hit" data-zone="R SHOULDER" data-side="front" x="209" y="140" width="140" height="70" rx="4"/><rect class="zone-hit" data-zone="NECK" data-side="front" x="349" y="140" width="70" height="70" rx="4"/><rect class="zone-hit" data-zone="L SHOULDER" data-side="front" x="420" y="140" width="139" height="70" rx="4"/><rect class="zone-hit" data-zone="L SLEEVE" data-side="front" x="559" y="139" width="140" height="141" rx="4"/><rect class="zone-hit" data-zone="R CHEST" data-side="front" x="209" y="210" width="175" height="139" rx="4"/><rect class="zone-hit" data-zone="L CHEST" data-side="front" x="385" y="210" width="174" height="140" rx="4"/><rect class="zone-hit" data-zone="CENTER" data-side="front" x="209" y="349" width="350" height="208" rx="4"/><rect class="zone-hit" data-zone="HEM" data-side="front" x="209" y="557" width="350" height="70" rx="4"/></svg>`;
         const SVG_TOP_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="6"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="6"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="6"/><rect class="zone-hit" data-zone="L SLEEVE" data-side="back" x="70" y="140" width="139" height="138" rx="4"/><rect class="zone-hit" data-zone="L SHOULDER" data-side="back" x="209" y="140" width="140" height="70" rx="4"/><rect class="zone-hit" data-zone="NECK" data-side="back" x="349" y="140" width="70" height="70" rx="4"/><rect class="zone-hit" data-zone="R SHOULDER" data-side="back" x="420" y="140" width="139" height="70" rx="4"/><rect class="zone-hit" data-zone="R SLEEVE" data-side="back" x="559" y="139" width="140" height="141" rx="4"/><rect class="zone-hit" data-zone="UPPER BACK" data-side="back" x="209" y="210" width="350" height="140" rx="4"/><rect class="zone-hit" data-zone="LOWER BACK" data-side="back" x="209" y="349" width="350" height="208" rx="4"/><rect class="zone-hit" data-zone="HEM" data-side="back" x="209" y="557" width="350" height="70" rx="4"/></svg>`;
         const SVG_PANTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#334155" rx="6"/><rect x="140" y="209" width="210" height="488" fill="#334155" rx="6"/><rect x="419" y="209" width="209" height="488" fill="#334155" rx="6"/><rect x="347" y="209" width="75" height="72" fill="#334155"/><rect class="zone-hit" data-zone="WAIST" data-side="front" x="140" y="69" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="HIP" data-side="front" x="140" y="140" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="R THIGH" data-side="front" x="140" y="209" width="210" height="210" rx="4"/><rect class="zone-hit" data-zone="L THIGH" data-side="front" x="419" y="209" width="209" height="210" rx="4"/><rect class="zone-hit" data-zone="R KNEE" data-side="front" x="140" y="417" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="L KNEE" data-side="front" x="419" y="417" width="209" height="140" rx="4"/><rect class="zone-hit" data-zone="R LEG" data-side="front" x="140" y="557" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="L LEG" data-side="front" x="419" y="557" width="209" height="140" rx="4"/></svg>`;
         const SVG_PANTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#334155" rx="6"/><rect x="140" y="209" width="210" height="488" fill="#334155" rx="6"/><rect x="419" y="209" width="209" height="488" fill="#334155" rx="6"/><rect x="347" y="209" width="75" height="72" fill="#334155"/><rect class="zone-hit" data-zone="WAIST" data-side="back" x="140" y="69" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="SEAT" data-side="back" x="140" y="140" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="L HAM" data-side="back" x="140" y="209" width="210" height="210" rx="4"/><rect class="zone-hit" data-zone="R HAM" data-side="back" x="419" y="209" width="209" height="210" rx="4"/><rect class="zone-hit" data-zone="L KNEE" data-side="back" x="140" y="417" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="R KNEE" data-side="back" x="419" y="417" width="209" height="140" rx="4"/><rect class="zone-hit" data-zone="L CALF" data-side="back" x="140" y="557" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="R CALF" data-side="back" x="419" y="557" width="209" height="140" rx="4"/></svg>`;
-
         const zonePos = { 'front-R SLEEVE':{x:18,y:33},'front-R SHOULDER':{x:36,y:23},'front-NECK':{x:50,y:23},'front-L SHOULDER':{x:64,y:23},'front-L SLEEVE':{x:82,y:33},'front-R CHEST':{x:36,y:44},'front-L CHEST':{x:64,y:44},'front-CENTER':{x:50,y:65},'front-HEM':{x:50,y:88},'back-L SLEEVE':{x:18,y:33},'back-L SHOULDER':{x:36,y:23},'back-NECK':{x:50,y:23},'back-R SHOULDER':{x:64,y:23},'back-R SLEEVE':{x:82,y:33},'back-UPPER BACK':{x:50,y:44},'back-LOWER BACK':{x:50,y:65},'back-HEM':{x:50,y:88},'front-WAIST':{x:50,y:14},'front-HIP':{x:50,y:24},'front-R THIGH':{x:30,y:45},'front-L THIGH':{x:70,y:45},'front-R KNEE':{x:30,y:65},'front-L KNEE':{x:70,y:65},'front-R LEG':{x:30,y:85},'front-L LEG':{x:70,y:85},'back-WAIST':{x:50,y:14},'back-SEAT':{x:50,y:24},'back-L HAM':{x:30,y:45},'back-R HAM':{x:70,y:45},'back-L KNEE':{x:30,y:65},'back-R KNEE':{x:70,y:65},'back-L CALF':{x:30,y:85},'back-R CALF':{x:70,y:85} };
 
-        const defectColors = { Stain:{bg:'bg-yellow-100',border:'border-yellow-400',text:'text-yellow-800'}, Hole:{bg:'bg-red-100',border:'border-red-400',text:'text-red-800'}, Repair:{bg:'bg-blue-100',border:'border-blue-400',text:'text-blue-800'}, Other:{bg:'bg-purple-100',border:'border-purple-400',text:'text-purple-800'} };
+        // ============ INIT ============
+        document.addEventListener('DOMContentLoaded', () => { 
+            data.timestamps.start = new Date().toISOString(); 
+            lucide.createIcons();
+            try {
+                const savedPin = localStorage.getItem('vl_auth');
+                const savedPhotographer = localStorage.getItem('vl_photographer');
+                const savedMode = localStorage.getItem('vl_batch_mode');
+                if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
+                if (savedPhotographer) { data.photographer = savedPhotographer; document.getElementById('photographer-select').value = savedPhotographer; document.getElementById('photographer-badge').innerText = savedPhotographer; }
+                if (savedMode) { data.superCategory = savedMode; }
+                restoreSession();
+            } catch(e) {}
+        });
 
-        document.addEventListener('DOMContentLoaded', () => { data.timestamps.start = new Date().toISOString(); lucide.createIcons(); });
+        // ============ SESSION PERSISTENCE (from V73) ============
+        function persistData() {
+            try {
+                const session = {
+                    sku: document.getElementById('sku-input').value,
+                    superCategory: data.superCategory,
+                    category: document.getElementById('cat-select').value,
+                    tagStatus: data.tagStatus, tagSize: data.tagSize,
+                    fabric: document.getElementById('fabric-select').value,
+                    gender: data.gender, condition: data.condition,
+                    sleeveType: data.sleeveType, hasDefects: data.hasDefects,
+                    colorPrimary: data.colorPrimary, thickness: data.thickness
+                };
+                localStorage.setItem('vl_session_v75', JSON.stringify(session));
+            } catch(e) {}
+            updateAllChecks();
+        }
 
+        function restoreSession() {
+            try {
+                const session = JSON.parse(localStorage.getItem('vl_session_v75'));
+                if (!session) return;
+                // Restore minimal fields
+                if (session.superCategory) { data.superCategory = session.superCategory; }
+            } catch(e) {}
+        }
+
+        // ============ AUTH ============
+        function checkPin() {
+            if(document.getElementById('pin-input').value === APP_PIN) {
+                try {
+                    localStorage.setItem('vl_auth', APP_PIN);
+                    const photographer = document.getElementById('photographer-select').value;
+                    localStorage.setItem('vl_photographer', photographer);
+                    data.photographer = photographer;
+                    document.getElementById('photographer-badge').innerText = photographer;
+                } catch(e) {}
+                document.getElementById('login-screen').classList.add('hidden');
+            } else {
+                document.getElementById('pin-input').value = '';
+                document.getElementById('pin-input').classList.add('border-red-500');
+                setTimeout(() => document.getElementById('pin-input').classList.remove('border-red-500'), 500);
+            }
+        }
+
+        function showPhotographerChange() {
+            const current = data.photographer;
+            const newP = prompt(`Current: ${current}\nEnter code (P01, P02, P03):`, current);
+            if (newP && ['P01','P02','P03'].includes(newP.toUpperCase())) {
+                data.photographer = newP.toUpperCase();
+                document.getElementById('photographer-badge').innerText = data.photographer;
+                try { localStorage.setItem('vl_photographer', data.photographer); } catch(e) {}
+            }
+        }
+
+        // ============ CHECKS ============
         function updateCheck(id, complete) { const el = document.getElementById(id); if(!el) return; el.innerHTML = complete ? '✓' : '○'; el.classList.toggle('complete', complete); }
         function updateAllChecks() {
             updateCheck('check-category', !!data.category);
             updateCheck('check-sku', !!data.sku);
             updateCheck('check-tag', !!data.tagStatus);
+            updateCheck('check-fabric', !!data.fabric);
             updateCheck('check-color', !!data.colorPrimary);
-            updateCheck('check-sleeve', !!data.sleeveType);
+            updateCheck('check-sleeve', !!data.sleeveType || data.superCategory !== 'tops');
             updateCheck('check-condition', !!data.condition);
             updateCheck('check-fade', !!data.fadeLevel);
-            updateCheck('check-photos', !!data.photos.front || !!data.photos.back);
-            updateCheck('check-measure', !!data.audioBlob);
-            updateCheck('check-weight', data.weightTotalOz > 0);
+            updateCheck('check-photos', data.mainPhotos.length > 0);
+            updateCheck('check-measure', !!data.audioMeasure);
+            updateCheck('check-weight', data.itemWeightTotalOz > 0);
         }
 
+        // ============ NAVIGATION ============
         function goToStep(step) {
+            if(step === currentStep) return;
             data.timestamps[`step${currentStep}End`] = new Date().toISOString();
             data.timestamps[`step${step}Start`] = new Date().toISOString();
             document.getElementById(`step-${currentStep}`).classList.remove('active');
             document.getElementById(`step-${step}`).classList.add('active');
             currentStep = step;
             updateProgressBar(step);
-            document.getElementById('step-label').textContent = ['','STEP 1: IDENTIFY','STEP 2: INSPECT','STEP 3: DOCUMENT','STEP 4: REVIEW'][step];
-            if(step===3) { initDefectSection(); updateMeasureHint(); updateFeaturesGrid(); updateWeightHint(); }
+            document.getElementById('step-label').textContent = ['','Identify','Inspect','Document','Review'][step];
+            if(step===3) { initDefectSection(); updateMeasureHint(); updateFeaturesGrid(); updateWeightHint(); renderPhotoThumbs(); }
             if(step===4) updateReviewCards();
             window.scrollTo(0,0);
             updateAllChecks();
@@ -550,7 +720,7 @@
             for(let i=1;i<=3;i++) { const l=document.getElementById(`line-${i}`); l.classList.remove('completed','pending'); l.classList.add(i<step?'completed':'pending'); }
         }
 
-        // === STEP 1 ===
+        // ============ STEP 1 ============
         function setSuperCategory(cat, btn) {
             data.superCategory = cat;
             document.querySelectorAll('.super-btn').forEach(b => b.classList.remove('selected'));
@@ -560,14 +730,19 @@
             categoryOptions[cat].forEach(o => sel.innerHTML += `<option value="${o}">${o}</option>`);
             sel.classList.remove('hidden');
             document.getElementById('sleeve-section').classList.toggle('hidden', cat !== 'tops');
-            updateAllChecks();
+            document.getElementById('graphics-section').classList.add('hidden');
+            persistData();
         }
 
-        function onCategoryChange() { data.category = document.getElementById('cat-select').value; updateAllChecks(); }
-        function onSkuInput() { data.sku = document.getElementById('sku-input').value; updateAllChecks(); }
+        function onCategoryChange() { 
+            data.category = document.getElementById('cat-select').value; 
+            document.getElementById('graphics-section').classList.toggle('hidden', !['T-Shirt','Tank Top','Sweatshirt','Hoodie'].includes(data.category));
+            persistData(); 
+        }
+        function onSkuInput() { data.sku = document.getElementById('sku-input').value; if(!data.scanTime) data.scanTime = new Date(); persistData(); }
 
         function toggleScanner() { const v = document.getElementById('scanner-view'); if(v.classList.contains('hidden')) { v.classList.remove('hidden'); startScanner(); } else { v.classList.add('hidden'); stopScanner(); } }
-        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; toggleScanner(); updateAllChecks(); }, () => {}).catch(e => console.error(e)); }
+        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; data.scanTime = new Date(); toggleScanner(); persistData(); }, () => {}).catch(e => console.error(e)); }
         function stopScanner() { if(qrScanner?.isScanning) qrScanner.stop().catch(e => console.error(e)); }
 
         function setTagStatus(status, btn) {
@@ -578,12 +753,12 @@
             document.getElementById('origin-section').classList.remove('hidden');
             document.getElementById('copyright-section').classList.remove('hidden');
             document.getElementById('tag-gender-section').classList.remove('hidden');
-            updateAllChecks();
+            persistData();
         }
 
-        function setTagSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('tag-size-input').value = ''; }
+        function setTagSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('tag-size-input').value = ''; persistData(); }
         function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function onCustomSizeInput() { data.tagSize = document.getElementById('tag-size-input').value; clearSizeBtns(); }
+        function onCustomSizeInput() { data.tagSize = document.getElementById('tag-size-input').value; clearSizeBtns(); persistData(); }
 
         function setOrigin(type, btn) {
             data.origin = type;
@@ -591,38 +766,46 @@
             btn.classList.add('selected');
             document.getElementById('country-select').classList.toggle('hidden', type === 'usa');
             data.madeInCountry = type === 'usa' ? 'USA' : '';
+            persistData();
         }
 
-        function setGender(g, btn) { data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
+        function setGender(g, btn) { data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        
+        function onFabricChange() {
+            data.fabric = document.getElementById('fabric-select').value;
+            document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend');
+            persistData();
+        }
 
         function setSleeve(type, btn) {
             data.sleeveType = type;
             document.querySelectorAll('.sleeve-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
-            document.getElementById('cutoff-section').classList.toggle('hidden', !(data.category === 'T-Shirt' && type === 'Sleeveless'));
-            updateAllChecks();
+            document.getElementById('cutoff-section').classList.toggle('hidden', !(data.category === 'T-Shirt' && type === 'None'));
+            persistData();
         }
+        function setCutOff(val, btn) { data.isCutOff = val; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setThickness(t, btn) { data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setTexture(t, btn) { data.texture = t; document.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setConstruction(c, btn) { data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setPrintType(t, btn) { data.printType = t; document.querySelectorAll('.print-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('graphic-category-section').classList.toggle('hidden', t === 'Blank'); persistData(); }
+        function setGraphicCat(c, btn) { data.graphicCategory = c; document.querySelectorAll('.graphic-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
 
-        function setCutOff(val, btn) { data.isCutOff = val; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-        function setThickness(t, btn) { data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-        function setTexture(t, btn) { data.texture = t; document.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-
-        // === STEP 2 ===
-        function setCondition(cond, btn) {
-            data.condition = cond;
-            document.querySelectorAll('.condition-btn').forEach(b => b.classList.remove('selected'));
+        // ============ STEP 2 ============
+        function setHasDefects(has, btn) {
+            data.hasDefects = has;
+            document.querySelectorAll('.defect-toggle-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
-            document.getElementById('defect-hint').classList.toggle('hidden', cond !== 'found');
-            updateAllChecks();
+            document.getElementById('defect-hint').classList.toggle('hidden', !has);
+            persistData();
         }
+        function setFade(level, btn) { data.fadeLevel = level; document.querySelectorAll('.fade-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setVisualCheck(val, btn) { data.visualTagCheck = val; document.querySelectorAll('.visual-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function flagUnusual() { data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '<div class="flex items-center justify-center gap-2">✓ FLAGGED</div>'; }
 
-        function setFade(level, btn) { data.fadeLevel = level; document.querySelectorAll('.fade-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); updateAllChecks(); }
-        function setAudit(val, btn) { data.visualAudit = val; document.querySelectorAll('.audit-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-        function flagUnusual() { data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '<div class="flex items-center justify-center gap-2 text-lg">✓ FLAGGED FOR REVIEW</div>'; }
-
-        // === STEP 3 ===
+        // ============ STEP 3 ============
         function initDefectSection() {
-            const show = data.condition === 'found';
+            const show = data.hasDefects === true;
             document.getElementById('defect-section').classList.toggle('hidden', !show);
             if(show) {
                 const isTops = data.superCategory === 'tops' || data.superCategory === 'outer';
@@ -636,7 +819,6 @@
                     };
                 });
                 renderDefectMarkers();
-                updateDefectList();
             }
         }
 
@@ -645,10 +827,8 @@
         function selectDefectType(type) {
             if(pendingDefect) {
                 pendingDefect.type = type;
-                pendingDefect.id = `defect-${Date.now()}`;
                 document.getElementById('defect-modal').classList.add('hidden');
-                // Immediately open camera to capture defect photo
-                cameraMode = { type: 'defect', defect: pendingDefect };
+                cameraMode = 'defect';
                 openCameraOverlay(`DEFECT: ${type}`);
             }
         }
@@ -656,50 +836,90 @@
         function renderDefectMarkers() {
             document.getElementById('defect-markers-front').innerHTML = '';
             document.getElementById('defect-markers-back').innerHTML = '';
-            data.defects.forEach((d, i) => {
-                const pos = zonePos[`${d.side}-${d.zone}`];
+            data.defectPhotos.forEach((d, i) => {
+                const meta = d.defectMeta;
+                const pos = zonePos[`${meta.side}-${meta.zone}`];
                 if(!pos) return;
                 const m = document.createElement('div');
-                m.className = `defect-marker ${d.type.toLowerCase()}`;
+                m.className = `defect-marker ${meta.type.toLowerCase()}`;
                 m.style.cssText = `left:${pos.x}%;top:${pos.y}%`;
                 m.textContent = i + 1;
-                m.onclick = () => removeDefect(i);
-                document.getElementById(`defect-markers-${d.side}`).appendChild(m);
+                m.onclick = () => { if(confirm('Remove this defect?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); } };
+                document.getElementById(`defect-markers-${meta.side}`).appendChild(m);
             });
         }
 
-        function updateDefectList() {
-            const el = document.getElementById('defect-list');
-            if(!data.defects.length) { el.innerHTML = '<p class="text-gray-400 text-xs text-center py-2">Tap on the body map above to mark defects</p>'; return; }
-            el.innerHTML = data.defects.map((d, i) => {
-                const c = defectColors[d.type];
-                return `<div class="defect-photo-item ${c.bg} ${c.border} border rounded-lg">
-                    ${d.photo ? `<img src="${d.photo}" class="defect-photo-thumb">` : '<div class="w-[50px] h-[50px] bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">?</div>'}
-                    <div class="flex-1">
-                        <div class="font-bold text-xs ${c.text}">${i+1}. ${d.type}</div>
-                        <div class="text-[10px] opacity-70">${d.side} • ${d.zone}</div>
-                    </div>
-                    <button onclick="removeDefect(${i})" class="text-gray-400 text-xl px-2">×</button>
-                </div>`;
-            }).join('');
+        function renderPhotoThumbs() {
+            ['main','tag','feature'].forEach(type => {
+                const container = document.getElementById(`${type}-photos-thumbs`);
+                if(!container) return;
+                const photos = data[`${type}Photos`];
+                container.innerHTML = photos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.${type}Photos.splice(${i},1);renderPhotoThumbs();}">`).join('');
+            });
+            // Update tag buttons
+            const hasNeck = data.tagPhotos.some(p => p.tagType === 'neck');
+            const hasCare = data.tagPhotos.some(p => p.tagType === 'care');
+            document.getElementById('btn-tag-neck').classList.toggle('captured', hasNeck);
+            document.getElementById('btn-tag-care').classList.toggle('captured', hasCare);
+            updateAllChecks();
         }
 
-        function removeDefect(i) { data.defects.splice(i, 1); renderDefectMarkers(); updateDefectList(); updateAllChecks(); }
+        function updateFeaturesGrid() {
+            const feats = featuresMap[data.category] || featuresMap.default;
+            document.getElementById('features-grid').innerHTML = feats.map(f => `<button onclick="openCamera('feature','${f}')" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[9px] font-bold">📷 ${f}</button>`).join('');
+        }
 
-        // === CAMERA ===
-        async function openCamera(mode) {
-            cameraMode = { type: mode };
+        function updateMeasureHint() {
+            const m = measureMap[data.superCategory] || measureMap.tops;
+            document.getElementById('measure-hint').innerHTML = `<b class="text-blue-800 text-[9px]">📏 SPEAK:</b> <span class="text-[10px]">${m.join(' • ')}</span>`;
+        }
+
+        function updateWeightHint() {
+            const category = data.category;
+            const tagSize = data.tagSize || '';
+            const thickness = data.thickness || 'Standard';
+            const construction = data.construction || 'Single';
+            const weightClass = thicknessToWeight[thickness] || 'Mid';
+            
+            let tableData = weightTable[category];
+            const hintEl = document.getElementById('weight-hint');
+            
+            if (tableData) {
+                let sizeIdx = -1;
+                for (const [sizeKey, idx] of Object.entries(sizeIndexMap)) {
+                    if (tagSize.toUpperCase().includes(sizeKey)) { sizeIdx = idx; break; }
+                }
+                const weights = tableData[weightClass] || tableData['Mid'];
+                if (weights && sizeIdx >= 0 && sizeIdx < weights.length) {
+                    let expectedOz = weights[sizeIdx];
+                    const multiplier = (construction === 'Reversible' || construction === 'Lined') ? 2 : 1;
+                    expectedOz = expectedOz * multiplier;
+                    const displayWeight = expectedOz >= 32 ? `${(expectedOz/16).toFixed(1)}lb` : `${expectedOz}oz`;
+                    hintEl.innerHTML = `<p class="text-[11px] text-purple-700 font-bold text-center">💡 ${category} (${tagSize || '?'}, ${thickness})</p><p class="text-[13px] text-purple-900 font-black text-center">Expected: ~${displayWeight}</p>`;
+                    return;
+                }
+                const minW = Math.min(...(tableData['Light'] || tableData['Mid']));
+                const maxW = Math.max(...(tableData['Heavy'] || tableData['Mid']));
+                hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category}: ${minW >= 32 ? (minW/16).toFixed(1)+'lb' : minW+'oz'} - ${maxW >= 32 ? (maxW/16).toFixed(1)+'lb' : maxW+'oz'}</p>`;
+            } else {
+                hintEl.innerHTML = `<p class="text-[10px] text-purple-600 text-center">💡 Typical: 6oz-1lb</p>`;
+            }
+        }
+
+        // ============ CAMERA ============
+        async function openCamera(mode, subType = null) {
+            cameraMode = mode;
+            cameraSubType = subType;
             let label = mode.toUpperCase();
-            if(mode === 'front') label = 'FULL FRONT';
-            if(mode === 'back') label = 'FULL BACK';
-            if(mode === 'brandTag') label = 'BRAND TAG';
-            if(mode === 'careLabel') label = 'CARE LABEL';
-            if(mode.startsWith('feature-')) label = `FEATURE: ${mode.replace('feature-','')}`;
+            if(mode === 'tag') label = subType === 'neck' ? 'NECK TAG' : 'CARE LABEL';
+            if(mode === 'feature') label = `FEATURE: ${subType}`;
             openCameraOverlay(label);
         }
 
         async function openCameraOverlay(label) {
             document.getElementById('cam-mode-label').textContent = label;
+            const count = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : cameraMode === 'defect' ? data.defectPhotos.length : data.featurePhotos.length;
+            document.getElementById('cam-count').textContent = count;
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
                 document.getElementById('cam-feed').srcObject = cameraStream;
@@ -720,42 +940,30 @@
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-            if(cameraMode.type === 'defect' && cameraMode.defect) {
-                cameraMode.defect.photo = dataUrl;
-                data.defects.push(cameraMode.defect);
-                renderDefectMarkers();
-                updateDefectList();
-            } else if(cameraMode.type.startsWith('feature-')) {
-                data.photos.features[cameraMode.type.replace('feature-','')] = dataUrl;
-                const btn = document.getElementById(`photo-${cameraMode.type}`);
-                if(btn) btn.classList.add('captured');
-            } else {
-                data.photos[cameraMode.type] = dataUrl;
-                const btn = document.getElementById(`photo-${cameraMode.type}`);
-                if(btn) btn.classList.add('captured');
-            }
-
-            closeCamera();
-            updateAllChecks();
+            
+            canvas.toBlob(blob => {
+                const photo = { dataUrl, blob, timestamp: new Date().toISOString() };
+                
+                if(cameraMode === 'defect' && pendingDefect) {
+                    photo.defectMeta = { ...pendingDefect };
+                    data.defectPhotos.push(photo);
+                    renderDefectMarkers();
+                } else if(cameraMode === 'tag') {
+                    photo.tagType = cameraSubType;
+                    data.tagPhotos.push(photo);
+                } else if(cameraMode === 'feature') {
+                    photo.featureName = cameraSubType;
+                    data.featurePhotos.push(photo);
+                } else {
+                    data.mainPhotos.push(photo);
+                }
+                
+                renderPhotoThumbs();
+                closeCamera();
+            }, 'image/jpeg', 0.85);
         }
 
-        function updateFeaturesGrid() {
-            const feats = featuresMap[data.category] || featuresMap.default;
-            document.getElementById('features-grid').innerHTML = feats.map(f => `<button onclick="openCamera('feature-${f}')" id="photo-feature-${f}" class="photo-btn relative py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px]">📷 ${f}</button>`).join('');
-        }
-
-        function updateMeasureHint() {
-            const m = measureMap[data.superCategory] || measureMap.tops;
-            document.getElementById('measure-hint').innerHTML = `<b class="text-blue-800 text-[10px]">📏 SPEAK THESE:</b><div class="mt-1 text-[11px]">${m.join(' • ')}</div>`;
-        }
-
-        function updateWeightHint() {
-            const h = weightHints[data.category] || '💡 Select category for weight hint';
-            document.getElementById('weight-hint').innerHTML = `<p class="text-[10px] text-purple-600 font-medium text-center">${h}</p>`;
-        }
-
-        // === AUDIO ===
+        // ============ AUDIO ============
         async function toggleRecording() {
             if(!isRecording) {
                 try {
@@ -764,7 +972,7 @@
                     audioChunks = [];
                     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
                     mediaRecorder.onstop = () => {
-                        data.audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        data.audioMeasure = new Blob(audioChunks, { type: 'audio/webm' });
                         data.audioDuration = Math.round((Date.now() - recordingStart) / 1000);
                         document.getElementById('record-section').classList.add('hidden');
                         document.getElementById('post-record-section').classList.remove('hidden');
@@ -775,40 +983,135 @@
                     mediaRecorder.start();
                     recordingStart = Date.now();
                     isRecording = true;
-                    const btn = document.getElementById('record-btn');
-                    btn.classList.add('recording');
-                    btn.innerHTML = '<span class="text-2xl">⏹️</span><span>TAP TO STOP</span><span id="rec-timer" class="text-sm font-mono">0:00</span>';
+                    document.getElementById('record-btn').classList.add('recording');
+                    document.getElementById('record-btn').innerHTML = '<span class="text-2xl">⏹️</span><span>STOP</span><span id="rec-timer" class="text-sm font-mono">0:00</span>';
                     updateRecTimer();
-                } catch(e) { alert('Microphone access denied'); }
+                } catch(e) { alert('Mic error'); }
             } else { mediaRecorder.stop(); isRecording = false; }
         }
 
         function updateRecTimer() { if(!isRecording) return; const t = document.getElementById('rec-timer'); if(t) t.textContent = formatTime(Math.round((Date.now()-recordingStart)/1000)); setTimeout(updateRecTimer, 1000); }
         function formatTime(s) { return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
-        function reRecord() { data.audioBlob = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>TAP TO RECORD</span>'; updateAllChecks(); }
+        function reRecord() { data.audioMeasure = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>TAP TO RECORD</span>'; updateAllChecks(); }
 
-        function updateWeight() { data.weightLb = +document.getElementById('weight-lb').value||0; data.weightOz = +document.getElementById('weight-oz').value||0; data.weightTotalOz = data.weightLb*16 + data.weightOz; updateAllChecks(); }
+        function updateWeight() { data.itemWeightLb = +document.getElementById('weight-lb').value||0; data.itemWeightOz = +document.getElementById('weight-oz').value||0; data.itemWeightTotalOz = data.itemWeightLb*16 + data.itemWeightOz; updateAllChecks(); updateWeightHint(); }
 
-        // === STEP 4 ===
+        // ============ STEP 4 ============
         function updateReviewCards() {
-            document.getElementById('summary-identify').innerHTML = `${data.category||'?'} • ${data.sku||'?'}<br>${data.tagSize||''} ${data.gender||''}<br>${data.colorPrimary||'No color'}`;
-            document.getElementById('summary-inspect').innerHTML = `${data.condition==='none'?'No flaws':data.defects.length+' defects'}<br>${data.fadeLevel||'?'} fade`;
-            const pc = Object.values(data.photos).filter(p=>p&&typeof p==='string').length + Object.values(data.photos.features||{}).filter(p=>p).length + data.defects.filter(d=>d.photo).length;
-            document.getElementById('summary-document').innerHTML = `${pc} photos<br>${data.audioBlob?formatTime(data.audioDuration)+' audio':'⚠️ No audio'}`;
-            document.getElementById('summary-ready').innerHTML = data.weightTotalOz > 0 ? `${data.weightLb} lb ${data.weightOz} oz` : '⚠️ No weight';
-            setCardStatus('identify', !!data.category && !!data.sku && !!data.colorPrimary);
-            setCardStatus('inspect', !!data.fadeLevel);
-            setCardStatus('document', !!data.audioBlob && (!!data.photos.front || !!data.photos.back));
-            setCardStatus('ready', data.weightTotalOz > 0);
+            document.getElementById('summary-identify').innerHTML = `${data.category||'?'} • SKU:${data.sku||'?'}<br>${data.tagSize||''} ${data.colorPrimary||''}`;
+            document.getElementById('summary-inspect').innerHTML = `${data.condition||'?'}<br>${data.hasDefects?data.defectPhotos.length+' defects':'No flaws'} • ${data.fadeLevel||'?'}`;
+            const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.featurePhotos.length;
+            document.getElementById('summary-document').innerHTML = `${pc} photos<br>${data.audioMeasure?formatTime(data.audioDuration):'No audio'}`;
+            document.getElementById('summary-ready').innerHTML = data.itemWeightTotalOz > 0 ? `${data.itemWeightLb}lb ${data.itemWeightOz}oz` : 'No weight';
+            setCardStatus('identify', !!data.category && !!data.sku && !!data.colorPrimary && !!data.fabric);
+            setCardStatus('inspect', !!data.condition && !!data.fadeLevel);
+            setCardStatus('document', !!data.audioMeasure && data.mainPhotos.length > 0);
+            setCardStatus('ready', data.itemWeightTotalOz > 0);
             if(data.flagged) document.getElementById('flag-status').classList.remove('hidden');
         }
 
         function setCardStatus(name, ok) { const card = document.getElementById(`card-${name}`); const icon = document.getElementById(`icon-${name}`); card.classList.remove('card-green','card-yellow'); card.classList.add(ok?'card-green':'card-yellow'); icon.textContent = ok?'🟢':'🟡'; }
 
-        function submitListing() {
-            data.timestamps.submitted = new Date().toISOString();
-            console.log('=== PAYLOAD ===', JSON.stringify(data, null, 2));
-            alert(`Submitted!\n\nSKU: ${data.sku}\nCategory: ${data.category}\nDefects: ${data.defects.length}\nPhotos: ${Object.values(data.photos).filter(p=>p&&typeof p==='string').length + data.defects.filter(d=>d.photo).length}\nWeight: ${data.weightLb}lb ${data.weightOz}oz`);
+        // ============ SUBMIT (from V73) ============
+        async function submitData() {
+            const sku = data.sku || document.getElementById('sku-input').value;
+            if(!sku) return alert("Scan or enter the SKU");
+            if(data.mainPhotos.length === 0) return alert("Add at least one main photo");
+            if(data.itemWeightTotalOz === 0) return alert("Enter the weight");
+            if(!data.fabric) return alert("Choose a fabric type");
+            if(!data.colorPrimary) return alert("Pick the main color");
+            
+            data.timestamps.submit_pressed = new Date().toISOString();
+            
+            const modal = document.getElementById('upload-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('upload-status').textContent = 'Building payload...';
+            
+            const fd = new FormData();
+            fd.append('sku', sku);
+            fd.append('auth_pin', APP_PIN);
+            fd.append('photographer', data.photographer);
+            fd.append('super_category', data.superCategory);
+            fd.append('category', data.category);
+            fd.append('gender', data.gender);
+            fd.append('tag_status', data.tagStatus);
+            fd.append('tag_size', data.tagSize);
+            fd.append('origin', data.origin);
+            fd.append('made_in_country', data.madeInCountry);
+            fd.append('copyright_year', data.copyrightYear);
+            fd.append('fabric', data.fabric === 'Custom Blend' ? document.getElementById('fabric-custom').value : data.fabric);
+            fd.append('thickness', data.thickness);
+            fd.append('texture', data.texture);
+            fd.append('construction', data.construction);
+            fd.append('color_primary', data.colorPrimary);
+            fd.append('color_secondary', data.colorSecondary);
+            fd.append('sleeve_type', data.sleeveType);
+            fd.append('print_type', data.printType);
+            fd.append('graphic_category', data.graphicCategory);
+            fd.append('condition', data.condition);
+            fd.append('has_defects', data.hasDefects);
+            fd.append('fade_level', data.fadeLevel);
+            fd.append('visual_tag_check', data.visualTagCheck);
+            fd.append('flagged', data.flagged);
+            fd.append('item_weight_lb', data.itemWeightLb);
+            fd.append('item_weight_oz', data.itemWeightOz);
+            fd.append('item_weight_total_oz', data.itemWeightTotalOz);
+            
+            // Photo counts
+            fd.append('photo_count_main', data.mainPhotos.length);
+            fd.append('photo_count_tag', data.tagPhotos.length);
+            fd.append('photo_count_defect', data.defectPhotos.length);
+            fd.append('photo_count_feature', data.featurePhotos.length);
+            fd.append('photo_count_total', data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.featurePhotos.length);
+            
+            // Defects metadata
+            const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
+            fd.append('defect_map_json', JSON.stringify(defectsMetadata));
+            
+            // Features metadata
+            const featuresMetadata = data.featurePhotos.map((p, i) => ({ index: i+1, feature: p.featureName }));
+            fd.append('features_json', JSON.stringify(featuresMetadata));
+            
+            // Timestamps
+            fd.append('kpi_timestamps_json', JSON.stringify(data.timestamps));
+            if(data.scanTime) {
+                fd.append('scan_time', data.scanTime.toISOString());
+                fd.append('kpi_duration_sec', Math.round((new Date() - data.scanTime)/1000));
+            }
+            
+            // Photos
+            data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
+            data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
+            data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
+            data.featurePhotos.forEach((p, i) => fd.append(`feature_photo_${i+1}`, p.blob, `${sku}_feature_${i+1}.jpg`));
+            
+            if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
+            
+            document.getElementById('upload-status').textContent = 'Uploading...';
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", N8N_WEBHOOK_URL, true);
+            xhr.upload.onprogress = e => { 
+                if(e.lengthComputable) {
+                    const pct = Math.round((e.loaded/e.total)*100);
+                    document.getElementById('upload-progress-bar').style.width = `${pct}%`;
+                    document.getElementById('upload-status').textContent = `Uploading... ${pct}%`;
+                }
+            };
+            xhr.onload = () => { 
+                if(xhr.status >= 200 && xhr.status < 300) { 
+                    document.getElementById('upload-progress-bar').style.backgroundColor = "#22c55e";
+                    document.getElementById('upload-status').textContent = '✓ Success!';
+                    localStorage.removeItem('vl_session_v75');
+                    localStorage.setItem('vl_batch_mode', data.superCategory);
+                    setTimeout(() => location.reload(), 800); 
+                } else { 
+                    alert("Error: " + xhr.status); 
+                    modal.classList.add('hidden'); 
+                } 
+            };
+            xhr.onerror = () => { alert("Network Error"); modal.classList.add('hidden'); };
+            xhr.send(fd);
         }
     </script>
 </body>
