@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VintageLister v75.5</title>
+    <title>VintageLister v75.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -22,61 +22,116 @@
         .progress-line.completed { background: #22c55e; }
         .progress-line.pending { background: #e5e7eb; }
         
-        .check-circle { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; transition: all 0.2s; color: #d1d5db; flex-shrink: 0; }
-        .check-circle.complete { background: #22c55e; border-color: #22c55e; color: white; }
+        /* Animated checkmark with spring physics */
+        .check-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); color: #d1d5db; flex-shrink: 0; }
+        .check-circle.complete { background: #22c55e; border-color: #22c55e; color: white; transform: scale(1.1); }
+        @keyframes checkPop { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1.1); } }
+        .check-circle.just-completed { animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
         
-        .section-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; }
+        .section-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; scroll-margin-top: 160px; transition: all 0.3s; }
+        .section-card.highlight { box-shadow: 0 0 0 3px rgba(59,130,246,0.3), 0 4px 12px rgba(59,130,246,0.15); }
+        
+        /* HERO BUTTON - Primary/Default option (LARGE, PROMINENT) */
+        .btn-hero { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white !important; border: 2px solid #1d4ed8 !important;
+            box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+            font-size: 14px; font-weight: 700;
+            position: relative;
+        }
+        .btn-hero::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%); pointer-events: none; }
+        .btn-hero:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+        .btn-hero.selected { box-shadow: 0 0 0 3px rgba(34,197,94,0.5), 0 4px 14px rgba(59,130,246,0.4); border-color: #22c55e !important; }
+        
+        /* Secondary options - muted, smaller */
+        .btn-secondary { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; font-size: 11px; }
+        .btn-secondary:active { transform: scale(0.97); background: #f3f4f6; }
+        .btn-secondary.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
         
         .btn-select { transition: all 0.15s; }
         .btn-select:active { transform: scale(0.97); }
-        .btn-select.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+        .btn-select.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
+        
+        /* Streak badge with fire animation */
+        .streak-badge { background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); color: white; font-weight: 800; padding: 4px 10px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
+        @keyframes flicker { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .streak-badge .fire { animation: flicker 0.6s ease-in-out infinite; }
+        
+        /* Stats bar */
+        .stats-bar { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-item { text-align: center; flex: 1; }
+        .stat-value { color: white; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+        .stat-label { color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .stat-divider { width: 1px; height: 30px; background: #334155; }
+        
+        /* Celebration overlay */
+        #celebration { position: fixed; inset: 0; z-index: 200; pointer-events: none; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; background: rgba(0,0,0,0.3); }
+        #celebration.show { opacity: 1; }
+        #celebration .content { background: white; border-radius: 24px; padding: 32px 48px; box-shadow: 0 25px 80px rgba(0,0,0,0.4); transform: scale(0.5) translateY(50px); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; }
+        #celebration.show .content { transform: scale(1) translateY(0); }
+        
+        /* Scan flash effect */
+        @keyframes scanFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+        #scan-flash { position: fixed; inset: 0; background: linear-gradient(135deg, rgba(59,130,246,0.3) 0%, rgba(34,197,94,0.3) 100%); pointer-events: none; opacity: 0; z-index: 150; }
+        #scan-flash.flash { animation: scanFlash 0.4s ease-out; }
+        
+        /* Warning card */
+        .warning-card { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px; padding: 12px; margin-top: 8px; }
+        .warning-card.error { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-color: #ef4444; }
+        
+        /* Pulsing attention */
+        @keyframes pulse-attention { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+        .needs-attention { animation: pulse-attention 2s infinite; }
         
         .defect-stain { background: #fef9c3; color: #854d0e; border: 2px solid #facc15; }
         .defect-hole { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
         .defect-repair { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
         .defect-other { background: #f3e8ff; color: #6b21a8; border: 2px solid #c084fc; }
         
-        .zone-hit { cursor: pointer; fill: rgba(100,116,139,0.12); stroke: rgba(100,116,139,0.25); stroke-width: 1px; transition: all 0.1s; }
-        .zone-hit:active { fill: rgba(59,130,246,0.4) !important; }
+        .zone-hit { cursor: pointer; fill: rgba(100,116,139,0.15); stroke: rgba(100,116,139,0.3); stroke-width: 1.5px; transition: all 0.15s; }
+        .zone-hit:hover { fill: rgba(59,130,246,0.2); }
+        .zone-hit:active { fill: rgba(59,130,246,0.5) !important; }
         .map-wrapper { position: relative; width: 100%; touch-action: manipulation; }
         
-        .defect-marker { position: absolute; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; transform: translate(-50%,-50%); z-index: 30; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid white; animation: pop-in 0.2s ease-out; cursor: pointer; }
-        @keyframes pop-in { from { transform: translate(-50%,-50%) scale(0); } to { transform: translate(-50%,-50%) scale(1); } }
-        .defect-marker.stain { background: #facc15; color: #713f12; }
-        .defect-marker.hole { background: #f87171; color: white; }
-        .defect-marker.repair { background: #60a5fa; color: white; }
-        .defect-marker.other { background: #c084fc; color: white; }
+        .defect-marker { position: absolute; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; transform: translate(-50%,-50%); z-index: 30; box-shadow: 0 3px 8px rgba(0,0,0,0.3); border: 2px solid white; animation: markerPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
+        @keyframes markerPop { from { transform: translate(-50%,-50%) scale(0); } to { transform: translate(-50%,-50%) scale(1); } }
+        .defect-marker.stain { background: linear-gradient(135deg, #facc15, #eab308); color: #713f12; }
+        .defect-marker.hole { background: linear-gradient(135deg, #f87171, #ef4444); color: white; }
+        .defect-marker.repair { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; }
+        .defect-marker.other { background: linear-gradient(135deg, #c084fc, #a855f7); color: white; }
         
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 70% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
-        .recording { animation: pulse-red 1.5s infinite; background: #dc2626 !important; }
+        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 50% { box-shadow: 0 0 0 15px rgba(239,68,68,0); } }
+        .recording { animation: pulse-red 1.2s infinite; background: linear-gradient(135deg, #dc2626, #b91c1c) !important; }
         
         @keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-slide-up { animation: slide-up 0.25s cubic-bezier(0.16,1,0.3,1); }
+        .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         
-        #reader video { object-fit: cover; border-radius: 0.75rem; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+        .shake { animation: shake 0.5s ease-out; }
         
-        .photo-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; }
-        .photo-btn { position: relative; }
-        .photo-btn.captured { background: #dcfce7 !important; border-color: #22c55e !important; border-style: solid !important; }
+        .photo-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s; }
+        .photo-thumb:active { transform: scale(0.95); }
         
-        .flag-btn { background: linear-gradient(135deg,#fef3c7 0%,#fde68a 100%); border: 2px dashed #d97706; }
-        .flag-btn.flagged { background: linear-gradient(135deg,#fde68a 0%,#fbbf24 100%); border: 2px solid #b45309; }
+        .flag-btn { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px dashed #d97706; }
+        .flag-btn.flagged { background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%); border: 2px solid #b45309; }
         
-        .card-green { border-left: 4px solid #22c55e; background: #f0fdf4; }
-        .card-yellow { border-left: 4px solid #eab308; background: #fefce8; }
+        .card-green { border-left: 4px solid #22c55e; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+        .card-yellow { border-left: 4px solid #eab308; background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); }
         
         #camera-overlay { position: fixed; inset: 0; z-index: 100; background: black; }
         #camera-overlay video { width: 100%; height: 100%; object-fit: cover; }
-        .cam-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 24px; padding-bottom: max(24px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.85)); }
-        .shutter-btn { width: 72px; height: 72px; border-radius: 50%; background: white; border: 4px solid rgba(255,255,255,0.5); }
+        .cam-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 24px; padding-bottom: max(32px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.9)); }
+        .shutter-btn { width: 76px; height: 76px; border-radius: 50%; background: white; border: 5px solid rgba(255,255,255,0.5); transition: all 0.15s; }
         .shutter-btn:active { transform: scale(0.9); background: #e5e7eb; }
         
         .safe-top { padding-top: max(12px, env(safe-area-inset-top)); }
-        .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
+        .safe-bottom { padding-bottom: max(100px, calc(90px + env(safe-area-inset-bottom))); }
         
-        /* Upload modal */
-        #upload-modal { backdrop-filter: blur(4px); }
+        #upload-modal { backdrop-filter: blur(8px); }
         .upload-progress-bar { transition: width 0.3s ease; }
+        
+        /* Motivational banner */
+        .motivation-banner { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 8px 16px; border-radius: 10px; text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
     </style>
     <script>
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
@@ -85,46 +140,86 @@
 </head>
 <body>
 
+    <!-- SCAN FLASH EFFECT -->
+    <div id="scan-flash"></div>
+
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 z-[100] bg-gray-900 flex flex-col items-center justify-center p-6">
+    <div id="login-screen" class="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">🔒 Locked</h2>
+            <div class="text-4xl mb-2">👕</div>
+            <h2 class="text-xl font-bold text-gray-800 mb-1">VintageLister</h2>
             <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN</p>
             <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••" inputmode="numeric">
             <div class="mb-4">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Photographer</label>
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Who's listing today?</label>
                 <select id="photographer-select" class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800">
                     <option value="P01">P01 – Jeff Koga</option>
                     <option value="P02" selected>P02 – Elaine Donato</option>
                     <option value="P03">P03 – Kobe Gaza</option>
                 </select>
             </div>
-            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl active:bg-blue-700 text-lg">UNLOCK</button>
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl active:bg-blue-700 text-lg shadow-lg">START LISTING →</button>
+        </div>
+    </div>
+
+    <!-- CELEBRATION OVERLAY -->
+    <div id="celebration">
+        <div class="content">
+            <div id="celebration-emoji" class="text-6xl mb-3">🎉</div>
+            <div id="celebration-text" class="text-2xl font-black text-gray-800"></div>
+            <div id="celebration-sub" class="text-sm text-gray-500 mt-2"></div>
         </div>
     </div>
 
     <!-- UPLOAD MODAL -->
     <div id="upload-modal" class="fixed inset-0 z-[90] bg-black/70 hidden flex items-center justify-center p-6">
-        <div class="bg-white p-6 rounded-2xl w-full max-w-sm text-center">
-            <div class="text-4xl mb-4">📤</div>
+        <div class="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+            <div class="text-5xl mb-4">📤</div>
             <h3 class="text-lg font-bold text-gray-800 mb-2">Uploading...</h3>
             <div class="w-full bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
-                <div id="upload-progress-bar" class="upload-progress-bar bg-blue-600 h-full" style="width: 0%"></div>
+                <div id="upload-progress-bar" class="upload-progress-bar bg-blue-600 h-full rounded-full" style="width: 0%"></div>
             </div>
-            <p id="upload-status" class="text-sm text-gray-500">Preparing data...</p>
+            <p id="upload-status" class="text-sm text-gray-500">Preparing...</p>
         </div>
     </div>
 
-    <!-- HEADER -->
+    <!-- HEADER with Stats -->
     <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm safe-top">
         <div class="px-4 py-2">
+            <!-- Top row: Brand + Streak + Photographer -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-gray-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-gray-400 text-[10px]">v75.5</span>
+                    <span class="text-gray-400 text-[9px]">v75.7</span>
                 </div>
-                <button onclick="showPhotographerChange()" id="photographer-badge" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
+                <div class="flex items-center gap-2">
+                    <div class="streak-badge" id="streak-container">
+                        <span class="fire">🔥</span>
+                        <span id="streak-count">1</span>
+                    </div>
+                    <button onclick="showPhotographerChange()" id="photographer-badge" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
+                </div>
             </div>
+            
+            <!-- Stats bar -->
+            <div class="stats-bar mb-2">
+                <div class="stat-item">
+                    <div class="stat-value" id="items-today">0</div>
+                    <div class="stat-label">Today</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-value" id="avg-time">--</div>
+                    <div class="stat-label">Avg</div>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <div class="stat-value text-green-400" id="current-timer">0:00</div>
+                    <div class="stat-label">Now</div>
+                </div>
+            </div>
+            
+            <!-- Progress dots -->
             <div class="flex items-center gap-1">
                 <div id="dot-1" onclick="goToStep(1)" class="progress-dot current"></div>
                 <div id="line-1" class="progress-line pending"></div>
@@ -139,219 +234,175 @@
     </div>
 
     <!-- MAIN CONTENT -->
-    <div class="pt-24 safe-bottom">
+    <div class="pt-44 safe-bottom">
 
     <!-- ========== STEP 1: IDENTIFY ========== -->
     <div id="step-1" class="step-container active px-4 space-y-3">
         
+        <!-- Motivational banner -->
+        <div id="motivation-banner" class="motivation-banner hidden"></div>
+        
         <!-- CATEGORY -->
-        <div class="section-card p-4">
+        <div id="section-category" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-category" class="check-circle">○</span>
                 Category
             </label>
-            <div class="grid grid-cols-3 gap-2 mb-3">
-                <button onclick="setSuperCategory('tops', this)" class="btn-select super-btn py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 text-sm">👕 Tops</button>
-                <button onclick="setSuperCategory('bottoms', this)" class="btn-select super-btn py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 text-sm">👖 Bottoms</button>
-                <button onclick="setSuperCategory('outer', this)" class="btn-select super-btn py-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 text-sm">🧥 Outer</button>
+            <!-- HERO: Tops is most common -->
+            <div class="mb-2">
+                <button onclick="setSuperCategory('tops', this)" class="btn-hero super-btn w-full py-4 rounded-xl text-base">
+                    👕 TOPS <span class="text-blue-200 text-xs ml-1">(most common)</span>
+                </button>
             </div>
-            <select id="cat-select" onchange="onCategoryChange()" class="w-full p-3 border-2 border-blue-100 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800 hidden"></select>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onclick="setSuperCategory('bottoms', this)" class="btn-secondary super-btn py-3 rounded-xl">👖 Bottoms</button>
+                <button onclick="setSuperCategory('outer', this)" class="btn-secondary super-btn py-3 rounded-xl">🧥 Outerwear</button>
+            </div>
+            <select id="cat-select" onchange="onCategoryChange()" class="w-full p-3 border-2 border-blue-200 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800 hidden"></select>
         </div>
         
         <!-- SKU -->
-        <div class="section-card p-4">
+        <div id="section-sku" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
                 <span id="check-sku" class="check-circle">○</span>
-                SKU
+                SKU <span class="text-gray-400 text-[9px]">Scan to start timer ⏱️</span>
             </label>
             <div class="flex gap-2">
-                <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan SKU" oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" class="flex-1 text-2xl font-mono p-3 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none placeholder-gray-300">
-                <button onclick="toggleScanner()" class="bg-gray-900 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 shadow-lg">
+                <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" class="flex-1 text-2xl font-mono p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder-gray-300 placeholder:text-base">
+                <button onclick="toggleScanner()" class="bg-gray-900 text-white p-4 rounded-xl flex-shrink-0 active:scale-95 shadow-lg">
                     <i data-lucide="scan-barcode" class="w-7 h-7"></i>
                 </button>
             </div>
             <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-48">
                 <div id="reader" class="w-full h-full"></div>
-                <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">CLOSE</button>
+                <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">✕ CLOSE</button>
             </div>
         </div>
         
         <!-- TAG STATUS -->
-        <div class="section-card p-4">
+        <div id="section-tag" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-tag" class="check-circle">○</span>
                 Tag Info
             </label>
-            <div class="grid grid-cols-3 gap-2 mb-3">
-                <button onclick="setTagStatus('has', this)" class="btn-select tag-status-btn py-3 border-2 border-dashed border-sky-300 bg-sky-50 text-sky-600 rounded-xl font-bold text-xs">✓ Readable</button>
-                <button onclick="setTagStatus('worn', this)" class="btn-select tag-status-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">👀 Worn</button>
-                <button onclick="setTagStatus('none', this)" class="btn-select tag-status-btn py-3 border border-gray-200 bg-white rounded-xl font-bold text-gray-400 text-xs">✂️ Missing</button>
+            <!-- HERO: Readable is most common -->
+            <div class="mb-2">
+                <button onclick="setTagStatus('has', this)" class="btn-hero tag-status-btn w-full py-3 rounded-xl">✓ TAG READABLE</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <button onclick="setTagStatus('worn', this)" class="btn-secondary tag-status-btn py-2 rounded-xl">👀 Worn/Faded</button>
+                <button onclick="setTagStatus('none', this)" class="btn-secondary tag-status-btn py-2 rounded-xl">✂️ Missing/Cut</button>
             </div>
             
-            <!-- TAG SIZE -->
+            <!-- TAG SIZE - Progressive disclosure -->
             <div id="tag-size-section" class="hidden bg-amber-50 p-3 rounded-xl border border-amber-200 mb-3">
-                <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Reads</label>
+                <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Size</label>
                 <div class="grid grid-cols-6 gap-1 mb-2">
-                    <button onclick="setTagSize('XS', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XS</button>
-                    <button onclick="setTagSize('S', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">S</button>
-                    <button onclick="setTagSize('M', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">M</button>
-                    <button onclick="setTagSize('L', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">L</button>
-                    <button onclick="setTagSize('XL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XL</button>
-                    <button onclick="setTagSize('XXL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-md font-bold text-gray-600 bg-white text-xs">XXL</button>
+                    <button onclick="setTagSize('XS', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">XS</button>
+                    <button onclick="setTagSize('S', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">S</button>
+                    <button onclick="setTagSize('M', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">M</button>
+                    <button onclick="setTagSize('L', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">L</button>
+                    <button onclick="setTagSize('XL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">XL</button>
+                    <button onclick="setTagSize('XXL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">2XL</button>
                 </div>
-                <input type="text" id="tag-size-input" placeholder="Or type (e.g. 42R, 32x30)" onfocus="clearSizeBtns()" oninput="onCustomSizeInput()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none bg-white">
+                <input type="text" id="tag-size-input" placeholder="Or type: 42R, 32x30, etc." onfocus="clearSizeBtns()" oninput="onCustomSizeInput()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none bg-white">
             </div>
             
-            <!-- ORIGIN -->
+            <!-- ORIGIN - USA is default -->
             <div id="origin-section" class="hidden mb-3">
                 <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setOrigin('usa', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-1"><span class="text-base">🇺🇸</span> USA Made</button>
-                    <button onclick="setOrigin('import', this)" class="btn-select origin-btn py-3 border border-gray-200 rounded-xl font-bold text-gray-500 text-xs flex items-center justify-center gap-1"><span class="text-base">🌍</span> Import</button>
+                    <button onclick="setOrigin('usa', this)" class="btn-hero origin-btn py-2 rounded-xl text-xs">🇺🇸 USA MADE</button>
+                    <button onclick="setOrigin('import', this)" class="btn-secondary origin-btn py-2 rounded-xl">🌍 Import</button>
                 </div>
-                <select id="country-select" onchange="data.madeInCountry=this.value; persistData();" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
+                <select id="country-select" onchange="data.madeInCountry=this.value; haptic('light');" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
                     <option value="" disabled selected>Select Country...</option>
-                    <option>Bangladesh</option><option>Cambodia</option><option>Canada</option><option>China</option><option>Honduras</option><option>India</option><option>Indonesia</option><option>Italy</option><option>Japan</option><option>Mexico</option><option>Pakistan</option><option>Philippines</option><option>Portugal</option><option>South Korea</option><option>Sri Lanka</option><option>Taiwan</option><option>Turkey</option><option>United Kingdom</option><option>Vietnam</option><option>Other / Unknown</option>
+                    <option>China</option><option>Vietnam</option><option>Bangladesh</option><option>India</option><option>Mexico</option><option>Honduras</option><option>Indonesia</option><option>Cambodia</option><option>Pakistan</option><option>Philippines</option><option>Japan</option><option>Italy</option><option>Other</option>
                 </select>
-            </div>
-            
-            <!-- COPYRIGHT -->
-            <div id="copyright-section" class="hidden mb-3">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">Copyright Year</label>
-                <input type="tel" id="copyright-year" placeholder="YYYY (e.g. 1994)" oninput="data.copyrightYear=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-xl text-sm text-center outline-none" maxlength="4">
             </div>
             
             <!-- TAG GENDER -->
             <div id="tag-gender-section" class="hidden">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Tag Gender</label>
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Gender on Tag</label>
                 <div class="grid grid-cols-4 gap-1">
-                    <button onclick="setGender('Men', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Men's</button>
-                    <button onclick="setGender('Women', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Women's</button>
-                    <button onclick="setGender('Unisex', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">Unisex</button>
-                    <button onclick="setGender('None', this)" class="btn-select gender-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-[10px]">None</button>
+                    <button onclick="setGender('Men', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Men's</button>
+                    <button onclick="setGender('Women', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Women's</button>
+                    <button onclick="setGender('Unisex', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Unisex</button>
+                    <button onclick="setGender('None', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Not Listed</button>
                 </div>
             </div>
         </div>
         
         <!-- FABRIC -->
-        <div class="section-card p-4">
+        <div id="section-fabric" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-fabric" class="check-circle">○</span>
                 Fabric
             </label>
-            <select id="fabric-select" onchange="onFabricChange()" class="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none mb-2">
+            <select id="fabric-select" onchange="onFabricChange()" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 outline-none">
                 <option value="" disabled selected>Select Fabric...</option>
                 <option>100% Cotton</option>
-                <option>100% Polyester</option>
                 <option>50/50 Cotton-Poly</option>
+                <option>100% Polyester</option>
                 <option>Tri-Blend</option>
-                <option>Cotton-Spandex</option>
                 <option>Denim</option>
                 <option>Fleece</option>
-                <option>French Terry</option>
-                <option>Jersey Knit</option>
-                <option>Linen</option>
-                <option>Mesh</option>
-                <option>Nylon</option>
-                <option>Rayon</option>
-                <option>Silk</option>
-                <option>Wool</option>
-                <option>Acrylic</option>
                 <option>Custom Blend</option>
             </select>
-            <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" class="hidden w-full p-2 border border-gray-200 rounded-lg text-sm outline-none">
+            <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" class="hidden w-full p-2 border border-gray-200 rounded-lg text-sm outline-none mt-2">
         </div>
         
         <!-- COLORS -->
-        <div class="section-card p-4">
+        <div id="section-color" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-color" class="check-circle">○</span>
-                Colors
+                Color
             </label>
             <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Primary</label>
-                    <select id="color-primary" onchange="data.colorPrimary=this.value; persistData();" class="w-full p-2 border border-gray-300 rounded-lg text-gray-800 outline-none text-xs">
-                        <option value="" disabled selected>Select...</option>
-                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Secondary</label>
-                    <select id="color-secondary" onchange="data.colorSecondary=this.value; persistData();" class="w-full p-2 border border-gray-200 rounded-lg text-gray-800 outline-none text-xs">
-                        <option value="" selected>None</option>
-                        <option>Beige</option><option>Black</option><option>Blue</option><option>Brown</option><option>Gold</option><option>Gray</option><option>Green</option><option>Ivory</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Red</option><option>Silver</option><option>White</option><option>Yellow</option><option>Multicolor</option>
-                    </select>
-                </div>
+                <select id="color-primary" onchange="data.colorPrimary=this.value; completeSection('color'); haptic('light'); autoScroll('section-sleeve');" class="w-full p-2 border-2 border-gray-200 rounded-lg text-gray-800 outline-none text-sm font-bold">
+                    <option value="" disabled selected>Primary...</option>
+                    <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option><option>Multicolor</option>
+                </select>
+                <select id="color-secondary" onchange="data.colorSecondary=this.value; haptic('light');" class="w-full p-2 border border-gray-200 rounded-lg text-gray-800 outline-none text-sm">
+                    <option value="" selected>+ Second color</option>
+                    <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option>
+                </select>
             </div>
         </div>
         
-        <!-- SLEEVE (Tops) -->
-        <div id="sleeve-section" class="section-card p-4 hidden">
+        <!-- SLEEVE (Tops only) -->
+        <div id="section-sleeve" class="section-card p-4 hidden">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-sleeve" class="check-circle">○</span>
                 Sleeve
             </label>
-            <div class="grid grid-cols-4 gap-2">
-                <button onclick="setSleeve('Short', this)" class="btn-select sleeve-btn py-2 border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg font-bold text-blue-600 text-[10px]">Short</button>
-                <button onclick="setSleeve('Long', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">Long</button>
-                <button onclick="setSleeve('3/4', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">3/4</button>
-                <button onclick="setSleeve('None', this)" class="btn-select sleeve-btn py-2 border border-gray-200 bg-white rounded-lg font-bold text-gray-500 text-[10px]">None</button>
+            <!-- HERO: Short sleeve is ~90% of T-shirts -->
+            <div class="mb-2">
+                <button onclick="setSleeve('Short', this)" class="btn-hero sleeve-btn w-full py-3 rounded-xl">SHORT SLEEVE <span class="text-blue-200 text-xs">(90%)</span></button>
             </div>
-            <div id="cutoff-section" class="hidden mt-3 p-3 bg-orange-50 rounded-xl border border-orange-200">
-                <label class="text-[10px] font-bold text-orange-600 uppercase mb-2 block">🔪 Cut-off?</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setCutOff(true, this)" class="btn-select cutoff-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-xs bg-white">✂️ DIY Cut</button>
-                    <button onclick="setCutOff(false, this)" class="btn-select cutoff-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 text-xs bg-white">👕 Manufactured</button>
-                </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="setSleeve('Long', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">Long</button>
+                <button onclick="setSleeve('3/4', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">3/4</button>
+                <button onclick="setSleeve('None', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">Sleeveless</button>
             </div>
         </div>
         
         <!-- FABRIC FEEL -->
-        <div class="section-card p-4">
+        <div id="section-feel" class="section-card p-4">
             <label class="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3 block">📐 Fabric Feel</label>
             <div class="grid grid-cols-4 gap-1 mb-3">
-                <button onclick="setThickness('Paper Thin', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Paper</button>
-                <button onclick="setThickness('Light', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Light</button>
-                <button onclick="setThickness('Standard', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Standard</button>
-                <button onclick="setThickness('Heavy', this)" class="btn-select thickness-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heavy</button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <button onclick="setTexture('Stiff', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Stiff / Crisp</button>
-                <button onclick="setTexture('Soft', this)" class="btn-select texture-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-xs bg-white">Soft / Worn</button>
+                <button onclick="setThickness('Paper Thin', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Paper</button>
+                <button onclick="setThickness('Light', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Light</button>
+                <button onclick="setThickness('Standard', this)" class="btn-hero thickness-btn py-2 rounded-lg text-[10px]">Standard</button>
+                <button onclick="setThickness('Heavy', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Heavy</button>
             </div>
             <div class="grid grid-cols-3 gap-1">
-                <button onclick="setConstruction('Single', this)" class="btn-select construction-btn py-2 border border-blue-500 bg-blue-50 rounded-lg font-bold text-blue-600 text-[9px] selected">Single</button>
-                <button onclick="setConstruction('Reversible', this)" class="btn-select construction-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Reversible</button>
-                <button onclick="setConstruction('Lined', this)" class="btn-select construction-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Lined</button>
+                <button onclick="setConstruction('Single', this)" class="btn-hero construction-btn py-2 rounded-lg text-[9px]">Single Layer</button>
+                <button onclick="setConstruction('Reversible', this)" class="btn-secondary construction-btn py-2 rounded-lg text-[9px]">Reversible</button>
+                <button onclick="setConstruction('Lined', this)" class="btn-secondary construction-btn py-2 rounded-lg text-[9px]">Lined</button>
             </div>
         </div>
         
-        <!-- GRAPHICS (T-Shirts) -->
-        <div id="graphics-section" class="section-card p-4 hidden">
-            <label class="text-xs font-bold text-purple-600 uppercase tracking-wide mb-3 block">🎨 Graphics</label>
-            <div class="mb-3">
-                <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Print Type</label>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="setPrintType('Screen', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Screen</button>
-                    <button onclick="setPrintType('Heat', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Heat</button>
-                    <button onclick="setPrintType('DTG', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">DTG</button>
-                    <button onclick="setPrintType('Blank', this)" class="btn-select print-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[9px] bg-white">Blank</button>
-                </div>
-            </div>
-            <div id="graphic-category-section" class="hidden">
-                <label class="text-[9px] font-bold text-gray-400 uppercase mb-1 block">Graphic Category</label>
-                <div class="grid grid-cols-3 gap-1">
-                    <button onclick="setGraphicCat('Band/Music', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Band</button>
-                    <button onclick="setGraphicCat('Sports', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Sports</button>
-                    <button onclick="setGraphicCat('Movie/TV', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Movie/TV</button>
-                    <button onclick="setGraphicCat('Brand/Logo', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Brand</button>
-                    <button onclick="setGraphicCat('Art/Abstract', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Art</button>
-                    <button onclick="setGraphicCat('Other', this)" class="btn-select graphic-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-500 text-[8px] bg-white">Other</button>
-                </div>
-            </div>
-        </div>
-        
-        <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">
+        <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">
             Next: Inspect →
         </button>
     </div>
@@ -359,50 +410,42 @@
     <!-- ========== STEP 2: INSPECT ========== -->
     <div id="step-2" class="step-container px-4 space-y-3">
         
-        <div class="section-card p-4">
+        <div id="section-condition" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-condition" class="check-circle">○</span>
                 Condition
             </label>
-            <select id="cond-select" onchange="data.condition=this.value; persistData();" class="w-full p-3 border border-gray-300 rounded-xl text-sm font-bold text-gray-800 outline-none mb-3">
-                <option value="" disabled selected>Select Condition...</option>
-                <option value="New with Tags">New with Tags (NWT)</option>
-                <option value="New without Tags">New without Tags (NWOT)</option>
+            <select id="cond-select" onchange="onConditionChange()" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 outline-none mb-3">
+                <option value="" disabled>Select...</option>
                 <option value="Excellent">Excellent - Like New</option>
-                <option value="Very Good">Very Good - Minor wear</option>
-                <option value="Good">Good - Normal wear</option>
+                <option value="Very Good">Very Good</option>
+                <option value="Good" selected>Good (typical)</option>
                 <option value="Fair">Fair - Visible wear</option>
             </select>
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="setHasDefects(false, this)" class="btn-select defect-toggle-btn py-4 bg-green-50 border-2 border-green-200 rounded-xl font-bold text-green-700 text-sm flex flex-col items-center gap-1">
-                    <span class="text-xl">✓</span><span>No Flaws</span>
-                </button>
-                <button onclick="setHasDefects(true, this)" class="btn-select defect-toggle-btn py-4 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-600 text-sm flex flex-col items-center gap-1">
-                    <span class="text-xl">⚠️</span><span>Has Flaws</span>
+            <!-- HERO: No Flaws is default (~60% of items) -->
+            <div class="mb-2">
+                <button onclick="setHasDefects(false, this)" class="btn-hero defect-toggle-btn w-full py-4 rounded-xl flex items-center justify-center gap-2">
+                    <span class="text-xl">✓</span> NO FLAWS
                 </button>
             </div>
-            <p id="defect-hint" class="hidden text-[10px] text-orange-600 text-center mt-3 font-medium">📸 You'll mark & photo defects next</p>
+            <button onclick="setHasDefects(true, this)" class="btn-secondary defect-toggle-btn w-full py-3 rounded-xl flex items-center justify-center gap-2 border-2">
+                <span class="text-lg">⚠️</span> Has Flaws (mark next step)
+            </button>
         </div>
         
-        <div class="section-card p-4">
+        <div id="section-fade" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-fade" class="check-circle">○</span>
                 Fade Level
             </label>
-            <div class="grid grid-cols-4 gap-2">
-                <button onclick="setFade('None', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">None</button>
-                <button onclick="setFade('Light', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Light</button>
-                <button onclick="setFade('Sun', this)" class="btn-select fade-btn py-2 bg-amber-50 border border-amber-300 rounded-lg font-bold text-amber-700 text-xs">Sun⭐</button>
-                <button onclick="setFade('Heavy', this)" class="btn-select fade-btn py-2 bg-white border border-gray-200 rounded-lg font-bold text-gray-600 text-xs">Heavy</button>
+            <!-- HERO: None is most common -->
+            <div class="mb-2">
+                <button onclick="setFade('None', this)" class="btn-hero fade-btn w-full py-3 rounded-xl">NONE <span class="text-blue-200 text-xs">(no fading)</span></button>
             </div>
-        </div>
-        
-        <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">Visual Size Check</label>
             <div class="grid grid-cols-3 gap-2">
-                <button onclick="setVisualCheck('True to Size', this)" class="btn-select visual-btn py-2 bg-green-50 border border-green-200 rounded-lg font-bold text-green-700 text-xs">True ✓</button>
-                <button onclick="setVisualCheck('Runs Small', this)" class="btn-select visual-btn py-2 bg-amber-50 border border-amber-200 rounded-lg font-bold text-amber-700 text-xs">Small</button>
-                <button onclick="setVisualCheck('Runs Big', this)" class="btn-select visual-btn py-2 bg-amber-50 border border-amber-200 rounded-lg font-bold text-amber-700 text-xs">Big</button>
+                <button onclick="setFade('Light', this)" class="btn-secondary fade-btn py-2 rounded-lg">Light</button>
+                <button onclick="setFade('Sun', this)" class="btn-secondary fade-btn py-2 rounded-lg bg-amber-50 border-amber-300 text-amber-700">☀️ Sun Fade</button>
+                <button onclick="setFade('Heavy', this)" class="btn-secondary fade-btn py-2 rounded-lg">Heavy</button>
             </div>
         </div>
         
@@ -412,7 +455,7 @@
         
         <div class="flex gap-3">
             <button onclick="goToStep(1)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Next: Document →</button>
+            <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Next: Document →</button>
         </div>
     </div>
 
@@ -420,49 +463,44 @@
     <div id="step-3" class="step-container px-4 space-y-3">
         
         <!-- MAIN PHOTOS -->
-        <div class="section-card p-4">
+        <div id="section-photos" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-photos" class="check-circle">○</span>
-                📸 Main Photos
+                📸 Item Photos
+                <span id="photo-count-badge" class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">0</span>
             </label>
-            <div class="flex gap-2 flex-wrap mb-2" id="main-photos-thumbs"></div>
-            <button onclick="openCamera('main')" class="w-full py-4 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold text-sm active:scale-[0.98]">+ Add Photo</button>
+            <div class="flex gap-2 flex-wrap mb-3" id="main-photos-thumbs"></div>
+            <button onclick="openCamera('main')" id="add-photo-btn" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-sm active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
+                <span class="text-xl">📷</span> ADD PHOTO
+            </button>
         </div>
         
         <!-- TAG PHOTOS -->
         <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Tag Photos</label>
+            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Tag Close-ups</label>
             <div class="flex gap-2 flex-wrap mb-2" id="tag-photos-thumbs"></div>
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] font-bold">📷 Neck Tag</button>
-                <button onclick="openCamera('tag', 'care')" id="btn-tag-care" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[10px] font-bold">📷 Care Label</button>
+                <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" class="py-3 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 text-[10px] font-bold">📷 Neck Tag</button>
+                <button onclick="openCamera('tag', 'care')" id="btn-tag-care" class="py-3 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 text-[10px] font-bold">📷 Care Label</button>
             </div>
         </div>
         
         <!-- DEFECT MAPPING -->
         <div id="defect-section" class="section-card p-4 hidden">
             <label class="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2 block">🔍 Mark Defects</label>
-            <p class="text-[10px] text-gray-500 mb-3">Tap location → Select type → Snap photo</p>
+            <p class="text-[10px] text-gray-500 mb-3">Tap zone → Pick type → Take photo</p>
             <div class="mb-3">
                 <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">FRONT</div>
-                <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:160px;"><div id="defect-svg-front"></div><div id="defect-markers-front"></div></div>
+                <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;"><div id="defect-svg-front"></div><div id="defect-markers-front"></div></div>
             </div>
-            <div class="mb-3">
+            <div>
                 <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">BACK</div>
-                <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:160px;"><div id="defect-svg-back"></div><div id="defect-markers-back"></div></div>
+                <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;"><div id="defect-svg-back"></div><div id="defect-markers-back"></div></div>
             </div>
-            <div id="defect-list" class="space-y-2"></div>
-        </div>
-        
-        <!-- FEATURE PHOTOS -->
-        <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Features</label>
-            <div class="flex gap-2 flex-wrap mb-2" id="feature-photos-thumbs"></div>
-            <div id="features-grid" class="grid grid-cols-3 gap-2"></div>
         </div>
         
         <!-- MEASUREMENTS -->
-        <div class="section-card p-4">
+        <div id="section-measure" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
                 <span id="check-measure" class="check-circle">○</span>
                 🎤 Measurements
@@ -470,81 +508,116 @@
             <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-gray-700 text-xs"></div>
             <div id="record-section">
                 <button id="record-btn" onclick="toggleRecording()" class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-1 shadow-lg active:scale-[0.98]">
-                    <span class="text-2xl">🎤</span><span>TAP TO RECORD</span>
+                    <span class="text-2xl">🎤</span><span>HOLD TO RECORD</span>
                 </button>
             </div>
             <div id="post-record-section" class="hidden">
-                <div class="bg-green-50 border border-green-300 rounded-xl p-4 mb-3">
-                    <div class="text-green-700 font-bold mb-1">✓ SAVED</div>
-                    <div class="text-green-600 text-sm"><span id="recording-duration">0:00</span></div>
+                <div class="bg-green-50 border-2 border-green-400 rounded-xl p-4 mb-3">
+                    <div class="text-green-700 font-bold mb-1 flex items-center gap-2"><span class="text-xl">✓</span> RECORDED</div>
+                    <div class="text-green-600 text-sm font-mono"><span id="recording-duration">0:00</span></div>
                 </div>
                 <button onclick="reRecord()" class="text-gray-500 text-sm underline">Re-record</button>
             </div>
         </div>
         
-        <!-- WEIGHT -->
-        <div class="section-card p-4">
+        <!-- WEIGHT with smart validation -->
+        <div id="section-weight" class="section-card p-4">
             <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
                 <span id="check-weight" class="check-circle">○</span>
                 ⚖️ Weight
             </label>
-            <div id="weight-hint" class="mb-2 p-2 bg-purple-50 rounded-lg border border-purple-100"></div>
+            <div id="weight-hint" class="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-100"></div>
             <div class="grid grid-cols-2 gap-3">
-                <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
+                <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-gray-800 text-lg bg-white">
                     <option value="0" selected>0 lb</option><option value="1">1 lb</option><option value="2">2 lb</option><option value="3">3 lb</option><option value="4">4 lb</option><option value="5">5 lb</option>
                 </select>
-                <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border border-gray-300 rounded-xl font-bold text-gray-800 text-sm bg-white">
+                <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-gray-800 text-lg bg-white">
                     <option value="0" selected>0 oz</option><option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
                 </select>
+            </div>
+            <div id="weight-warning" class="hidden warning-card mt-3">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">⚠️</span>
+                    <div>
+                        <div class="font-bold text-amber-800 text-sm" id="weight-warning-text"></div>
+                        <div class="text-amber-700 text-xs mt-1">Double-check the scale?</div>
+                        <button onclick="dismissWeightWarning()" class="text-amber-600 text-xs underline mt-2">It's correct</button>
+                    </div>
+                </div>
             </div>
         </div>
         
         <div class="flex gap-3">
             <button onclick="goToStep(2)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98]">Review →</button>
+            <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Review →</button>
         </div>
     </div>
 
     <!-- ========== STEP 4: REVIEW ========== -->
     <div id="step-4" class="step-container px-4 space-y-3">
-        <div class="text-gray-800 font-bold text-lg text-center mb-2">Review & Submit</div>
+        
+        <!-- Almost done motivation -->
+        <div id="almost-done-banner" class="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-3 rounded-xl text-center font-bold shadow-lg">
+            ✨ Almost done! Quick review and submit
+        </div>
+        
         <div class="grid grid-cols-2 gap-3">
-            <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
+            <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-identify">🟡</span><span class="font-bold text-sm">IDENTIFY</span></div>
-                <div id="summary-identify" class="text-gray-600 text-[10px]"></div>
+                <div id="summary-identify" class="text-gray-600 text-[10px] leading-relaxed"></div>
             </div>
-            <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
+            <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-inspect">🟡</span><span class="font-bold text-sm">INSPECT</span></div>
-                <div id="summary-inspect" class="text-gray-600 text-[10px]"></div>
+                <div id="summary-inspect" class="text-gray-600 text-[10px] leading-relaxed"></div>
             </div>
-            <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98]">
+            <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-document">🟡</span><span class="font-bold text-sm">DOCUMENT</span></div>
-                <div id="summary-document" class="text-gray-600 text-[10px]"></div>
+                <div id="summary-document" class="text-gray-600 text-[10px] leading-relaxed"></div>
             </div>
-            <div id="card-ready" class="card-yellow rounded-xl p-3">
+            <div id="card-ready" class="card-yellow rounded-xl p-3 transition-transform">
                 <div class="flex items-center gap-2 mb-1"><span id="icon-ready">🟡</span><span class="font-bold text-sm">READY</span></div>
-                <div id="summary-ready" class="text-gray-600 text-[10px]"></div>
+                <div id="summary-ready" class="text-gray-600 text-[10px] leading-relaxed"></div>
             </div>
         </div>
-        <div id="flag-status" class="hidden bg-amber-50 border border-amber-400 rounded-xl p-3 text-amber-700 text-sm font-medium text-center">✓ FLAGGED FOR REVIEW</div>
-        <button onclick="submitData()" class="w-full py-5 bg-green-600 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98]">SUBMIT ✓</button>
-        <button onclick="goToStep(3)" class="w-full py-3 bg-gray-200 rounded-2xl text-gray-600 font-medium">← Back</button>
+        
+        <div id="flag-status" class="hidden bg-amber-100 border-2 border-amber-400 rounded-xl p-3 text-amber-800 text-sm font-bold text-center">
+            🚩 FLAGGED FOR REVIEW
+        </div>
+        
+        <!-- Consistency warning -->
+        <div id="consistency-warning" class="hidden warning-card">
+            <div class="flex items-start gap-3">
+                <span class="text-2xl">🤔</span>
+                <div>
+                    <div class="font-bold text-amber-800 text-sm" id="consistency-warning-text"></div>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="fixConsistency('condition')" class="bg-amber-600 text-white text-xs px-3 py-1 rounded font-bold">Fix Condition</button>
+                        <button onclick="fixConsistency('defects')" class="bg-white text-amber-700 text-xs px-3 py-1 rounded font-bold border border-amber-400">Remove Defects</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button onclick="submitData()" id="submit-btn" class="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
+            <span>SUBMIT</span> <span class="text-2xl">✓</span>
+        </button>
+        <button onclick="goToStep(3)" class="w-full py-3 bg-gray-200 rounded-2xl text-gray-600 font-medium">← Back to Document</button>
     </div>
 
-    </div><!-- end main content -->
+    </div>
 
     <!-- DEFECT TYPE MODAL -->
     <div id="defect-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center p-4" onclick="closeDefectModal(event)">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-5 pb-6 animate-slide-up" onclick="event.stopPropagation()">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-5 pb-8 animate-slide-up" onclick="event.stopPropagation()">
             <div class="text-center mb-4">
-                <p class="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">SELECT DEFECT TYPE</p>
+                <p class="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">WHAT TYPE OF DEFECT?</p>
                 <h3 id="zone-label" class="text-lg font-black text-gray-800"></h3>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="selectDefectType('Stain')" class="defect-stain py-4 rounded-xl font-bold active:scale-95">STAIN</button>
-                <button onclick="selectDefectType('Hole')" class="defect-hole py-4 rounded-xl font-bold active:scale-95">HOLE</button>
-                <button onclick="selectDefectType('Repair')" class="defect-repair py-4 rounded-xl font-bold active:scale-95">REPAIR</button>
-                <button onclick="selectDefectType('Other')" class="defect-other py-4 rounded-xl font-bold active:scale-95">OTHER</button>
+                <button onclick="selectDefectType('Stain')" class="defect-stain py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">STAIN</button>
+                <button onclick="selectDefectType('Hole')" class="defect-hole py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">HOLE</button>
+                <button onclick="selectDefectType('Repair')" class="defect-repair py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">REPAIR</button>
+                <button onclick="selectDefectType('Other')" class="defect-other py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">OTHER</button>
             </div>
         </div>
     </div>
@@ -553,12 +626,12 @@
     <div id="camera-overlay" class="hidden">
         <video id="cam-feed" autoplay playsinline></video>
         <div class="cam-controls">
-            <div class="text-center mb-4">
-                <span id="cam-mode-label" class="text-white font-bold text-sm bg-black/50 px-4 py-2 rounded-full"></span>
-                <span id="cam-count" class="ml-2 text-white bg-blue-600 px-2 py-1 rounded-full text-xs font-bold">0</span>
+            <div class="text-center mb-5">
+                <span id="cam-mode-label" class="text-white font-bold text-base bg-black/60 px-5 py-2 rounded-full"></span>
+                <span id="cam-count" class="ml-2 text-white bg-blue-600 px-3 py-1 rounded-full text-sm font-bold">0</span>
             </div>
-            <div class="flex items-center justify-center gap-8">
-                <button onclick="closeCamera()" class="text-white text-4xl">✕</button>
+            <div class="flex items-center justify-center gap-10">
+                <button onclick="closeCamera()" class="text-white text-4xl w-12 h-12 flex items-center justify-center">✕</button>
                 <button onclick="capturePhoto()" class="shutter-btn"></button>
                 <div class="w-12"></div>
             </div>
@@ -568,15 +641,14 @@
     <canvas id="photo-canvas" class="hidden"></canvas>
 
     <script>
-        // ============ WEIGHT TABLES (from V73) ============
+        // ============ WEIGHT VALIDATION TABLES ============
         const weightTable = {
-            "T-Shirt": { "Light": [3.0,3.5,4.5,5.0,5.5,6.5,7.5], "Mid": [4.5,5.0,6.0,7.0,8.0,9.0,10.5], "Heavy": [5.5,6.5,7.5,8.5,10.0,12.0,14.0], desc: "Light=50/50 • Mid=Gildan • Heavy=Beefy" },
-            "Tank Top": { "Light": [2.5,3.0,4.0,4.5,5.0,6.0,7.0], "Mid": [2.5,3.0,4.0,4.5,5.0,6.0,7.0], "Heavy": [3.0,3.5,4.5,5.0,5.5,6.5,7.5], desc: "Standard tank weights" },
-            "Polo Shirt": { "Light": [5.0,6.0,7.0,8.0,9.0,10.0,12.0], "Mid": [6.0,7.0,8.0,9.0,10.5,12.0,14.0], "Heavy": [7.0,8.0,9.0,10.0,12.0,14.0,16.0], desc: "Light=Performance • Heavy=Pique" },
-            "Sweatshirt": { "Light": [8.0,9.0,10.0,12.0,13.0,15.0,17.0], "Mid": [10.0,12.0,14.0,16.0,18.0,20.0,22.0], "Heavy": [14.0,16.0,18.0,22.0,24.0,28.0,32.0], desc: "Light=80s Raglan • Heavy=Reverse Weave" },
-            "Hoodie": { "Light": [10.0,12.0,14.0,16.0,18.0,20.0,22.0], "Mid": [14.0,16.0,18.0,20.0,22.0,24.0,26.0], "Heavy": [20.0,24.0,28.0,32.0,36.0,40.0,44.0], desc: "Light=French Terry • Heavy=Workwear" },
-            "Jeans": { "Light": [14.0,15.0,16.0,17.0,18.0,19.0,20.0], "Mid": [18.0,20.0,22.0,24.0,26.0,28.0,30.0], "Heavy": [24.0,26.0,28.0,30.0,34.0,36.0,40.0], desc: "Light=Stretch • Heavy=Selvedge" },
-            "Jacket": { "Light": [6.0,8.0,10.0,12.0,13.0,14.0,15.0], "Mid": [20.0,24.0,28.0,32.0,36.0,40.0,44.0], "Heavy": [32.0,36.0,40.0,48.0,52.0,56.0,60.0], desc: "Light=Windbreaker • Heavy=Varsity" }
+            "T-Shirt": { "Light":[3,3.5,4.5,5,5.5,6.5,7.5], "Mid":[4.5,5,6,7,8,9,10.5], "Heavy":[5.5,6.5,7.5,8.5,10,12,14], min:3, max:14 },
+            "Tank Top": { "Light":[2.5,3,3.5,4,4.5,5,5.5], "Mid":[3,3.5,4,4.5,5,5.5,6], "Heavy":[3.5,4,4.5,5,5.5,6,7], min:2.5, max:7 },
+            "Sweatshirt": { "Light":[8,9,10,12,13,15,17], "Mid":[10,12,14,16,18,20,22], "Heavy":[14,16,18,22,24,28,32], min:8, max:32 },
+            "Hoodie": { "Light":[10,12,14,16,18,20,22], "Mid":[14,16,18,20,22,24,26], "Heavy":[20,24,28,32,36,40,44], min:10, max:44 },
+            "Jeans": { "Light":[14,15,16,17,18,19,20], "Mid":[18,20,22,24,26,28,30], "Heavy":[24,26,28,30,34,36,40], min:14, max:40 },
+            "Jacket": { "Light":[6,8,10,12,13,14,15], "Mid":[20,24,28,32,36,40,44], "Heavy":[32,36,40,48,52,56,60], min:6, max:60 }
         };
         const sizeIndexMap = { "XS":0, "S":1, "M":2, "L":3, "XL":4, "XXL":5, "2XL":5, "3XL":6 };
         const thicknessToWeight = { 'Paper Thin':'Light', 'Light':'Light', 'Standard':'Mid', 'Heavy':'Heavy' };
@@ -584,80 +656,160 @@
         // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
         let cameraStream = null, cameraMode = null, cameraSubType = null;
+        let itemStartTime = null, timerInterval = null;
+        let weightWarningDismissed = false;
+
+        // Stats (persisted daily)
+        let stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: null, bestTime: null };
 
         const data = {
-            superCategory: '', category: '', sku: '',
+            superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
-            origin: 'usa', madeInCountry: 'USA', copyrightYear: '',
-            fabric: '', fabricCustom: '',
-            colorPrimary: '', colorSecondary: '',
-            sleeveType: '', isCutOff: null,
-            thickness: '', texture: '', construction: 'Single',
-            printType: '', graphicCategory: '',
-            condition: '', hasDefects: null, fadeLevel: '', visualTagCheck: '',
+            origin: 'usa', madeInCountry: 'USA',
+            fabric: '', colorPrimary: '', colorSecondary: '',
+            sleeveType: 'Short', thickness: 'Standard', construction: 'Single',
+            condition: 'Good', hasDefects: false, fadeLevel: 'None',
             flagged: false,
-            mainPhotos: [], tagPhotos: [], defectPhotos: [], featurePhotos: [],
+            mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
             itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0,
             photographer: 'P02', scanTime: null,
             timestamps: {}
         };
 
-        const categoryOptions = { tops: ['T-Shirt','Tank Top','Polo','Button Shirt','Sweatshirt','Hoodie','Sweater','Jersey','Blouse'], bottoms: ['Jeans','Pants','Shorts','Sweatpants','Skirt'], outer: ['Jacket','Coat','Vest','Cardigan'] };
-        const featuresMap = { "T-Shirt":["Copyright","Hem","Sleeve"], "Jeans":["Hem","Tag","Patch"], "Sweatshirt":["V-Stitch","Cuff"], "default":["Logo","Detail"] };
-        const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
+        const categoryOptions = { tops: ['T-Shirt','Tank Top','Polo','Sweatshirt','Hoodie','Sweater','Jersey'], bottoms: ['Jeans','Pants','Shorts','Sweatpants'], outer: ['Jacket','Coat','Vest'] };
+        const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG OPENING"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
 
-        const SVG_TOP_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="6"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="6"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="6"/><rect class="zone-hit" data-zone="R SLEEVE" data-side="front" x="70" y="140" width="139" height="138" rx="4"/><rect class="zone-hit" data-zone="R SHOULDER" data-side="front" x="209" y="140" width="140" height="70" rx="4"/><rect class="zone-hit" data-zone="NECK" data-side="front" x="349" y="140" width="70" height="70" rx="4"/><rect class="zone-hit" data-zone="L SHOULDER" data-side="front" x="420" y="140" width="139" height="70" rx="4"/><rect class="zone-hit" data-zone="L SLEEVE" data-side="front" x="559" y="139" width="140" height="141" rx="4"/><rect class="zone-hit" data-zone="R CHEST" data-side="front" x="209" y="210" width="175" height="139" rx="4"/><rect class="zone-hit" data-zone="L CHEST" data-side="front" x="385" y="210" width="174" height="140" rx="4"/><rect class="zone-hit" data-zone="CENTER" data-side="front" x="209" y="349" width="350" height="208" rx="4"/><rect class="zone-hit" data-zone="HEM" data-side="front" x="209" y="557" width="350" height="70" rx="4"/></svg>`;
-        const SVG_TOP_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="6"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="6"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="6"/><rect class="zone-hit" data-zone="L SLEEVE" data-side="back" x="70" y="140" width="139" height="138" rx="4"/><rect class="zone-hit" data-zone="L SHOULDER" data-side="back" x="209" y="140" width="140" height="70" rx="4"/><rect class="zone-hit" data-zone="NECK" data-side="back" x="349" y="140" width="70" height="70" rx="4"/><rect class="zone-hit" data-zone="R SHOULDER" data-side="back" x="420" y="140" width="139" height="70" rx="4"/><rect class="zone-hit" data-zone="R SLEEVE" data-side="back" x="559" y="139" width="140" height="141" rx="4"/><rect class="zone-hit" data-zone="UPPER BACK" data-side="back" x="209" y="210" width="350" height="140" rx="4"/><rect class="zone-hit" data-zone="LOWER BACK" data-side="back" x="209" y="349" width="350" height="208" rx="4"/><rect class="zone-hit" data-zone="HEM" data-side="back" x="209" y="557" width="350" height="70" rx="4"/></svg>`;
-        const SVG_PANTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#334155" rx="6"/><rect x="140" y="209" width="210" height="488" fill="#334155" rx="6"/><rect x="419" y="209" width="209" height="488" fill="#334155" rx="6"/><rect x="347" y="209" width="75" height="72" fill="#334155"/><rect class="zone-hit" data-zone="WAIST" data-side="front" x="140" y="69" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="HIP" data-side="front" x="140" y="140" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="R THIGH" data-side="front" x="140" y="209" width="210" height="210" rx="4"/><rect class="zone-hit" data-zone="L THIGH" data-side="front" x="419" y="209" width="209" height="210" rx="4"/><rect class="zone-hit" data-zone="R KNEE" data-side="front" x="140" y="417" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="L KNEE" data-side="front" x="419" y="417" width="209" height="140" rx="4"/><rect class="zone-hit" data-zone="R LEG" data-side="front" x="140" y="557" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="L LEG" data-side="front" x="419" y="557" width="209" height="140" rx="4"/></svg>`;
-        const SVG_PANTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#334155" rx="6"/><rect x="140" y="209" width="210" height="488" fill="#334155" rx="6"/><rect x="419" y="209" width="209" height="488" fill="#334155" rx="6"/><rect x="347" y="209" width="75" height="72" fill="#334155"/><rect class="zone-hit" data-zone="WAIST" data-side="back" x="140" y="69" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="SEAT" data-side="back" x="140" y="140" width="488" height="70" rx="4"/><rect class="zone-hit" data-zone="L HAM" data-side="back" x="140" y="209" width="210" height="210" rx="4"/><rect class="zone-hit" data-zone="R HAM" data-side="back" x="419" y="209" width="209" height="210" rx="4"/><rect class="zone-hit" data-zone="L KNEE" data-side="back" x="140" y="417" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="R KNEE" data-side="back" x="419" y="417" width="209" height="140" rx="4"/><rect class="zone-hit" data-zone="L CALF" data-side="back" x="140" y="557" width="210" height="140" rx="4"/><rect class="zone-hit" data-zone="R CALF" data-side="back" x="419" y="557" width="209" height="140" rx="4"/></svg>`;
-        const zonePos = { 'front-R SLEEVE':{x:18,y:33},'front-R SHOULDER':{x:36,y:23},'front-NECK':{x:50,y:23},'front-L SHOULDER':{x:64,y:23},'front-L SLEEVE':{x:82,y:33},'front-R CHEST':{x:36,y:44},'front-L CHEST':{x:64,y:44},'front-CENTER':{x:50,y:65},'front-HEM':{x:50,y:88},'back-L SLEEVE':{x:18,y:33},'back-L SHOULDER':{x:36,y:23},'back-NECK':{x:50,y:23},'back-R SHOULDER':{x:64,y:23},'back-R SLEEVE':{x:82,y:33},'back-UPPER BACK':{x:50,y:44},'back-LOWER BACK':{x:50,y:65},'back-HEM':{x:50,y:88},'front-WAIST':{x:50,y:14},'front-HIP':{x:50,y:24},'front-R THIGH':{x:30,y:45},'front-L THIGH':{x:70,y:45},'front-R KNEE':{x:30,y:65},'front-L KNEE':{x:70,y:65},'front-R LEG':{x:30,y:85},'front-L LEG':{x:70,y:85},'back-WAIST':{x:50,y:14},'back-SEAT':{x:50,y:24},'back-L HAM':{x:30,y:45},'back-R HAM':{x:70,y:45},'back-L KNEE':{x:30,y:65},'back-R KNEE':{x:70,y:65},'back-L CALF':{x:30,y:85},'back-R CALF':{x:70,y:85} };
+        const SVG_TOP_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="front" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Chest" data-side="front" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="front" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Center" data-side="front" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="front" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
+        const SVG_TOP_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="back" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Upper-Back" data-side="back" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="back" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Lower-Back" data-side="back" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="back" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
+        const zonePos = { 'front-L-Sleeve':{x:18,y:30}, 'front-Chest':{x:50,y:30}, 'front-R-Sleeve':{x:82,y:30}, 'front-Center':{x:50,y:58}, 'front-Hem':{x:50,y:85}, 'back-L-Sleeve':{x:18,y:30}, 'back-Upper-Back':{x:50,y:30}, 'back-R-Sleeve':{x:82,y:30}, 'back-Lower-Back':{x:50,y:58}, 'back-Hem':{x:50,y:85} };
+
+        // Variable rewards for celebrations
+        const quickRewards = [
+            { emoji:"⚡", text:"Lightning Fast!", sub:"Crushing it!" },
+            { emoji:"🎯", text:"Precision!", sub:"All fields complete" },
+            { emoji:"🔥", text:"On Fire!", sub:"Keep it going" },
+            { emoji:"💪", text:"Strong Work!", sub:"Looking good" },
+            { emoji:"🚀", text:"Rocket Speed!", sub:"Zooming through" }
+        ];
+
+        // ============ HAPTIC FEEDBACK ============
+        function haptic(type = 'light') {
+            if (!navigator.vibrate) return;
+            const patterns = { light: 10, medium: [10, 30, 10], success: [10, 50, 10, 50, 10], error: 100, celebration: [50, 100, 50, 100, 50, 100, 100] };
+            navigator.vibrate(patterns[type] || 10);
+        }
+
+        // ============ CELEBRATION ============
+        function celebrate(emoji, text, sub = '') {
+            haptic('celebration');
+            const el = document.getElementById('celebration');
+            document.getElementById('celebration-emoji').textContent = emoji;
+            document.getElementById('celebration-text').textContent = text;
+            document.getElementById('celebration-sub').textContent = sub;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 2500);
+        }
+
+        function maybeQuickReward() {
+            if (Math.random() < 0.15) { // 15% chance
+                const r = quickRewards[Math.floor(Math.random() * quickRewards.length)];
+                setTimeout(() => celebrate(r.emoji, r.text, r.sub), 300);
+            }
+        }
+
+        // ============ SCAN FLASH ============
+        function scanFlash() {
+            const el = document.getElementById('scan-flash');
+            el.classList.add('flash');
+            setTimeout(() => el.classList.remove('flash'), 400);
+        }
 
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', () => { 
-            data.timestamps.start = new Date().toISOString(); 
+            data.timestamps.start = new Date().toISOString();
             lucide.createIcons();
+            loadStats();
             try {
                 const savedPin = localStorage.getItem('vl_auth');
                 const savedPhotographer = localStorage.getItem('vl_photographer');
-                const savedMode = localStorage.getItem('vl_batch_mode');
                 if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
                 if (savedPhotographer) { data.photographer = savedPhotographer; document.getElementById('photographer-select').value = savedPhotographer; document.getElementById('photographer-badge').innerText = savedPhotographer; }
-                if (savedMode) { data.superCategory = savedMode; }
-                restoreSession();
             } catch(e) {}
+            updateStatsDisplay();
+            applySmartDefaults();
+            showMotivation();
         });
 
-        // ============ SESSION PERSISTENCE (from V73) ============
-        function persistData() {
-            try {
-                const session = {
-                    sku: document.getElementById('sku-input').value,
-                    superCategory: data.superCategory,
-                    category: document.getElementById('cat-select').value,
-                    tagStatus: data.tagStatus, tagSize: data.tagSize,
-                    fabric: document.getElementById('fabric-select').value,
-                    gender: data.gender, condition: data.condition,
-                    sleeveType: data.sleeveType, hasDefects: data.hasDefects,
-                    colorPrimary: data.colorPrimary, thickness: data.thickness
-                };
-                localStorage.setItem('vl_session_v75', JSON.stringify(session));
-            } catch(e) {}
-            updateAllChecks();
+        function applySmartDefaults() {
+            // Pre-select most common options
+            data.thickness = 'Standard';
+            data.construction = 'Single';
+            data.sleeveType = 'Short';
+            data.condition = 'Good';
+            data.fadeLevel = 'None';
+            data.hasDefects = false;
+            data.origin = 'usa';
+            data.madeInCountry = 'USA';
+            document.getElementById('cond-select').value = 'Good';
         }
 
-        function restoreSession() {
+        function loadStats() {
             try {
-                const session = JSON.parse(localStorage.getItem('vl_session_v75'));
-                if (!session) return;
-                // Restore minimal fields
-                if (session.superCategory) { data.superCategory = session.superCategory; }
-            } catch(e) {}
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v77') || '{}');
+                const today = new Date().toDateString();
+                if (saved.lastDate === today) {
+                    stats = saved;
+                } else {
+                    const yesterday = new Date(Date.now() - 86400000).toDateString();
+                    stats.streak = saved.lastDate === yesterday ? (saved.streak || 0) + 1 : 1;
+                    stats.itemsToday = 0;
+                    stats.totalTime = 0;
+                    stats.lastDate = today;
+                    stats.bestTime = saved.bestTime || null;
+                }
+            } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
+        }
+
+        function saveStats() { try { localStorage.setItem('vl_stats_v77', JSON.stringify(stats)); } catch(e) {} }
+
+        function updateStatsDisplay() {
+            document.getElementById('streak-count').textContent = stats.streak;
+            document.getElementById('items-today').textContent = stats.itemsToday;
+            document.getElementById('avg-time').textContent = stats.itemsToday > 0 ? formatTime(Math.round(stats.totalTime / stats.itemsToday)) : '--';
+        }
+
+        function showMotivation() {
+            const banner = document.getElementById('motivation-banner');
+            const remaining = [10, 25, 50, 75, 100].find(m => m > stats.itemsToday);
+            if (remaining && stats.itemsToday >= remaining - 3) {
+                banner.textContent = `🎯 ${remaining - stats.itemsToday} more to hit ${remaining}!`;
+                banner.classList.remove('hidden');
+            }
+        }
+
+        // ============ TIMER ============
+        function startTimer() {
+            if (itemStartTime) return;
+            itemStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.round((Date.now() - itemStartTime) / 1000);
+                document.getElementById('current-timer').textContent = formatTime(elapsed);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            const elapsed = itemStartTime ? Math.round((Date.now() - itemStartTime) / 1000) : 0;
+            itemStartTime = null;
+            document.getElementById('current-timer').textContent = '0:00';
+            return elapsed;
         }
 
         // ============ AUTH ============
         function checkPin() {
             if(document.getElementById('pin-input').value === APP_PIN) {
+                haptic('success');
                 try {
                     localStorage.setItem('vl_auth', APP_PIN);
                     const photographer = document.getElementById('photographer-select').value;
@@ -667,51 +819,83 @@
                 } catch(e) {}
                 document.getElementById('login-screen').classList.add('hidden');
             } else {
+                haptic('error');
                 document.getElementById('pin-input').value = '';
-                document.getElementById('pin-input').classList.add('border-red-500');
-                setTimeout(() => document.getElementById('pin-input').classList.remove('border-red-500'), 500);
+                document.getElementById('pin-input').classList.add('shake', 'border-red-500');
+                setTimeout(() => document.getElementById('pin-input').classList.remove('shake', 'border-red-500'), 500);
             }
         }
 
         function showPhotographerChange() {
-            const current = data.photographer;
-            const newP = prompt(`Current: ${current}\nEnter code (P01, P02, P03):`, current);
+            const newP = prompt(`Current: ${data.photographer}\nEnter code (P01, P02, P03):`, data.photographer);
             if (newP && ['P01','P02','P03'].includes(newP.toUpperCase())) {
                 data.photographer = newP.toUpperCase();
                 document.getElementById('photographer-badge').innerText = data.photographer;
                 try { localStorage.setItem('vl_photographer', data.photographer); } catch(e) {}
+                haptic('light');
             }
         }
 
-        // ============ CHECKS ============
-        function updateCheck(id, complete) { const el = document.getElementById(id); if(!el) return; el.innerHTML = complete ? '✓' : '○'; el.classList.toggle('complete', complete); }
+        // ============ SECTION COMPLETION ============
+        function completeSection(section) {
+            const checkEl = document.getElementById(`check-${section}`);
+            if (checkEl && !checkEl.classList.contains('complete')) {
+                checkEl.innerHTML = '✓';
+                checkEl.classList.add('complete', 'just-completed');
+                haptic('medium');
+                setTimeout(() => checkEl.classList.remove('just-completed'), 500);
+            }
+        }
+
         function updateAllChecks() {
-            updateCheck('check-category', !!data.category);
-            updateCheck('check-sku', !!data.sku);
-            updateCheck('check-tag', !!data.tagStatus);
-            updateCheck('check-fabric', !!data.fabric);
-            updateCheck('check-color', !!data.colorPrimary);
-            updateCheck('check-sleeve', !!data.sleeveType || data.superCategory !== 'tops');
-            updateCheck('check-condition', !!data.condition);
-            updateCheck('check-fade', !!data.fadeLevel);
-            updateCheck('check-photos', data.mainPhotos.length > 0);
-            updateCheck('check-measure', !!data.audioMeasure);
-            updateCheck('check-weight', data.itemWeightTotalOz > 0);
+            const checks = {
+                category: !!data.category,
+                sku: !!data.sku,
+                tag: !!data.tagStatus,
+                fabric: !!data.fabric,
+                color: !!data.colorPrimary,
+                sleeve: !!data.sleeveType || data.superCategory !== 'tops',
+                condition: !!data.condition,
+                fade: !!data.fadeLevel,
+                photos: data.mainPhotos.length > 0,
+                measure: !!data.audioMeasure,
+                weight: data.itemWeightTotalOz > 0
+            };
+            Object.entries(checks).forEach(([key, complete]) => {
+                const el = document.getElementById(`check-${key}`);
+                if (el) { el.innerHTML = complete ? '✓' : '○'; el.classList.toggle('complete', complete); }
+            });
+            const photoCount = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
+            document.getElementById('photo-count-badge').textContent = photoCount;
+            
+            // Pulse photo button if 0 photos after 30 seconds
+            const photoBtn = document.getElementById('add-photo-btn');
+            if (currentStep === 3 && data.mainPhotos.length === 0) {
+                photoBtn.classList.add('needs-attention');
+            } else {
+                photoBtn.classList.remove('needs-attention');
+            }
+        }
+
+        function autoScroll(sectionId) {
+            setTimeout(() => {
+                const el = document.getElementById(sectionId);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 150);
         }
 
         // ============ NAVIGATION ============
         function goToStep(step) {
             if(step === currentStep) return;
-            data.timestamps[`step${currentStep}End`] = new Date().toISOString();
-            data.timestamps[`step${step}Start`] = new Date().toISOString();
+            haptic('light');
             document.getElementById(`step-${currentStep}`).classList.remove('active');
             document.getElementById(`step-${step}`).classList.add('active');
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = ['','Identify','Inspect','Document','Review'][step];
-            if(step===3) { initDefectSection(); updateMeasureHint(); updateFeaturesGrid(); updateWeightHint(); renderPhotoThumbs(); }
-            if(step===4) updateReviewCards();
-            window.scrollTo(0,0);
+            if(step===3) { initDefectSection(); updateMeasureHint(); updateWeightHint(); renderPhotoThumbs(); }
+            if(step===4) { updateReviewCards(); checkConsistency(); }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
             updateAllChecks();
         }
 
@@ -722,100 +906,109 @@
 
         // ============ STEP 1 ============
         function setSuperCategory(cat, btn) {
+            haptic('medium');
             data.superCategory = cat;
-            document.querySelectorAll('.super-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected'); if(!b.classList.contains('btn-hero') || b !== btn) { b.classList.remove('btn-hero'); b.classList.add('btn-secondary'); } });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
             const sel = document.getElementById('cat-select');
             sel.innerHTML = '<option value="" disabled selected>Select type...</option>';
-            categoryOptions[cat].forEach(o => sel.innerHTML += `<option value="${o}">${o}</option>`);
+            categoryOptions[cat].forEach((o, i) => sel.innerHTML += `<option value="${o}" ${i===0?'':''}>${o}</option>`);
             sel.classList.remove('hidden');
-            document.getElementById('sleeve-section').classList.toggle('hidden', cat !== 'tops');
-            document.getElementById('graphics-section').classList.add('hidden');
-            persistData();
+            document.getElementById('section-sleeve').classList.toggle('hidden', cat !== 'tops');
+            completeSection('category');
+            autoScroll('section-sku');
         }
 
         function onCategoryChange() { 
-            data.category = document.getElementById('cat-select').value; 
-            document.getElementById('graphics-section').classList.toggle('hidden', !['T-Shirt','Tank Top','Sweatshirt','Hoodie'].includes(data.category));
-            persistData(); 
+            data.category = document.getElementById('cat-select').value;
+            haptic('light');
+            autoScroll('section-tag');
         }
-        function onSkuInput() { data.sku = document.getElementById('sku-input').value; if(!data.scanTime) data.scanTime = new Date(); persistData(); }
+
+        function onSkuInput() { 
+            data.sku = document.getElementById('sku-input').value;
+            if (data.sku && !itemStartTime) {
+                startTimer();
+                scanFlash();
+                haptic('success');
+                data.scanTime = new Date();
+            }
+            if (data.sku) { completeSection('sku'); autoScroll('section-tag'); }
+        }
 
         function toggleScanner() { const v = document.getElementById('scanner-view'); if(v.classList.contains('hidden')) { v.classList.remove('hidden'); startScanner(); } else { v.classList.add('hidden'); stopScanner(); } }
-        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; data.scanTime = new Date(); toggleScanner(); persistData(); }, () => {}).catch(e => console.error(e)); }
+        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; startTimer(); scanFlash(); haptic('success'); data.scanTime = new Date(); toggleScanner(); completeSection('sku'); autoScroll('section-tag'); }, () => {}).catch(e => console.error(e)); }
         function stopScanner() { if(qrScanner?.isScanning) qrScanner.stop().catch(e => console.error(e)); }
 
         function setTagStatus(status, btn) {
+            haptic('medium');
             data.tagStatus = status;
-            document.querySelectorAll('.tag-status-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            document.querySelectorAll('.tag-status-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
             document.getElementById('tag-size-section').classList.toggle('hidden', status !== 'has');
             document.getElementById('origin-section').classList.remove('hidden');
-            document.getElementById('copyright-section').classList.remove('hidden');
             document.getElementById('tag-gender-section').classList.remove('hidden');
-            persistData();
+            completeSection('tag');
         }
 
-        function setTagSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('tag-size-input').value = ''; persistData(); }
+        function setTagSize(size, btn) { haptic('light'); data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('tag-size-input').value = ''; }
         function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function onCustomSizeInput() { data.tagSize = document.getElementById('tag-size-input').value; clearSizeBtns(); persistData(); }
+        function onCustomSizeInput() { data.tagSize = document.getElementById('tag-size-input').value; clearSizeBtns(); }
 
         function setOrigin(type, btn) {
+            haptic('light');
             data.origin = type;
-            document.querySelectorAll('.origin-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
             document.getElementById('country-select').classList.toggle('hidden', type === 'usa');
             data.madeInCountry = type === 'usa' ? 'USA' : '';
-            persistData();
         }
 
-        function setGender(g, btn) { data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+        function setGender(g, btn) { haptic('light'); data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         
-        function onFabricChange() {
-            data.fabric = document.getElementById('fabric-select').value;
-            document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend');
-            persistData();
-        }
+        function onFabricChange() { data.fabric = document.getElementById('fabric-select').value; document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend'); completeSection('fabric'); haptic('light'); autoScroll('section-color'); }
 
         function setSleeve(type, btn) {
+            haptic('light');
             data.sleeveType = type;
-            document.querySelectorAll('.sleeve-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            document.getElementById('cutoff-section').classList.toggle('hidden', !(data.category === 'T-Shirt' && type === 'None'));
-            persistData();
+            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
+            completeSection('sleeve');
         }
-        function setCutOff(val, btn) { data.isCutOff = val; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function setThickness(t, btn) { data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function setTexture(t, btn) { data.texture = t; document.querySelectorAll('.texture-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function setConstruction(c, btn) { data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function setPrintType(t, btn) { data.printType = t; document.querySelectorAll('.print-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('graphic-category-section').classList.toggle('hidden', t === 'Blank'); persistData(); }
-        function setGraphicCat(c, btn) { data.graphicCategory = c; document.querySelectorAll('.graphic-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
+
+        function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary'); }
 
         // ============ STEP 2 ============
+        function onConditionChange() { data.condition = document.getElementById('cond-select').value; completeSection('condition'); haptic('light'); }
         function setHasDefects(has, btn) {
+            haptic('medium');
             data.hasDefects = has;
-            document.querySelectorAll('.defect-toggle-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            document.getElementById('defect-hint').classList.toggle('hidden', !has);
-            persistData();
+            document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
         }
-        function setFade(level, btn) { data.fadeLevel = level; document.querySelectorAll('.fade-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function setVisualCheck(val, btn) { data.visualTagCheck = val; document.querySelectorAll('.visual-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); persistData(); }
-        function flagUnusual() { data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '<div class="flex items-center justify-center gap-2">✓ FLAGGED</div>'; }
+        function setFade(level, btn) {
+            haptic('light');
+            data.fadeLevel = level;
+            document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
+            completeSection('fade');
+        }
+        function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '<div class="flex items-center justify-center gap-2">🚩 FLAGGED</div>'; }
 
         // ============ STEP 3 ============
         function initDefectSection() {
             const show = data.hasDefects === true;
             document.getElementById('defect-section').classList.toggle('hidden', !show);
             if(show) {
-                const isTops = data.superCategory === 'tops' || data.superCategory === 'outer';
-                document.getElementById('defect-svg-front').innerHTML = isTops ? SVG_TOP_FRONT : SVG_PANTS_FRONT;
-                document.getElementById('defect-svg-back').innerHTML = isTops ? SVG_TOP_BACK : SVG_PANTS_BACK;
+                document.getElementById('defect-svg-front').innerHTML = SVG_TOP_FRONT;
+                document.getElementById('defect-svg-back').innerHTML = SVG_TOP_BACK;
                 document.querySelectorAll('.zone-hit').forEach(z => {
                     z.onclick = e => {
                         pendingDefect = { zone: e.target.dataset.zone, side: e.target.dataset.side };
-                        document.getElementById('zone-label').textContent = `${pendingDefect.side.toUpperCase()} • ${pendingDefect.zone}`;
+                        document.getElementById('zone-label').textContent = `${pendingDefect.side.toUpperCase()} • ${pendingDefect.zone.replace('-',' ')}`;
                         document.getElementById('defect-modal').classList.remove('hidden');
+                        haptic('light');
                     };
                 });
                 renderDefectMarkers();
@@ -825,6 +1018,7 @@
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
 
         function selectDefectType(type) {
+            haptic('medium');
             if(pendingDefect) {
                 pendingDefect.type = type;
                 document.getElementById('defect-modal').classList.add('hidden');
@@ -834,8 +1028,7 @@
         }
 
         function renderDefectMarkers() {
-            document.getElementById('defect-markers-front').innerHTML = '';
-            document.getElementById('defect-markers-back').innerHTML = '';
+            ['front','back'].forEach(side => document.getElementById(`defect-markers-${side}`).innerHTML = '');
             data.defectPhotos.forEach((d, i) => {
                 const meta = d.defectMeta;
                 const pos = zonePos[`${meta.side}-${meta.zone}`];
@@ -844,81 +1037,94 @@
                 m.className = `defect-marker ${meta.type.toLowerCase()}`;
                 m.style.cssText = `left:${pos.x}%;top:${pos.y}%`;
                 m.textContent = i + 1;
-                m.onclick = () => { if(confirm('Remove this defect?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); } };
+                m.onclick = () => { if(confirm('Remove this defect?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); haptic('light'); } };
                 document.getElementById(`defect-markers-${meta.side}`).appendChild(m);
             });
         }
 
         function renderPhotoThumbs() {
-            ['main','tag','feature'].forEach(type => {
+            ['main','tag'].forEach(type => {
                 const container = document.getElementById(`${type}-photos-thumbs`);
                 if(!container) return;
                 const photos = data[`${type}Photos`];
-                container.innerHTML = photos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.${type}Photos.splice(${i},1);renderPhotoThumbs();}">`).join('');
+                container.innerHTML = photos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.${type}Photos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
             });
-            // Update tag buttons
-            const hasNeck = data.tagPhotos.some(p => p.tagType === 'neck');
-            const hasCare = data.tagPhotos.some(p => p.tagType === 'care');
-            document.getElementById('btn-tag-neck').classList.toggle('captured', hasNeck);
-            document.getElementById('btn-tag-care').classList.toggle('captured', hasCare);
+            const neckBtn = document.getElementById('btn-tag-neck');
+            const careBtn = document.getElementById('btn-tag-care');
+            if (data.tagPhotos.some(p => p.tagType === 'neck')) { neckBtn.classList.add('bg-green-100','border-green-500','text-green-700'); neckBtn.classList.remove('bg-gray-100','border-gray-300'); }
+            if (data.tagPhotos.some(p => p.tagType === 'care')) { careBtn.classList.add('bg-green-100','border-green-500','text-green-700'); careBtn.classList.remove('bg-gray-100','border-gray-300'); }
             updateAllChecks();
-        }
-
-        function updateFeaturesGrid() {
-            const feats = featuresMap[data.category] || featuresMap.default;
-            document.getElementById('features-grid').innerHTML = feats.map(f => `<button onclick="openCamera('feature','${f}')" class="py-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 text-[9px] font-bold">📷 ${f}</button>`).join('');
         }
 
         function updateMeasureHint() {
             const m = measureMap[data.superCategory] || measureMap.tops;
-            document.getElementById('measure-hint').innerHTML = `<b class="text-blue-800 text-[9px]">📏 SPEAK:</b> <span class="text-[10px]">${m.join(' • ')}</span>`;
+            document.getElementById('measure-hint').innerHTML = `<div class="text-blue-800 text-[10px] font-bold mb-1">📏 SAY EACH MEASUREMENT:</div><div class="text-blue-700 text-xs font-mono">${m.join(' → ')}</div>`;
         }
 
         function updateWeightHint() {
-            const category = data.category;
-            const tagSize = data.tagSize || '';
+            const category = data.category || 'T-Shirt';
+            const tagSize = data.tagSize || 'M';
             const thickness = data.thickness || 'Standard';
-            const construction = data.construction || 'Single';
-            const weightClass = thicknessToWeight[thickness] || 'Mid';
-            
-            let tableData = weightTable[category];
+            const wc = thicknessToWeight[thickness] || 'Mid';
+            const table = weightTable[category];
             const hintEl = document.getElementById('weight-hint');
             
-            if (tableData) {
-                let sizeIdx = -1;
-                for (const [sizeKey, idx] of Object.entries(sizeIndexMap)) {
-                    if (tagSize.toUpperCase().includes(sizeKey)) { sizeIdx = idx; break; }
-                }
-                const weights = tableData[weightClass] || tableData['Mid'];
-                if (weights && sizeIdx >= 0 && sizeIdx < weights.length) {
-                    let expectedOz = weights[sizeIdx];
-                    const multiplier = (construction === 'Reversible' || construction === 'Lined') ? 2 : 1;
-                    expectedOz = expectedOz * multiplier;
-                    const displayWeight = expectedOz >= 32 ? `${(expectedOz/16).toFixed(1)}lb` : `${expectedOz}oz`;
-                    hintEl.innerHTML = `<p class="text-[11px] text-purple-700 font-bold text-center">💡 ${category} (${tagSize || '?'}, ${thickness})</p><p class="text-[13px] text-purple-900 font-black text-center">Expected: ~${displayWeight}</p>`;
+            if (table) {
+                let idx = sizeIndexMap[tagSize.toUpperCase()] ?? 2;
+                const weights = table[wc] || table['Mid'];
+                if (weights && idx < weights.length) {
+                    const oz = weights[idx];
+                    const display = oz >= 16 ? `${(oz/16).toFixed(1)} lb` : `${oz} oz`;
+                    hintEl.innerHTML = `<div class="text-center"><div class="text-purple-800 font-bold text-lg">${display}</div><div class="text-purple-600 text-[10px]">Expected for ${category} • ${tagSize || 'M'} • ${thickness}</div></div>`;
                     return;
                 }
-                const minW = Math.min(...(tableData['Light'] || tableData['Mid']));
-                const maxW = Math.max(...(tableData['Heavy'] || tableData['Mid']));
-                hintEl.innerHTML = `<p class="text-[10px] text-purple-700 font-bold text-center">💡 ${category}: ${minW >= 32 ? (minW/16).toFixed(1)+'lb' : minW+'oz'} - ${maxW >= 32 ? (maxW/16).toFixed(1)+'lb' : maxW+'oz'}</p>`;
-            } else {
-                hintEl.innerHTML = `<p class="text-[10px] text-purple-600 text-center">💡 Typical: 6oz-1lb</p>`;
             }
+            hintEl.innerHTML = `<div class="text-purple-600 text-center text-sm">⚖️ Enter weight from scale</div>`;
         }
+
+        function updateWeight() {
+            data.itemWeightLb = +document.getElementById('weight-lb').value||0;
+            data.itemWeightOz = +document.getElementById('weight-oz').value||0;
+            data.itemWeightTotalOz = data.itemWeightLb*16 + data.itemWeightOz;
+            
+            // Weight validation
+            const category = data.category || 'T-Shirt';
+            const table = weightTable[category];
+            const warning = document.getElementById('weight-warning');
+            
+            if (table && data.itemWeightTotalOz > 0 && !weightWarningDismissed) {
+                if (data.itemWeightTotalOz < table.min * 0.5) {
+                    warning.classList.remove('hidden');
+                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems light for ${category} (usually ${table.min}-${table.max} oz)`;
+                    haptic('error');
+                } else if (data.itemWeightTotalOz > table.max * 1.3) {
+                    warning.classList.remove('hidden');
+                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems heavy for ${category} (usually ${table.min}-${table.max} oz)`;
+                    haptic('error');
+                } else {
+                    warning.classList.add('hidden');
+                }
+            } else {
+                warning.classList.add('hidden');
+            }
+            
+            if (data.itemWeightTotalOz > 0) completeSection('weight');
+            haptic('light');
+        }
+
+        function dismissWeightWarning() { weightWarningDismissed = true; document.getElementById('weight-warning').classList.add('hidden'); haptic('light'); }
 
         // ============ CAMERA ============
         async function openCamera(mode, subType = null) {
-            cameraMode = mode;
-            cameraSubType = subType;
+            cameraMode = mode; cameraSubType = subType;
             let label = mode.toUpperCase();
             if(mode === 'tag') label = subType === 'neck' ? 'NECK TAG' : 'CARE LABEL';
-            if(mode === 'feature') label = `FEATURE: ${subType}`;
             openCameraOverlay(label);
         }
 
         async function openCameraOverlay(label) {
             document.getElementById('cam-mode-label').textContent = label;
-            const count = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : cameraMode === 'defect' ? data.defectPhotos.length : data.featurePhotos.length;
+            const count = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length;
             document.getElementById('cam-count').textContent = count;
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
@@ -934,16 +1140,15 @@
         }
 
         function capturePhoto() {
+            haptic('success');
             const video = document.getElementById('cam-feed');
             const canvas = document.getElementById('photo-canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             
             canvas.toBlob(blob => {
                 const photo = { dataUrl, blob, timestamp: new Date().toISOString() };
-                
                 if(cameraMode === 'defect' && pendingDefect) {
                     photo.defectMeta = { ...pendingDefect };
                     data.defectPhotos.push(photo);
@@ -951,15 +1156,12 @@
                 } else if(cameraMode === 'tag') {
                     photo.tagType = cameraSubType;
                     data.tagPhotos.push(photo);
-                } else if(cameraMode === 'feature') {
-                    photo.featureName = cameraSubType;
-                    data.featurePhotos.push(photo);
                 } else {
                     data.mainPhotos.push(photo);
+                    if(data.mainPhotos.length === 1) completeSection('photos');
                 }
-                
+                document.getElementById('cam-count').textContent = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length;
                 renderPhotoThumbs();
-                closeCamera();
             }, 'image/jpeg', 0.85);
         }
 
@@ -978,31 +1180,31 @@
                         document.getElementById('post-record-section').classList.remove('hidden');
                         document.getElementById('recording-duration').textContent = formatTime(data.audioDuration);
                         stream.getTracks().forEach(t => t.stop());
-                        updateAllChecks();
+                        completeSection('measure');
+                        haptic('success');
                     };
                     mediaRecorder.start();
                     recordingStart = Date.now();
                     isRecording = true;
+                    haptic('medium');
                     document.getElementById('record-btn').classList.add('recording');
-                    document.getElementById('record-btn').innerHTML = '<span class="text-2xl">⏹️</span><span>STOP</span><span id="rec-timer" class="text-sm font-mono">0:00</span>';
+                    document.getElementById('record-btn').innerHTML = '<span class="text-2xl">⏹️</span><span>TAP TO STOP</span><span id="rec-timer" class="text-lg font-mono">0:00</span>';
                     updateRecTimer();
-                } catch(e) { alert('Mic error'); }
+                } catch(e) { alert('Mic error: ' + e.message); }
             } else { mediaRecorder.stop(); isRecording = false; }
         }
 
         function updateRecTimer() { if(!isRecording) return; const t = document.getElementById('rec-timer'); if(t) t.textContent = formatTime(Math.round((Date.now()-recordingStart)/1000)); setTimeout(updateRecTimer, 1000); }
         function formatTime(s) { return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
-        function reRecord() { data.audioMeasure = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>TAP TO RECORD</span>'; updateAllChecks(); }
-
-        function updateWeight() { data.itemWeightLb = +document.getElementById('weight-lb').value||0; data.itemWeightOz = +document.getElementById('weight-oz').value||0; data.itemWeightTotalOz = data.itemWeightLb*16 + data.itemWeightOz; updateAllChecks(); updateWeightHint(); }
+        function reRecord() { data.audioMeasure = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>HOLD TO RECORD</span>'; haptic('light'); document.getElementById('check-measure').classList.remove('complete'); document.getElementById('check-measure').innerHTML = '○'; }
 
         // ============ STEP 4 ============
         function updateReviewCards() {
-            document.getElementById('summary-identify').innerHTML = `${data.category||'?'} • SKU:${data.sku||'?'}<br>${data.tagSize||''} ${data.colorPrimary||''}`;
-            document.getElementById('summary-inspect').innerHTML = `${data.condition||'?'}<br>${data.hasDefects?data.defectPhotos.length+' defects':'No flaws'} • ${data.fadeLevel||'?'}`;
-            const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.featurePhotos.length;
-            document.getElementById('summary-document').innerHTML = `${pc} photos<br>${data.audioMeasure?formatTime(data.audioDuration):'No audio'}`;
-            document.getElementById('summary-ready').innerHTML = data.itemWeightTotalOz > 0 ? `${data.itemWeightLb}lb ${data.itemWeightOz}oz` : 'No weight';
+            document.getElementById('summary-identify').innerHTML = `${data.category||'?'} • ${data.sku||'?'}<br>${data.tagSize||''} ${data.colorPrimary||''}`;
+            document.getElementById('summary-inspect').innerHTML = `${data.condition||'?'}<br>${data.hasDefects?data.defectPhotos.length+' defect(s)':'No flaws'} • ${data.fadeLevel} fade`;
+            const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
+            document.getElementById('summary-document').innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
+            document.getElementById('summary-ready').innerHTML = data.itemWeightTotalOz > 0 ? `${data.itemWeightLb} lb ${data.itemWeightOz} oz` : 'No weight';
             setCardStatus('identify', !!data.category && !!data.sku && !!data.colorPrimary && !!data.fabric);
             setCardStatus('inspect', !!data.condition && !!data.fadeLevel);
             setCardStatus('document', !!data.audioMeasure && data.mainPhotos.length > 0);
@@ -1010,22 +1212,65 @@
             if(data.flagged) document.getElementById('flag-status').classList.remove('hidden');
         }
 
-        function setCardStatus(name, ok) { const card = document.getElementById(`card-${name}`); const icon = document.getElementById(`icon-${name}`); card.classList.remove('card-green','card-yellow'); card.classList.add(ok?'card-green':'card-yellow'); icon.textContent = ok?'🟢':'🟡'; }
+        function setCardStatus(name, ok) { 
+            const card = document.getElementById(`card-${name}`); 
+            const icon = document.getElementById(`icon-${name}`); 
+            card.classList.remove('card-green','card-yellow'); 
+            card.classList.add(ok?'card-green':'card-yellow'); 
+            icon.textContent = ok?'✅':'⚠️'; 
+        }
 
-        // ============ SUBMIT (from V73) ============
+        function checkConsistency() {
+            const warning = document.getElementById('consistency-warning');
+            // Excellent + defects = inconsistent
+            if (data.condition === 'Excellent' && data.defectPhotos.length > 0) {
+                warning.classList.remove('hidden');
+                document.getElementById('consistency-warning-text').textContent = `"Excellent" condition but ${data.defectPhotos.length} defect(s) marked?`;
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+
+        function fixConsistency(what) {
+            haptic('light');
+            if (what === 'condition') {
+                document.getElementById('cond-select').value = 'Good';
+                data.condition = 'Good';
+            } else {
+                data.defectPhotos = [];
+                renderDefectMarkers();
+            }
+            document.getElementById('consistency-warning').classList.add('hidden');
+            updateReviewCards();
+        }
+
+        // ============ SUBMIT ============
         async function submitData() {
-            const sku = data.sku || document.getElementById('sku-input').value;
-            if(!sku) return alert("Scan or enter the SKU");
-            if(data.mainPhotos.length === 0) return alert("Add at least one main photo");
-            if(data.itemWeightTotalOz === 0) return alert("Enter the weight");
-            if(!data.fabric) return alert("Choose a fabric type");
-            if(!data.colorPrimary) return alert("Pick the main color");
+            const sku = data.sku;
+            if(!sku) { haptic('error'); return alert("Scan or enter SKU"); }
+            if(data.mainPhotos.length === 0) { haptic('error'); return alert("Add at least one photo"); }
+            if(data.itemWeightTotalOz === 0) { haptic('error'); return alert("Enter weight"); }
+            if(!data.fabric) { haptic('error'); return alert("Select fabric"); }
+            if(!data.colorPrimary) { haptic('error'); return alert("Select primary color"); }
             
-            data.timestamps.submit_pressed = new Date().toISOString();
+            const itemTime = stopTimer();
+            stats.itemsToday++;
+            stats.totalTime += itemTime;
+            if (!stats.bestTime || itemTime < stats.bestTime) stats.bestTime = itemTime;
+            saveStats();
+            updateStatsDisplay();
+            
+            // Milestone celebrations
+            if (stats.itemsToday === 10) celebrate('🔟', 'Double Digits!', '10 items today');
+            else if (stats.itemsToday === 25) celebrate('💪', 'Quarter Century!', '25 items - crushing it!');
+            else if (stats.itemsToday === 50) celebrate('🔥', 'FIFTY!', 'Half century - on fire!');
+            else if (stats.itemsToday === 75) celebrate('🚀', '75 Items!', 'Three quarters there!');
+            else if (stats.itemsToday === 100) celebrate('🏆', 'CENTURION!', '100 items - legendary!');
+            else if (itemTime === stats.bestTime && stats.itemsToday > 3) celebrate('⚡', 'NEW RECORD!', formatTime(itemTime) + ' - your fastest!');
+            else maybeQuickReward();
             
             const modal = document.getElementById('upload-modal');
             modal.classList.remove('hidden');
-            document.getElementById('upload-status').textContent = 'Building payload...';
             
             const fd = new FormData();
             fd.append('sku', sku);
@@ -1038,77 +1283,42 @@
             fd.append('tag_size', data.tagSize);
             fd.append('origin', data.origin);
             fd.append('made_in_country', data.madeInCountry);
-            fd.append('copyright_year', data.copyrightYear);
             fd.append('fabric', data.fabric === 'Custom Blend' ? document.getElementById('fabric-custom').value : data.fabric);
             fd.append('thickness', data.thickness);
-            fd.append('texture', data.texture);
             fd.append('construction', data.construction);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
             fd.append('sleeve_type', data.sleeveType);
-            fd.append('print_type', data.printType);
-            fd.append('graphic_category', data.graphicCategory);
             fd.append('condition', data.condition);
             fd.append('has_defects', data.hasDefects);
             fd.append('fade_level', data.fadeLevel);
-            fd.append('visual_tag_check', data.visualTagCheck);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
             fd.append('item_weight_oz', data.itemWeightOz);
             fd.append('item_weight_total_oz', data.itemWeightTotalOz);
-            
-            // Photo counts
+            fd.append('item_time_sec', itemTime);
             fd.append('photo_count_main', data.mainPhotos.length);
             fd.append('photo_count_tag', data.tagPhotos.length);
             fd.append('photo_count_defect', data.defectPhotos.length);
-            fd.append('photo_count_feature', data.featurePhotos.length);
-            fd.append('photo_count_total', data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.featurePhotos.length);
             
-            // Defects metadata
             const defectsMetadata = data.defectPhotos.map((p, i) => ({ index: i+1, type: p.defectMeta.type, zone: p.defectMeta.zone, side: p.defectMeta.side }));
             fd.append('defect_map_json', JSON.stringify(defectsMetadata));
             
-            // Features metadata
-            const featuresMetadata = data.featurePhotos.map((p, i) => ({ index: i+1, feature: p.featureName }));
-            fd.append('features_json', JSON.stringify(featuresMetadata));
-            
-            // Timestamps
-            fd.append('kpi_timestamps_json', JSON.stringify(data.timestamps));
-            if(data.scanTime) {
-                fd.append('scan_time', data.scanTime.toISOString());
-                fd.append('kpi_duration_sec', Math.round((new Date() - data.scanTime)/1000));
-            }
-            
-            // Photos
             data.mainPhotos.forEach((p, i) => fd.append(`main_photo_${i+1}`, p.blob, `${sku}_main_${i+1}.jpg`));
             data.tagPhotos.forEach((p, i) => fd.append(`tag_photo_${i+1}`, p.blob, `${sku}_tag_${i+1}.jpg`));
             data.defectPhotos.forEach((p, i) => fd.append(`defect_photo_${i+1}`, p.blob, `${sku}_defect_${i+1}.jpg`));
-            data.featurePhotos.forEach((p, i) => fd.append(`feature_photo_${i+1}`, p.blob, `${sku}_feature_${i+1}.jpg`));
-            
             if(data.audioMeasure) fd.append('audio_measure', data.audioMeasure, `${sku}_measure.webm`);
-            
-            document.getElementById('upload-status').textContent = 'Uploading...';
             
             const xhr = new XMLHttpRequest();
             xhr.open("POST", N8N_WEBHOOK_URL, true);
-            xhr.upload.onprogress = e => { 
-                if(e.lengthComputable) {
-                    const pct = Math.round((e.loaded/e.total)*100);
-                    document.getElementById('upload-progress-bar').style.width = `${pct}%`;
-                    document.getElementById('upload-status').textContent = `Uploading... ${pct}%`;
-                }
-            };
+            xhr.upload.onprogress = e => { if(e.lengthComputable) { const pct = Math.round((e.loaded/e.total)*100); document.getElementById('upload-progress-bar').style.width = pct+'%'; document.getElementById('upload-status').textContent = pct+'%'; } };
             xhr.onload = () => { 
                 if(xhr.status >= 200 && xhr.status < 300) { 
                     document.getElementById('upload-progress-bar').style.backgroundColor = "#22c55e";
-                    document.getElementById('upload-status').textContent = '✓ Success!';
-                    localStorage.removeItem('vl_session_v75');
-                    localStorage.setItem('vl_batch_mode', data.superCategory);
-                    setTimeout(() => location.reload(), 800); 
-                } else { 
-                    alert("Error: " + xhr.status); 
-                    modal.classList.add('hidden'); 
-                } 
+                    document.getElementById('upload-status').textContent = '✓ Done!';
+                    haptic('celebration');
+                    setTimeout(() => location.reload(), 1000); 
+                } else { alert("Error: " + xhr.status); modal.classList.add('hidden'); } 
             };
             xhr.onerror = () => { alert("Network Error"); modal.classList.add('hidden'); };
             xhr.send(fd);
