@@ -3,135 +3,551 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VintageLister v75.7</title>
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>VintageLister v75.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; margin: 0; padding: 0; overflow-x: hidden; }
+        /* ============ DESIGN SYSTEM ============ */
+        :root {
+            /* Colors - Consolidated palette */
+            --color-primary: #3b82f6;
+            --color-primary-dark: #2563eb;
+            --color-primary-light: #dbeafe;
+            --color-success: #22c55e;
+            --color-success-light: #dcfce7;
+            --color-warning: #f59e0b;
+            --color-warning-light: #fef3c7;
+            --color-error: #ef4444;
+            --color-error-light: #fee2e2;
+            --color-surface: #ffffff;
+            --color-background: #f8fafc;
+            --color-text: #1e293b;
+            --color-text-muted: #64748b;
+            --color-text-light: #94a3b8;
+            --color-border: #e2e8f0;
+            --color-border-dark: #cbd5e1;
+            
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 16px;
+            --space-xl: 20px;
+            --space-2xl: 24px;
+            
+            /* Border Radius - Only 3 values */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            /* Shadows - Only 3 levels */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 12px 32px rgba(0,0,0,0.15);
+            
+            /* Z-Index Scale */
+            --z-base: 0;
+            --z-dropdown: 10;
+            --z-sticky: 20;
+            --z-header: 30;
+            --z-modal-backdrop: 40;
+            --z-modal: 50;
+            --z-camera: 60;
+            --z-toast: 70;
+            --z-celebration: 80;
+            --z-login: 90;
+            
+            /* Touch target minimum */
+            --touch-min: 44px;
+            
+            /* Header height for scroll offset */
+            --header-height: 156px;
+        }
+        
+        /* ============ BASE STYLES ============ */
+        * { 
+            -webkit-tap-highlight-color: transparent; 
+            box-sizing: border-box; 
+        }
+        
+        html, body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: var(--color-background); 
+            min-height: 100vh; 
+            min-height: -webkit-fill-available;
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden;
+            color: var(--color-text);
+            font-size: 14px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
         
-        .progress-dot { width: 14px; height: 14px; border-radius: 50%; transition: all 0.3s; cursor: pointer; }
-        .progress-dot:active { transform: scale(0.9); }
-        .progress-dot.completed { background: #22c55e; }
-        .progress-dot.current { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
-        .progress-dot.pending { background: #d1d5db; }
-        .progress-line { height: 3px; flex: 1; min-width: 20px; }
-        .progress-line.completed { background: #22c55e; }
-        .progress-line.pending { background: #e5e7eb; }
+        .safe-top { padding-top: max(var(--space-md), env(safe-area-inset-top)); }
+        .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
-        /* Animated checkmark with spring physics */
-        .check-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); color: #d1d5db; flex-shrink: 0; }
-        .check-circle.complete { background: #22c55e; border-color: #22c55e; color: white; transform: scale(1.1); }
-        @keyframes checkPop { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1.1); } }
-        .check-circle.just-completed { animation: checkPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        
-        .section-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; scroll-margin-top: 160px; transition: all 0.3s; }
-        .section-card.highlight { box-shadow: 0 0 0 3px rgba(59,130,246,0.3), 0 4px 12px rgba(59,130,246,0.15); }
-        
-        /* HERO BUTTON - Primary/Default option (LARGE, PROMINENT) */
-        .btn-hero { 
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white !important; border: 2px solid #1d4ed8 !important;
-            box-shadow: 0 4px 14px rgba(59,130,246,0.4);
-            font-size: 14px; font-weight: 700;
-            position: relative;
+        /* ============ PROGRESS INDICATOR ============ */
+        .progress-dot { 
+            width: 16px; 
+            height: 16px; 
+            border-radius: 50%; 
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-width: var(--touch-min);
+            min-height: var(--touch-min);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .btn-hero::after { content: ''; position: absolute; inset: -2px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%); pointer-events: none; }
-        .btn-hero:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
-        .btn-hero.selected { box-shadow: 0 0 0 3px rgba(34,197,94,0.5), 0 4px 14px rgba(59,130,246,0.4); border-color: #22c55e !important; }
+        .progress-dot::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .progress-dot:active::before { transform: scale(0.85); }
+        .progress-dot.completed::before { background: var(--color-success); }
+        .progress-dot.current::before { 
+            background: var(--color-primary); 
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.25); 
+        }
+        .progress-dot.pending::before { background: var(--color-border-dark); }
         
-        /* Secondary options - muted, smaller */
-        .btn-secondary { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; font-size: 11px; }
-        .btn-secondary:active { transform: scale(0.97); background: #f3f4f6; }
-        .btn-secondary.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
+        .progress-line { 
+            height: 4px; 
+            flex: 1; 
+            min-width: 16px;
+            border-radius: 2px;
+            transition: background 0.3s ease;
+        }
+        .progress-line.completed { background: var(--color-success); }
+        .progress-line.pending { background: var(--color-border); }
         
-        .btn-select { transition: all 0.15s; }
-        .btn-select:active { transform: scale(0.97); }
-        .btn-select.selected { background: #3b82f6 !important; color: white !important; border-color: #2563eb !important; }
+        /* ============ CHECK CIRCLES ============ */
+        .check-circle { 
+            width: 24px; 
+            height: 24px; 
+            border-radius: 50%; 
+            border: 2px solid var(--color-border-dark); 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 12px; 
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            color: var(--color-border-dark); 
+            flex-shrink: 0;
+            background: var(--color-surface);
+        }
+        .check-circle.complete { 
+            background: var(--color-success); 
+            border-color: var(--color-success); 
+            color: white; 
+        }
+        @keyframes checkPop { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.25); } 
+            100% { transform: scale(1); } 
+        }
+        .check-circle.just-completed { animation: checkPop 0.4s ease-out; }
         
-        /* Streak badge with fire animation */
-        .streak-badge { background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); color: white; font-weight: 800; padding: 4px 10px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(239,68,68,0.4); }
-        @keyframes flicker { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
-        .streak-badge .fire { animation: flicker 0.6s ease-in-out infinite; }
+        /* ============ CARDS ============ */
+        .section-card { 
+            background: var(--color-surface); 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-sm); 
+            border: 1px solid var(--color-border);
+            scroll-margin-top: calc(var(--header-height) + var(--space-lg));
+            transition: box-shadow 0.2s ease;
+        }
         
-        /* Stats bar */
-        .stats-bar { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; }
+        /* ============ BUTTONS ============ */
+        /* Primary Hero Button */
+        .btn-hero { 
+            background: var(--color-primary);
+            color: white !important; 
+            border: 2px solid var(--color-primary-dark) !important;
+            box-shadow: var(--shadow-md);
+            font-size: 14px; 
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            min-height: var(--touch-min);
+            transition: all 0.15s ease;
+        }
+        .btn-hero:active { 
+            transform: scale(0.98); 
+            box-shadow: var(--shadow-sm); 
+        }
+        .btn-hero:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.4), var(--shadow-md);
+        }
+        .btn-hero.selected { 
+            background: var(--color-primary-dark);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3), var(--shadow-md);
+        }
+        
+        /* Secondary Button */
+        .btn-secondary { 
+            background: var(--color-surface); 
+            color: var(--color-text-muted); 
+            border: 1px solid var(--color-border);
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            min-height: var(--touch-min);
+            transition: all 0.15s ease;
+        }
+        .btn-secondary:active { 
+            transform: scale(0.98); 
+            background: var(--color-background); 
+        }
+        .btn-secondary:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+        }
+        .btn-secondary.selected { 
+            background: var(--color-primary) !important; 
+            color: white !important; 
+            border-color: var(--color-primary-dark) !important; 
+        }
+        
+        /* Generic Select Button */
+        .btn-select { 
+            transition: all 0.15s ease;
+            min-height: var(--touch-min);
+        }
+        .btn-select:active { transform: scale(0.98); }
+        .btn-select.selected { 
+            background: var(--color-primary) !important; 
+            color: white !important; 
+            border-color: var(--color-primary-dark) !important; 
+        }
+        
+        /* ============ STATS BAR ============ */
+        .stats-bar { 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
+            border-radius: var(--radius-md); 
+            padding: var(--space-md) var(--space-lg);
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
         .stat-item { text-align: center; flex: 1; }
-        .stat-value { color: white; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
-        .stat-label { color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-        .stat-divider { width: 1px; height: 30px; background: #334155; }
+        .stat-value { 
+            color: white; 
+            font-weight: 800; 
+            font-size: 16px; 
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-label { 
+            color: var(--color-text-light); 
+            font-size: 10px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        .stat-divider { 
+            width: 1px; 
+            height: 28px; 
+            background: #334155;
+            margin: 0 var(--space-sm);
+        }
         
-        /* Celebration overlay */
-        #celebration { position: fixed; inset: 0; z-index: 200; pointer-events: none; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; background: rgba(0,0,0,0.3); }
+        /* ============ STREAK BADGE ============ */
+        .streak-badge { 
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); 
+            color: white; 
+            font-weight: 800; 
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            display: flex; 
+            align-items: center; 
+            gap: 4px;
+            box-shadow: var(--shadow-sm);
+        }
+        .streak-badge .fire { 
+            display: inline-block;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            @keyframes flicker { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+            .streak-badge .fire { animation: flicker 0.6s ease-in-out infinite; }
+        }
+        
+        /* ============ CELEBRATION ============ */
+        #celebration { 
+            position: fixed; 
+            inset: 0; 
+            z-index: var(--z-celebration); 
+            pointer-events: none; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            opacity: 0; 
+            transition: opacity 0.3s ease;
+            background: rgba(0,0,0,0.4);
+        }
         #celebration.show { opacity: 1; }
-        #celebration .content { background: white; border-radius: 24px; padding: 32px 48px; box-shadow: 0 25px 80px rgba(0,0,0,0.4); transform: scale(0.5) translateY(50px); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); text-align: center; }
+        #celebration .content { 
+            background: var(--color-surface); 
+            border-radius: var(--radius-lg); 
+            padding: var(--space-2xl) var(--space-2xl);
+            box-shadow: var(--shadow-lg);
+            transform: scale(0.8) translateY(20px); 
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            max-width: calc(100vw - 48px);
+        }
         #celebration.show .content { transform: scale(1) translateY(0); }
         
-        /* Scan flash effect */
+        /* ============ SCAN FLASH ============ */
+        #scan-flash { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(34,197,94,0.3);
+            pointer-events: none; 
+            opacity: 0; 
+            z-index: var(--z-toast);
+        }
         @keyframes scanFlash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
-        #scan-flash { position: fixed; inset: 0; background: linear-gradient(135deg, rgba(59,130,246,0.3) 0%, rgba(34,197,94,0.3) 100%); pointer-events: none; opacity: 0; z-index: 150; }
-        #scan-flash.flash { animation: scanFlash 0.4s ease-out; }
+        #scan-flash.flash { animation: scanFlash 0.35s ease-out; }
         
-        /* Warning card */
-        .warning-card { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 12px; padding: 12px; margin-top: 8px; }
-        .warning-card.error { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-color: #ef4444; }
+        /* ============ WARNING CARDS ============ */
+        .warning-card { 
+            background: var(--color-warning-light); 
+            border: 2px solid var(--color-warning); 
+            border-radius: var(--radius-md); 
+            padding: var(--space-md);
+        }
+        .warning-card.error { 
+            background: var(--color-error-light); 
+            border-color: var(--color-error); 
+        }
         
-        /* Pulsing attention */
-        @keyframes pulse-attention { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
-        .needs-attention { animation: pulse-attention 2s infinite; }
+        /* ============ ATTENTION PULSE ============ */
+        @keyframes pulse-attention { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); } 
+            50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } 
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .needs-attention { animation: pulse-attention 2s infinite; }
+        }
         
+        /* ============ DEFECT TYPES ============ */
         .defect-stain { background: #fef9c3; color: #854d0e; border: 2px solid #facc15; }
         .defect-hole { background: #fee2e2; color: #991b1b; border: 2px solid #f87171; }
         .defect-repair { background: #dbeafe; color: #1e40af; border: 2px solid #60a5fa; }
         .defect-other { background: #f3e8ff; color: #6b21a8; border: 2px solid #c084fc; }
         
-        .zone-hit { cursor: pointer; fill: rgba(100,116,139,0.15); stroke: rgba(100,116,139,0.3); stroke-width: 1.5px; transition: all 0.15s; }
-        .zone-hit:hover { fill: rgba(59,130,246,0.2); }
-        .zone-hit:active { fill: rgba(59,130,246,0.5) !important; }
+        /* ============ DEFECT MAP ============ */
+        .zone-hit { 
+            cursor: pointer; 
+            fill: rgba(100,116,139,0.12); 
+            stroke: rgba(100,116,139,0.25); 
+            stroke-width: 1.5px;
+            transition: fill 0.15s ease;
+        }
+        .zone-hit:active { fill: rgba(59,130,246,0.4) !important; }
         .map-wrapper { position: relative; width: 100%; touch-action: manipulation; }
         
-        .defect-marker { position: absolute; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; transform: translate(-50%,-50%); z-index: 30; box-shadow: 0 3px 8px rgba(0,0,0,0.3); border: 2px solid white; animation: markerPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; }
+        .defect-marker { 
+            position: absolute; 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 13px; 
+            font-weight: 800; 
+            transform: translate(-50%,-50%); 
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+            border: 2px solid white;
+            cursor: pointer;
+        }
         @keyframes markerPop { from { transform: translate(-50%,-50%) scale(0); } to { transform: translate(-50%,-50%) scale(1); } }
-        .defect-marker.stain { background: linear-gradient(135deg, #facc15, #eab308); color: #713f12; }
-        .defect-marker.hole { background: linear-gradient(135deg, #f87171, #ef4444); color: white; }
-        .defect-marker.repair { background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; }
-        .defect-marker.other { background: linear-gradient(135deg, #c084fc, #a855f7); color: white; }
+        @media (prefers-reduced-motion: no-preference) {
+            .defect-marker { animation: markerPop 0.25s ease-out; }
+        }
+        .defect-marker.stain { background: #facc15; color: #713f12; }
+        .defect-marker.hole { background: #f87171; color: white; }
+        .defect-marker.repair { background: #60a5fa; color: white; }
+        .defect-marker.other { background: #c084fc; color: white; }
         
-        @keyframes pulse-red { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } 50% { box-shadow: 0 0 0 15px rgba(239,68,68,0); } }
-        .recording { animation: pulse-red 1.2s infinite; background: linear-gradient(135deg, #dc2626, #b91c1c) !important; }
+        /* ============ RECORDING STATE ============ */
+        @keyframes pulse-red { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); } 
+            50% { box-shadow: 0 0 0 12px rgba(239,68,68,0); } 
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            .recording { animation: pulse-red 1.2s infinite; }
+        }
+        .recording { background: var(--color-error) !important; }
         
-        @keyframes slide-up { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        /* ============ ANIMATIONS ============ */
+        @keyframes slide-up { 
+            from { transform: translateY(100%); opacity: 0; } 
+            to { transform: translateY(0); opacity: 1; } 
+        }
         .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
-        .shake { animation: shake 0.5s ease-out; }
+        @keyframes shake { 
+            0%, 100% { transform: translateX(0); } 
+            20%, 60% { transform: translateX(-5px); } 
+            40%, 80% { transform: translateX(5px); } 
+        }
+        .shake { animation: shake 0.4s ease-out; }
         
-        .photo-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s; }
+        /* ============ PHOTO THUMBS ============ */
+        .photo-thumb { 
+            width: 64px; 
+            height: 64px; 
+            object-fit: cover; 
+            border-radius: var(--radius-sm); 
+            border: 2px solid white; 
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
         .photo-thumb:active { transform: scale(0.95); }
         
-        .flag-btn { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px dashed #d97706; }
-        .flag-btn.flagged { background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%); border: 2px solid #b45309; }
+        /* ============ FLAG BUTTON ============ */
+        .flag-btn { 
+            background: var(--color-warning-light); 
+            border: 2px dashed var(--color-warning);
+            border-radius: var(--radius-lg);
+            min-height: var(--touch-min);
+        }
+        .flag-btn.flagged { 
+            background: #fde68a; 
+            border: 2px solid #b45309; 
+        }
         
-        .card-green { border-left: 4px solid #22c55e; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
-        .card-yellow { border-left: 4px solid #eab308; background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%); }
+        /* ============ REVIEW CARDS ============ */
+        .card-green { 
+            border-left: 4px solid var(--color-success); 
+            background: var(--color-success-light);
+        }
+        .card-yellow { 
+            border-left: 4px solid var(--color-warning); 
+            background: var(--color-warning-light);
+        }
         
-        #camera-overlay { position: fixed; inset: 0; z-index: 100; background: black; }
-        #camera-overlay video { width: 100%; height: 100%; object-fit: cover; }
-        .cam-controls { position: absolute; bottom: 0; left: 0; right: 0; padding: 24px; padding-bottom: max(32px, env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,0.9)); }
-        .shutter-btn { width: 76px; height: 76px; border-radius: 50%; background: white; border: 5px solid rgba(255,255,255,0.5); transition: all 0.15s; }
+        /* ============ CAMERA OVERLAY ============ */
+        #camera-overlay { 
+            position: fixed; 
+            inset: 0; 
+            z-index: var(--z-camera); 
+            background: black; 
+        }
+        #camera-overlay video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        }
+        .cam-controls { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            padding: var(--space-2xl);
+            padding-bottom: max(var(--space-2xl), env(safe-area-inset-bottom)); 
+            background: linear-gradient(transparent, rgba(0,0,0,0.85));
+        }
+        .shutter-btn { 
+            width: 72px; 
+            height: 72px; 
+            border-radius: 50%; 
+            background: white; 
+            border: 4px solid rgba(255,255,255,0.4);
+            transition: transform 0.15s ease;
+        }
         .shutter-btn:active { transform: scale(0.9); background: #e5e7eb; }
         
-        .safe-top { padding-top: max(12px, env(safe-area-inset-top)); }
-        .safe-bottom { padding-bottom: max(100px, calc(90px + env(safe-area-inset-bottom))); }
-        
-        #upload-modal { backdrop-filter: blur(8px); }
+        /* ============ MODALS ============ */
+        #upload-modal { 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.6); /* Fallback for Firefox < 103 */
+        }
+        @supports (backdrop-filter: blur(8px)) {
+            #upload-modal { background: rgba(0,0,0,0.5); }
+        }
         .upload-progress-bar { transition: width 0.3s ease; }
         
-        /* Motivational banner */
-        .motivation-banner { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 8px 16px; border-radius: 10px; text-align: center; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+        /* ============ MOTIVATION BANNER ============ */
+        .motivation-banner { 
+            background: var(--color-primary);
+            color: white; 
+            padding: var(--space-md) var(--space-lg);
+            border-radius: var(--radius-md);
+            text-align: center; 
+            font-size: 13px; 
+            font-weight: 600;
+        }
+        
+        /* ============ FORM INPUTS ============ */
+        select, input[type="text"], input[type="number"], input[type="tel"] {
+            font-size: 16px; /* Prevents iOS zoom */
+            min-height: var(--touch-min);
+        }
+        
+        /* ============ RESPONSIVE ============ */
+        /* Small phones (iPhone SE, Galaxy S8) */
+        @media (max-width: 360px) {
+            :root {
+                --header-height: 148px;
+            }
+            .stats-bar { padding: var(--space-sm) var(--space-md); }
+            .stat-value { font-size: 14px; }
+            .streak-badge { padding: 4px 8px; font-size: 11px; }
+            .size-grid-6 { grid-template-columns: repeat(4, 1fr) !important; }
+            #celebration .content { padding: var(--space-xl); }
+        }
+        
+        /* Standard phones (iPhone 12/13/14, S20) */
+        @media (min-width: 361px) and (max-width: 414px) {
+            :root {
+                --header-height: 156px;
+            }
+        }
+        
+        /* Large phones (iPhone Plus, Max models) */
+        @media (min-width: 415px) and (max-width: 767px) {
+            :root {
+                --header-height: 160px;
+            }
+            .section-card { padding: var(--space-xl); }
+        }
+        
+        /* Tablets and Desktop */
+        @media (min-width: 768px) {
+            .main-container { 
+                max-width: 480px; 
+                margin: 0 auto; 
+            }
+            .section-card { padding: var(--space-2xl); }
+        }
+        
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
     <script>
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
@@ -144,65 +560,73 @@
     <div id="scan-flash"></div>
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900 to-slate-800 flex flex-col items-center justify-center p-6">
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center p-6" style="z-index: var(--z-login);">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center">
-            <div class="text-4xl mb-2">👕</div>
-            <h2 class="text-xl font-bold text-gray-800 mb-1">VintageLister</h2>
-            <p class="text-gray-500 text-sm mb-4">Enter Warehouse PIN</p>
-            <input type="tel" id="pin-input" maxlength="4" class="w-full p-4 text-center text-3xl font-mono border-2 border-gray-300 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-widest" placeholder="••••" inputmode="numeric">
-            <div class="mb-4">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Who's listing today?</label>
-                <select id="photographer-select" class="w-full p-3 border-2 border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800">
+            <div class="text-5xl mb-3">👕</div>
+            <h1 class="text-xl font-bold text-slate-800 mb-1">VintageLister</h1>
+            <p class="text-slate-500 text-sm mb-5">Enter Warehouse PIN</p>
+            <input type="tel" id="pin-input" maxlength="4" 
+                   class="w-full p-4 text-center text-3xl font-mono border-2 border-slate-200 rounded-xl mb-4 outline-none focus:border-blue-500 tracking-[0.3em]" 
+                   placeholder="••••" inputmode="numeric" autocomplete="off">
+            <div class="mb-5">
+                <label class="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-2">Photographer</label>
+                <select id="photographer-select" class="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-slate-800">
                     <option value="P01">P01 – Jeff Koga</option>
                     <option value="P02" selected>P02 – Elaine Donato</option>
                     <option value="P03">P03 – Kobe Gaza</option>
                 </select>
             </div>
-            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl active:bg-blue-700 text-lg shadow-lg">START LISTING →</button>
+            <button onclick="checkPin()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl active:bg-blue-700 text-lg shadow-lg">
+                START LISTING →
+            </button>
         </div>
+        <p class="text-slate-500 text-xs mt-4">v75.8</p>
     </div>
 
     <!-- CELEBRATION OVERLAY -->
     <div id="celebration">
         <div class="content">
-            <div id="celebration-emoji" class="text-6xl mb-3">🎉</div>
-            <div id="celebration-text" class="text-2xl font-black text-gray-800"></div>
-            <div id="celebration-sub" class="text-sm text-gray-500 mt-2"></div>
+            <div id="celebration-emoji" class="text-5xl mb-2">🎉</div>
+            <div id="celebration-text" class="text-xl font-bold text-slate-800"></div>
+            <div id="celebration-sub" class="text-sm text-slate-500 mt-1"></div>
         </div>
     </div>
 
     <!-- UPLOAD MODAL -->
-    <div id="upload-modal" class="fixed inset-0 z-[90] bg-black/70 hidden flex items-center justify-center p-6">
+    <div id="upload-modal" class="fixed inset-0 hidden flex items-center justify-center p-6" style="z-index: var(--z-modal);">
         <div class="bg-white p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
             <div class="text-5xl mb-4">📤</div>
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Uploading...</h3>
-            <div class="w-full bg-gray-200 rounded-full h-4 mb-3 overflow-hidden">
+            <h3 class="text-lg font-bold text-slate-800 mb-3">Uploading...</h3>
+            <div class="w-full bg-slate-200 rounded-full h-3 mb-3 overflow-hidden">
                 <div id="upload-progress-bar" class="upload-progress-bar bg-blue-600 h-full rounded-full" style="width: 0%"></div>
             </div>
-            <p id="upload-status" class="text-sm text-gray-500">Preparing...</p>
+            <p id="upload-status" class="text-sm text-slate-500">Preparing...</p>
         </div>
     </div>
 
-    <!-- HEADER with Stats -->
-    <div class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm safe-top">
+    <!-- HEADER -->
+    <header class="fixed top-0 left-0 right-0 bg-white border-b border-slate-200 shadow-sm safe-top" style="z-index: var(--z-header);">
         <div class="px-4 py-2">
-            <!-- Top row: Brand + Streak + Photographer -->
+            <!-- Brand + Streak + Photographer -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
-                    <span class="text-gray-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-gray-400 text-[9px]">v75.7</span>
+                    <span class="text-slate-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
+                    <span class="text-slate-400 text-[10px] font-medium">v75.8</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="streak-badge" id="streak-container">
                         <span class="fire">🔥</span>
                         <span id="streak-count">1</span>
                     </div>
-                    <button onclick="showPhotographerChange()" id="photographer-badge" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded">P02</button>
+                    <button onclick="showPhotographerChange()" id="photographer-badge" 
+                            class="bg-indigo-100 text-indigo-700 text-[11px] font-bold px-3 py-1.5 rounded-lg min-h-[32px] flex items-center">
+                        P02
+                    </button>
                 </div>
             </div>
             
             <!-- Stats bar -->
-            <div class="stats-bar mb-2">
+            <div class="stats-bar mb-3">
                 <div class="stat-item">
                     <div class="stat-value" id="items-today">0</div>
                     <div class="stat-label">Today</div>
@@ -214,410 +638,467 @@
                 </div>
                 <div class="stat-divider"></div>
                 <div class="stat-item">
-                    <div class="stat-value text-green-400" id="current-timer">0:00</div>
+                    <div class="stat-value text-emerald-400" id="current-timer">0:00</div>
                     <div class="stat-label">Now</div>
                 </div>
             </div>
             
             <!-- Progress dots -->
-            <div class="flex items-center gap-1">
-                <div id="dot-1" onclick="goToStep(1)" class="progress-dot current"></div>
+            <div class="flex items-center justify-center gap-0">
+                <div id="dot-1" onclick="goToStep(1)" class="progress-dot current" role="button" aria-label="Step 1: Identify"></div>
                 <div id="line-1" class="progress-line pending"></div>
-                <div id="dot-2" onclick="goToStep(2)" class="progress-dot pending"></div>
+                <div id="dot-2" onclick="goToStep(2)" class="progress-dot pending" role="button" aria-label="Step 2: Inspect"></div>
                 <div id="line-2" class="progress-line pending"></div>
-                <div id="dot-3" onclick="goToStep(3)" class="progress-dot pending"></div>
+                <div id="dot-3" onclick="goToStep(3)" class="progress-dot pending" role="button" aria-label="Step 3: Document"></div>
                 <div id="line-3" class="progress-line pending"></div>
-                <div id="dot-4" onclick="goToStep(4)" class="progress-dot pending"></div>
+                <div id="dot-4" onclick="goToStep(4)" class="progress-dot pending" role="button" aria-label="Step 4: Review"></div>
             </div>
-            <div id="step-label" class="text-center text-gray-500 text-[10px] font-medium mt-1 uppercase tracking-wider">Identify</div>
+            <div id="step-label" class="text-center text-slate-400 text-[11px] font-semibold mt-1.5 uppercase tracking-wider">Identify</div>
         </div>
-    </div>
+    </header>
 
     <!-- MAIN CONTENT -->
-    <div class="pt-44 safe-bottom">
+    <main class="main-container" style="padding-top: var(--header-height);">
+        <div class="safe-bottom px-4">
 
-    <!-- ========== STEP 1: IDENTIFY ========== -->
-    <div id="step-1" class="step-container active px-4 space-y-3">
-        
-        <!-- Motivational banner -->
-        <div id="motivation-banner" class="motivation-banner hidden"></div>
-        
-        <!-- CATEGORY -->
-        <div id="section-category" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-category" class="check-circle">○</span>
-                Category
-            </label>
-            <!-- HERO: Tops is most common -->
-            <div class="mb-2">
-                <button onclick="setSuperCategory('tops', this)" class="btn-hero super-btn w-full py-4 rounded-xl text-base">
-                    👕 TOPS <span class="text-blue-200 text-xs ml-1">(most common)</span>
+        <!-- ========== STEP 1: IDENTIFY ========== -->
+        <div id="step-1" class="step-container active space-y-3">
+            
+            <!-- Motivational banner -->
+            <div id="motivation-banner" class="motivation-banner hidden"></div>
+            
+            <!-- CATEGORY -->
+            <section id="section-category" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-category" class="check-circle">○</span>
+                    Category
+                </label>
+                <!-- HERO: Tops is most common -->
+                <button onclick="setSuperCategory('tops', this)" class="btn-hero super-btn w-full py-4 mb-2 flex items-center justify-center gap-2">
+                    <span class="text-lg">👕</span> TOPS <span class="text-blue-200 text-xs">(most common)</span>
                 </button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <button onclick="setSuperCategory('bottoms', this)" class="btn-secondary super-btn py-3 rounded-xl">👖 Bottoms</button>
-                <button onclick="setSuperCategory('outer', this)" class="btn-secondary super-btn py-3 rounded-xl">🧥 Outerwear</button>
-            </div>
-            <select id="cat-select" onchange="onCategoryChange()" class="w-full p-3 border-2 border-blue-200 bg-blue-50/50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-gray-800 hidden"></select>
-        </div>
-        
-        <!-- SKU -->
-        <div id="section-sku" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
-                <span id="check-sku" class="check-circle">○</span>
-                SKU <span class="text-gray-400 text-[9px]">Scan to start timer ⏱️</span>
-            </label>
-            <div class="flex gap-2">
-                <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" class="flex-1 text-2xl font-mono p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none placeholder-gray-300 placeholder:text-base">
-                <button onclick="toggleScanner()" class="bg-gray-900 text-white p-4 rounded-xl flex-shrink-0 active:scale-95 shadow-lg">
-                    <i data-lucide="scan-barcode" class="w-7 h-7"></i>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button onclick="setSuperCategory('bottoms', this)" class="btn-secondary super-btn py-3 flex items-center justify-center gap-1">
+                        <span>👖</span> Bottoms
+                    </button>
+                    <button onclick="setSuperCategory('outer', this)" class="btn-secondary super-btn py-3 flex items-center justify-center gap-1">
+                        <span>🧥</span> Outerwear
+                    </button>
+                </div>
+                <select id="cat-select" onchange="onCategoryChange()" 
+                        class="w-full p-3 border-2 border-blue-200 bg-blue-50 rounded-xl text-sm font-bold outline-none focus:border-blue-500 text-slate-800 hidden">
+                </select>
+            </section>
+            
+            <!-- SKU -->
+            <section id="section-sku" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-2">
+                    <span id="check-sku" class="check-circle">○</span>
+                    SKU
+                    <span class="text-slate-400 text-[10px] font-medium ml-1">Scan to start timer ⏱️</span>
+                </label>
+                <div class="flex gap-2">
+                    <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." 
+                           oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" 
+                           class="flex-1 text-xl font-mono p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none placeholder-slate-300">
+                    <button onclick="toggleScanner()" class="bg-slate-800 text-white p-3 rounded-xl flex-shrink-0 active:scale-95 shadow-md min-w-[52px] flex items-center justify-center">
+                        <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-slate-800 relative bg-black" style="height: 180px;">
+                    <div id="reader" class="w-full h-full"></div>
+                    <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-lg shadow min-h-[36px]">
+                        ✕ CLOSE
+                    </button>
+                </div>
+            </section>
+            
+            <!-- TAG STATUS -->
+            <section id="section-tag" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-tag" class="check-circle">○</span>
+                    Tag Info
+                </label>
+                <!-- HERO: Readable is most common -->
+                <button onclick="setTagStatus('has', this)" class="btn-hero tag-status-btn w-full py-3 mb-2">
+                    ✓ TAG READABLE
                 </button>
-            </div>
-            <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-gray-900 relative bg-black h-48">
-                <div id="reader" class="w-full h-full"></div>
-                <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-3 py-1 rounded shadow">✕ CLOSE</button>
-            </div>
-        </div>
-        
-        <!-- TAG STATUS -->
-        <div id="section-tag" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-tag" class="check-circle">○</span>
-                Tag Info
-            </label>
-            <!-- HERO: Readable is most common -->
-            <div class="mb-2">
-                <button onclick="setTagStatus('has', this)" class="btn-hero tag-status-btn w-full py-3 rounded-xl">✓ TAG READABLE</button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 mb-3">
-                <button onclick="setTagStatus('worn', this)" class="btn-secondary tag-status-btn py-2 rounded-xl">👀 Worn/Faded</button>
-                <button onclick="setTagStatus('none', this)" class="btn-secondary tag-status-btn py-2 rounded-xl">✂️ Missing/Cut</button>
-            </div>
-            
-            <!-- TAG SIZE - Progressive disclosure -->
-            <div id="tag-size-section" class="hidden bg-amber-50 p-3 rounded-xl border border-amber-200 mb-3">
-                <label class="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 block">Tag Size</label>
-                <div class="grid grid-cols-6 gap-1 mb-2">
-                    <button onclick="setTagSize('XS', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">XS</button>
-                    <button onclick="setTagSize('S', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">S</button>
-                    <button onclick="setTagSize('M', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">M</button>
-                    <button onclick="setTagSize('L', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">L</button>
-                    <button onclick="setTagSize('XL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">XL</button>
-                    <button onclick="setTagSize('XXL', this)" class="btn-select size-btn py-2 border border-gray-200 rounded-lg font-bold text-gray-600 bg-white text-xs">2XL</button>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button onclick="setTagStatus('worn', this)" class="btn-secondary tag-status-btn py-3">👀 Worn/Faded</button>
+                    <button onclick="setTagStatus('none', this)" class="btn-secondary tag-status-btn py-3">✂️ Missing/Cut</button>
                 </div>
-                <input type="text" id="tag-size-input" placeholder="Or type: 42R, 32x30, etc." onfocus="clearSizeBtns()" oninput="onCustomSizeInput()" class="w-full p-2 border border-gray-200 rounded-lg text-sm text-center outline-none bg-white">
-            </div>
-            
-            <!-- ORIGIN - USA is default -->
-            <div id="origin-section" class="hidden mb-3">
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setOrigin('usa', this)" class="btn-hero origin-btn py-2 rounded-xl text-xs">🇺🇸 USA MADE</button>
-                    <button onclick="setOrigin('import', this)" class="btn-secondary origin-btn py-2 rounded-xl">🌍 Import</button>
+                
+                <!-- TAG SIZE -->
+                <div id="tag-size-section" class="hidden bg-amber-50 p-3 rounded-xl border border-amber-200 mb-3">
+                    <label class="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-2 block">Tag Size</label>
+                    <div class="grid grid-cols-4 gap-2 mb-2 size-grid-6">
+                        <button onclick="setTagSize('S', this)" class="btn-select size-btn py-3 border border-slate-200 rounded-lg font-bold text-slate-600 bg-white">S</button>
+                        <button onclick="setTagSize('M', this)" class="btn-select size-btn py-3 border border-slate-200 rounded-lg font-bold text-slate-600 bg-white">M</button>
+                        <button onclick="setTagSize('L', this)" class="btn-select size-btn py-3 border border-slate-200 rounded-lg font-bold text-slate-600 bg-white">L</button>
+                        <button onclick="setTagSize('XL', this)" class="btn-select size-btn py-3 border border-slate-200 rounded-lg font-bold text-slate-600 bg-white">XL</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <button onclick="setTagSize('XS', this)" class="btn-select size-btn py-2 border border-slate-200 rounded-lg font-bold text-slate-500 bg-white text-sm">XS</button>
+                        <button onclick="setTagSize('2XL', this)" class="btn-select size-btn py-2 border border-slate-200 rounded-lg font-bold text-slate-500 bg-white text-sm">2XL</button>
+                        <button onclick="setTagSize('3XL', this)" class="btn-select size-btn py-2 border border-slate-200 rounded-lg font-bold text-slate-500 bg-white text-sm">3XL</button>
+                    </div>
+                    <input type="text" id="tag-size-input" placeholder="Or type: 42R, 32x30, etc." 
+                           onfocus="clearSizeBtns()" oninput="onCustomSizeInput()" 
+                           class="w-full p-3 border border-slate-200 rounded-lg text-sm text-center outline-none bg-white">
                 </div>
-                <select id="country-select" onchange="data.madeInCountry=this.value; haptic('light');" class="hidden w-full p-2 border border-gray-200 rounded-xl text-gray-800 outline-none text-[11px]">
-                    <option value="" disabled selected>Select Country...</option>
-                    <option>China</option><option>Vietnam</option><option>Bangladesh</option><option>India</option><option>Mexico</option><option>Honduras</option><option>Indonesia</option><option>Cambodia</option><option>Pakistan</option><option>Philippines</option><option>Japan</option><option>Italy</option><option>Other</option>
-                </select>
-            </div>
-            
-            <!-- TAG GENDER -->
-            <div id="tag-gender-section" class="hidden">
-                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Gender on Tag</label>
-                <div class="grid grid-cols-4 gap-1">
-                    <button onclick="setGender('Men', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Men's</button>
-                    <button onclick="setGender('Women', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Women's</button>
-                    <button onclick="setGender('Unisex', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Unisex</button>
-                    <button onclick="setGender('None', this)" class="btn-secondary gender-btn py-2 rounded-lg text-[10px]">Not Listed</button>
+                
+                <!-- ORIGIN -->
+                <div id="origin-section" class="hidden mb-3">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button onclick="setOrigin('usa', this)" class="btn-hero origin-btn py-3 text-sm">🇺🇸 USA MADE</button>
+                        <button onclick="setOrigin('import', this)" class="btn-secondary origin-btn py-3">🌍 Import</button>
+                    </div>
+                    <select id="country-select" onchange="data.madeInCountry=this.value; haptic('light');" 
+                            class="hidden w-full p-3 border border-slate-200 rounded-xl text-slate-800 outline-none text-sm">
+                        <option value="" disabled selected>Select Country...</option>
+                        <option>China</option><option>Vietnam</option><option>Bangladesh</option><option>India</option><option>Mexico</option><option>Honduras</option><option>Indonesia</option><option>Cambodia</option><option>Pakistan</option><option>Philippines</option><option>Japan</option><option>Italy</option><option>Other</option>
+                    </select>
                 </div>
-            </div>
-        </div>
-        
-        <!-- FABRIC -->
-        <div id="section-fabric" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-fabric" class="check-circle">○</span>
-                Fabric
-            </label>
-            <select id="fabric-select" onchange="onFabricChange()" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 outline-none">
-                <option value="" disabled selected>Select Fabric...</option>
-                <option>100% Cotton</option>
-                <option>50/50 Cotton-Poly</option>
-                <option>100% Polyester</option>
-                <option>Tri-Blend</option>
-                <option>Denim</option>
-                <option>Fleece</option>
-                <option>Custom Blend</option>
-            </select>
-            <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" class="hidden w-full p-2 border border-gray-200 rounded-lg text-sm outline-none mt-2">
-        </div>
-        
-        <!-- COLORS -->
-        <div id="section-color" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-color" class="check-circle">○</span>
-                Color
-            </label>
-            <div class="grid grid-cols-2 gap-2">
-                <select id="color-primary" onchange="data.colorPrimary=this.value; completeSection('color'); haptic('light'); autoScroll('section-sleeve');" class="w-full p-2 border-2 border-gray-200 rounded-lg text-gray-800 outline-none text-sm font-bold">
-                    <option value="" disabled selected>Primary...</option>
-                    <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option><option>Multicolor</option>
+                
+                <!-- TAG GENDER -->
+                <div id="tag-gender-section" class="hidden">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Gender on Tag</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setGender('Men', this)" class="btn-secondary gender-btn py-3">Men's</button>
+                        <button onclick="setGender('Women', this)" class="btn-secondary gender-btn py-3">Women's</button>
+                        <button onclick="setGender('Unisex', this)" class="btn-secondary gender-btn py-3">Unisex</button>
+                        <button onclick="setGender('None', this)" class="btn-secondary gender-btn py-3">None</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- FABRIC -->
+            <section id="section-fabric" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-fabric" class="check-circle">○</span>
+                    Fabric
+                </label>
+                <select id="fabric-select" onchange="onFabricChange()" 
+                        class="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-blue-500">
+                    <option value="" disabled selected>Select Fabric...</option>
+                    <option>100% Cotton</option>
+                    <option>50/50 Cotton-Poly</option>
+                    <option>100% Polyester</option>
+                    <option>Tri-Blend</option>
+                    <option>Denim</option>
+                    <option>Fleece</option>
+                    <option>Custom Blend</option>
                 </select>
-                <select id="color-secondary" onchange="data.colorSecondary=this.value; haptic('light');" class="w-full p-2 border border-gray-200 rounded-lg text-gray-800 outline-none text-sm">
-                    <option value="" selected>+ Second color</option>
-                    <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option>
-                </select>
-            </div>
+                <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" 
+                       class="hidden w-full p-3 border border-slate-200 rounded-lg text-sm outline-none mt-2">
+            </section>
+            
+            <!-- COLORS -->
+            <section id="section-color" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-color" class="check-circle">○</span>
+                    Color
+                </label>
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="color-primary" onchange="data.colorPrimary=this.value; completeSection('color'); haptic('light'); autoScroll('section-sleeve');" 
+                            class="w-full p-3 border-2 border-slate-200 rounded-xl text-slate-800 outline-none font-bold focus:border-blue-500">
+                        <option value="" disabled selected>Primary...</option>
+                        <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option><option>Multicolor</option>
+                    </select>
+                    <select id="color-secondary" onchange="data.colorSecondary=this.value; haptic('light');" 
+                            class="w-full p-3 border border-slate-200 rounded-xl text-slate-800 outline-none focus:border-blue-500">
+                        <option value="" selected>+ Second</option>
+                        <option>Black</option><option>White</option><option>Gray</option><option>Navy</option><option>Blue</option><option>Red</option><option>Green</option><option>Yellow</option><option>Orange</option><option>Pink</option><option>Purple</option><option>Brown</option><option>Beige</option>
+                    </select>
+                </div>
+            </section>
+            
+            <!-- SLEEVE -->
+            <section id="section-sleeve" class="section-card p-4 hidden">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-sleeve" class="check-circle">○</span>
+                    Sleeve
+                </label>
+                <button onclick="setSleeve('Short', this)" class="btn-hero sleeve-btn w-full py-3 mb-2">
+                    SHORT SLEEVE <span class="text-blue-200 text-xs">(most common)</span>
+                </button>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setSleeve('Long', this)" class="btn-secondary sleeve-btn py-3">Long</button>
+                    <button onclick="setSleeve('3/4', this)" class="btn-secondary sleeve-btn py-3">3/4</button>
+                    <button onclick="setSleeve('None', this)" class="btn-secondary sleeve-btn py-3">Sleeveless</button>
+                </div>
+            </section>
+            
+            <!-- FABRIC FEEL -->
+            <section id="section-feel" class="section-card p-4">
+                <label class="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3 block">📐 Fabric Feel</label>
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                    <button onclick="setThickness('Paper Thin', this)" class="btn-secondary thickness-btn py-3 text-[11px]">Paper</button>
+                    <button onclick="setThickness('Light', this)" class="btn-secondary thickness-btn py-3 text-[11px]">Light</button>
+                    <button onclick="setThickness('Standard', this)" class="btn-hero thickness-btn py-3 text-[11px]">Standard</button>
+                    <button onclick="setThickness('Heavy', this)" class="btn-secondary thickness-btn py-3 text-[11px]">Heavy</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setConstruction('Single', this)" class="btn-hero construction-btn py-3 text-[11px]">Single</button>
+                    <button onclick="setConstruction('Reversible', this)" class="btn-secondary construction-btn py-3 text-[11px]">Reversible</button>
+                    <button onclick="setConstruction('Lined', this)" class="btn-secondary construction-btn py-3 text-[11px]">Lined</button>
+                </div>
+            </section>
+            
+            <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">
+                Next: Inspect →
+            </button>
         </div>
-        
-        <!-- SLEEVE (Tops only) -->
-        <div id="section-sleeve" class="section-card p-4 hidden">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-sleeve" class="check-circle">○</span>
-                Sleeve
-            </label>
-            <!-- HERO: Short sleeve is ~90% of T-shirts -->
-            <div class="mb-2">
-                <button onclick="setSleeve('Short', this)" class="btn-hero sleeve-btn w-full py-3 rounded-xl">SHORT SLEEVE <span class="text-blue-200 text-xs">(90%)</span></button>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="setSleeve('Long', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">Long</button>
-                <button onclick="setSleeve('3/4', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">3/4</button>
-                <button onclick="setSleeve('None', this)" class="btn-secondary sleeve-btn py-2 rounded-lg">Sleeveless</button>
-            </div>
-        </div>
-        
-        <!-- FABRIC FEEL -->
-        <div id="section-feel" class="section-card p-4">
-            <label class="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3 block">📐 Fabric Feel</label>
-            <div class="grid grid-cols-4 gap-1 mb-3">
-                <button onclick="setThickness('Paper Thin', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Paper</button>
-                <button onclick="setThickness('Light', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Light</button>
-                <button onclick="setThickness('Standard', this)" class="btn-hero thickness-btn py-2 rounded-lg text-[10px]">Standard</button>
-                <button onclick="setThickness('Heavy', this)" class="btn-secondary thickness-btn py-2 rounded-lg text-[9px]">Heavy</button>
-            </div>
-            <div class="grid grid-cols-3 gap-1">
-                <button onclick="setConstruction('Single', this)" class="btn-hero construction-btn py-2 rounded-lg text-[9px]">Single Layer</button>
-                <button onclick="setConstruction('Reversible', this)" class="btn-secondary construction-btn py-2 rounded-lg text-[9px]">Reversible</button>
-                <button onclick="setConstruction('Lined', this)" class="btn-secondary construction-btn py-2 rounded-lg text-[9px]">Lined</button>
-            </div>
-        </div>
-        
-        <button onclick="goToStep(2)" class="w-full py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">
-            Next: Inspect →
-        </button>
-    </div>
 
-    <!-- ========== STEP 2: INSPECT ========== -->
-    <div id="step-2" class="step-container px-4 space-y-3">
-        
-        <div id="section-condition" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-condition" class="check-circle">○</span>
-                Condition
-            </label>
-            <select id="cond-select" onchange="onConditionChange()" class="w-full p-3 border-2 border-gray-200 rounded-xl text-sm font-bold text-gray-800 outline-none mb-3">
-                <option value="" disabled>Select...</option>
-                <option value="Excellent">Excellent - Like New</option>
-                <option value="Very Good">Very Good</option>
-                <option value="Good" selected>Good (typical)</option>
-                <option value="Fair">Fair - Visible wear</option>
-            </select>
-            <!-- HERO: No Flaws is default (~60% of items) -->
-            <div class="mb-2">
-                <button onclick="setHasDefects(false, this)" class="btn-hero defect-toggle-btn w-full py-4 rounded-xl flex items-center justify-center gap-2">
+        <!-- ========== STEP 2: INSPECT ========== -->
+        <div id="step-2" class="step-container space-y-3">
+            
+            <section id="section-condition" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-condition" class="check-circle">○</span>
+                    Condition
+                </label>
+                <select id="cond-select" onchange="onConditionChange()" 
+                        class="w-full p-3 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none mb-3 focus:border-blue-500">
+                    <option value="" disabled>Select...</option>
+                    <option value="Excellent">Excellent - Like New</option>
+                    <option value="Very Good">Very Good</option>
+                    <option value="Good" selected>Good (typical)</option>
+                    <option value="Fair">Fair - Visible wear</option>
+                </select>
+                <button onclick="setHasDefects(false, this)" class="btn-hero defect-toggle-btn w-full py-4 mb-2 flex items-center justify-center gap-2">
                     <span class="text-xl">✓</span> NO FLAWS
                 </button>
-            </div>
-            <button onclick="setHasDefects(true, this)" class="btn-secondary defect-toggle-btn w-full py-3 rounded-xl flex items-center justify-center gap-2 border-2">
-                <span class="text-lg">⚠️</span> Has Flaws (mark next step)
-            </button>
-        </div>
-        
-        <div id="section-fade" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-fade" class="check-circle">○</span>
-                Fade Level
-            </label>
-            <!-- HERO: None is most common -->
-            <div class="mb-2">
-                <button onclick="setFade('None', this)" class="btn-hero fade-btn w-full py-3 rounded-xl">NONE <span class="text-blue-200 text-xs">(no fading)</span></button>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="setFade('Light', this)" class="btn-secondary fade-btn py-2 rounded-lg">Light</button>
-                <button onclick="setFade('Sun', this)" class="btn-secondary fade-btn py-2 rounded-lg bg-amber-50 border-amber-300 text-amber-700">☀️ Sun Fade</button>
-                <button onclick="setFade('Heavy', this)" class="btn-secondary fade-btn py-2 rounded-lg">Heavy</button>
-            </div>
-        </div>
-        
-        <button id="flag-btn" onclick="flagUnusual()" class="flag-btn w-full py-4 rounded-2xl text-amber-800 font-bold">
-            <div class="flex items-center justify-center gap-2">🤔 FLAG AS UNUSUAL</div>
-        </button>
-        
-        <div class="flex gap-3">
-            <button onclick="goToStep(1)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Next: Document →</button>
-        </div>
-    </div>
-
-    <!-- ========== STEP 3: DOCUMENT ========== -->
-    <div id="step-3" class="step-container px-4 space-y-3">
-        
-        <!-- MAIN PHOTOS -->
-        <div id="section-photos" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-photos" class="check-circle">○</span>
-                📸 Item Photos
-                <span id="photo-count-badge" class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto">0</span>
-            </label>
-            <div class="flex gap-2 flex-wrap mb-3" id="main-photos-thumbs"></div>
-            <button onclick="openCamera('main')" id="add-photo-btn" class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-sm active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
-                <span class="text-xl">📷</span> ADD PHOTO
-            </button>
-        </div>
-        
-        <!-- TAG PHOTOS -->
-        <div class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 block">📸 Tag Close-ups</label>
-            <div class="flex gap-2 flex-wrap mb-2" id="tag-photos-thumbs"></div>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" class="py-3 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 text-[10px] font-bold">📷 Neck Tag</button>
-                <button onclick="openCamera('tag', 'care')" id="btn-tag-care" class="py-3 bg-gray-100 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 text-[10px] font-bold">📷 Care Label</button>
-            </div>
-        </div>
-        
-        <!-- DEFECT MAPPING -->
-        <div id="defect-section" class="section-card p-4 hidden">
-            <label class="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2 block">🔍 Mark Defects</label>
-            <p class="text-[10px] text-gray-500 mb-3">Tap zone → Pick type → Take photo</p>
-            <div class="mb-3">
-                <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">FRONT</div>
-                <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;"><div id="defect-svg-front"></div><div id="defect-markers-front"></div></div>
-            </div>
-            <div>
-                <div class="text-center text-[9px] font-bold text-gray-400 uppercase mb-1 bg-gray-100 rounded py-1">BACK</div>
-                <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;"><div id="defect-svg-back"></div><div id="defect-markers-back"></div></div>
-            </div>
-        </div>
-        
-        <!-- MEASUREMENTS -->
-        <div id="section-measure" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-3">
-                <span id="check-measure" class="check-circle">○</span>
-                🎤 Measurements
-            </label>
-            <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-gray-700 text-xs"></div>
-            <div id="record-section">
-                <button id="record-btn" onclick="toggleRecording()" class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-1 shadow-lg active:scale-[0.98]">
-                    <span class="text-2xl">🎤</span><span>HOLD TO RECORD</span>
+                <button onclick="setHasDefects(true, this)" class="btn-secondary defect-toggle-btn w-full py-3 flex items-center justify-center gap-2 border-2">
+                    <span class="text-lg">⚠️</span> Has Flaws
                 </button>
-            </div>
-            <div id="post-record-section" class="hidden">
-                <div class="bg-green-50 border-2 border-green-400 rounded-xl p-4 mb-3">
-                    <div class="text-green-700 font-bold mb-1 flex items-center gap-2"><span class="text-xl">✓</span> RECORDED</div>
-                    <div class="text-green-600 text-sm font-mono"><span id="recording-duration">0:00</span></div>
+            </section>
+            
+            <section id="section-fade" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-fade" class="check-circle">○</span>
+                    Fade Level
+                </label>
+                <button onclick="setFade('None', this)" class="btn-hero fade-btn w-full py-3 mb-2">
+                    NONE <span class="text-blue-200 text-xs">(no fading)</span>
+                </button>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setFade('Light', this)" class="btn-secondary fade-btn py-3">Light</button>
+                    <button onclick="setFade('Sun', this)" class="btn-secondary fade-btn py-3 bg-amber-50 border-amber-300 text-amber-700">☀️ Sun</button>
+                    <button onclick="setFade('Heavy', this)" class="btn-secondary fade-btn py-3">Heavy</button>
                 </div>
-                <button onclick="reRecord()" class="text-gray-500 text-sm underline">Re-record</button>
+            </section>
+            
+            <button id="flag-btn" onclick="flagUnusual()" class="flag-btn w-full py-4 text-amber-800 font-bold flex items-center justify-center gap-2">
+                🤔 FLAG AS UNUSUAL
+            </button>
+            
+            <div class="flex gap-3">
+                <button onclick="goToStep(1)" class="flex-1 py-4 bg-slate-200 rounded-2xl text-slate-700 font-bold active:scale-[0.98]">← Back</button>
+                <button onclick="goToStep(3)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Next: Document →</button>
             </div>
         </div>
-        
-        <!-- WEIGHT with smart validation -->
-        <div id="section-weight" class="section-card p-4">
-            <label class="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-2 mb-2">
-                <span id="check-weight" class="check-circle">○</span>
-                ⚖️ Weight
-            </label>
-            <div id="weight-hint" class="mb-3 p-3 bg-purple-50 rounded-xl border border-purple-100"></div>
-            <div class="grid grid-cols-2 gap-3">
-                <select id="weight-lb" onchange="updateWeight()" class="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-gray-800 text-lg bg-white">
-                    <option value="0" selected>0 lb</option><option value="1">1 lb</option><option value="2">2 lb</option><option value="3">3 lb</option><option value="4">4 lb</option><option value="5">5 lb</option>
-                </select>
-                <select id="weight-oz" onchange="updateWeight()" class="w-full p-3 border-2 border-gray-200 rounded-xl font-bold text-gray-800 text-lg bg-white">
-                    <option value="0" selected>0 oz</option><option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
-                </select>
-            </div>
-            <div id="weight-warning" class="hidden warning-card mt-3">
-                <div class="flex items-start gap-3">
-                    <span class="text-2xl">⚠️</span>
-                    <div>
-                        <div class="font-bold text-amber-800 text-sm" id="weight-warning-text"></div>
-                        <div class="text-amber-700 text-xs mt-1">Double-check the scale?</div>
-                        <button onclick="dismissWeightWarning()" class="text-amber-600 text-xs underline mt-2">It's correct</button>
+
+        <!-- ========== STEP 3: DOCUMENT ========== -->
+        <div id="step-3" class="step-container space-y-3">
+            
+            <!-- MAIN PHOTOS -->
+            <section id="section-photos" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-photos" class="check-circle">○</span>
+                    📸 Item Photos
+                    <span id="photo-count-badge" class="bg-blue-100 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-full ml-auto">0</span>
+                </label>
+                <div class="flex gap-2 flex-wrap mb-3" id="main-photos-thumbs"></div>
+                <button onclick="openCamera('main')" id="add-photo-btn" 
+                        class="w-full py-4 bg-blue-600 text-white rounded-xl font-bold active:scale-[0.98] shadow-lg flex items-center justify-center gap-2">
+                    <span class="text-xl">📷</span> ADD PHOTO
+                </button>
+            </section>
+            
+            <!-- TAG PHOTOS -->
+            <section class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 block">📸 Tag Close-ups</label>
+                <div class="flex gap-2 flex-wrap mb-3" id="tag-photos-thumbs"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" 
+                            class="py-4 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 text-[11px] font-bold">
+                        📷 Neck Tag
+                    </button>
+                    <button onclick="openCamera('tag', 'care')" id="btn-tag-care" 
+                            class="py-4 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl text-slate-600 text-[11px] font-bold">
+                        📷 Care Label
+                    </button>
+                </div>
+            </section>
+            
+            <!-- DEFECT MAPPING -->
+            <section id="defect-section" class="section-card p-4 hidden">
+                <label class="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2 block">🔍 Mark Defects</label>
+                <p class="text-[11px] text-slate-500 mb-3">Tap zone → Pick type → Take photo</p>
+                <div class="mb-3">
+                    <div class="text-center text-[10px] font-bold text-slate-400 uppercase mb-1 bg-slate-100 rounded-lg py-1.5">FRONT</div>
+                    <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;">
+                        <div id="defect-svg-front"></div>
+                        <div id="defect-markers-front"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="flex gap-3">
-            <button onclick="goToStep(2)" class="flex-1 py-4 bg-gray-200 rounded-2xl text-gray-700 font-bold active:scale-[0.98]">← Back</button>
-            <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Review →</button>
-        </div>
-    </div>
-
-    <!-- ========== STEP 4: REVIEW ========== -->
-    <div id="step-4" class="step-container px-4 space-y-3">
-        
-        <!-- Almost done motivation -->
-        <div id="almost-done-banner" class="bg-gradient-to-r from-green-500 to-emerald-600 text-white p-3 rounded-xl text-center font-bold shadow-lg">
-            ✨ Almost done! Quick review and submit
-        </div>
-        
-        <div class="grid grid-cols-2 gap-3">
-            <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
-                <div class="flex items-center gap-2 mb-1"><span id="icon-identify">🟡</span><span class="font-bold text-sm">IDENTIFY</span></div>
-                <div id="summary-identify" class="text-gray-600 text-[10px] leading-relaxed"></div>
-            </div>
-            <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
-                <div class="flex items-center gap-2 mb-1"><span id="icon-inspect">🟡</span><span class="font-bold text-sm">INSPECT</span></div>
-                <div id="summary-inspect" class="text-gray-600 text-[10px] leading-relaxed"></div>
-            </div>
-            <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform">
-                <div class="flex items-center gap-2 mb-1"><span id="icon-document">🟡</span><span class="font-bold text-sm">DOCUMENT</span></div>
-                <div id="summary-document" class="text-gray-600 text-[10px] leading-relaxed"></div>
-            </div>
-            <div id="card-ready" class="card-yellow rounded-xl p-3 transition-transform">
-                <div class="flex items-center gap-2 mb-1"><span id="icon-ready">🟡</span><span class="font-bold text-sm">READY</span></div>
-                <div id="summary-ready" class="text-gray-600 text-[10px] leading-relaxed"></div>
-            </div>
-        </div>
-        
-        <div id="flag-status" class="hidden bg-amber-100 border-2 border-amber-400 rounded-xl p-3 text-amber-800 text-sm font-bold text-center">
-            🚩 FLAGGED FOR REVIEW
-        </div>
-        
-        <!-- Consistency warning -->
-        <div id="consistency-warning" class="hidden warning-card">
-            <div class="flex items-start gap-3">
-                <span class="text-2xl">🤔</span>
                 <div>
-                    <div class="font-bold text-amber-800 text-sm" id="consistency-warning-text"></div>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick="fixConsistency('condition')" class="bg-amber-600 text-white text-xs px-3 py-1 rounded font-bold">Fix Condition</button>
-                        <button onclick="fixConsistency('defects')" class="bg-white text-amber-700 text-xs px-3 py-1 rounded font-bold border border-amber-400">Remove Defects</button>
+                    <div class="text-center text-[10px] font-bold text-slate-400 uppercase mb-1 bg-slate-100 rounded-lg py-1.5">BACK</div>
+                    <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;">
+                        <div id="defect-svg-back"></div>
+                        <div id="defect-markers-back"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MEASUREMENTS -->
+            <section id="section-measure" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-3">
+                    <span id="check-measure" class="check-circle">○</span>
+                    🎤 Measurements
+                </label>
+                <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 text-slate-700"></div>
+                <div id="record-section">
+                    <button id="record-btn" onclick="toggleRecording()" 
+                            class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-1 shadow-lg active:scale-[0.98]">
+                        <span class="text-2xl">🎤</span>
+                        <span>TAP TO RECORD</span>
+                    </button>
+                </div>
+                <div id="post-record-section" class="hidden">
+                    <div class="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-4 mb-3">
+                        <div class="text-emerald-700 font-bold mb-1 flex items-center gap-2">
+                            <span class="text-xl">✓</span> RECORDED
+                        </div>
+                        <div class="text-emerald-600 text-lg font-mono"><span id="recording-duration">0:00</span></div>
+                    </div>
+                    <button onclick="reRecord()" class="text-slate-500 text-sm underline">Re-record</button>
+                </div>
+            </section>
+            
+            <!-- WEIGHT -->
+            <section id="section-weight" class="section-card p-4">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2 mb-2">
+                    <span id="check-weight" class="check-circle">○</span>
+                    ⚖️ Weight
+                </label>
+                <div id="weight-hint" class="mb-3 p-3 bg-violet-50 rounded-xl border border-violet-100"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="weight-lb" onchange="updateWeight()" 
+                            class="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-lg bg-white focus:border-blue-500">
+                        <option value="0" selected>0 lb</option>
+                        <option value="1">1 lb</option>
+                        <option value="2">2 lb</option>
+                        <option value="3">3 lb</option>
+                        <option value="4">4 lb</option>
+                        <option value="5">5 lb</option>
+                    </select>
+                    <select id="weight-oz" onchange="updateWeight()" 
+                            class="w-full p-3 border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-lg bg-white focus:border-blue-500">
+                        <option value="0" selected>0 oz</option>
+                        <option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option>
+                        <option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option>
+                        <option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option>
+                        <option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option>
+                        <option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
+                    </select>
+                </div>
+                <div id="weight-warning" class="hidden warning-card mt-3">
+                    <div class="flex items-start gap-3">
+                        <span class="text-2xl">⚠️</span>
+                        <div class="flex-1">
+                            <div class="font-bold text-amber-800 text-sm" id="weight-warning-text"></div>
+                            <div class="text-amber-700 text-xs mt-1">Double-check the scale?</div>
+                            <button onclick="dismissWeightWarning()" class="text-amber-600 text-xs underline mt-2 min-h-[32px]">It's correct</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <div class="flex gap-3">
+                <button onclick="goToStep(2)" class="flex-1 py-4 bg-slate-200 rounded-2xl text-slate-700 font-bold active:scale-[0.98]">← Back</button>
+                <button onclick="goToStep(4)" class="flex-[2] py-4 bg-blue-600 rounded-2xl text-white font-bold shadow-lg active:scale-[0.98] text-lg">Review →</button>
+            </div>
+        </div>
+
+        <!-- ========== STEP 4: REVIEW ========== -->
+        <div id="step-4" class="step-container space-y-3">
+            
+            <div class="bg-emerald-500 text-white p-4 rounded-xl text-center font-bold shadow-lg">
+                ✨ Almost done! Quick review
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div id="card-identify" onclick="goToStep(1)" class="card-yellow rounded-xl p-4 cursor-pointer active:scale-[0.98] transition-transform">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span id="icon-identify">⚠️</span>
+                        <span class="font-bold text-sm">IDENTIFY</span>
+                    </div>
+                    <div id="summary-identify" class="text-slate-600 text-[11px] leading-relaxed"></div>
+                </div>
+                <div id="card-inspect" onclick="goToStep(2)" class="card-yellow rounded-xl p-4 cursor-pointer active:scale-[0.98] transition-transform">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span id="icon-inspect">⚠️</span>
+                        <span class="font-bold text-sm">INSPECT</span>
+                    </div>
+                    <div id="summary-inspect" class="text-slate-600 text-[11px] leading-relaxed"></div>
+                </div>
+                <div id="card-document" onclick="goToStep(3)" class="card-yellow rounded-xl p-4 cursor-pointer active:scale-[0.98] transition-transform">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span id="icon-document">⚠️</span>
+                        <span class="font-bold text-sm">DOCUMENT</span>
+                    </div>
+                    <div id="summary-document" class="text-slate-600 text-[11px] leading-relaxed"></div>
+                </div>
+                <div id="card-ready" class="card-yellow rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span id="icon-ready">⚠️</span>
+                        <span class="font-bold text-sm">WEIGHT</span>
+                    </div>
+                    <div id="summary-ready" class="text-slate-600 text-[11px] leading-relaxed"></div>
+                </div>
+            </div>
+            
+            <div id="flag-status" class="hidden bg-amber-100 border-2 border-amber-400 rounded-xl p-4 text-amber-800 font-bold text-center">
+                🚩 FLAGGED FOR REVIEW
+            </div>
+            
+            <div id="consistency-warning" class="hidden warning-card">
+                <div class="flex items-start gap-3">
+                    <span class="text-2xl">🤔</span>
+                    <div class="flex-1">
+                        <div class="font-bold text-amber-800 text-sm" id="consistency-warning-text"></div>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="fixConsistency('condition')" class="bg-amber-600 text-white text-xs px-4 py-2 rounded-lg font-bold min-h-[36px]">Fix Condition</button>
+                            <button onclick="fixConsistency('defects')" class="bg-white text-amber-700 text-xs px-4 py-2 rounded-lg font-bold border border-amber-400 min-h-[36px]">Remove Defects</button>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <button onclick="submitData()" id="submit-btn" 
+                    class="w-full py-5 bg-emerald-500 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98] flex items-center justify-center gap-3">
+                SUBMIT <span class="text-2xl">✓</span>
+            </button>
+            <button onclick="goToStep(3)" class="w-full py-4 bg-slate-200 rounded-2xl text-slate-600 font-medium active:scale-[0.98]">← Back</button>
         </div>
-        
-        <button onclick="submitData()" id="submit-btn" class="w-full py-5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-white font-bold text-xl shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
-            <span>SUBMIT</span> <span class="text-2xl">✓</span>
-        </button>
-        <button onclick="goToStep(3)" class="w-full py-3 bg-gray-200 rounded-2xl text-gray-600 font-medium">← Back to Document</button>
-    </div>
 
-    </div>
+        </div>
+    </main>
 
     <!-- DEFECT TYPE MODAL -->
-    <div id="defect-modal" class="fixed inset-0 z-[70] bg-black/80 hidden flex items-end justify-center p-4" onclick="closeDefectModal(event)">
-        <div class="bg-white w-full max-w-sm rounded-2xl p-5 pb-8 animate-slide-up" onclick="event.stopPropagation()">
-            <div class="text-center mb-4">
-                <p class="text-[10px] text-gray-400 font-bold tracking-widest uppercase mb-1">WHAT TYPE OF DEFECT?</p>
-                <h3 id="zone-label" class="text-lg font-black text-gray-800"></h3>
+    <div id="defect-modal" class="fixed inset-0 bg-black/80 hidden flex items-end justify-center p-4" style="z-index: var(--z-modal);" onclick="closeDefectModal(event)">
+        <div class="bg-white w-full max-w-md rounded-2xl p-5 pb-8 animate-slide-up" onclick="event.stopPropagation()">
+            <div class="text-center mb-5">
+                <p class="text-[11px] text-slate-400 font-bold tracking-widest uppercase mb-1">WHAT TYPE OF DEFECT?</p>
+                <h3 id="zone-label" class="text-lg font-black text-slate-800"></h3>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="selectDefectType('Stain')" class="defect-stain py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">STAIN</button>
-                <button onclick="selectDefectType('Hole')" class="defect-hole py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">HOLE</button>
-                <button onclick="selectDefectType('Repair')" class="defect-repair py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">REPAIR</button>
-                <button onclick="selectDefectType('Other')" class="defect-other py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md">OTHER</button>
+                <button onclick="selectDefectType('Stain')" class="defect-stain py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md min-h-[60px]">STAIN</button>
+                <button onclick="selectDefectType('Hole')" class="defect-hole py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md min-h-[60px]">HOLE</button>
+                <button onclick="selectDefectType('Repair')" class="defect-repair py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md min-h-[60px]">REPAIR</button>
+                <button onclick="selectDefectType('Other')" class="defect-other py-5 rounded-xl font-bold text-lg active:scale-95 shadow-md min-h-[60px]">OTHER</button>
             </div>
         </div>
     </div>
@@ -628,12 +1109,12 @@
         <div class="cam-controls">
             <div class="text-center mb-5">
                 <span id="cam-mode-label" class="text-white font-bold text-base bg-black/60 px-5 py-2 rounded-full"></span>
-                <span id="cam-count" class="ml-2 text-white bg-blue-600 px-3 py-1 rounded-full text-sm font-bold">0</span>
+                <span id="cam-count" class="ml-2 text-white bg-blue-600 px-3 py-1.5 rounded-full text-sm font-bold">0</span>
             </div>
-            <div class="flex items-center justify-center gap-10">
-                <button onclick="closeCamera()" class="text-white text-4xl w-12 h-12 flex items-center justify-center">✕</button>
+            <div class="flex items-center justify-center gap-12">
+                <button onclick="closeCamera()" class="text-white text-3xl w-14 h-14 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20">✕</button>
                 <button onclick="capturePhoto()" class="shutter-btn"></button>
-                <div class="w-12"></div>
+                <div class="w-14 h-14"></div>
             </div>
         </div>
     </div>
@@ -641,7 +1122,7 @@
     <canvas id="photo-canvas" class="hidden"></canvas>
 
     <script>
-        // ============ WEIGHT VALIDATION TABLES ============
+        // ============ WEIGHT VALIDATION ============
         const weightTable = {
             "T-Shirt": { "Light":[3,3.5,4.5,5,5.5,6.5,7.5], "Mid":[4.5,5,6,7,8,9,10.5], "Heavy":[5.5,6.5,7.5,8.5,10,12,14], min:3, max:14 },
             "Tank Top": { "Light":[2.5,3,3.5,4,4.5,5,5.5], "Mid":[3,3.5,4,4.5,5,5.5,6], "Heavy":[3.5,4,4.5,5,5.5,6,7], min:2.5, max:7 },
@@ -656,10 +1137,7 @@
         // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
         let cameraStream = null, cameraMode = null, cameraSubType = null;
-        let itemStartTime = null, timerInterval = null;
-        let weightWarningDismissed = false;
-
-        // Stats (persisted daily)
+        let itemStartTime = null, timerInterval = null, weightWarningDismissed = false;
         let stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: null, bestTime: null };
 
         const data = {
@@ -673,30 +1151,27 @@
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
             itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0,
-            photographer: 'P02', scanTime: null,
-            timestamps: {}
+            photographer: 'P02', scanTime: null, timestamps: {}
         };
 
         const categoryOptions = { tops: ['T-Shirt','Tank Top','Polo','Sweatshirt','Hoodie','Sweater','Jersey'], bottoms: ['Jeans','Pants','Shorts','Sweatpants'], outer: ['Jacket','Coat','Vest'] };
-        const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG OPENING"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
+        const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
 
         const SVG_TOP_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="front" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Chest" data-side="front" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="front" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Center" data-side="front" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="front" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
         const SVG_TOP_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="back" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Upper-Back" data-side="back" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="back" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Lower-Back" data-side="back" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="back" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
         const zonePos = { 'front-L-Sleeve':{x:18,y:30}, 'front-Chest':{x:50,y:30}, 'front-R-Sleeve':{x:82,y:30}, 'front-Center':{x:50,y:58}, 'front-Hem':{x:50,y:85}, 'back-L-Sleeve':{x:18,y:30}, 'back-Upper-Back':{x:50,y:30}, 'back-R-Sleeve':{x:82,y:30}, 'back-Lower-Back':{x:50,y:58}, 'back-Hem':{x:50,y:85} };
 
-        // Variable rewards for celebrations
         const quickRewards = [
             { emoji:"⚡", text:"Lightning Fast!", sub:"Crushing it!" },
             { emoji:"🎯", text:"Precision!", sub:"All fields complete" },
             { emoji:"🔥", text:"On Fire!", sub:"Keep it going" },
-            { emoji:"💪", text:"Strong Work!", sub:"Looking good" },
-            { emoji:"🚀", text:"Rocket Speed!", sub:"Zooming through" }
+            { emoji:"💪", text:"Strong Work!", sub:"Looking good" }
         ];
 
-        // ============ HAPTIC FEEDBACK ============
+        // ============ HAPTIC ============
         function haptic(type = 'light') {
             if (!navigator.vibrate) return;
-            const patterns = { light: 10, medium: [10, 30, 10], success: [10, 50, 10, 50, 10], error: 100, celebration: [50, 100, 50, 100, 50, 100, 100] };
+            const patterns = { light: 10, medium: [10, 30, 10], success: [10, 50, 10, 50, 10], error: 100, celebration: [50, 100, 50, 100, 50] };
             navigator.vibrate(patterns[type] || 10);
         }
 
@@ -712,17 +1187,16 @@
         }
 
         function maybeQuickReward() {
-            if (Math.random() < 0.15) { // 15% chance
+            if (Math.random() < 0.15) {
                 const r = quickRewards[Math.floor(Math.random() * quickRewards.length)];
                 setTimeout(() => celebrate(r.emoji, r.text, r.sub), 300);
             }
         }
 
-        // ============ SCAN FLASH ============
         function scanFlash() {
             const el = document.getElementById('scan-flash');
             el.classList.add('flash');
-            setTimeout(() => el.classList.remove('flash'), 400);
+            setTimeout(() => el.classList.remove('flash'), 350);
         }
 
         // ============ INIT ============
@@ -734,7 +1208,11 @@
                 const savedPin = localStorage.getItem('vl_auth');
                 const savedPhotographer = localStorage.getItem('vl_photographer');
                 if (savedPin === APP_PIN) document.getElementById('login-screen').classList.add('hidden');
-                if (savedPhotographer) { data.photographer = savedPhotographer; document.getElementById('photographer-select').value = savedPhotographer; document.getElementById('photographer-badge').innerText = savedPhotographer; }
+                if (savedPhotographer) { 
+                    data.photographer = savedPhotographer; 
+                    document.getElementById('photographer-select').value = savedPhotographer; 
+                    document.getElementById('photographer-badge').innerText = savedPhotographer; 
+                }
             } catch(e) {}
             updateStatsDisplay();
             applySmartDefaults();
@@ -742,7 +1220,6 @@
         });
 
         function applySmartDefaults() {
-            // Pre-select most common options
             data.thickness = 'Standard';
             data.construction = 'Single';
             data.sleeveType = 'Short';
@@ -756,7 +1233,7 @@
 
         function loadStats() {
             try {
-                const saved = JSON.parse(localStorage.getItem('vl_stats_v77') || '{}');
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v78') || '{}');
                 const today = new Date().toDateString();
                 if (saved.lastDate === today) {
                     stats = saved;
@@ -771,7 +1248,7 @@
             } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
         }
 
-        function saveStats() { try { localStorage.setItem('vl_stats_v77', JSON.stringify(stats)); } catch(e) {} }
+        function saveStats() { try { localStorage.setItem('vl_stats_v78', JSON.stringify(stats)); } catch(e) {} }
 
         function updateStatsDisplay() {
             document.getElementById('streak-count').textContent = stats.streak;
@@ -781,9 +1258,10 @@
 
         function showMotivation() {
             const banner = document.getElementById('motivation-banner');
-            const remaining = [10, 25, 50, 75, 100].find(m => m > stats.itemsToday);
-            if (remaining && stats.itemsToday >= remaining - 3) {
-                banner.textContent = `🎯 ${remaining - stats.itemsToday} more to hit ${remaining}!`;
+            const milestones = [10, 25, 50, 75, 100];
+            const next = milestones.find(m => m > stats.itemsToday);
+            if (next && stats.itemsToday >= next - 3) {
+                banner.textContent = `🎯 ${next - stats.itemsToday} more to hit ${next}!`;
                 banner.classList.remove('hidden');
             }
         }
@@ -843,7 +1321,7 @@
                 checkEl.innerHTML = '✓';
                 checkEl.classList.add('complete', 'just-completed');
                 haptic('medium');
-                setTimeout(() => checkEl.classList.remove('just-completed'), 500);
+                setTimeout(() => checkEl.classList.remove('just-completed'), 400);
             }
         }
 
@@ -867,14 +1345,9 @@
             });
             const photoCount = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
             document.getElementById('photo-count-badge').textContent = photoCount;
-            
-            // Pulse photo button if 0 photos after 30 seconds
             const photoBtn = document.getElementById('add-photo-btn');
-            if (currentStep === 3 && data.mainPhotos.length === 0) {
-                photoBtn.classList.add('needs-attention');
-            } else {
-                photoBtn.classList.remove('needs-attention');
-            }
+            if (currentStep === 3 && data.mainPhotos.length === 0) photoBtn.classList.add('needs-attention');
+            else photoBtn.classList.remove('needs-attention');
         }
 
         function autoScroll(sectionId) {
@@ -908,31 +1381,22 @@
         function setSuperCategory(cat, btn) {
             haptic('medium');
             data.superCategory = cat;
-            document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected'); if(!b.classList.contains('btn-hero') || b !== btn) { b.classList.remove('btn-hero'); b.classList.add('btn-secondary'); } });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
             const sel = document.getElementById('cat-select');
             sel.innerHTML = '<option value="" disabled selected>Select type...</option>';
-            categoryOptions[cat].forEach((o, i) => sel.innerHTML += `<option value="${o}" ${i===0?'':''}>${o}</option>`);
+            categoryOptions[cat].forEach(o => sel.innerHTML += `<option value="${o}">${o}</option>`);
             sel.classList.remove('hidden');
             document.getElementById('section-sleeve').classList.toggle('hidden', cat !== 'tops');
             completeSection('category');
             autoScroll('section-sku');
         }
 
-        function onCategoryChange() { 
-            data.category = document.getElementById('cat-select').value;
-            haptic('light');
-            autoScroll('section-tag');
-        }
+        function onCategoryChange() { data.category = document.getElementById('cat-select').value; haptic('light'); autoScroll('section-tag'); }
 
         function onSkuInput() { 
             data.sku = document.getElementById('sku-input').value;
-            if (data.sku && !itemStartTime) {
-                startTimer();
-                scanFlash();
-                haptic('success');
-                data.scanTime = new Date();
-            }
+            if (data.sku && !itemStartTime) { startTimer(); scanFlash(); haptic('success'); data.scanTime = new Date(); }
             if (data.sku) { completeSection('sku'); autoScroll('section-tag'); }
         }
 
@@ -943,8 +1407,8 @@
         function setTagStatus(status, btn) {
             haptic('medium');
             data.tagStatus = status;
-            document.querySelectorAll('.tag-status-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.tag-status-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
             document.getElementById('tag-size-section').classList.toggle('hidden', status !== 'has');
             document.getElementById('origin-section').classList.remove('hidden');
             document.getElementById('tag-gender-section').classList.remove('hidden');
@@ -958,43 +1422,23 @@
         function setOrigin(type, btn) {
             haptic('light');
             data.origin = type;
-            document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
             document.getElementById('country-select').classList.toggle('hidden', type === 'usa');
             data.madeInCountry = type === 'usa' ? 'USA' : '';
         }
 
         function setGender(g, btn) { haptic('light'); data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-        
         function onFabricChange() { data.fabric = document.getElementById('fabric-select').value; document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend'); completeSection('fabric'); haptic('light'); autoScroll('section-color'); }
-
-        function setSleeve(type, btn) {
-            haptic('light');
-            data.sleeveType = type;
-            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
-            completeSection('sleeve');
-        }
-
-        function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary'); }
-        function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setSleeve(type, btn) { haptic('light'); data.sleeveType = type; document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); completeSection('sleeve'); }
+        function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
 
         // ============ STEP 2 ============
         function onConditionChange() { data.condition = document.getElementById('cond-select').value; completeSection('condition'); haptic('light'); }
-        function setHasDefects(has, btn) {
-            haptic('medium');
-            data.hasDefects = has;
-            document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
-        }
-        function setFade(level, btn) {
-            haptic('light');
-            data.fadeLevel = level;
-            document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected', 'btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected', 'btn-hero'); btn.classList.remove('btn-secondary');
-            completeSection('fade');
-        }
-        function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '<div class="flex items-center justify-center gap-2">🚩 FLAGGED</div>'; }
+        function setHasDefects(has, btn) { haptic('medium'); data.hasDefects = has; document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setFade(level, btn) { haptic('light'); data.fadeLevel = level; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); completeSection('fade'); }
+        function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
         // ============ STEP 3 ============
         function initDefectSection() {
@@ -1037,7 +1481,7 @@
                 m.className = `defect-marker ${meta.type.toLowerCase()}`;
                 m.style.cssText = `left:${pos.x}%;top:${pos.y}%`;
                 m.textContent = i + 1;
-                m.onclick = () => { if(confirm('Remove this defect?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); haptic('light'); } };
+                m.onclick = () => { if(confirm('Remove?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); haptic('light'); } };
                 document.getElementById(`defect-markers-${meta.side}`).appendChild(m);
             });
         }
@@ -1051,14 +1495,14 @@
             });
             const neckBtn = document.getElementById('btn-tag-neck');
             const careBtn = document.getElementById('btn-tag-care');
-            if (data.tagPhotos.some(p => p.tagType === 'neck')) { neckBtn.classList.add('bg-green-100','border-green-500','text-green-700'); neckBtn.classList.remove('bg-gray-100','border-gray-300'); }
-            if (data.tagPhotos.some(p => p.tagType === 'care')) { careBtn.classList.add('bg-green-100','border-green-500','text-green-700'); careBtn.classList.remove('bg-gray-100','border-gray-300'); }
+            if (data.tagPhotos.some(p => p.tagType === 'neck')) { neckBtn.classList.add('bg-emerald-100','border-emerald-500','text-emerald-700'); neckBtn.classList.remove('bg-slate-100','border-slate-300'); }
+            if (data.tagPhotos.some(p => p.tagType === 'care')) { careBtn.classList.add('bg-emerald-100','border-emerald-500','text-emerald-700'); careBtn.classList.remove('bg-slate-100','border-slate-300'); }
             updateAllChecks();
         }
 
         function updateMeasureHint() {
             const m = measureMap[data.superCategory] || measureMap.tops;
-            document.getElementById('measure-hint').innerHTML = `<div class="text-blue-800 text-[10px] font-bold mb-1">📏 SAY EACH MEASUREMENT:</div><div class="text-blue-700 text-xs font-mono">${m.join(' → ')}</div>`;
+            document.getElementById('measure-hint').innerHTML = `<div class="text-blue-800 text-[11px] font-bold mb-1">📏 SAY EACH:</div><div class="text-blue-700 text-sm font-medium">${m.join(' → ')}</div>`;
         }
 
         function updateWeightHint() {
@@ -1068,46 +1512,37 @@
             const wc = thicknessToWeight[thickness] || 'Mid';
             const table = weightTable[category];
             const hintEl = document.getElementById('weight-hint');
-            
             if (table) {
                 let idx = sizeIndexMap[tagSize.toUpperCase()] ?? 2;
                 const weights = table[wc] || table['Mid'];
                 if (weights && idx < weights.length) {
                     const oz = weights[idx];
                     const display = oz >= 16 ? `${(oz/16).toFixed(1)} lb` : `${oz} oz`;
-                    hintEl.innerHTML = `<div class="text-center"><div class="text-purple-800 font-bold text-lg">${display}</div><div class="text-purple-600 text-[10px]">Expected for ${category} • ${tagSize || 'M'} • ${thickness}</div></div>`;
+                    hintEl.innerHTML = `<div class="text-center"><div class="text-violet-800 font-bold text-lg">${display}</div><div class="text-violet-600 text-[11px]">Expected • ${category} • ${tagSize || 'M'}</div></div>`;
                     return;
                 }
             }
-            hintEl.innerHTML = `<div class="text-purple-600 text-center text-sm">⚖️ Enter weight from scale</div>`;
+            hintEl.innerHTML = `<div class="text-violet-600 text-center">⚖️ Enter weight</div>`;
         }
 
         function updateWeight() {
             data.itemWeightLb = +document.getElementById('weight-lb').value||0;
             data.itemWeightOz = +document.getElementById('weight-oz').value||0;
             data.itemWeightTotalOz = data.itemWeightLb*16 + data.itemWeightOz;
-            
-            // Weight validation
             const category = data.category || 'T-Shirt';
             const table = weightTable[category];
             const warning = document.getElementById('weight-warning');
-            
             if (table && data.itemWeightTotalOz > 0 && !weightWarningDismissed) {
                 if (data.itemWeightTotalOz < table.min * 0.5) {
                     warning.classList.remove('hidden');
-                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems light for ${category} (usually ${table.min}-${table.max} oz)`;
+                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems light for ${category}`;
                     haptic('error');
                 } else if (data.itemWeightTotalOz > table.max * 1.3) {
                     warning.classList.remove('hidden');
-                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems heavy for ${category} (usually ${table.min}-${table.max} oz)`;
+                    document.getElementById('weight-warning-text').textContent = `${data.itemWeightTotalOz} oz seems heavy for ${category}`;
                     haptic('error');
-                } else {
-                    warning.classList.add('hidden');
-                }
-            } else {
-                warning.classList.add('hidden');
-            }
-            
+                } else { warning.classList.add('hidden'); }
+            } else { warning.classList.add('hidden'); }
             if (data.itemWeightTotalOz > 0) completeSection('weight');
             haptic('light');
         }
@@ -1146,7 +1581,6 @@
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            
             canvas.toBlob(blob => {
                 const photo = { dataUrl, blob, timestamp: new Date().toISOString() };
                 if(cameraMode === 'defect' && pendingDefect) {
@@ -1196,12 +1630,12 @@
 
         function updateRecTimer() { if(!isRecording) return; const t = document.getElementById('rec-timer'); if(t) t.textContent = formatTime(Math.round((Date.now()-recordingStart)/1000)); setTimeout(updateRecTimer, 1000); }
         function formatTime(s) { return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
-        function reRecord() { data.audioMeasure = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>HOLD TO RECORD</span>'; haptic('light'); document.getElementById('check-measure').classList.remove('complete'); document.getElementById('check-measure').innerHTML = '○'; }
+        function reRecord() { data.audioMeasure = null; data.audioDuration = 0; document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').classList.remove('recording'); document.getElementById('record-btn').innerHTML = '<span class="text-2xl">🎤</span><span>TAP TO RECORD</span>'; haptic('light'); document.getElementById('check-measure').classList.remove('complete'); document.getElementById('check-measure').innerHTML = '○'; }
 
         // ============ STEP 4 ============
         function updateReviewCards() {
             document.getElementById('summary-identify').innerHTML = `${data.category||'?'} • ${data.sku||'?'}<br>${data.tagSize||''} ${data.colorPrimary||''}`;
-            document.getElementById('summary-inspect').innerHTML = `${data.condition||'?'}<br>${data.hasDefects?data.defectPhotos.length+' defect(s)':'No flaws'} • ${data.fadeLevel} fade`;
+            document.getElementById('summary-inspect').innerHTML = `${data.condition||'?'}<br>${data.hasDefects?data.defectPhotos.length+' defect(s)':'No flaws'}`;
             const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
             document.getElementById('summary-document').innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
             document.getElementById('summary-ready').innerHTML = data.itemWeightTotalOz > 0 ? `${data.itemWeightLb} lb ${data.itemWeightOz} oz` : 'No weight';
@@ -1222,24 +1656,16 @@
 
         function checkConsistency() {
             const warning = document.getElementById('consistency-warning');
-            // Excellent + defects = inconsistent
             if (data.condition === 'Excellent' && data.defectPhotos.length > 0) {
                 warning.classList.remove('hidden');
-                document.getElementById('consistency-warning-text').textContent = `"Excellent" condition but ${data.defectPhotos.length} defect(s) marked?`;
-            } else {
-                warning.classList.add('hidden');
-            }
+                document.getElementById('consistency-warning-text').textContent = `"Excellent" but ${data.defectPhotos.length} defect(s)?`;
+            } else { warning.classList.add('hidden'); }
         }
 
         function fixConsistency(what) {
             haptic('light');
-            if (what === 'condition') {
-                document.getElementById('cond-select').value = 'Good';
-                data.condition = 'Good';
-            } else {
-                data.defectPhotos = [];
-                renderDefectMarkers();
-            }
+            if (what === 'condition') { document.getElementById('cond-select').value = 'Good'; data.condition = 'Good'; }
+            else { data.defectPhotos = []; renderDefectMarkers(); }
             document.getElementById('consistency-warning').classList.add('hidden');
             updateReviewCards();
         }
@@ -1247,11 +1673,11 @@
         // ============ SUBMIT ============
         async function submitData() {
             const sku = data.sku;
-            if(!sku) { haptic('error'); return alert("Scan or enter SKU"); }
-            if(data.mainPhotos.length === 0) { haptic('error'); return alert("Add at least one photo"); }
+            if(!sku) { haptic('error'); return alert("Enter SKU"); }
+            if(data.mainPhotos.length === 0) { haptic('error'); return alert("Add photo"); }
             if(data.itemWeightTotalOz === 0) { haptic('error'); return alert("Enter weight"); }
             if(!data.fabric) { haptic('error'); return alert("Select fabric"); }
-            if(!data.colorPrimary) { haptic('error'); return alert("Select primary color"); }
+            if(!data.colorPrimary) { haptic('error'); return alert("Select color"); }
             
             const itemTime = stopTimer();
             stats.itemsToday++;
@@ -1260,13 +1686,11 @@
             saveStats();
             updateStatsDisplay();
             
-            // Milestone celebrations
-            if (stats.itemsToday === 10) celebrate('🔟', 'Double Digits!', '10 items today');
-            else if (stats.itemsToday === 25) celebrate('💪', 'Quarter Century!', '25 items - crushing it!');
-            else if (stats.itemsToday === 50) celebrate('🔥', 'FIFTY!', 'Half century - on fire!');
-            else if (stats.itemsToday === 75) celebrate('🚀', '75 Items!', 'Three quarters there!');
-            else if (stats.itemsToday === 100) celebrate('🏆', 'CENTURION!', '100 items - legendary!');
-            else if (itemTime === stats.bestTime && stats.itemsToday > 3) celebrate('⚡', 'NEW RECORD!', formatTime(itemTime) + ' - your fastest!');
+            if (stats.itemsToday === 10) celebrate('🔟', 'Double Digits!', '10 items');
+            else if (stats.itemsToday === 25) celebrate('💪', 'Quarter Century!', '25 items');
+            else if (stats.itemsToday === 50) celebrate('🔥', 'FIFTY!', 'Half century');
+            else if (stats.itemsToday === 100) celebrate('🏆', 'CENTURION!', '100 items!');
+            else if (itemTime === stats.bestTime && stats.itemsToday > 3) celebrate('⚡', 'NEW RECORD!', formatTime(itemTime));
             else maybeQuickReward();
             
             const modal = document.getElementById('upload-modal');
