@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>VintageLister v75.9.2</title>
+    <title>VintageLister v76</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -91,7 +91,7 @@
         }
         
         /* ============ LAYOUT ============ */
-        .step-container { display: none; }
+        .step-container { display: none; padding-top: var(--space-sm); }
         .step-container.active { display: block; }
         .safe-top { padding-top: max(var(--space-md), env(safe-area-inset-top)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
@@ -631,7 +631,7 @@
             </div>
             <button onclick="checkPin()" class="btn-standard btn-hero w-full text-lg">START LISTING →</button>
         </div>
-        <p class="text-slate-500 text-label mt-4">v75.9.2</p>
+        <p class="text-slate-500 text-label mt-4">v76</p>
     </div>
 
     <!-- CELEBRATION -->
@@ -662,7 +662,7 @@
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-slate-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-slate-400 text-label">v75.9.2</span>
+                    <span class="text-slate-400 text-label">v76</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="streak-badge">
@@ -713,7 +713,7 @@
         <div class="safe-bottom px-4">
 
         <!-- ========== STEP 1: TAG ========== -->
-        <div id="step-1" class="step-container active space-y-3 pt-2">
+        <div id="step-1" class="step-container active space-y-3">
             
             <div id="motivation-banner" class="motivation-banner hidden"></div>
             
@@ -838,7 +838,7 @@
         </div>
 
         <!-- ========== STEP 2: CHECK ========== -->
-        <div id="step-2" class="step-container space-y-3 pt-2">
+        <div id="step-2" class="step-container space-y-3">
             
             <!-- FABRIC -->
             <section id="section-fabric" class="section-card">
@@ -858,6 +858,23 @@
                 </select>
                 <input type="text" id="fabric-custom" placeholder="e.g. 60% Cotton 40% Polyester" 
                        class="hidden form-input mt-2 text-sm">
+                
+                <!-- WASH SECTION (V76: Shows when Denim) -->
+                <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setWash('Light', this)" class="btn-compact btn-tertiary wash-btn">Light</button>
+                        <button onclick="setWash('Medium', this)" class="btn-compact btn-tertiary wash-btn">Medium</button>
+                        <button onclick="setWash('Dark', this)" class="btn-compact btn-tertiary wash-btn">Dark</button>
+                        <button onclick="setWash('Raw', this)" class="btn-compact btn-tertiary wash-btn">Raw</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        <button onclick="setWash('Acid', this)" class="btn-compact btn-tertiary wash-btn">Acid</button>
+                        <button onclick="setWash('Stone', this)" class="btn-compact btn-tertiary wash-btn">Stone</button>
+                        <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
+                        <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
+                    </div>
+                </div>
             </section>
             
             <!-- COLOR -->
@@ -934,19 +951,40 @@
                 </div>
             </section>
             
-            <!-- SLEEVE -->
+            <!-- SLEEVE (V76: Added Sleeve Style) -->
             <section id="section-sleeve" class="section-card hidden">
                 <label class="section-label">
                     <span id="check-sleeve" class="check-circle">○</span>
-                    Sleeve
+                    Sleeves
                 </label>
-                <button onclick="setSleeve('Short', this)" class="btn-standard btn-hero sleeve-btn w-full mb-2">
-                    SHORT SLEEVE <span class="text-blue-200 text-label">(most common)</span>
-                </button>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="setSleeve('Long', this)" class="btn-standard btn-secondary sleeve-btn">Long</button>
-                    <button onclick="setSleeve('3/4', this)" class="btn-standard btn-secondary sleeve-btn">3/4</button>
-                    <button onclick="setSleeve('None', this)" class="btn-standard btn-secondary sleeve-btn">Sleeveless</button>
+                <div class="text-label text-slate-400 font-bold mb-2">Sleeve Length</div>
+                <div class="grid grid-cols-4 gap-2 mb-3">
+                    <button onclick="setSleeveType('Short', this)" class="btn-compact btn-secondary selected sleeve-type-btn">Short</button>
+                    <button onclick="setSleeveType('Long', this)" class="btn-compact btn-tertiary sleeve-type-btn">Long</button>
+                    <button onclick="setSleeveType('3/4', this)" class="btn-compact btn-tertiary sleeve-type-btn">3/4</button>
+                    <button onclick="setSleeveType('Sleeveless', this)" class="btn-compact btn-tertiary sleeve-type-btn">Sleeveless</button>
+                </div>
+                
+                <!-- Sleeve Style (hidden when Sleeveless) -->
+                <div id="sleeve-style-section">
+                    <div class="text-label text-slate-400 font-bold mb-2">Sleeve Style</div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setSleeveStyle('Standard', this)" class="btn-compact btn-secondary selected sleeve-style-btn">Standard</button>
+                        <button onclick="setSleeveStyle('Raglan', this)" class="btn-compact btn-tertiary sleeve-style-btn">Raglan ⭐</button>
+                        <button onclick="setSleeveStyle('Dolman', this)" class="btn-compact btn-tertiary sleeve-style-btn">Dolman</button>
+                        <button onclick="setSleeveStyle('Other', this)" class="btn-compact btn-tertiary sleeve-style-btn">Other</button>
+                    </div>
+                </div>
+                
+                <!-- Raglan/Dolman Measurement Notice -->
+                <div id="sleeve-measurement-notice" class="hidden mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+                    <div class="flex items-start gap-2">
+                        <span class="text-lg">⚠️</span>
+                        <div>
+                            <div class="text-xs font-bold text-amber-800">Special Sleeve Style</div>
+                            <div class="text-xs text-amber-700 mt-1">No shoulder measurement needed — measure armpit to cuff instead</div>
+                        </div>
+                    </div>
                 </div>
             </section>
             
@@ -975,7 +1013,7 @@
         </div>
 
         <!-- ========== STEP 3: SNAP ========== -->
-        <div id="step-3" class="step-container space-y-3 pt-2">
+        <div id="step-3" class="step-container space-y-3">
             
             <!-- ISSUES -->
             <section id="section-issues" class="section-card">
@@ -996,16 +1034,17 @@
                 </div>
             </section>
             
-            <!-- FADE LEVEL (conditional) -->
-            <section id="section-fade" class="section-card hidden">
+            <!-- FADE LEVEL (V76: Always visible, independent from defects) -->
+            <section id="section-fade" class="section-card">
                 <label class="section-label">
-                    <span id="check-fade" class="check-circle">○</span>
+                    <span id="check-fade" class="check-circle complete">✓</span>
                     Fade Level
                 </label>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="setFade('Light', this)" class="btn-standard btn-secondary fade-btn">Light</button>
-                    <button onclick="setFade('Sun', this)" class="btn-standard btn-secondary fade-btn bg-amber-50 border-amber-300 text-amber-700">☀️ Sun</button>
-                    <button onclick="setFade('Heavy', this)" class="btn-standard btn-secondary fade-btn">Heavy</button>
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="setFade('None', this)" class="btn-compact btn-secondary selected fade-btn">None</button>
+                    <button onclick="setFade('Light', this)" class="btn-compact btn-tertiary fade-btn">Light</button>
+                    <button onclick="setFade('Sun Fade', this)" class="btn-compact btn-tertiary fade-btn">Sun Fade</button>
+                    <button onclick="setFade('Heavy', this)" class="btn-compact btn-tertiary fade-btn">Heavy</button>
                 </div>
             </section>
             
@@ -1098,7 +1137,7 @@
                     </select>
                     <select id="weight-oz" onchange="updateWeight()" class="form-select font-bold text-lg">
                         <option value="0" selected>0 oz</option>
-                        <option value="1">1 oz</option><option value="2">2 oz</option><option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
+                        <option value="3">3 oz</option><option value="4">4 oz</option><option value="5">5 oz</option><option value="6">6 oz</option><option value="7">7 oz</option><option value="8">8 oz</option><option value="9">9 oz</option><option value="10">10 oz</option><option value="11">11 oz</option><option value="12">12 oz</option><option value="13">13 oz</option><option value="14">14 oz</option><option value="15">15 oz</option>
                     </select>
                 </div>
                 <div id="weight-warning" class="hidden warning-card mt-3">
@@ -1124,7 +1163,7 @@
         </div>
 
         <!-- ========== STEP 4: SEND ========== -->
-        <div id="step-4" class="step-container space-y-3 pt-2">
+        <div id="step-4" class="step-container space-y-3">
             
             <div class="bg-emerald-500 text-white p-4 rounded-xl text-center font-bold shadow-lg">
                 ✨ Almost done! Quick review
@@ -1191,9 +1230,29 @@
         </div>
     </div>
 
-    <!-- CAMERA -->
+    <!-- CAMERA (V76: Added grid + stabilizer + DONE button) -->
     <div id="camera-overlay" class="hidden">
         <video id="cam-feed" autoplay playsinline></video>
+        
+        <!-- Photo Grid Overlay (Rule of Thirds) -->
+        <div id="photo-grid" style="position:absolute;inset:0;pointer-events:none;">
+            <div style="position:absolute;top:33.33%;left:0;right:0;height:1px;background:rgba(255,255,255,0.3)"></div>
+            <div style="position:absolute;top:66.66%;left:0;right:0;height:1px;background:rgba(255,255,255,0.3)"></div>
+            <div style="position:absolute;left:33.33%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.3)"></div>
+            <div style="position:absolute;left:66.66%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.3)"></div>
+            <!-- Center Crosshair -->
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;">
+                <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,0.5)"></div>
+                <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.5)"></div>
+            </div>
+        </div>
+        
+        <!-- Stabilizer Indicator -->
+        <div id="stabilizer-indicator" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.6);padding:6px 12px;border-radius:20px;">
+            <div id="stabilizer-dot" style="width:12px;height:12px;border-radius:50%;background:#ef4444;transition:background 0.2s ease;"></div>
+            <span id="stabilizer-text" style="color:white;font-size:12px;font-weight:700;">HOLD STEADY</span>
+        </div>
+        
         <div class="cam-controls">
             <div class="text-center mb-5">
                 <span id="cam-mode-label" class="text-white font-bold text-base bg-black/60 px-5 py-2 rounded-full"></span>
@@ -1201,8 +1260,26 @@
             </div>
             <div class="flex items-center justify-center gap-12">
                 <button onclick="closeCamera()" class="text-white text-3xl w-14 h-14 flex items-center justify-center rounded-full bg-white/10 active:bg-white/20">✕</button>
-                <button onclick="capturePhoto()" class="shutter-btn"></button>
-                <div class="w-14 h-14"></div>
+                <button onclick="capturePhoto()" id="shutter-btn" class="shutter-btn"></button>
+                <button onclick="finishPhotos()" class="text-white font-bold w-14 h-14 flex items-center justify-center rounded-full bg-green-600 active:bg-green-700 text-sm">DONE</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- PHOTO PREVIEW MODAL (V76: Keep/Retake) -->
+    <div id="photo-preview-modal" class="hidden" style="position:fixed;inset:0;z-index:65;background:black;display:flex;flex-direction:column;">
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <img id="preview-image" src="" alt="Preview" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;">
+        </div>
+        <div style="background:black;padding:24px;padding-bottom:max(24px, env(safe-area-inset-bottom));">
+            <p style="text-align:center;color:#9ca3af;font-size:14px;margin-bottom:16px;"><span id="preview-mode-label" style="color:white;font-weight:700;">MAIN</span> PHOTO</p>
+            <div style="display:flex;align-items:center;justify-content:center;gap:24px;">
+                <button onclick="rejectPhoto()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:#dc2626;color:white;font-weight:700;font-size:11px;border:none;">
+                    <span style="font-size:24px;margin-bottom:4px;">✕</span>RETAKE
+                </button>
+                <button onclick="acceptPhoto()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;background:#16a34a;color:white;font-weight:700;font-size:11px;border:none;">
+                    <span style="font-size:24px;margin-bottom:4px;">✓</span>KEEP
+                </button>
             </div>
         </div>
     </div>
@@ -1210,29 +1287,24 @@
     <canvas id="photo-canvas" class="hidden"></canvas>
 
     <script>
-        // ============ WEIGHT VALIDATION ============
-        const weightTable = {
-            "T-Shirt": { "Light":[3,3.5,4.5,5,5.5,6.5,7.5], "Mid":[4.5,5,6,7,8,9,10.5], "Heavy":[5.5,6.5,7.5,8.5,10,12,14], min:3, max:14 },
-            "Tank Top": { "Light":[2.5,3,3.5,4,4.5,5,5.5], "Mid":[3,3.5,4,4.5,5,5.5,6], "Heavy":[3.5,4,4.5,5,5.5,6,7], min:2.5, max:7 },
-            "Sweatshirt": { "Light":[8,9,10,12,13,15,17], "Mid":[10,12,14,16,18,20,22], "Heavy":[14,16,18,22,24,28,32], min:8, max:32 },
-            "Hoodie": { "Light":[10,12,14,16,18,20,22], "Mid":[14,16,18,20,22,24,26], "Heavy":[20,24,28,32,36,40,44], min:10, max:44 },
-            "Jeans": { "Light":[14,15,16,17,18,19,20], "Mid":[18,20,22,24,26,28,30], "Heavy":[24,26,28,30,34,36,40], min:14, max:40 },
-            "Jacket": { "Light":[6,8,10,12,13,14,15], "Mid":[20,24,28,32,36,40,44], "Heavy":[32,36,40,48,52,56,60], min:6, max:60 }
-        };
-        const sizeIndexMap = { "XS":0, "S":1, "M":2, "L":3, "XL":4, "XXL":5, "2XL":5, "3XL":6 };
-        const thicknessToWeight = { 'Paper Thin':'Light', 'Light':'Light', 'Standard':'Mid', 'Heavy':'Heavy' };
-
-        // ============ CATEGORY CONFIG ============
+        // ============ CATEGORY CONFIG (V76: Removed Overalls/Jumpsuit) ============
         const categoryConfig = {
             tops: { heroes: ['T-Shirt', 'Sweatshirt', 'Hoodie'], others: ['Sweater', 'Button Shirt', 'Polo', 'Jersey', 'Tank Top', 'Cardigan', 'Blouse', 'Tunic'] },
-            bottoms: { heroes: ['Jeans', 'Pants'], others: ['Shorts', 'Sweatpants', 'Overalls', 'Jumpsuit'] },
+            bottoms: { heroes: ['Jeans', 'Pants'], others: ['Shorts', 'Sweatpants'] },
             outer: { heroes: ['Jacket', 'Coat'], others: ['Vest'] }
         };
         const measureMap = { tops:["SHOULDER","PIT-PIT","WAIST","LENGTH","SLEEVE"], bottoms:["WAIST","INSEAM","RISE","LEG"], outer:["SHOULDER","PIT-PIT","LENGTH","SLEEVE"] };
 
-        const SVG_TOP_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="front" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Chest" data-side="front" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="front" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Center" data-side="front" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="front" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
-        const SVG_TOP_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#334155" rx="8"/><rect x="69" y="139" width="141" height="141" fill="#334155" rx="8"/><rect x="558" y="139" width="141" height="141" fill="#334155" rx="8"/><rect class="zone-hit" data-zone="L-Sleeve" data-side="back" x="70" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Upper-Back" data-side="back" x="210" y="140" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="R-Sleeve" data-side="back" x="560" y="140" width="138" height="138" rx="6"/><rect class="zone-hit" data-zone="Lower-Back" data-side="back" x="210" y="340" width="348" height="200" rx="6"/><rect class="zone-hit" data-zone="Hem" data-side="back" x="210" y="540" width="348" height="86" rx="6"/></svg>`;
-        const zonePos = { 'front-L-Sleeve':{x:18,y:30}, 'front-Chest':{x:50,y:30}, 'front-R-Sleeve':{x:82,y:30}, 'front-Center':{x:50,y:58}, 'front-Hem':{x:50,y:85}, 'back-L-Sleeve':{x:18,y:30}, 'back-Upper-Back':{x:50,y:30}, 'back-R-Sleeve':{x:82,y:30}, 'back-Lower-Back':{x:50,y:58}, 'back-Hem':{x:50,y:85} };
+        const SVG_SHORT_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="R-SLEEVE" data-side="front" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="front" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="front" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="front" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="L-SLEEVE" data-side="front" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="R-PIT" data-side="front" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="R-CHEST" data-side="front" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="L-CHEST" data-side="front" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="L-PIT" data-side="front" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="R-MID" data-side="front" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="CENTER" data-side="front" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="L-MID" data-side="front" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="R-HEM" data-side="front" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="front" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="L-HEM" data-side="front" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_SHORT_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="140" height="141" fill="#1a1a1a"/><rect x="559" y="139" width="140" height="141" fill="#1a1a1a"/><rect class="zone-hit" data-zone="L-SLEEVE" data-side="back" x="69" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="back" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="back" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="back" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="R-SLEEVE" data-side="back" x="559" y="139" width="140" height="141"/><rect class="zone-hit" data-zone="L-PIT" data-side="back" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER-BACK" data-side="back" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="R-PIT" data-side="back" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="L-MID" data-side="back" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER-BACK" data-side="back" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="R-MID" data-side="back" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="L-HEM" data-side="back" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="back" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="R-HEM" data-side="back" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_LONG_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="R-UP-SLV" data-side="front" x="70" y="140" width="71" height="138"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="front" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="front" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="front" x="420" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="L-UP-SLV" data-side="front" x="628" y="139" width="70" height="141"/><polygon class="zone-hit" data-zone="R-PIT" data-side="front" points="141,210 279,210 279,348 209,348 209,280 141,280"/><rect class="zone-hit" data-zone="R-CHEST" data-side="front" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="L-CHEST" data-side="front" x="385" y="210" width="105" height="140"/><polygon class="zone-hit" data-zone="L-PIT" data-side="front" points="489,210 489,349 560,349 560,280 629,280 629,210"/><rect class="zone-hit" data-zone="R-MID-SLV" data-side="front" x="70" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="R-MID" data-side="front" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="CENTER" data-side="front" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="L-MID" data-side="front" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="L-MID-SLV" data-side="front" x="628" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="R-CUFF" data-side="front" x="69" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="R-HEM" data-side="front" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="front" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="L-HEM" data-side="front" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="L-CUFF" data-side="front" x="628" y="558" width="70" height="70"/></svg>`;
+        const SVG_LONG_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect x="69" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="69" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="140" y="210" width="70" height="70" fill="#1a1a1a"/><rect x="558" y="139" width="141" height="141" fill="#1a1a1a"/><rect x="628" y="279" width="71" height="350" fill="#1a1a1a"/><rect x="558" y="210" width="71" height="70" fill="#1a1a1a"/><rect class="zone-hit" data-zone="L-UP-SLV" data-side="back" x="70" y="140" width="70" height="138"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="back" x="141" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="back" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="back" x="420" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="R-UP-SLV" data-side="back" x="628" y="139" width="70" height="140"/><polygon class="zone-hit" data-zone="L-PIT" data-side="back" points="141,210 279,210 279,349 209,349 209,280 141,280"/><rect class="zone-hit" data-zone="UPPER-BACK" data-side="back" x="279" y="210" width="210" height="140"/><polygon class="zone-hit" data-zone="R-PIT" data-side="back" points="489,210 489,349 560,349 560,280 629,280 629,210"/><rect class="zone-hit" data-zone="L-MID-SLV" data-side="back" x="70" y="279" width="70" height="280"/><rect class="zone-hit" data-zone="L-MID" data-side="back" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER-BACK" data-side="back" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="R-MID" data-side="back" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="R-MID-SLV" data-side="back" x="629" y="280" width="70" height="278"/><rect class="zone-hit" data-zone="L-CUFF" data-side="back" x="70" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="L-HEM" data-side="back" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="back" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="R-HEM" data-side="back" x="489" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="R-CUFF" data-side="back" x="628" y="559" width="70" height="70"/></svg>`;
+        const SVG_SLEEVELESS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="front" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="front" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="front" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="R-PIT" data-side="front" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="R-CHEST" data-side="front" x="279" y="210" width="105" height="139"/><rect class="zone-hit" data-zone="L-CHEST" data-side="front" x="385" y="210" width="105" height="140"/><rect class="zone-hit" data-zone="L-PIT" data-side="front" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="R-MID" data-side="front" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="CENTER" data-side="front" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="L-MID" data-side="front" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="R-HEM" data-side="front" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="front" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="L-HEM" data-side="front" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_SLEEVELESS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="209" y="139" width="350" height="489" fill="#1a1a1a"/><rect class="zone-hit" data-zone="L-SHOULDER" data-side="back" x="209" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="NECK" data-side="back" x="349" y="140" width="70" height="70"/><rect class="zone-hit" data-zone="R-SHOULDER" data-side="back" x="420" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="L-PIT" data-side="back" x="209" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="UPPER-BACK" data-side="back" x="279" y="210" width="210" height="140"/><rect class="zone-hit" data-zone="R-PIT" data-side="back" x="489" y="210" width="70" height="139"/><rect class="zone-hit" data-zone="L-MID" data-side="back" x="209" y="350" width="70" height="207"/><rect class="zone-hit" data-zone="LOWER-BACK" data-side="back" x="279" y="349" width="210" height="208"/><rect class="zone-hit" data-zone="R-MID" data-side="back" x="489" y="349" width="70" height="208"/><rect class="zone-hit" data-zone="L-HEM" data-side="back" x="209" y="559" width="70" height="70"/><rect class="zone-hit" data-zone="C-HEM" data-side="back" x="279" y="557" width="210" height="70"/><rect class="zone-hit" data-zone="R-HEM" data-side="back" x="489" y="559" width="70" height="70"/></svg>`;
+        const SVG_PANTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="488" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="488" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="R-WAIST" data-side="front" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="C-WAIST" data-side="front" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="L-WAIST" data-side="front" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="R-HIP" data-side="front" x="140" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="FLY" data-side="front" x="348" y="139" width="71" height="70"/><rect class="zone-hit" data-zone="L-HIP" data-side="front" x="419" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="CROTCH" data-side="front" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="R-THIGH" data-side="front" x="140" y="209" width="210" height="210"/><rect class="zone-hit" data-zone="L-THIGH" data-side="front" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="R-KNEE" data-side="front" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="L-KNEE" data-side="front" x="419" y="417" width="209" height="72"/><rect class="zone-hit" data-zone="R-SHIN" data-side="front" x="140" y="489" width="210" height="136"/><rect class="zone-hit" data-zone="L-SHIN" data-side="front" x="419" y="489" width="209" height="136"/><rect class="zone-hit" data-zone="R-OPENING" data-side="front" x="140" y="625" width="210" height="72"/><rect class="zone-hit" data-zone="L-OPENING" data-side="front" x="419" y="625" width="209" height="72"/></svg>`;
+        const SVG_PANTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="488" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="488" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="L-WAIST" data-side="back" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="C-WAIST" data-side="back" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="R-WAIST" data-side="back" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="L-POCKET" data-side="back" x="140" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="SEAT" data-side="back" x="281" y="140" width="208" height="72"/><rect class="zone-hit" data-zone="R-POCKET" data-side="back" x="489" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="B-CROTCH" data-side="back" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="L-HAM" data-side="back" x="140" y="210" width="209" height="210"/><rect class="zone-hit" data-zone="R-HAM" data-side="back" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="L-B-KNEE" data-side="back" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="R-B-KNEE" data-side="back" x="419" y="417" width="209" height="72"/><rect class="zone-hit" data-zone="L-CALF" data-side="back" x="140" y="489" width="210" height="136"/><rect class="zone-hit" data-zone="R-CALF" data-side="back" x="419" y="489" width="209" height="136"/><rect class="zone-hit" data-zone="L-OPENING" data-side="back" x="140" y="625" width="210" height="72"/><rect class="zone-hit" data-zone="R-OPENING" data-side="back" x="419" y="625" width="209" height="72"/></svg>`;
+        const SVG_SHORTS_FRONT = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="280" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="280" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="R-WAIST" data-side="front" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="C-WAIST" data-side="front" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="L-WAIST" data-side="front" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="R-HIP" data-side="front" x="140" y="140" width="208" height="70"/><rect class="zone-hit" data-zone="FLY" data-side="front" x="348" y="139" width="71" height="70"/><rect class="zone-hit" data-zone="L-HIP" data-side="front" x="419" y="140" width="209" height="70"/><rect class="zone-hit" data-zone="CROTCH" data-side="front" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="R-THIGH" data-side="front" x="140" y="209" width="210" height="210"/><rect class="zone-hit" data-zone="L-THIGH" data-side="front" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="R-OPENING" data-side="front" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="L-OPENING" data-side="front" x="419" y="417" width="209" height="72"/></svg>`;
+        const SVG_SHORTS_BACK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 768" class="w-full h-full" preserveAspectRatio="xMidYMid meet"><rect x="140" y="69" width="488" height="141" fill="#1a1a1a"/><rect x="140" y="209" width="210" height="280" fill="#1a1a1a"/><rect x="419" y="209" width="209" height="280" fill="#1a1a1a"/><rect x="347" y="209" width="75" height="72" fill="#1a1a1a"/><rect class="zone-hit" data-zone="L-WAIST" data-side="back" x="140" y="69" width="208" height="70"/><rect class="zone-hit" data-zone="C-WAIST" data-side="back" x="347" y="69" width="72" height="70"/><rect class="zone-hit" data-zone="R-WAIST" data-side="back" x="419" y="70" width="209" height="70"/><rect class="zone-hit" data-zone="L-POCKET" data-side="back" x="140" y="140" width="140" height="70"/><rect class="zone-hit" data-zone="SEAT" data-side="back" x="281" y="140" width="208" height="72"/><rect class="zone-hit" data-zone="R-POCKET" data-side="back" x="489" y="140" width="139" height="70"/><rect class="zone-hit" data-zone="B-CROTCH" data-side="back" x="347" y="209" width="72" height="72"/><rect class="zone-hit" data-zone="L-HAM" data-side="back" x="140" y="210" width="209" height="210"/><rect class="zone-hit" data-zone="R-HAM" data-side="back" x="419" y="209" width="209" height="210"/><rect class="zone-hit" data-zone="L-OPENING" data-side="back" x="140" y="417" width="210" height="72"/><rect class="zone-hit" data-zone="R-OPENING" data-side="back" x="418" y="417" width="209" height="72"/></svg>`;
 
         const quickRewards = [
             { emoji:"⚡", text:"Lightning Fast!", sub:"Crushing it!" },
@@ -1244,22 +1316,25 @@
         // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
         let cameraStream = null, cameraMode = null, cameraSubType = null;
-        let itemStartTime = null, timerInterval = null, weightWarningDismissed = false;
+        let itemStartTime = null, timerInterval = null;
         let stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: null, bestTime: null };
+        let pendingPhoto = null;
+        let isStable = false;
+        let lastMotion = { x: 0, y: 0, z: 0 };
 
         const data = {
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabric: '', colorPrimary: '', colorSecondary: '',
+            fabric: '', wash: '', colorPrimary: '', colorSecondary: '',
             pattern: 'Solid', printType: '', graphicCategory: '',
-            sleeveType: 'Short', thickness: 'Standard', construction: 'Single',
-            hasDefects: false, hasFade: false, fadeLevel: '',
+            sleeveType: 'Short', sleeveStyle: 'Standard', thickness: 'Standard', construction: 'Single',
+            hasDefects: false, fadeLevel: 'None',
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
             itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0,
-            photographer: 'P02', scanTime: null, timestamps: {}
+            photographer: 'P02', timestamps: {}
         };
 
         const stepLabels = ['', 'Tag', 'Check', 'Snap', 'Send'];
@@ -1319,16 +1394,17 @@
             data.thickness = 'Standard';
             data.construction = 'Single';
             data.sleeveType = 'Short';
+            data.sleeveStyle = 'Standard';
             data.pattern = 'Solid';
             data.hasDefects = false;
-            data.hasFade = false;
+            data.fadeLevel = 'None';
             data.origin = 'usa';
             data.madeInCountry = 'USA';
         }
 
         function loadStats() {
             try {
-                const saved = JSON.parse(localStorage.getItem('vl_stats_v792') || '{}');
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v76') || '{}');
                 const today = new Date().toDateString();
                 if (saved.lastDate === today) { stats = saved; }
                 else {
@@ -1340,7 +1416,7 @@
             } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
         }
 
-        function saveStats() { try { localStorage.setItem('vl_stats_v792', JSON.stringify(stats)); } catch(e) {} }
+        function saveStats() { try { localStorage.setItem('vl_stats_v76', JSON.stringify(stats)); } catch(e) {} }
 
         function updateStatsDisplay() {
             document.getElementById('streak-count').textContent = stats.streak;
@@ -1425,9 +1501,10 @@
                 tag: !!data.tagStatus,
                 fabric: !!data.fabric,
                 color: !!data.colorPrimary,
-                pattern: !!data.pattern,
-                sleeve: !!data.sleeveType || data.superCategory !== 'tops',
+                pattern: data.fabric === 'Denim' || !!data.pattern,
+                sleeve: !!data.sleeveType || data.superCategory === 'bottoms',
                 issues: true,
+                fade: true,
                 photos: data.mainPhotos.length > 0,
                 measure: !!data.audioMeasure,
                 weight: data.itemWeightTotalOz > 0
@@ -1454,13 +1531,20 @@
         function goToStep(step) {
             if(step === currentStep) return;
             haptic('light');
+            
+            // V76: Track timestamps for KPI
+            if (currentStep === 1 && step > 1) data.timestamps.step1_complete = new Date().toISOString();
+            if (currentStep === 2 && step > 2) data.timestamps.step2_complete = new Date().toISOString();
+            if (currentStep === 3 && step > 3) data.timestamps.step3_complete = new Date().toISOString();
+            
             document.getElementById(`step-${currentStep}`).classList.remove('active');
             document.getElementById(`step-${step}`).classList.add('active');
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            if(step===2) { document.getElementById('section-sleeve').classList.toggle('hidden', data.superCategory !== 'tops'); }
-            if(step===3) { initDefectSection(); updateMeasureHint(); updateWeightHint(); renderPhotoThumbs(); showFadeSection(); }
+            // V76: Show sleeve for tops AND outer (not just tops)
+            if(step===2) { document.getElementById('section-sleeve').classList.toggle('hidden', data.superCategory === 'bottoms'); }
+            if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
             window.scrollTo({ top: 0, behavior: 'smooth' });
             updateAllChecks();
@@ -1500,7 +1584,7 @@
         }
 
         function getCatEmoji(cat) {
-            const emojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🎽', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗', 'Overalls':'👷', 'Jumpsuit':'🦸' };
+            const emojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🎽', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
             return emojis[cat] || '👕';
         }
 
@@ -1556,7 +1640,23 @@
         function setGender(g, btn) { haptic('light'); data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
 
         // ============ STEP 2: CHECK ============
-        function onFabricChange() { data.fabric = document.getElementById('fabric-select').value; document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend'); completeSection('fabric'); haptic('light'); autoScroll('section-color'); }
+        function onFabricChange() { 
+            data.fabric = document.getElementById('fabric-select').value; 
+            document.getElementById('fabric-custom').classList.toggle('hidden', data.fabric !== 'Custom Blend'); 
+            // V76: Show wash section when Denim
+            document.getElementById('wash-section').classList.toggle('hidden', data.fabric !== 'Denim');
+            if (data.fabric !== 'Denim') data.wash = '';
+            completeSection('fabric'); 
+            haptic('light'); 
+            autoScroll('section-color'); 
+        }
+        
+        function setWash(wash, btn) {
+            haptic('light');
+            data.wash = wash;
+            document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); });
+            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
+        }
         
         function onColorChange() { data.colorPrimary = document.getElementById('color-primary').value; completeSection('color'); haptic('light'); autoScroll('section-pattern'); }
         
@@ -1587,7 +1687,28 @@
         function setPrintType(type, btn) { haptic('light'); data.printType = type; document.querySelectorAll('.print-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         function setGraphicCat(cat, btn) { haptic('light'); data.graphicCategory = cat; document.querySelectorAll('.graphic-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
 
-        function setSleeve(type, btn) { haptic('light'); data.sleeveType = type; document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); completeSection('sleeve'); }
+        function setSleeveType(type, btn) { 
+            haptic('light'); 
+            data.sleeveType = type; 
+            document.querySelectorAll('.sleeve-type-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); }); 
+            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary'); 
+            // Show/hide sleeve style section
+            const showStyle = type !== 'Sleeveless';
+            document.getElementById('sleeve-style-section').classList.toggle('hidden', !showStyle);
+            if (!showStyle) { data.sleeveStyle = 'N/A'; } 
+            else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = 'Standard'; }
+            completeSection('sleeve'); 
+        }
+        
+        function setSleeveStyle(style, btn) {
+            haptic('light');
+            data.sleeveStyle = style;
+            document.querySelectorAll('.sleeve-style-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); });
+            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
+            // Show measurement notice for Raglan/Dolman
+            const showNotice = style === 'Raglan' || style === 'Dolman';
+            document.getElementById('sleeve-measurement-notice').classList.toggle('hidden', !showNotice);
+        }
         function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
 
@@ -1595,43 +1716,48 @@
         function setHasDefects(has, btn) { 
             haptic('medium'); 
             data.hasDefects = has;
-            if (!has) data.hasFade = false;
+            // NOTE: Does NOT clear fade - fade is now independent
             document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            if (!has) document.querySelectorAll('.fade-toggle-btn').forEach(b => { b.classList.remove('selected'); });
             btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
-            showFadeSection();
+            initDefectSection();
             completeSection('issues');
         }
 
-        function setHasFade(has, btn) {
-            haptic('medium');
-            data.hasFade = has;
-            document.querySelectorAll('.defect-toggle-btn').forEach(b => { 
-                if (!b.textContent.includes('Has Defects')) { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }
-            });
-            btn.classList.toggle('selected', has);
-            showFadeSection();
-            completeSection('issues');
+        function setFade(level, btn) { 
+            haptic('light'); 
+            data.fadeLevel = level; 
+            document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); }); 
+            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary'); 
+            completeSection('fade'); 
         }
-
-        function showFadeSection() {
-            document.getElementById('section-fade').classList.toggle('hidden', !data.hasFade);
-            document.getElementById('defect-section').classList.toggle('hidden', !data.hasDefects);
-        }
-
-        function setFade(level, btn) { haptic('light'); data.fadeLevel = level; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); completeSection('fade'); }
+        
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
         function initDefectSection() {
             const show = data.hasDefects === true;
             document.getElementById('defect-section').classList.toggle('hidden', !show);
             if(show) {
-                document.getElementById('defect-svg-front').innerHTML = SVG_TOP_FRONT;
-                document.getElementById('defect-svg-back').innerHTML = SVG_TOP_BACK;
+                // Select body map based on category and sleeve type (V73 logic)
+                let svgFront, svgBack;
+                if (data.superCategory === 'bottoms') {
+                    if (data.category === 'Shorts') { svgFront = SVG_SHORTS_FRONT; svgBack = SVG_SHORTS_BACK; }
+                    else { svgFront = SVG_PANTS_FRONT; svgBack = SVG_PANTS_BACK; }
+                } else {
+                    // Tops and Outer
+                    if (data.sleeveType === 'Sleeveless' || data.category === 'Vest' || data.category === 'Tank Top') {
+                        svgFront = SVG_SLEEVELESS_FRONT; svgBack = SVG_SLEEVELESS_BACK;
+                    } else if (data.sleeveType === 'Long') {
+                        svgFront = SVG_LONG_FRONT; svgBack = SVG_LONG_BACK;
+                    } else {
+                        svgFront = SVG_SHORT_FRONT; svgBack = SVG_SHORT_BACK;
+                    }
+                }
+                document.getElementById('defect-svg-front').innerHTML = svgFront;
+                document.getElementById('defect-svg-back').innerHTML = svgBack;
                 document.querySelectorAll('.zone-hit').forEach(z => {
                     z.onclick = e => {
                         pendingDefect = { zone: e.target.dataset.zone, side: e.target.dataset.side };
-                        document.getElementById('zone-label').textContent = `${pendingDefect.side.toUpperCase()} • ${pendingDefect.zone.replace('-',' ')}`;
+                        document.getElementById('zone-label').textContent = `${pendingDefect.side.toUpperCase()} • ${pendingDefect.zone.replace(/-/g,' ')}`;
                         document.getElementById('defect-modal').classList.remove('hidden');
                         haptic('light');
                     };
@@ -1728,13 +1854,16 @@
             haptic('light');
         }
 
-        function dismissWeightWarning() { weightWarningDismissed = true; document.getElementById('weight-warning').classList.add('hidden'); haptic('light'); }
-
-        // ============ CAMERA ============
+        // ============ CAMERA (V76: Grid, Stabilizer, Preview Modal) ============
         async function openCamera(mode, subType = null) {
             cameraMode = mode; cameraSubType = subType;
             let label = mode.toUpperCase();
-            if(mode === 'tag') label = subType === 'neck' ? 'NECK TAG' : 'CARE LABEL';
+            if(mode === 'tag') {
+                if (subType === 'neck') label = 'NECK TAG';
+                else if (subType === 'care') label = 'CARE LABEL';
+                else if (subType === 'missing-area') label = 'TAG AREA';
+            }
+            if(mode === 'defect' && pendingDefect) label = `DEFECT: ${pendingDefect.type}`;
             openCameraOverlay(label);
         }
 
@@ -1746,38 +1875,116 @@
                 cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } });
                 document.getElementById('cam-feed').srcObject = cameraStream;
                 document.getElementById('camera-overlay').classList.remove('hidden');
+                startStabilizer();
             } catch(e) { alert('Camera error: ' + e.message); }
         }
 
         function closeCamera() {
             if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
             document.getElementById('camera-overlay').classList.add('hidden');
+            stopStabilizer();
             pendingDefect = null;
+            renderPhotoThumbs();
         }
 
+        function finishPhotos() { closeCamera(); }
+
+        // Stabilizer (V76)
+        function startStabilizer() {
+            isStable = false;
+            updateStabilizerUI(false);
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleMotion);
+            } else {
+                isStable = true;
+                updateStabilizerUI(true);
+            }
+        }
+
+        function handleMotion(event) {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            const dx = Math.abs((acc.x || 0) - lastMotion.x);
+            const dy = Math.abs((acc.y || 0) - lastMotion.y);
+            const dz = Math.abs((acc.z || 0) - lastMotion.z);
+            const totalMovement = dx + dy + dz;
+            lastMotion = { x: acc.x || 0, y: acc.y || 0, z: acc.z || 0 };
+            isStable = totalMovement < 0.5;
+            updateStabilizerUI(isStable);
+        }
+
+        function stopStabilizer() {
+            window.removeEventListener('devicemotion', handleMotion);
+            isStable = false;
+        }
+
+        function updateStabilizerUI(stable) {
+            const dot = document.getElementById('stabilizer-dot');
+            const text = document.getElementById('stabilizer-text');
+            if (dot) dot.style.background = stable ? '#22c55e' : '#ef4444';
+            if (text) text.textContent = stable ? 'STABLE ✓' : 'HOLD STEADY';
+        }
+
+        // Photo capture with preview (V76)
         function capturePhoto() {
-            haptic('success');
+            if (!isStable && navigator.vibrate) navigator.vibrate(100);
+            haptic('light');
             const video = document.getElementById('cam-feed');
             const canvas = document.getElementById('photo-canvas');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const size = Math.min(video.videoWidth, video.videoHeight);
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(video, (video.videoWidth - size) / 2, (video.videoHeight - size) / 2, size, size, 0, 0, size, size);
+            
             canvas.toBlob(blob => {
-                const photo = { dataUrl, blob, timestamp: new Date().toISOString() };
-                if(cameraMode === 'defect' && pendingDefect) {
-                    photo.defectMeta = { ...pendingDefect };
-                    data.defectPhotos.push(photo);
-                    renderDefectMarkers();
-                } else if(cameraMode === 'tag') {
-                    photo.tagType = cameraSubType;
-                    data.tagPhotos.push(photo);
-                } else {
-                    data.mainPhotos.push(photo);
-                    if(data.mainPhotos.length === 1) completeSection('photos');
+                pendingPhoto = { blob, timestamp: new Date().toISOString() };
+                // Show preview modal
+                document.getElementById('preview-image').src = URL.createObjectURL(blob);
+                let modeLabel = cameraMode.toUpperCase();
+                if (cameraMode === 'tag' && cameraSubType) {
+                    if (cameraSubType === 'neck') modeLabel = 'NECK TAG';
+                    else if (cameraSubType === 'care') modeLabel = 'CARE LABEL';
+                    else if (cameraSubType === 'missing-area') modeLabel = 'TAG AREA';
                 }
-                document.getElementById('cam-count').textContent = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length;
-                renderPhotoThumbs();
-            }, 'image/jpeg', 0.85);
+                if (cameraMode === 'defect' && pendingDefect) modeLabel = `DEFECT: ${pendingDefect.type}`;
+                document.getElementById('preview-mode-label').textContent = modeLabel;
+                document.getElementById('photo-preview-modal').classList.remove('hidden');
+                document.getElementById('photo-preview-modal').style.display = 'flex';
+            }, 'image/jpeg', 0.92);
+        }
+
+        function acceptPhoto() {
+            if (!pendingPhoto) return;
+            if (cameraMode === 'main') {
+                if (data.mainPhotos.length === 0) data.timestamps.first_photo = new Date().toISOString();
+                data.mainPhotos.push(pendingPhoto);
+                completeSection('photos');
+            } else if (cameraMode === 'tag') {
+                pendingPhoto.tagType = cameraSubType;
+                data.tagPhotos.push(pendingPhoto);
+            } else if (cameraMode === 'defect' && pendingDefect) {
+                pendingPhoto.defectMeta = { ...pendingDefect };
+                data.defectPhotos.push(pendingPhoto);
+            }
+            document.getElementById('cam-count').textContent = cameraMode === 'main' ? data.mainPhotos.length : cameraMode === 'tag' ? data.tagPhotos.length : data.defectPhotos.length;
+            pendingPhoto = null;
+            document.getElementById('photo-preview-modal').classList.add('hidden');
+            document.getElementById('photo-preview-modal').style.display = 'none';
+            haptic('success');
+            maybeQuickReward();
+            // Auto-close for single-shot modes
+            if (cameraMode === 'defect') { closeCamera(); renderDefectMarkers(); }
+            if (cameraMode === 'tag' && cameraSubType === 'missing-area') closeCamera();
+            updateAllChecks();
+        }
+
+        function rejectPhoto() {
+            pendingPhoto = null;
+            document.getElementById('photo-preview-modal').classList.add('hidden');
+            document.getElementById('photo-preview-modal').style.display = 'none';
+            // Camera stays open for retake
         }
 
         // ============ AUDIO ============
@@ -1882,14 +2089,16 @@
             fd.append('print_type', data.printType);
             fd.append('graphic_category', data.graphicCategory);
             fd.append('sleeve_type', data.sleeveType);
+            fd.append('sleeve_style', data.sleeveStyle);
+            fd.append('wash', data.wash || '');
             fd.append('has_defects', data.hasDefects);
-            fd.append('has_fade', data.hasFade);
             fd.append('fade_level', data.fadeLevel);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
             fd.append('item_weight_oz', data.itemWeightOz);
             fd.append('item_weight_total_oz', data.itemWeightTotalOz);
             fd.append('item_time_sec', itemTime);
+            fd.append('kpi_timestamps_json', JSON.stringify(data.timestamps));
             fd.append('photo_count_main', data.mainPhotos.length);
             fd.append('photo_count_tag', data.tagPhotos.length);
             fd.append('photo_count_defect', data.defectPhotos.length);
