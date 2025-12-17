@@ -266,6 +266,26 @@
             color: var(--color-primary-dark);
         }
         
+        /* Default (pre-selected value that needs confirmation - lighter blue with dashed border) */
+        .btn-default {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 2px dashed #7dd3fc;
+        }
+        .btn-default.selected, .btn-default.confirmed {
+            border: 2px solid var(--color-primary);
+            background: var(--color-primary);
+            color: white;
+            border-style: solid;
+        }
+        
+        /* Confirmed state for any button */
+        .btn-compact.confirmed, .btn-standard.confirmed {
+            border: 2px solid var(--color-primary);
+            background: var(--color-primary);
+            color: white;
+        }
+        
         /* ============ COLOR SWATCHES ============ */
         .color-swatch {
             width: 100%;
@@ -281,6 +301,41 @@
             border-color: var(--color-primary) !important;
             box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
             transform: scale(1.05);
+        }
+        /* V78: Labeled color swatches */
+        .color-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+        }
+        .color-item:active { transform: scale(0.95); }
+        .color-item span {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 2px;
+            text-align: center;
+            line-height: 1.1;
+        }
+        .color-item.selected .color-swatch-labeled {
+            border-color: var(--color-primary) !important;
+            box-shadow: 0 0 0 3px var(--color-primary-light);
+            transform: scale(1.05);
+        }
+        .color-item.selected span {
+            color: var(--color-primary);
+            font-weight: 700;
+        }
+        .color-swatch-labeled {
+            width: 100%;
+            aspect-ratio: 1;
+            min-height: 36px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.15s ease;
         }
         .color-swatch-sm {
             width: 100%;
@@ -886,41 +941,44 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK (V78: Reordered - Color → Pattern → Fabric → Sleeves → Feel) ========== -->
+        <!-- ========== STEP 2: CHECK (V78: Reordered - Color → Pattern → Fabric → Construction) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
-            <!-- COLOR (First) -->
+            <!-- COLOR - Ordered dark to light -->
             <section id="section-color" class="section-card">
                 <label class="section-label">
                     <span id="check-color" class="check-circle">○</span>
                     Color
                 </label>
-                <div class="grid grid-cols-7 gap-2 mb-2">
-                    <button onclick="setColor('Black', this)" class="color-swatch" style="background:#1a1a1a;border:2px solid #444;" title="Black"></button>
-                    <button onclick="setColor('White', this)" class="color-swatch" style="background:#ffffff;border:2px solid #ddd;" title="White"></button>
-                    <button onclick="setColor('Gray', this)" class="color-swatch" style="background:#6b7280;" title="Gray"></button>
-                    <button onclick="setColor('Navy', this)" class="color-swatch" style="background:#1e3a5f;" title="Navy"></button>
-                    <button onclick="setColor('Blue', this)" class="color-swatch" style="background:#3b82f6;" title="Blue"></button>
-                    <button onclick="setColor('Red', this)" class="color-swatch" style="background:#dc2626;" title="Red"></button>
-                    <button onclick="setColor('Green', this)" class="color-swatch" style="background:#16a34a;" title="Green"></button>
+                <!-- Row 1: Darkest -->
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="color-item" onclick="setColor('Black', this)"><div class="color-swatch-labeled" style="background:#1a1a1a;border:2px solid #444;"></div><span>Black</span></div>
+                    <div class="color-item" onclick="setColor('Charcoal', this)"><div class="color-swatch-labeled" style="background:#36454f;"></div><span>Char.</span></div>
+                    <div class="color-item" onclick="setColor('Navy', this)"><div class="color-swatch-labeled" style="background:#1e3a5f;"></div><span>Navy</span></div>
+                    <div class="color-item" onclick="setColor('Burgundy', this)"><div class="color-swatch-labeled" style="background:#722f37;"></div><span>Burg.</span></div>
+                    <div class="color-item" onclick="setColor('Brown', this)"><div class="color-swatch-labeled" style="background:#78350f;"></div><span>Brown</span></div>
+                    <div class="color-item" onclick="setColor('Olive', this)"><div class="color-swatch-labeled" style="background:#556b2f;"></div><span>Olive</span></div>
+                    <div class="color-item" onclick="setColor('Gray', this)"><div class="color-swatch-labeled" style="background:#6b7280;"></div><span>Gray</span></div>
                 </div>
-                <div class="grid grid-cols-7 gap-2 mb-2">
-                    <button onclick="setColor('Yellow', this)" class="color-swatch" style="background:#facc15;" title="Yellow"></button>
-                    <button onclick="setColor('Orange', this)" class="color-swatch" style="background:#f97316;" title="Orange"></button>
-                    <button onclick="setColor('Pink', this)" class="color-swatch" style="background:#ec4899;" title="Pink"></button>
-                    <button onclick="setColor('Purple', this)" class="color-swatch" style="background:#8b5cf6;" title="Purple"></button>
-                    <button onclick="setColor('Brown', this)" class="color-swatch" style="background:#78350f;" title="Brown"></button>
-                    <button onclick="setColor('Beige', this)" class="color-swatch" style="background:#d4b896;" title="Beige"></button>
-                    <button onclick="setColor('Cream', this)" class="color-swatch" style="background:#fffdd0;border:2px solid #ddd;" title="Cream"></button>
+                <!-- Row 2: Medium -->
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="color-item" onclick="setColor('Red', this)"><div class="color-swatch-labeled" style="background:#dc2626;"></div><span>Red</span></div>
+                    <div class="color-item" onclick="setColor('Blue', this)"><div class="color-swatch-labeled" style="background:#3b82f6;"></div><span>Blue</span></div>
+                    <div class="color-item" onclick="setColor('Green', this)"><div class="color-swatch-labeled" style="background:#16a34a;"></div><span>Green</span></div>
+                    <div class="color-item" onclick="setColor('Teal', this)"><div class="color-swatch-labeled" style="background:#0d9488;"></div><span>Teal</span></div>
+                    <div class="color-item" onclick="setColor('Purple', this)"><div class="color-swatch-labeled" style="background:#8b5cf6;"></div><span>Purple</span></div>
+                    <div class="color-item" onclick="setColor('Orange', this)"><div class="color-swatch-labeled" style="background:#f97316;"></div><span>Orange</span></div>
+                    <div class="color-item" onclick="setColor('Pink', this)"><div class="color-swatch-labeled" style="background:#ec4899;"></div><span>Pink</span></div>
                 </div>
-                <div class="grid grid-cols-7 gap-2 mb-3">
-                    <button onclick="setColor('Burgundy', this)" class="color-swatch" style="background:#722f37;" title="Burgundy"></button>
-                    <button onclick="setColor('Teal', this)" class="color-swatch" style="background:#0d9488;" title="Teal"></button>
-                    <button onclick="setColor('Olive', this)" class="color-swatch" style="background:#556b2f;" title="Olive"></button>
-                    <button onclick="setColor('Tan', this)" class="color-swatch" style="background:#d2b48c;" title="Tan"></button>
-                    <button onclick="setColor('Charcoal', this)" class="color-swatch" style="background:#36454f;" title="Charcoal"></button>
-                    <button onclick="setColor('Heather', this)" class="color-swatch" style="background:linear-gradient(135deg,#9ca3af 25%,#6b7280 50%,#9ca3af 75%);" title="Heather"></button>
-                    <button onclick="setColor('Multi', this)" class="color-swatch" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);" title="Multi"></button>
+                <!-- Row 3: Lightest -->
+                <div class="grid grid-cols-7 gap-1 mb-3">
+                    <div class="color-item" onclick="setColor('Heather', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#9ca3af 25%,#6b7280 50%,#9ca3af 75%);"></div><span>Heath.</span></div>
+                    <div class="color-item" onclick="setColor('Tan', this)"><div class="color-swatch-labeled" style="background:#d2b48c;"></div><span>Tan</span></div>
+                    <div class="color-item" onclick="setColor('Beige', this)"><div class="color-swatch-labeled" style="background:#d4b896;"></div><span>Beige</span></div>
+                    <div class="color-item" onclick="setColor('Yellow', this)"><div class="color-swatch-labeled" style="background:#facc15;"></div><span>Yellow</span></div>
+                    <div class="color-item" onclick="setColor('Cream', this)"><div class="color-swatch-labeled" style="background:#fffdd0;border:2px solid #ddd;"></div><span>Cream</span></div>
+                    <div class="color-item" onclick="setColor('White', this)"><div class="color-swatch-labeled" style="background:#ffffff;border:2px solid #ddd;"></div><span>White</span></div>
+                    <div class="color-item" onclick="setColor('Multi', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);"></div><span>Multi</span></div>
                 </div>
                 <div id="selected-color" class="text-center text-slate-800 text-lg font-bold mb-2"></div>
                 <button onclick="toggleSecondaryColor()" id="add-color-btn" 
@@ -950,15 +1008,15 @@
                 </div>
             </section>
             
-            <!-- PATTERN (Second) -->
+            <!-- PATTERN (Second) - Simplified, no print type or graphic category -->
             <section id="section-pattern" class="section-card">
                 <label class="section-label">
                     <span id="check-pattern" class="check-circle">○</span>
                     Pattern
                 </label>
                 <div id="pattern-heroes" class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-secondary pattern-btn">🎨 Graphic</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-tertiary pattern-btn">Solid</button>
+                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-tertiary pattern-btn">🎨 Graphic</button>
                 </div>
                 <div id="pattern-common" class="grid grid-cols-4 gap-2 mb-2">
                     <button onclick="setPattern('Striped', this)" class="btn-compact btn-tertiary pattern-btn">Striped</button>
@@ -976,39 +1034,6 @@
                     <button onclick="setPattern('Animal', this)" class="btn-compact btn-tertiary pattern-btn">Animal</button>
                     <button onclick="setPattern('Geometric', this)" class="btn-compact btn-tertiary pattern-btn">Geo</button>
                     <button onclick="setPattern('Other', this)" class="btn-compact btn-tertiary pattern-btn">Other</button>
-                </div>
-                
-                <div id="print-type-section" class="hidden nested-section nested-section-indigo mt-3">
-                    <label class="nested-label text-indigo-700">Print Type</label>
-                    <div class="grid grid-cols-5 gap-2 mb-2">
-                        <button onclick="setPrintType('Screen', this)" class="btn-compact btn-tertiary print-btn">Screen</button>
-                        <button onclick="setPrintType('Heat', this)" class="btn-compact btn-tertiary print-btn">Heat</button>
-                        <button onclick="setPrintType('Puff', this)" class="btn-compact btn-tertiary print-btn">Puff</button>
-                        <button onclick="setPrintType('DTG', this)" class="btn-compact btn-tertiary print-btn">DTG</button>
-                        <button onclick="setPrintType('AOP', this)" class="btn-compact btn-tertiary print-btn">AOP</button>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setPrintType('Patch', this)" class="btn-compact btn-tertiary print-btn">Patch</button>
-                        <button onclick="setPrintType('Painted', this)" class="btn-compact btn-tertiary print-btn">Paint</button>
-                        <button onclick="setPrintType('Emb', this)" class="btn-compact btn-tertiary print-btn">Emb</button>
-                        <button onclick="setPrintType('Other', this)" class="btn-compact btn-tertiary print-btn">Other</button>
-                    </div>
-                </div>
-                
-                <div id="graphic-cat-section" class="hidden nested-section nested-section-violet mt-3">
-                    <label class="nested-label text-violet-700">Graphic Category</label>
-                    <div class="grid grid-cols-4 gap-2 mb-2">
-                        <button onclick="setGraphicCat('Band', this)" class="btn-compact btn-tertiary graphic-btn">Band</button>
-                        <button onclick="setGraphicCat('Movie/TV', this)" class="btn-compact btn-tertiary graphic-btn">Movie</button>
-                        <button onclick="setGraphicCat('Sports', this)" class="btn-compact btn-tertiary graphic-btn">Sports</button>
-                        <button onclick="setGraphicCat('Brand', this)" class="btn-compact btn-tertiary graphic-btn">Brand</button>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setGraphicCat('Art', this)" class="btn-compact btn-tertiary graphic-btn">Art</button>
-                        <button onclick="setGraphicCat('Tourist', this)" class="btn-compact btn-tertiary graphic-btn">Tourist</button>
-                        <button onclick="setGraphicCat('Humor', this)" class="btn-compact btn-tertiary graphic-btn">Humor</button>
-                        <button onclick="setGraphicCat('Other', this)" class="btn-compact btn-tertiary graphic-btn">Other</button>
-                    </div>
                 </div>
             </section>
             
@@ -1095,87 +1120,76 @@
                 </div>
             </section>
             
-            <!-- SLEEVE (Fourth) -->
-            <section id="section-sleeve" class="section-card hidden">
+            <!-- CONSTRUCTION PROFILE (Sleeves + Stitch combined) -->
+            <section id="section-construction" class="section-card hidden">
                 <label class="section-label">
-                    <span id="check-sleeve" class="check-circle">○</span>
-                    Sleeves
+                    <span id="check-construction" class="check-circle">○</span>
+                    Construction Profile
                 </label>
+                
+                <!-- Sleeve Length -->
                 <div class="text-label text-slate-400 font-bold mb-2">Sleeve Length</div>
                 <div class="grid grid-cols-4 gap-2 mb-3">
-                    <button onclick="setSleeveType('Short', this)" class="btn-compact btn-secondary selected sleeve-type-btn">Short</button>
-                    <button onclick="setSleeveType('Long', this)" class="btn-compact btn-tertiary sleeve-type-btn">Long</button>
-                    <button onclick="setSleeveType('3/4', this)" class="btn-compact btn-tertiary sleeve-type-btn">3/4</button>
-                    <button onclick="setSleeveType('Sleeveless', this)" class="btn-compact btn-tertiary sleeve-type-btn">Sleeveless</button>
+                    <button onclick="setSleeveType('Short', this)" id="btn-sleeve-short" class="btn-compact btn-tertiary sleeve-type-btn">Short</button>
+                    <button onclick="setSleeveType('Long', this)" id="btn-sleeve-long" class="btn-compact btn-tertiary sleeve-type-btn">Long</button>
+                    <button onclick="setSleeveType('3/4', this)" id="btn-sleeve-34" class="btn-compact btn-tertiary sleeve-type-btn">3/4</button>
+                    <button onclick="setSleeveType('Sleeveless', this)" id="btn-sleeve-none" class="btn-compact btn-tertiary sleeve-type-btn">Sleeveless</button>
                 </div>
                 
+                <!-- Cutoff Section (conditional) -->
                 <div id="cutoff-section" class="hidden nested-section nested-section-amber mt-3 mb-3">
                     <label class="nested-label text-amber-700">Is this a cut-off?</label>
                     <div class="grid grid-cols-2 gap-2">
-                        <button onclick="setCutoffType('diy', this)" class="btn-standard btn-secondary cutoff-btn flex flex-col items-center py-3">
+                        <button onclick="setCutoffType('diy', this)" class="btn-standard btn-tertiary cutoff-btn flex flex-col items-center py-3">
                             <span class="text-xl">✂️</span>
                             <span class="text-label font-bold">DIY Cut-off</span>
                         </button>
-                        <button onclick="setCutoffType('manufactured', this)" class="btn-standard btn-secondary cutoff-btn flex flex-col items-center py-3">
+                        <button onclick="setCutoffType('manufactured', this)" class="btn-standard btn-tertiary cutoff-btn flex flex-col items-center py-3">
                             <span class="text-xl">🏭</span>
                             <span class="text-label font-bold">Manufactured</span>
                         </button>
                     </div>
-                    <div class="text-xs text-amber-600 mt-2">💡 This stays categorized as T-Shirt for searchability</div>
                 </div>
                 
+                <!-- Sleeve Style (hidden when sleeveless) -->
                 <div id="sleeve-style-section">
                     <div class="text-label text-slate-400 font-bold mb-2">Sleeve Style</div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setSleeveStyle('Standard', this)" class="btn-compact btn-secondary selected sleeve-style-btn">Standard</button>
-                        <button onclick="setSleeveStyle('Raglan', this)" class="btn-compact btn-tertiary sleeve-style-btn">Raglan ⭐</button>
-                        <button onclick="setSleeveStyle('Dolman', this)" class="btn-compact btn-tertiary sleeve-style-btn">Dolman</button>
-                        <button onclick="setSleeveStyle('Other', this)" class="btn-compact btn-tertiary sleeve-style-btn">Other</button>
+                    <div class="grid grid-cols-4 gap-2 mb-3">
+                        <button onclick="setSleeveStyle('Standard', this)" id="btn-style-standard" class="btn-compact btn-tertiary sleeve-style-btn">Standard</button>
+                        <button onclick="setSleeveStyle('Raglan', this)" id="btn-style-raglan" class="btn-compact btn-tertiary sleeve-style-btn">Raglan</button>
+                        <button onclick="setSleeveStyle('Dolman', this)" id="btn-style-dolman" class="btn-compact btn-tertiary sleeve-style-btn">Dolman</button>
+                        <button onclick="setSleeveStyle('Other', this)" id="btn-style-other" class="btn-compact btn-tertiary sleeve-style-btn">Other</button>
                     </div>
                 </div>
                 
-                <div id="sleeve-measurement-notice" class="hidden mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
-                    <div class="flex items-start gap-2">
-                        <span class="text-lg">⚠️</span>
-                        <div>
-                            <div class="text-xs font-bold text-amber-800">Special Sleeve Style</div>
-                            <div class="text-xs text-amber-700 mt-1">No shoulder measurement needed — measure armpit to cuff instead</div>
-                        </div>
+                <!-- Stitch Type (for T-Shirts only) -->
+                <div id="stitch-section">
+                    <div class="text-label text-slate-400 font-bold mb-2">Stitch Type</div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setStitchType('Single', this)" id="btn-stitch-single" class="btn-standard btn-tertiary stitch-btn">Single Stitch</button>
+                        <button onclick="setStitchType('Double', this)" id="btn-stitch-double" class="btn-standard btn-tertiary stitch-btn">Double Stitch</button>
                     </div>
                 </div>
             </section>
             
-            <!-- STITCH TYPE (For T-Shirts) -->
-            <section id="section-stitch" class="section-card hidden">
-                <label class="section-label">
-                    <span class="text-amber-500">⭐</span>
-                    Stitch Type <span class="text-slate-400 font-normal">(Hem & Sleeves)</span>
-                </label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setStitchType('Single', this)" class="btn-standard btn-hero stitch-btn flex items-center justify-center gap-2">
-                        <span class="text-lg">🔥</span> Single Stitch
-                    </button>
-                    <button onclick="setStitchType('Double', this)" class="btn-standard btn-secondary stitch-btn">Double Stitch</button>
-                </div>
-                <div class="text-xs text-amber-600 mt-2">💡 Single stitch = pre-1995, higher value for vintage tees</div>
-            </section>
-            
-            <!-- FABRIC FEEL (Fifth - Fixed label) -->
+            <!-- FABRIC FEEL -->
             <section id="section-feel" class="section-card">
                 <label class="section-label">
                     <span id="check-feel" class="check-circle">○</span>
                     Fabric Feel
                 </label>
+                <div class="text-label text-slate-400 font-bold mb-2">Thickness</div>
                 <div class="grid grid-cols-4 gap-2 mb-3">
-                    <button onclick="setThickness('Paper Thin', this)" class="btn-compact btn-secondary thickness-btn">Paper</button>
-                    <button onclick="setThickness('Light', this)" class="btn-compact btn-secondary thickness-btn">Light</button>
-                    <button onclick="setThickness('Standard', this)" class="btn-compact btn-hero thickness-btn selected">Standard</button>
-                    <button onclick="setThickness('Heavy', this)" class="btn-compact btn-secondary thickness-btn">Heavy</button>
+                    <button onclick="setThickness('Paper Thin', this)" class="btn-compact btn-tertiary thickness-btn">Paper</button>
+                    <button onclick="setThickness('Light', this)" class="btn-compact btn-tertiary thickness-btn">Light</button>
+                    <button onclick="setThickness('Standard', this)" class="btn-compact btn-tertiary thickness-btn">Standard</button>
+                    <button onclick="setThickness('Heavy', this)" class="btn-compact btn-tertiary thickness-btn">Heavy</button>
                 </div>
+                <div class="text-label text-slate-400 font-bold mb-2">Layers</div>
                 <div class="grid grid-cols-3 gap-2">
-                    <button onclick="setConstruction('Single', this)" class="btn-compact btn-hero construction-btn selected">Single</button>
-                    <button onclick="setConstruction('Reversible', this)" class="btn-compact btn-secondary construction-btn">Reversible</button>
-                    <button onclick="setConstruction('Lined', this)" class="btn-compact btn-secondary construction-btn">Lined</button>
+                    <button onclick="setConstruction('Single', this)" class="btn-compact btn-tertiary construction-btn">Single</button>
+                    <button onclick="setConstruction('Reversible', this)" class="btn-compact btn-tertiary construction-btn">Reversible</button>
+                    <button onclick="setConstruction('Lined', this)" class="btn-compact btn-tertiary construction-btn">Lined</button>
                 </div>
             </section>
             
@@ -1234,11 +1248,11 @@
             <!-- FADE LEVEL -->
             <section id="section-fade" class="section-card">
                 <label class="section-label">
-                    <span id="check-fade" class="check-circle complete">✓</span>
+                    <span id="check-fade" class="check-circle">○</span>
                     Fade Level
                 </label>
                 <div class="grid grid-cols-4 gap-2">
-                    <button onclick="setFade('None', this)" class="btn-compact btn-secondary selected fade-btn">None</button>
+                    <button onclick="setFade('None', this)" class="btn-compact btn-tertiary fade-btn">None</button>
                     <button onclick="setFade('Light', this)" class="btn-compact btn-tertiary fade-btn">Light</button>
                     <button onclick="setFade('Sun Fade', this)" class="btn-compact btn-tertiary fade-btn">Sun Fade</button>
                     <button onclick="setFade('Heavy', this)" class="btn-compact btn-tertiary fade-btn">Heavy</button>
@@ -1342,7 +1356,7 @@
                     </div>
                     <div id="summary-snap" class="text-slate-600 text-label leading-relaxed"></div>
                 </div>
-                <div id="card-weight" class="review-card card-yellow" style="cursor: default;">
+                <div id="card-weight" onclick="goToStep(3); setTimeout(() => document.getElementById('section-weight').scrollIntoView({behavior:'smooth',block:'center'}), 200);" class="review-card card-yellow">
                     <div class="flex items-center gap-2 mb-1">
                         <span id="icon-weight">⚠️</span>
                         <span class="font-bold text-sm">WEIGHT</span>
@@ -1478,10 +1492,10 @@
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
             fabric: '', wash: '', colorPrimary: '', colorSecondary: '',
-            pattern: 'Solid', printType: '', graphicCategory: '',
-            sleeveType: 'Short', sleeveStyle: 'Standard', thickness: 'Standard', construction: 'Single',
+            pattern: '', printType: '', graphicCategory: '',
+            sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
             isCutoff: false, cutoffType: '', stitchType: '', // V78: New fields
-            hasDefects: false, fadeLevel: 'None',
+            hasDefects: null, fadeLevel: '',
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
@@ -1647,6 +1661,14 @@
         }
 
         function updateAllChecks() {
+            // V78: Construction check combines sleeve + stitch
+            const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
+            const constructionOk = data.superCategory === 'bottoms' || (
+                !!data.sleeveType && 
+                (data.sleeveType === 'Sleeveless' || !!data.sleeveStyle) &&
+                (!needsStitch || !!data.stitchType)
+            );
+            
             const checks = {
                 category: !!data.category,
                 sku: !!data.sku,
@@ -1654,9 +1676,10 @@
                 fabric: !!data.fabric,
                 color: !!data.colorPrimary,
                 pattern: data.fabric === 'Denim' || !!data.pattern,
-                sleeve: !!data.sleeveType || data.superCategory === 'bottoms',
-                issues: true,
-                fade: true,
+                construction: constructionOk,
+                feel: !!data.thickness && !!data.construction,
+                issues: data.hasDefects !== null,
+                fade: !!data.fadeLevel,
                 photos: data.mainPhotos.length > 0,
                 measure: !!data.audioMeasure,
                 weight: data.itemWeightTotalOz > 0
@@ -1673,10 +1696,7 @@
         }
 
         function autoScroll(sectionId) {
-            setTimeout(() => {
-                const el = document.getElementById(sectionId);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 150);
+            // V78: Auto-scroll disabled per user request
         }
 
         // ============ NAVIGATION ============
@@ -1694,8 +1714,8 @@
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            // V76: Show sleeve for tops AND outer (not just tops)
-            if(step===2) { document.getElementById('section-sleeve').classList.toggle('hidden', data.superCategory === 'bottoms'); }
+            // V78: Show construction profile for tops and outer (not bottoms)
+            if(step===2) { document.getElementById('section-construction').classList.toggle('hidden', data.superCategory === 'bottoms'); }
             if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1753,14 +1773,83 @@
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             
-            // V78: Show stitch section for T-Shirts
-            const showStitch = cat === 'T-Shirt';
-            document.getElementById('section-stitch').classList.toggle('hidden', !showStitch);
+            // V78: Configure construction profile defaults based on category
+            applyConstructionDefaults(cat);
             
             // V78: Update pattern hero buttons based on category
             updatePatternHeroes(cat);
             
             autoScroll('section-sku');
+        }
+        
+        // V78: Apply construction profile defaults based on category
+        function applyConstructionDefaults(cat) {
+            // Reset all buttons to tertiary
+            document.querySelectorAll('.sleeve-type-btn, .sleeve-style-btn, .stitch-btn').forEach(b => {
+                b.classList.remove('btn-default', 'btn-hero', 'btn-secondary', 'selected', 'confirmed');
+                b.classList.add('btn-tertiary');
+            });
+            
+            // Define defaults by category
+            const defaults = {
+                'T-Shirt': { sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: 'Single', showStitch: true },
+                'Jersey': { sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: 'Single', showStitch: true },
+                'Sweatshirt': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Hoodie': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Button Shirt': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Polo': { sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Sweater': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Cardigan': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Tank Top': { sleeveLength: 'Sleeveless', sleeveStyle: null, stitch: null, showStitch: false },
+                'Vest': { sleeveLength: 'Sleeveless', sleeveStyle: null, stitch: null, showStitch: false },
+                'Jacket': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Coat': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Blouse': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+                'Tunic': { sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false },
+            };
+            
+            const def = defaults[cat] || { sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: null, showStitch: false };
+            
+            // Apply sleeve length default (light blue dashed = needs confirmation)
+            const sleeveBtnMap = { 'Short': 'btn-sleeve-short', 'Long': 'btn-sleeve-long', '3/4': 'btn-sleeve-34', 'Sleeveless': 'btn-sleeve-none' };
+            if (def.sleeveLength && sleeveBtnMap[def.sleeveLength]) {
+                const sleeveBtn = document.getElementById(sleeveBtnMap[def.sleeveLength]);
+                if (sleeveBtn) {
+                    sleeveBtn.classList.remove('btn-tertiary');
+                    sleeveBtn.classList.add('btn-default');
+                }
+            }
+            
+            // Apply sleeve style default
+            const styleBtnMap = { 'Standard': 'btn-style-standard', 'Raglan': 'btn-style-raglan', 'Dolman': 'btn-style-dolman', 'Other': 'btn-style-other' };
+            if (def.sleeveStyle && styleBtnMap[def.sleeveStyle]) {
+                const styleBtn = document.getElementById(styleBtnMap[def.sleeveStyle]);
+                if (styleBtn) {
+                    styleBtn.classList.remove('btn-tertiary');
+                    styleBtn.classList.add('btn-default');
+                }
+            }
+            
+            // Show/hide sleeve style section based on sleeveless
+            const styleSection = document.getElementById('sleeve-style-section');
+            if (styleSection) {
+                styleSection.classList.toggle('hidden', def.sleeveLength === 'Sleeveless');
+            }
+            
+            // Show/hide stitch section (only for T-Shirts and Jerseys)
+            const stitchSection = document.getElementById('stitch-section');
+            if (stitchSection) {
+                stitchSection.classList.toggle('hidden', !def.showStitch);
+            }
+            
+            // Apply stitch default
+            if (def.stitch) {
+                const stitchBtn = document.getElementById(def.stitch === 'Single' ? 'btn-stitch-single' : 'btn-stitch-double');
+                if (stitchBtn) {
+                    stitchBtn.classList.remove('btn-tertiary');
+                    stitchBtn.classList.add('btn-default');
+                }
+            }
         }
         
         // V78: Update pattern hero buttons based on category
@@ -1769,34 +1858,34 @@
             let heroHTML = '';
             
             if (cat === 'T-Shirt' || cat === 'Jersey') {
-                // T-Shirts: Graphic is hero
+                // T-Shirts: Graphic is default (needs confirmation)
                 heroHTML = `
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-hero pattern-btn">🎨 Graphic</button>
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-secondary pattern-btn">Solid</button>
+                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-default pattern-btn">🎨 Graphic</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-tertiary pattern-btn">Solid</button>
                 `;
             } else if (cat === 'Button Shirt') {
-                // Button shirts: Plaid, Solid, Striped are common
+                // Button shirts: Solid is default
                 heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
-                    <button onclick="setPattern('Plaid', this)" class="btn-standard btn-secondary pattern-btn">Plaid</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
+                    <button onclick="setPattern('Plaid', this)" class="btn-standard btn-tertiary pattern-btn">Plaid</button>
                 `;
             } else if (cat === 'Sweatshirt' || cat === 'Hoodie') {
-                // Sweatshirts/Hoodies: Solid is hero, Color Block secondary
+                // Sweatshirts/Hoodies: Solid is default
                 heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
-                    <button onclick="setPattern('Color Block', this)" class="btn-standard btn-secondary pattern-btn">Color Block</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
+                    <button onclick="setPattern('Color Block', this)" class="btn-standard btn-tertiary pattern-btn">Color Block</button>
                 `;
             } else if (cat === 'Jacket' || cat === 'Coat' || cat === 'Vest') {
-                // Outerwear: Solid is hero
+                // Outerwear: Solid is default
                 heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
-                    <button onclick="setPattern('Camo', this)" class="btn-standard btn-secondary pattern-btn">Camo</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
+                    <button onclick="setPattern('Camo', this)" class="btn-standard btn-tertiary pattern-btn">Camo</button>
                 `;
             } else {
-                // Default: Solid hero, Graphic secondary
+                // Default: Solid is default
                 heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-secondary pattern-btn">🎨 Graphic</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
+                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-tertiary pattern-btn">🎨 Graphic</button>
                 `;
             }
             heroContainer.innerHTML = heroHTML;
@@ -1911,14 +2000,18 @@
             btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
         }
         
-        function setColor(color, btn) {
+        function setColor(color, element) {
             haptic('light');
             data.colorPrimary = color;
+            // V78: Handle both old color-swatch and new color-item
+            document.querySelectorAll('.color-item').forEach(b => b.classList.remove('selected'));
             document.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            // Find the color-item parent if clicked on swatch directly
+            const colorItem = element.classList.contains('color-item') ? element : element.closest('.color-item');
+            if (colorItem) colorItem.classList.add('selected');
+            else if (element.classList.contains('color-swatch')) element.classList.add('selected');
             document.getElementById('selected-color').textContent = color;
             completeSection('color');
-            autoScroll('section-pattern');
         }
         
         function setSecondaryColor(color, btn) {
@@ -1955,51 +2048,47 @@
         function setPattern(pat, btn) { 
             haptic('light'); 
             data.pattern = pat; 
-            document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary','btn-tertiary'); }); 
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-tertiary');
-            
-            const showPrint = ['Graphic', 'Embroidered'].includes(pat);
-            document.getElementById('print-type-section').classList.toggle('hidden', !showPrint);
-            document.getElementById('graphic-cat-section').classList.toggle('hidden', pat !== 'Graphic');
-            
-            if (pat === 'Embroidered') { data.printType = 'Emb'; }
-            else if (pat === 'Graphic') { data.printType = 'Screen'; }
-            else { data.printType = ''; }
-            
+            document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero','confirmed'); b.classList.add('btn-tertiary'); }); 
+            btn.classList.add('selected','btn-hero','confirmed'); btn.classList.remove('btn-tertiary');
             completeSection('pattern');
         }
-
-        function setPrintType(type, btn) { haptic('light'); data.printType = type; document.querySelectorAll('.print-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
-        function setGraphicCat(cat, btn) { haptic('light'); data.graphicCategory = cat; document.querySelectorAll('.graphic-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
 
         // V78: Updated setSleeveType with cutoff section for T-Shirts
         function setSleeveType(type, btn) { 
             haptic('light'); 
             data.sleeveType = type; 
-            document.querySelectorAll('.sleeve-type-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); }); 
-            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary'); 
+            // Remove default/tertiary, add confirmed (solid blue)
+            document.querySelectorAll('.sleeve-type-btn').forEach(b => { 
+                b.classList.remove('selected','btn-secondary','btn-default','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            }); 
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default'); 
+            
             // Show/hide sleeve style section
             const showStyle = type !== 'Sleeveless';
             document.getElementById('sleeve-style-section').classList.toggle('hidden', !showStyle);
             if (!showStyle) { data.sleeveStyle = 'N/A'; } 
-            else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = 'Standard'; }
+            else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = ''; }
             
             // V78: Show cutoff section for T-Shirt + Sleeveless
             const showCutoff = type === 'Sleeveless' && data.category === 'T-Shirt';
             document.getElementById('cutoff-section').classList.toggle('hidden', !showCutoff);
             if (!showCutoff) { data.isCutoff = false; data.cutoffType = ''; }
             
-            completeSection('sleeve'); 
+            checkConstructionComplete();
         }
         
         function setSleeveStyle(style, btn) {
             haptic('light');
             data.sleeveStyle = style;
-            document.querySelectorAll('.sleeve-style-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); });
-            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
-            // Show measurement notice for Raglan/Dolman
-            const showNotice = style === 'Raglan' || style === 'Dolman';
-            document.getElementById('sleeve-measurement-notice').classList.toggle('hidden', !showNotice);
+            document.querySelectorAll('.sleeve-style-btn').forEach(b => { 
+                b.classList.remove('selected','btn-secondary','btn-default','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            });
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default');
+            checkConstructionComplete();
         }
         
         // V78: Cutoff type for sleeveless T-Shirts
@@ -2007,20 +2096,37 @@
             haptic('light');
             data.isCutoff = type === 'diy';
             data.cutoffType = type;
-            document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero','confirmed'); b.classList.add('btn-tertiary'); });
+            btn.classList.add('selected','confirmed'); btn.classList.remove('btn-tertiary');
         }
         
         // V78: Stitch type for T-Shirts (single vs double)
         function setStitchType(type, btn) {
             haptic('light');
             data.stitchType = type;
-            document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.stitch-btn').forEach(b => { 
+                b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            });
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default');
+            checkConstructionComplete();
         }
         
-        function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
-        function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        // V78: Check if construction profile is complete
+        function checkConstructionComplete() {
+            const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
+            const sleeveOk = !!data.sleeveType;
+            const styleOk = data.sleeveType === 'Sleeveless' || !!data.sleeveStyle;
+            const stitchOk = !needsStitch || !!data.stitchType;
+            
+            if (sleeveOk && styleOk && stitchOk) {
+                completeSection('construction');
+            }
+        }
+        
+        function setThickness(t, btn) { haptic('light'); data.thickness = t; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-secondary'); b.classList.add('btn-tertiary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-tertiary'); completeSection('feel'); }
+        function setConstruction(c, btn) { haptic('light'); data.construction = c; document.querySelectorAll('.construction-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-secondary'); b.classList.add('btn-tertiary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-tertiary'); completeSection('feel'); }
 
         // ============ STEP 3: SNAP ============
         function setHasDefects(has, btn) { 
