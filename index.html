@@ -63,7 +63,7 @@
             --touch-min: 44px;
             
             /* Layout */
-            --header-height: calc(185px + env(safe-area-inset-top, 0px));
+            --header-height: calc(235px + env(safe-area-inset-top, 0px));
             
             /* Typography - ONLY 3 sizes for small text */
             --text-xs: 11px;   /* Compact labels, badges */
@@ -93,8 +93,8 @@
         /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
-        /* V78: Fixed safe-top - 20px minimum for status bar, plus any safe-area-inset */
-        .safe-top { padding-top: calc(20px + env(safe-area-inset-top, 0px)); }
+        /* V78: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
+        .safe-top { padding-top: calc(12px + env(safe-area-inset-top, 20px)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
         /* ============ SECTION LABELS - CONSISTENT ============ */
@@ -616,7 +616,7 @@
         
         /* ============ RESPONSIVE ============ */
         @media (max-width: 360px) {
-            :root { --header-height: calc(192px + env(safe-area-inset-top, 0px)); }
+            :root { --header-height: calc(240px + env(safe-area-inset-top, 0px)); }
             .stat-value { font-size: 14px; }
             .section-card { padding: var(--space-md); }
         }
@@ -747,6 +747,28 @@
             
             <div id="motivation-banner" class="motivation-banner hidden"></div>
             
+            <!-- SKU (V78: Moved to first) -->
+            <section id="section-sku" class="section-card">
+                <label class="section-label">
+                    <span id="check-sku" class="check-circle">○</span>
+                    SKU
+                    <span class="text-slate-400 text-label font-normal ml-1">Scan to start timer ⏱️</span>
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." 
+                           oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" 
+                           class="form-input flex-1 text-xl font-mono bg-slate-50">
+                    <button onclick="toggleScanner()" 
+                            class="btn-standard bg-slate-800 text-white min-w-[52px] active:scale-95 shadow-md">
+                        <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-slate-800 relative bg-black" style="height: 180px;">
+                    <div id="reader" class="w-full h-full"></div>
+                    <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-label font-bold px-4 py-2 rounded-lg shadow min-h-[36px]">✕ CLOSE</button>
+                </div>
+            </section>
+            
             <!-- CATEGORY -->
             <section id="section-category" class="section-card">
                 <label class="section-label">
@@ -778,28 +800,6 @@
                                 class="w-full text-slate-400 text-label py-3 mb-2 min-h-[44px]">+ Other types</button>
                         <div id="other-cats-grid" class="hidden grid grid-cols-4 gap-2"></div>
                     </div>
-                </div>
-            </section>
-            
-            <!-- SKU -->
-            <section id="section-sku" class="section-card">
-                <label class="section-label">
-                    <span id="check-sku" class="check-circle">○</span>
-                    SKU
-                    <span class="text-slate-400 text-label font-normal ml-1">Scan to start timer ⏱️</span>
-                </label>
-                <div class="flex gap-2">
-                    <input type="number" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." 
-                           oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" 
-                           class="form-input flex-1 text-xl font-mono bg-slate-50">
-                    <button onclick="toggleScanner()" 
-                            class="btn-standard bg-slate-800 text-white min-w-[52px] active:scale-95 shadow-md">
-                        <i data-lucide="scan-barcode" class="w-6 h-6"></i>
-                    </button>
-                </div>
-                <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-slate-800 relative bg-black" style="height: 180px;">
-                    <div id="reader" class="w-full h-full"></div>
-                    <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-label font-bold px-4 py-2 rounded-lg shadow min-h-[36px]">✕ CLOSE</button>
                 </div>
             </section>
             
@@ -886,95 +886,10 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK ========== -->
+        <!-- ========== STEP 2: CHECK (V78: Reordered - Color → Pattern → Fabric → Sleeves → Feel) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
-            <!-- FABRIC -->
-            <section id="section-fabric" class="section-card">
-                <label class="section-label">
-                    <span id="check-fabric" class="check-circle">○</span>
-                    Fabric
-                </label>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setFabric('100% Cotton', this)" class="btn-standard btn-secondary fabric-btn">100% Cotton</button>
-                    <button onclick="setFabric('50/50', this)" class="btn-standard btn-secondary fabric-btn">50/50 Blend</button>
-                </div>
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button onclick="setFabric('100% Polyester', this)" class="btn-compact btn-tertiary fabric-btn">Polyester</button>
-                    <button onclick="setFabric('Tri-Blend', this)" class="btn-compact btn-tertiary fabric-btn">Tri-Blend</button>
-                    <button onclick="setFabric('Denim', this)" class="btn-compact btn-tertiary fabric-btn">Denim</button>
-                </div>
-                <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select text-sm">
-                    <option value="" selected>Other fabrics...</option>
-                    <option value="Fleece">Fleece</option>
-                    <option value="Corduroy">Corduroy</option>
-                    <option value="Wool">Wool</option>
-                    <option value="Linen">Linen</option>
-                    <option value="Rayon">Rayon</option>
-                    <option value="Nylon">Nylon</option>
-                    <option value="Silk">Silk</option>
-                    <option value="Custom">Custom Blend...</option>
-                </select>
-                
-                <!-- Custom Blend Builder (V78: Dropdown pickers) -->
-                <div id="custom-blend-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <label class="text-label font-bold text-blue-700 mb-2 block">Build Your Blend</label>
-                    <div class="flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-1" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 1...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-1" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <div class="flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-2" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 2...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-2" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <button onclick="toggleThirdMaterial()" id="btn-add-mat-3" class="text-xs text-blue-600 font-medium mb-2">+ Add 3rd material (tri-blend)</button>
-                    <div id="blend-row-3" class="hidden flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-3" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 3...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-3" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <div id="blend-preview" class="mt-2 p-2 bg-white rounded-lg border border-blue-300 text-center">
-                        <span class="text-sm text-slate-400">Select materials above</span>
-                    </div>
-                    <input type="hidden" id="fabric-custom" value="">
-                </div>
-                
-                <!-- WASH SECTION (V76: Shows when Denim) -->
-                <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setWash('Light', this)" class="btn-compact btn-tertiary wash-btn">Light</button>
-                        <button onclick="setWash('Medium', this)" class="btn-compact btn-tertiary wash-btn">Medium</button>
-                        <button onclick="setWash('Dark', this)" class="btn-compact btn-tertiary wash-btn">Dark</button>
-                        <button onclick="setWash('Raw', this)" class="btn-compact btn-tertiary wash-btn">Raw</button>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2 mt-2">
-                        <button onclick="setWash('Acid', this)" class="btn-compact btn-tertiary wash-btn">Acid</button>
-                        <button onclick="setWash('Stone', this)" class="btn-compact btn-tertiary wash-btn">Stone</button>
-                        <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
-                        <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- COLOR (V76: Visual color swatches) -->
+            <!-- COLOR (First) -->
             <section id="section-color" class="section-card">
                 <label class="section-label">
                     <span id="check-color" class="check-circle">○</span>
@@ -1035,28 +950,25 @@
                 </div>
             </section>
             
-            <!-- PATTERN + PRINT (V78: Category-specific hero patterns) -->
+            <!-- PATTERN (Second) -->
             <section id="section-pattern" class="section-card">
                 <label class="section-label">
                     <span id="check-pattern" class="check-circle">○</span>
                     Pattern
                 </label>
-                <!-- Dynamic hero patterns based on category -->
                 <div id="pattern-heroes" class="grid grid-cols-2 gap-2 mb-2">
                     <button onclick="setPattern('Solid', this)" class="btn-standard btn-hero pattern-btn">Solid</button>
                     <button onclick="setPattern('Graphic', this)" class="btn-standard btn-secondary pattern-btn">🎨 Graphic</button>
                 </div>
-                <!-- Common patterns -->
                 <div id="pattern-common" class="grid grid-cols-4 gap-2 mb-2">
                     <button onclick="setPattern('Striped', this)" class="btn-compact btn-tertiary pattern-btn">Striped</button>
-                    <button onclick="setPattern('Color Block', this)" class="btn-compact btn-tertiary pattern-btn">Color Block</button>
                     <button onclick="setPattern('Plaid', this)" class="btn-compact btn-tertiary pattern-btn">Plaid</button>
                     <button onclick="setPattern('Tie Dye', this)" class="btn-compact btn-tertiary pattern-btn">Tie Dye</button>
+                    <button onclick="setPattern('Camo', this)" class="btn-compact btn-tertiary pattern-btn">Camo</button>
                 </div>
-                <!-- Other patterns toggle -->
                 <button onclick="toggleOtherPatterns()" id="other-patterns-toggle" class="text-slate-400 text-label min-h-[44px] w-full text-left px-2">+ Other patterns</button>
                 <div id="pattern-others" class="hidden grid grid-cols-4 gap-2 mt-2">
-                    <button onclick="setPattern('Camo', this)" class="btn-compact btn-tertiary pattern-btn">Camo</button>
+                    <button onclick="setPattern('Color Block', this)" class="btn-compact btn-tertiary pattern-btn">Color Block</button>
                     <button onclick="setPattern('Embroidered', this)" class="btn-compact btn-tertiary pattern-btn">Emb.</button>
                     <button onclick="setPattern('Polka Dot', this)" class="btn-compact btn-tertiary pattern-btn">Polka</button>
                     <button onclick="setPattern('Paisley', this)" class="btn-compact btn-tertiary pattern-btn">Paisley</button>
@@ -1066,7 +978,6 @@
                     <button onclick="setPattern('Other', this)" class="btn-compact btn-tertiary pattern-btn">Other</button>
                 </div>
                 
-                <!-- Print Type (conditional) -->
                 <div id="print-type-section" class="hidden nested-section nested-section-indigo mt-3">
                     <label class="nested-label text-indigo-700">Print Type</label>
                     <div class="grid grid-cols-5 gap-2 mb-2">
@@ -1084,7 +995,6 @@
                     </div>
                 </div>
                 
-                <!-- Graphic Category (conditional) -->
                 <div id="graphic-cat-section" class="hidden nested-section nested-section-violet mt-3">
                     <label class="nested-label text-violet-700">Graphic Category</label>
                     <div class="grid grid-cols-4 gap-2 mb-2">
@@ -1102,7 +1012,90 @@
                 </div>
             </section>
             
-            <!-- SLEEVE (V78: Added Sleeve Style + Cutoff Clarification) -->
+            <!-- FABRIC (Third) -->
+            <section id="section-fabric" class="section-card">
+                <label class="section-label">
+                    <span id="check-fabric" class="check-circle">○</span>
+                    Fabric
+                </label>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button onclick="setFabric('100% Cotton', this)" class="btn-standard btn-secondary fabric-btn">100% Cotton</button>
+                    <button onclick="setFabric('50/50', this)" class="btn-standard btn-secondary fabric-btn">50/50 Blend</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <button onclick="setFabric('100% Polyester', this)" class="btn-compact btn-tertiary fabric-btn">Polyester</button>
+                    <button onclick="setFabric('Tri-Blend', this)" class="btn-compact btn-tertiary fabric-btn">Tri-Blend</button>
+                    <button onclick="setFabric('Denim', this)" class="btn-compact btn-tertiary fabric-btn">Denim</button>
+                </div>
+                <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select text-sm">
+                    <option value="" selected>Other fabrics...</option>
+                    <option value="Fleece">Fleece</option>
+                    <option value="Corduroy">Corduroy</option>
+                    <option value="Wool">Wool</option>
+                    <option value="Linen">Linen</option>
+                    <option value="Rayon">Rayon</option>
+                    <option value="Nylon">Nylon</option>
+                    <option value="Silk">Silk</option>
+                    <option value="Custom">Custom Blend...</option>
+                </select>
+                
+                <div id="custom-blend-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <label class="text-label font-bold text-blue-700 mb-2 block">Build Your Blend</label>
+                    <div class="flex gap-2 mb-2 items-center">
+                        <select id="blend-mat-1" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
+                            <option value="">Material 1...</option>
+                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
+                        </select>
+                        <select id="blend-pct-1" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
+                            <option value="">%</option>
+                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2 mb-2 items-center">
+                        <select id="blend-mat-2" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
+                            <option value="">Material 2...</option>
+                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
+                        </select>
+                        <select id="blend-pct-2" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
+                            <option value="">%</option>
+                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
+                        </select>
+                    </div>
+                    <button onclick="toggleThirdMaterial()" id="btn-add-mat-3" class="text-xs text-blue-600 font-medium mb-2">+ Add 3rd material (tri-blend)</button>
+                    <div id="blend-row-3" class="hidden flex gap-2 mb-2 items-center">
+                        <select id="blend-mat-3" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
+                            <option value="">Material 3...</option>
+                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
+                        </select>
+                        <select id="blend-pct-3" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
+                            <option value="">%</option>
+                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
+                        </select>
+                    </div>
+                    <div id="blend-preview" class="mt-2 p-2 bg-white rounded-lg border border-blue-300 text-center">
+                        <span class="text-sm text-slate-400">Select materials above</span>
+                    </div>
+                    <input type="hidden" id="fabric-custom" value="">
+                </div>
+                
+                <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setWash('Light', this)" class="btn-compact btn-tertiary wash-btn">Light</button>
+                        <button onclick="setWash('Medium', this)" class="btn-compact btn-tertiary wash-btn">Medium</button>
+                        <button onclick="setWash('Dark', this)" class="btn-compact btn-tertiary wash-btn">Dark</button>
+                        <button onclick="setWash('Raw', this)" class="btn-compact btn-tertiary wash-btn">Raw</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        <button onclick="setWash('Acid', this)" class="btn-compact btn-tertiary wash-btn">Acid</button>
+                        <button onclick="setWash('Stone', this)" class="btn-compact btn-tertiary wash-btn">Stone</button>
+                        <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
+                        <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SLEEVE (Fourth) -->
             <section id="section-sleeve" class="section-card hidden">
                 <label class="section-label">
                     <span id="check-sleeve" class="check-circle">○</span>
@@ -1116,7 +1109,6 @@
                     <button onclick="setSleeveType('Sleeveless', this)" class="btn-compact btn-tertiary sleeve-type-btn">Sleeveless</button>
                 </div>
                 
-                <!-- Cutoff Clarification (V78: Shows when T-Shirt + Sleeveless) -->
                 <div id="cutoff-section" class="hidden nested-section nested-section-amber mt-3 mb-3">
                     <label class="nested-label text-amber-700">Is this a cut-off?</label>
                     <div class="grid grid-cols-2 gap-2">
@@ -1132,7 +1124,6 @@
                     <div class="text-xs text-amber-600 mt-2">💡 This stays categorized as T-Shirt for searchability</div>
                 </div>
                 
-                <!-- Sleeve Style (hidden when Sleeveless) -->
                 <div id="sleeve-style-section">
                     <div class="text-label text-slate-400 font-bold mb-2">Sleeve Style</div>
                     <div class="grid grid-cols-4 gap-2">
@@ -1143,7 +1134,6 @@
                     </div>
                 </div>
                 
-                <!-- Raglan/Dolman Measurement Notice -->
                 <div id="sleeve-measurement-notice" class="hidden mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
                     <div class="flex items-start gap-2">
                         <span class="text-lg">⚠️</span>
@@ -1155,7 +1145,7 @@
                 </div>
             </section>
             
-            <!-- STITCH TYPE (V78: For T-Shirts - Single vs Double) -->
+            <!-- STITCH TYPE (For T-Shirts) -->
             <section id="section-stitch" class="section-card hidden">
                 <label class="section-label">
                     <span class="text-amber-500">⭐</span>
@@ -1170,10 +1160,11 @@
                 <div class="text-xs text-amber-600 mt-2">💡 Single stitch = pre-1995, higher value for vintage tees</div>
             </section>
             
-            <!-- FABRIC FEEL -->
+            <!-- FABRIC FEEL (Fifth - Fixed label) -->
             <section id="section-feel" class="section-card">
-                <label class="section-label text-teal-600">
-                    📐 Fabric Feel <span class="text-slate-400 font-normal">(for AI)</span>
+                <label class="section-label">
+                    <span id="check-feel" class="check-circle">○</span>
+                    Fabric Feel
                 </label>
                 <div class="grid grid-cols-4 gap-2 mb-3">
                     <button onclick="setThickness('Paper Thin', this)" class="btn-compact btn-secondary thickness-btn">Paper</button>
@@ -1194,7 +1185,7 @@
             </div>
         </div>
 
-        <!-- ========== STEP 3: SNAP (V78: New flow - Photos → Tags → Defects → Measurements → Weight) ========== -->
+        <!-- ========== STEP 3: SNAP (V78: Simplified - Photos → Issues → Measurements → Weight) ========== -->
         <div id="step-3" class="step-container space-y-3">
             
             <!-- MAIN PHOTOS -->
@@ -1211,34 +1202,33 @@
                 </button>
             </section>
             
-            <!-- TAG PHOTOS -->
-            <section class="section-card">
-                <label class="section-label">📸 Tag Close-ups</label>
-                <div class="flex gap-2 flex-wrap mb-3" id="tag-photos-thumbs"></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="openCamera('tag', 'neck')" id="btn-tag-neck" 
-                            class="btn-standard bg-slate-100 border-2 border-dashed border-slate-300 text-slate-600 text-label font-bold">
-                        📷 Neck Tag
-                    </button>
-                    <button onclick="openCamera('tag', 'care')" id="btn-tag-care" 
-                            class="btn-standard bg-slate-100 border-2 border-dashed border-slate-300 text-slate-600 text-label font-bold">
-                        📷 Care Label
-                    </button>
-                </div>
-            </section>
-            
-            <!-- ISSUES (V78: Simplified - removed Has Fading button) -->
+            <!-- ISSUES (V78: Simplified with defect type buttons) -->
             <section id="section-issues" class="section-card">
                 <label class="section-label">
                     <span id="check-issues" class="check-circle">○</span>
                     Any Issues?
                 </label>
-                <button onclick="setHasDefects(false, this)" class="btn-large btn-hero defect-toggle-btn w-full mb-2 flex items-center justify-center gap-2">
+                <button onclick="setHasDefects(false, this)" class="btn-large btn-hero defect-toggle-btn w-full mb-3 flex items-center justify-center gap-2">
                     <span class="text-xl">✓</span> CLEAN — No flaws, no fade
                 </button>
-                <button onclick="setHasDefects(true, this)" class="btn-standard btn-secondary defect-toggle-btn w-full flex items-center justify-center gap-2">
-                    <span class="text-lg">⚠️</span> Has Defects
-                </button>
+                
+                <!-- Defect Type Buttons (V78: Simple hero buttons) -->
+                <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type to photo:</div>
+                <div class="grid grid-cols-3 gap-2 mb-2">
+                    <button onclick="captureDefect('Stain', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                        <span class="text-2xl">💧</span>
+                        <span class="text-label font-bold">Stain</span>
+                    </button>
+                    <button onclick="captureDefect('Hole', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                        <span class="text-2xl">🕳️</span>
+                        <span class="text-label font-bold">Hole</span>
+                    </button>
+                    <button onclick="captureDefect('Repair', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                        <span class="text-2xl">🧵</span>
+                        <span class="text-label font-bold">Repair</span>
+                    </button>
+                </div>
+                <div id="defect-photos-thumbs" class="flex gap-2 flex-wrap"></div>
             </section>
             
             <!-- FADE LEVEL -->
@@ -1255,33 +1245,25 @@
                 </div>
             </section>
             
-            <!-- DEFECT MAPPING (conditional) -->
-            <section id="defect-section" class="section-card hidden">
-                <label class="section-label text-orange-600">🔍 Mark Defects</label>
-                <p class="text-secondary mb-3">Tap zone → Pick type → Take photo</p>
-                <div class="mb-3">
-                    <div class="text-center text-label font-bold text-slate-400 uppercase mb-1 bg-slate-100 rounded-lg py-2">FRONT</div>
-                    <div id="defect-map-front" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;">
-                        <div id="defect-svg-front"></div>
-                        <div id="defect-markers-front"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="text-center text-label font-bold text-slate-400 uppercase mb-1 bg-slate-100 rounded-lg py-2">BACK</div>
-                    <div id="defect-map-back" class="map-wrapper bg-slate-100 rounded-xl p-2 relative" style="min-height:140px;">
-                        <div id="defect-svg-back"></div>
-                        <div id="defect-markers-back"></div>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- MEASUREMENTS -->
+            <!-- MEASUREMENTS (V78: Vertical bullet list) -->
             <section id="section-measure" class="section-card">
                 <label class="section-label">
                     <span id="check-measure" class="check-circle">○</span>
                     🎤 Measurements
                 </label>
-                <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3"></div>
+                <div id="measure-hint" class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                    <div class="text-xs text-blue-700 font-bold mb-2">Say each + "inches":</div>
+                    <ul class="text-xs text-blue-600 space-y-1 list-none">
+                        <li>1. Shoulder to shoulder</li>
+                        <li>2. Pit to pit chest</li>
+                        <li>3. Waist</li>
+                        <li>4. Bottom hem</li>
+                        <li>5. Length</li>
+                        <li>6. Neck to shoulder</li>
+                        <li>7. Sleeve (shoulder to cuff)</li>
+                        <li>8. Arm opening</li>
+                    </ul>
+                </div>
                 <div id="record-section">
                     <button id="record-btn" onclick="toggleRecording()" 
                             class="w-full py-5 bg-red-500 rounded-2xl text-white font-bold text-lg flex flex-col items-center gap-1 shadow-lg active:scale-[0.98]">
@@ -2046,14 +2028,23 @@
             data.hasDefects = has;
             document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
-            initDefectSection();
             completeSection('issues');
-            // V78: Auto-scroll to defect section when Has Defects is clicked
-            if (has) {
-                setTimeout(() => {
-                    document.getElementById('defect-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 200);
-            }
+        }
+        
+        // V78: Simplified defect capture - opens camera directly
+        function captureDefect(defectType, btn) {
+            haptic('medium');
+            data.hasDefects = true;
+            // Mark the clean button as unselected
+            document.querySelectorAll('.defect-toggle-btn').forEach(b => { 
+                b.classList.remove('selected','btn-hero'); 
+                b.classList.add('btn-secondary'); 
+            });
+            // Store the defect type and open camera
+            pendingDefect = { type: defectType, zone: 'general', side: 'front' };
+            cameraMode = 'defect';
+            openCamera('defect');
+            completeSection('issues');
         }
 
         function setFade(level, btn) { 
@@ -2066,37 +2057,9 @@
         
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
+        // V78: Simplified - no body map needed
         function initDefectSection() {
-            const show = data.hasDefects === true;
-            document.getElementById('defect-section').classList.toggle('hidden', !show);
-            if(show) {
-                // Select body map based on category and sleeve type (V73 logic)
-                let svgFront, svgBack;
-                if (data.superCategory === 'bottoms') {
-                    if (data.category === 'Shorts') { svgFront = SVG_SHORTS_FRONT; svgBack = SVG_SHORTS_BACK; }
-                    else { svgFront = SVG_PANTS_FRONT; svgBack = SVG_PANTS_BACK; }
-                } else {
-                    // Tops and Outer
-                    if (data.sleeveType === 'Sleeveless' || data.category === 'Vest' || data.category === 'Tank Top') {
-                        svgFront = SVG_SLEEVELESS_FRONT; svgBack = SVG_SLEEVELESS_BACK;
-                    } else if (data.sleeveType === 'Long') {
-                        svgFront = SVG_LONG_FRONT; svgBack = SVG_LONG_BACK;
-                    } else {
-                        svgFront = SVG_SHORT_FRONT; svgBack = SVG_SHORT_BACK;
-                    }
-                }
-                document.getElementById('defect-svg-front').innerHTML = svgFront;
-                document.getElementById('defect-svg-back').innerHTML = svgBack;
-                document.querySelectorAll('.zone-hit').forEach(z => {
-                    z.onclick = e => {
-                        pendingDefect = { zone: e.target.dataset.zone, side: e.target.dataset.side };
-                        document.getElementById('zone-label').textContent = `${pendingDefect.side.toUpperCase()} • ${pendingDefect.zone.replace(/-/g,' ')}`;
-                        document.getElementById('defect-modal').classList.remove('hidden');
-                        haptic('light');
-                    };
-                });
-                renderDefectMarkers();
-            }
+            // No-op in V78 - defect mapping removed
         }
 
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
@@ -2111,38 +2074,32 @@
             }
         }
 
+        // V78: Simplified defect photo display
         function renderDefectMarkers() {
-            ['front','back'].forEach(side => document.getElementById(`defect-markers-${side}`).innerHTML = '');
-            data.defectPhotos.forEach((d, i) => {
-                const meta = d.defectMeta;
-                const pos = zonePos[`${meta.side}-${meta.zone}`];
-                if(!pos) return;
-                const m = document.createElement('div');
-                m.className = `defect-marker ${meta.type.toLowerCase()}`;
-                m.style.cssText = `left:${pos.x}%;top:${pos.y}%`;
-                m.textContent = i + 1;
-                m.onclick = () => { if(confirm('Remove?')) { data.defectPhotos.splice(i, 1); renderDefectMarkers(); renderPhotoThumbs(); haptic('light'); } };
-                document.getElementById(`defect-markers-${meta.side}`).appendChild(m);
-            });
+            // Just render defect photo thumbnails in the defect-photos-thumbs container
+            const container = document.getElementById('defect-photos-thumbs');
+            if (!container) return;
+            container.innerHTML = data.defectPhotos.map((p, i) => 
+                `<div class="relative">
+                    <img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.defectPhotos.splice(${i},1);renderDefectMarkers();haptic('light');}">
+                    <span class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">${p.defectMeta?.type?.[0] || '?'}</span>
+                </div>`
+            ).join('');
         }
 
         function renderPhotoThumbs() {
-            ['main','tag'].forEach(type => {
-                const container = document.getElementById(`${type}-photos-thumbs`);
-                if(!container) return;
-                const photos = data[`${type}Photos`];
-                container.innerHTML = photos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.${type}Photos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
-            });
-            const neckBtn = document.getElementById('btn-tag-neck');
-            const careBtn = document.getElementById('btn-tag-care');
-            if (data.tagPhotos.some(p => p.tagType === 'neck')) { neckBtn.classList.add('bg-emerald-100','border-emerald-500','text-emerald-700'); neckBtn.classList.remove('bg-slate-100','border-slate-300'); }
-            if (data.tagPhotos.some(p => p.tagType === 'care')) { careBtn.classList.add('bg-emerald-100','border-emerald-500','text-emerald-700'); careBtn.classList.remove('bg-slate-100','border-slate-300'); }
+            // Main photos
+            const mainContainer = document.getElementById('main-photos-thumbs');
+            if(mainContainer) {
+                mainContainer.innerHTML = data.mainPhotos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
+            }
+            // Defect photos (V78)
+            renderDefectMarkers();
             updateAllChecks();
         }
 
         function updateMeasureHint() {
-            const m = measureMap[data.superCategory] || measureMap.tops;
-            document.getElementById('measure-hint').innerHTML = `<div class="text-blue-800 text-label font-bold mb-1">📏 SAY EACH:</div><div class="text-blue-700 text-sm font-medium">${m.join(' → ')}</div>`;
+            // V78: Measurement hints are now static in HTML
         }
 
         function updateWeight() {
