@@ -93,7 +93,7 @@
         /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
-        /* V78: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
+        /* V84: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
         .safe-top { padding-top: calc(12px + env(safe-area-inset-top, 20px)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
@@ -267,16 +267,21 @@
         }
         
         /* Default (pre-selected value that needs confirmation - lighter blue with dashed border) */
-        .btn-default {
-            background: #e0f2fe;
-            color: #0369a1;
-            border: 2px dashed #7dd3fc;
+        .btn-default,
+        .btn-large.btn-default,
+        .btn-standard.btn-default,
+        .btn-compact.btn-default {
+            background: #e0f2fe !important;
+            color: #0369a1 !important;
+            border: 2px dashed #7dd3fc !important;
         }
-        .btn-default.selected, .btn-default.confirmed {
-            border: 2px solid var(--color-primary);
-            background: var(--color-primary);
-            color: white;
-            border-style: solid;
+        .btn-default.selected, .btn-default.confirmed,
+        .btn-large.btn-default.confirmed,
+        .btn-standard.btn-default.confirmed,
+        .btn-compact.btn-default.confirmed {
+            border: 2px solid var(--color-primary) !important;
+            background: var(--color-primary) !important;
+            color: white !important;
         }
         
         /* Confirmed state for any button */
@@ -302,28 +307,28 @@
             box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
             transform: scale(1.05);
         }
-        /* V78: Labeled color swatches */
+        /* V84: Labeled color swatches */
         .color-item {
             display: flex;
             flex-direction: column;
             align-items: center;
             cursor: pointer;
-            padding: 2px;
-            border-radius: 8px;
+            padding: 4px;
+            border-radius: 10px;
             transition: all 0.15s ease;
+            border: 3px solid transparent;
         }
         .color-item:active { transform: scale(0.95); }
         .color-item span {
             font-size: 9px;
             color: #64748b;
-            margin-top: 2px;
+            margin-top: 4px;
             text-align: center;
             line-height: 1.1;
         }
-        .color-item.selected .color-swatch-labeled {
-            border-color: var(--color-primary) !important;
-            box-shadow: 0 0 0 3px var(--color-primary-light);
-            transform: scale(1.05);
+        .color-item.selected {
+            border-color: var(--color-primary);
+            background: var(--color-primary-light);
         }
         .color-item.selected span {
             color: var(--color-primary);
@@ -333,7 +338,7 @@
             width: 100%;
             aspect-ratio: 1;
             min-height: 36px;
-            border-radius: 8px;
+            border-radius: 6px;
             border: 2px solid transparent;
             transition: all 0.15s ease;
         }
@@ -802,28 +807,6 @@
             
             <div id="motivation-banner" class="motivation-banner hidden"></div>
             
-            <!-- SKU (V78: Moved to first) -->
-            <section id="section-sku" class="section-card">
-                <label class="section-label">
-                    <span id="check-sku" class="check-circle">○</span>
-                    SKU
-                    <span class="text-slate-400 text-label font-normal ml-1">Scan to start timer ⏱️</span>
-                </label>
-                <div class="flex gap-2">
-                    <input type="text" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." 
-                           oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" 
-                           class="form-input flex-1 text-xl font-mono bg-slate-50">
-                    <button onclick="toggleScanner()" 
-                            class="btn-standard bg-slate-800 text-white min-w-[52px] active:scale-95 shadow-md">
-                        <i data-lucide="scan-barcode" class="w-6 h-6"></i>
-                    </button>
-                </div>
-                <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-slate-800 relative bg-black" style="height: 180px;">
-                    <div id="reader" class="w-full h-full"></div>
-                    <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-label font-bold px-4 py-2 rounded-lg shadow min-h-[36px]">✕ CLOSE</button>
-                </div>
-            </section>
-            
             <!-- CATEGORY -->
             <section id="section-category" class="section-card">
                 <label class="section-label">
@@ -865,12 +848,12 @@
                     Tag Info
                 </label>
                 
-                <button onclick="setTagStatus('has', this)" class="btn-standard btn-hero tag-status-btn w-full mb-2">
+                <button onclick="setTagStatus('has', this)" id="btn-tag-readable" class="btn-standard btn-default tag-status-btn w-full mb-2">
                     ✓ TAG READABLE
                 </button>
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setTagStatus('worn', this)" class="btn-standard btn-secondary tag-status-btn">👀 Worn/Faded</button>
-                    <button onclick="setTagStatus('none', this)" class="btn-standard btn-secondary tag-status-btn">✂️ Missing/Cut</button>
+                    <button onclick="setTagStatus('worn', this)" class="btn-standard btn-tertiary tag-status-btn">👀 Worn/Faded</button>
+                    <button onclick="setTagStatus('none', this)" class="btn-standard btn-tertiary tag-status-btn">✂️ Missing/Cut</button>
                 </div>
                 
                 <!-- Tag Size (conditional) -->
@@ -895,8 +878,8 @@
                 <!-- Origin (conditional) -->
                 <div id="origin-section" class="hidden mt-3">
                     <div class="grid grid-cols-2 gap-2 mb-2">
-                        <button onclick="setOrigin('usa', this)" class="btn-standard btn-hero origin-btn text-sm">🇺🇸 USA MADE</button>
-                        <button onclick="setOrigin('import', this)" class="btn-standard btn-secondary origin-btn">🌍 Import</button>
+                        <button onclick="setOrigin('usa', this)" id="btn-origin-usa" class="btn-standard btn-default origin-btn text-sm">🇺🇸 USA MADE</button>
+                        <button onclick="setOrigin('import', this)" class="btn-standard btn-tertiary origin-btn">🌍 Import</button>
                     </div>
                     <select id="country-select" onchange="data.madeInCountry=this.value; haptic('light');" 
                             class="hidden form-select text-sm">
@@ -928,10 +911,10 @@
                 <div id="tag-gender-section" class="hidden mt-3">
                     <label class="nested-label text-slate-500">Gender on Tag</label>
                     <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setGender('Men', this)" class="btn-compact btn-secondary gender-btn">Men's</button>
-                        <button onclick="setGender('Women', this)" class="btn-compact btn-secondary gender-btn">Women's</button>
-                        <button onclick="setGender('Unisex', this)" class="btn-compact btn-secondary gender-btn">Unisex</button>
-                        <button onclick="setGender('None', this)" class="btn-compact btn-secondary gender-btn">None</button>
+                        <button onclick="setGender('Men', this)" id="btn-gender-men" class="btn-compact btn-tertiary gender-btn">Men's</button>
+                        <button onclick="setGender('Women', this)" id="btn-gender-women" class="btn-compact btn-tertiary gender-btn">Women's</button>
+                        <button onclick="setGender('Unisex', this)" id="btn-gender-unisex" class="btn-compact btn-tertiary gender-btn">Unisex</button>
+                        <button onclick="setGender('None', this)" id="btn-gender-none" class="btn-compact btn-tertiary gender-btn">None</button>
                     </div>
                 </div>
             </section>
@@ -941,71 +924,42 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK (V78: Reordered - Color → Pattern → Fabric → Construction) ========== -->
+        <!-- ========== STEP 2: CHECK (V84: Reordered - Color → Pattern → Fabric → Construction) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
-            <!-- COLOR - Ordered dark to light -->
+            <!-- COLOR - Clean grid, eBay colors -->
             <section id="section-color" class="section-card">
                 <label class="section-label">
                     <span id="check-color" class="check-circle">○</span>
                     Color
                 </label>
-                <!-- Row 1: Darkest -->
-                <div class="grid grid-cols-7 gap-1 mb-2">
-                    <div class="color-item" onclick="setColor('Black', this)"><div class="color-swatch-labeled" style="background:#1a1a1a;border:2px solid #444;"></div><span>Black</span></div>
-                    <div class="color-item" onclick="setColor('Charcoal', this)"><div class="color-swatch-labeled" style="background:#36454f;"></div><span>Char.</span></div>
-                    <div class="color-item" onclick="setColor('Navy', this)"><div class="color-swatch-labeled" style="background:#1e3a5f;"></div><span>Navy</span></div>
-                    <div class="color-item" onclick="setColor('Burgundy', this)"><div class="color-swatch-labeled" style="background:#722f37;"></div><span>Burg.</span></div>
-                    <div class="color-item" onclick="setColor('Brown', this)"><div class="color-swatch-labeled" style="background:#78350f;"></div><span>Brown</span></div>
-                    <div class="color-item" onclick="setColor('Olive', this)"><div class="color-swatch-labeled" style="background:#556b2f;"></div><span>Olive</span></div>
-                    <div class="color-item" onclick="setColor('Gray', this)"><div class="color-swatch-labeled" style="background:#6b7280;"></div><span>Gray</span></div>
+                <div class="text-xs text-slate-400 mb-3">Tap all that apply</div>
+                
+                <!-- All colors in clean 5-column grid -->
+                <div class="grid grid-cols-5 gap-2">
+                    <div class="color-item" onclick="toggleColor('White', this)"><div class="color-swatch-labeled" style="background:#ffffff;border:1px solid #ddd;"></div><span>White</span></div>
+                    <div class="color-item" onclick="toggleColor('Ivory', this)"><div class="color-swatch-labeled" style="background:#fffff0;border:1px solid #ddd;"></div><span>Ivory</span></div>
+                    <div class="color-item" onclick="toggleColor('Beige', this)"><div class="color-swatch-labeled" style="background:#d4b896;"></div><span>Beige</span></div>
+                    <div class="color-item" onclick="toggleColor('Gray', this)"><div class="color-swatch-labeled" style="background:#6b7280;"></div><span>Gray</span></div>
+                    <div class="color-item" onclick="toggleColor('Black', this)"><div class="color-swatch-labeled" style="background:#1a1a1a;"></div><span>Black</span></div>
+                    
+                    <div class="color-item" onclick="toggleColor('Red', this)"><div class="color-swatch-labeled" style="background:#dc2626;"></div><span>Red</span></div>
+                    <div class="color-item" onclick="toggleColor('Orange', this)"><div class="color-swatch-labeled" style="background:#ea580c;"></div><span>Orange</span></div>
+                    <div class="color-item" onclick="toggleColor('Yellow', this)"><div class="color-swatch-labeled" style="background:#facc15;"></div><span>Yellow</span></div>
+                    <div class="color-item" onclick="toggleColor('Green', this)"><div class="color-swatch-labeled" style="background:#16a34a;"></div><span>Green</span></div>
+                    <div class="color-item" onclick="toggleColor('Blue', this)"><div class="color-swatch-labeled" style="background:#2563eb;"></div><span>Blue</span></div>
+                    
+                    <div class="color-item" onclick="toggleColor('Purple', this)"><div class="color-swatch-labeled" style="background:#7c3aed;"></div><span>Purple</span></div>
+                    <div class="color-item" onclick="toggleColor('Pink', this)"><div class="color-swatch-labeled" style="background:#ec4899;"></div><span>Pink</span></div>
+                    <div class="color-item" onclick="toggleColor('Brown', this)"><div class="color-swatch-labeled" style="background:#78350f;"></div><span>Brown</span></div>
+                    <div class="color-item" onclick="toggleColor('Gold', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#ffd700,#b8860b);"></div><span>Gold</span></div>
+                    <div class="color-item" onclick="toggleColor('Silver', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#c0c0c0,#808080);"></div><span>Silver</span></div>
+                    
+                    <div class="color-item" onclick="toggleColor('Khaki', this)"><div class="color-swatch-labeled" style="background:#c3b091;"></div><span>Khaki</span></div>
+                    <div class="color-item" onclick="toggleColor('Multicolor', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);"></div><span>Multi</span></div>
                 </div>
-                <!-- Row 2: Medium -->
-                <div class="grid grid-cols-7 gap-1 mb-2">
-                    <div class="color-item" onclick="setColor('Red', this)"><div class="color-swatch-labeled" style="background:#dc2626;"></div><span>Red</span></div>
-                    <div class="color-item" onclick="setColor('Blue', this)"><div class="color-swatch-labeled" style="background:#3b82f6;"></div><span>Blue</span></div>
-                    <div class="color-item" onclick="setColor('Green', this)"><div class="color-swatch-labeled" style="background:#16a34a;"></div><span>Green</span></div>
-                    <div class="color-item" onclick="setColor('Teal', this)"><div class="color-swatch-labeled" style="background:#0d9488;"></div><span>Teal</span></div>
-                    <div class="color-item" onclick="setColor('Purple', this)"><div class="color-swatch-labeled" style="background:#8b5cf6;"></div><span>Purple</span></div>
-                    <div class="color-item" onclick="setColor('Orange', this)"><div class="color-swatch-labeled" style="background:#f97316;"></div><span>Orange</span></div>
-                    <div class="color-item" onclick="setColor('Pink', this)"><div class="color-swatch-labeled" style="background:#ec4899;"></div><span>Pink</span></div>
-                </div>
-                <!-- Row 3: Lightest -->
-                <div class="grid grid-cols-7 gap-1 mb-3">
-                    <div class="color-item" onclick="setColor('Heather', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#9ca3af 25%,#6b7280 50%,#9ca3af 75%);"></div><span>Heath.</span></div>
-                    <div class="color-item" onclick="setColor('Tan', this)"><div class="color-swatch-labeled" style="background:#d2b48c;"></div><span>Tan</span></div>
-                    <div class="color-item" onclick="setColor('Beige', this)"><div class="color-swatch-labeled" style="background:#d4b896;"></div><span>Beige</span></div>
-                    <div class="color-item" onclick="setColor('Yellow', this)"><div class="color-swatch-labeled" style="background:#facc15;"></div><span>Yellow</span></div>
-                    <div class="color-item" onclick="setColor('Cream', this)"><div class="color-swatch-labeled" style="background:#fffdd0;border:2px solid #ddd;"></div><span>Cream</span></div>
-                    <div class="color-item" onclick="setColor('White', this)"><div class="color-swatch-labeled" style="background:#ffffff;border:2px solid #ddd;"></div><span>White</span></div>
-                    <div class="color-item" onclick="setColor('Multi', this)"><div class="color-swatch-labeled" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);"></div><span>Multi</span></div>
-                </div>
-                <div id="selected-color" class="text-center text-slate-800 text-lg font-bold mb-2"></div>
-                <button onclick="toggleSecondaryColor()" id="add-color-btn" 
-                        class="text-slate-400 text-label min-h-[44px] w-full text-left px-2">+ Add second color</button>
-                <div id="secondary-color-section" class="hidden mt-2">
-                    <div class="text-label text-slate-500 mb-2">Secondary Color</div>
-                    <select id="secondary-color-select" onchange="setSecondaryColorFromDropdown()" class="form-select text-sm">
-                        <option value="" selected>Select secondary color...</option>
-                        <option value="Black">⬛ Black</option>
-                        <option value="White">⬜ White</option>
-                        <option value="Gray">🩶 Gray</option>
-                        <option value="Navy">🟦 Navy</option>
-                        <option value="Blue">🔵 Blue</option>
-                        <option value="Red">🔴 Red</option>
-                        <option value="Green">🟢 Green</option>
-                        <option value="Yellow">🟡 Yellow</option>
-                        <option value="Orange">🟠 Orange</option>
-                        <option value="Pink">💗 Pink</option>
-                        <option value="Purple">🟣 Purple</option>
-                        <option value="Brown">🟤 Brown</option>
-                        <option value="Tan">🏜️ Tan</option>
-                        <option value="Cream">🍦 Cream</option>
-                        <option value="Burgundy">🍷 Burgundy</option>
-                        <option value="Teal">🧊 Teal</option>
-                        <option value="Olive">🫒 Olive</option>
-                    </select>
-                </div>
+                
+                <div id="selected-colors" class="text-center text-slate-800 text-sm font-bold mt-3"></div>
             </section>
             
             <!-- PATTERN (Second) - Simplified, no print type or graphic category -->
@@ -1199,7 +1153,7 @@
             </div>
         </div>
 
-        <!-- ========== STEP 3: SNAP (V78: Simplified - Photos → Issues → Measurements → Weight) ========== -->
+        <!-- ========== STEP 3: SNAP (V84: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
         <div id="step-3" class="step-container space-y-3">
             
             <!-- MAIN PHOTOS -->
@@ -1216,28 +1170,50 @@
                 </button>
             </section>
             
-            <!-- ISSUES (V78: Simplified with defect type buttons) -->
+            <!-- SKU (V84: After photos) -->
+            <section id="section-sku" class="section-card">
+                <label class="section-label">
+                    <span id="check-sku" class="check-circle">○</span>
+                    SKU
+                    <span class="text-slate-400 text-label font-normal ml-1">Scan barcode</span>
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" id="sku-input" inputmode="numeric" placeholder="Scan barcode..." 
+                           oninput="onSkuInput()" onkeydown="if(event.key==='Enter')this.blur();" 
+                           class="form-input flex-1 text-xl font-mono bg-slate-50">
+                    <button onclick="toggleScanner()" 
+                            class="btn-standard bg-slate-800 text-white min-w-[52px] active:scale-95 shadow-md">
+                        <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div id="scanner-view" class="hidden mt-3 rounded-xl overflow-hidden border-4 border-slate-800 relative bg-black" style="height: 180px;">
+                    <div id="reader" class="w-full h-full"></div>
+                    <button onclick="toggleScanner()" class="absolute top-2 right-2 bg-red-600 text-white text-label font-bold px-4 py-2 rounded-lg shadow min-h-[36px]">✕ CLOSE</button>
+                </div>
+            </section>
+            
+            <!-- ISSUES (V84: No Defects default, multiple defects allowed) -->
             <section id="section-issues" class="section-card">
                 <label class="section-label">
                     <span id="check-issues" class="check-circle">○</span>
                     Any Issues?
                 </label>
-                <button onclick="setHasDefects(false, this)" class="btn-large btn-hero defect-toggle-btn w-full mb-3 flex items-center justify-center gap-2">
-                    <span class="text-xl">✓</span> CLEAN — No flaws, no fade
+                <button onclick="setClean(this)" id="btn-clean" class="btn-large btn-default defect-toggle-btn w-full mb-3 flex items-center justify-center gap-2">
+                    <span class="text-xl">✓</span> No Defects
                 </button>
                 
-                <!-- Defect Type Buttons (V78: Simple hero buttons) -->
-                <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type to photo:</div>
+                <!-- Defect Type Buttons (V84: Multiple selection allowed) -->
+                <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type:</div>
                 <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button onclick="captureDefect('Stain', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                    <button onclick="toggleDefect('Stain', this)" id="btn-defect-stain" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
                         <span class="text-2xl">💧</span>
                         <span class="text-label font-bold">Stain</span>
                     </button>
-                    <button onclick="captureDefect('Hole', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                    <button onclick="toggleDefect('Hole', this)" id="btn-defect-hole" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
                         <span class="text-2xl">🕳️</span>
                         <span class="text-label font-bold">Hole</span>
                     </button>
-                    <button onclick="captureDefect('Repair', this)" class="btn-standard btn-secondary defect-type-btn flex flex-col items-center py-3">
+                    <button onclick="toggleDefect('Repair', this)" id="btn-defect-repair" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
                         <span class="text-2xl">🧵</span>
                         <span class="text-label font-bold">Repair</span>
                     </button>
@@ -1245,21 +1221,20 @@
                 <div id="defect-photos-thumbs" class="flex gap-2 flex-wrap"></div>
             </section>
             
-            <!-- FADE LEVEL -->
+            <!-- FADE LEVEL (V84: Default None, no Sun Fade) -->
             <section id="section-fade" class="section-card">
                 <label class="section-label">
                     <span id="check-fade" class="check-circle">○</span>
                     Fade Level
                 </label>
-                <div class="grid grid-cols-4 gap-2">
-                    <button onclick="setFade('None', this)" class="btn-compact btn-tertiary fade-btn">None</button>
-                    <button onclick="setFade('Light', this)" class="btn-compact btn-tertiary fade-btn">Light</button>
-                    <button onclick="setFade('Sun Fade', this)" class="btn-compact btn-tertiary fade-btn">Sun Fade</button>
-                    <button onclick="setFade('Heavy', this)" class="btn-compact btn-tertiary fade-btn">Heavy</button>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setFade('None', this)" id="btn-fade-none" class="btn-compact btn-default fade-btn">None</button>
+                    <button onclick="setFade('Light', this)" id="btn-fade-light" class="btn-compact btn-tertiary fade-btn">Light</button>
+                    <button onclick="setFade('Heavy', this)" id="btn-fade-heavy" class="btn-compact btn-tertiary fade-btn">Heavy</button>
                 </div>
             </section>
             
-            <!-- MEASUREMENTS (V78: Vertical bullet list) -->
+            <!-- MEASUREMENTS (V84: Vertical bullet list) -->
             <section id="section-measure" class="section-card">
                 <label class="section-label">
                     <span id="check-measure" class="check-circle">○</span>
@@ -1491,11 +1466,11 @@
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabric: '', wash: '', colorPrimary: '', colorSecondary: '',
+            fabric: '', wash: '', colors: [], // V84: colors as array
             pattern: '', printType: '', graphicCategory: '',
             sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
-            isCutoff: false, cutoffType: '', stitchType: '', // V78: New fields
-            hasDefects: null, fadeLevel: '',
+            isCutoff: false, cutoffType: '', stitchType: '',
+            hasDefects: null, defects: [], fadeLevel: '', // V84: defects as array
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
@@ -1661,7 +1636,7 @@
         }
 
         function updateAllChecks() {
-            // V78: Construction check combines sleeve + stitch
+            // V84: Construction check combines sleeve + stitch
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const constructionOk = data.superCategory === 'bottoms' || (
                 !!data.sleeveType && 
@@ -1674,7 +1649,7 @@
                 sku: !!data.sku,
                 tag: !!data.tagStatus,
                 fabric: !!data.fabric,
-                color: !!data.colorPrimary,
+                color: data.colors && data.colors.length > 0,
                 pattern: data.fabric === 'Denim' || !!data.pattern,
                 construction: constructionOk,
                 feel: !!data.thickness && !!data.construction,
@@ -1696,7 +1671,7 @@
         }
 
         function autoScroll(sectionId) {
-            // V78: Auto-scroll disabled per user request
+            // V84: Auto-scroll disabled per user request
         }
 
         // ============ NAVIGATION ============
@@ -1714,7 +1689,7 @@
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            // V78: Show construction profile for tops and outer (not bottoms)
+            // V84: Show construction profile for tops and outer (not bottoms)
             if(step===2) { document.getElementById('section-construction').classList.toggle('hidden', data.superCategory === 'bottoms'); }
             if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
@@ -1731,6 +1706,14 @@
         function setSuperCategory(cat, btn) {
             haptic('medium');
             data.superCategory = cat;
+            
+            // V84: Start timer when super category selected
+            if (!itemStartTime) { 
+                startTimer(); 
+                scanFlash(); 
+                haptic('success'); 
+            }
+            
             document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
             btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
             
@@ -1773,19 +1756,19 @@
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             
-            // V78: Apply ALL defaults (fabric, pattern, construction, feel) based on category
+            // V84: Apply ALL defaults (fabric, pattern, construction, feel) based on category
             const defaultPattern = applyAllDefaults(cat);
             
-            // V78: Update pattern hero buttons based on category
+            // V84: Update pattern hero buttons based on category
             updatePatternHeroes(cat);
             
-            autoScroll('section-sku');
+            autoScroll('section-tag');
         }
         
-        // V78: Apply ALL defaults based on category (fabric, pattern, construction, feel)
+        // V84: Apply ALL defaults based on category (fabric, pattern, construction, feel)
         function applyAllDefaults(cat) {
             // Reset all defaultable buttons to tertiary
-            document.querySelectorAll('.fabric-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn').forEach(b => {
+            document.querySelectorAll('.fabric-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn, .gender-btn').forEach(b => {
                 b.classList.remove('btn-default', 'btn-hero', 'btn-secondary', 'selected', 'confirmed');
                 b.classList.add('btn-tertiary');
             });
@@ -1794,101 +1777,101 @@
             const allDefaults = {
                 // TOPS
                 'T-Shirt': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Graphic',
+                    fabric: 'btn-fabric-cotton', pattern: 'Graphic', gender: 'btn-gender-none',
                     sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: 'Single', showStitch: true,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Jersey': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Graphic',
+                    fabric: 'btn-fabric-cotton', pattern: 'Graphic', gender: 'btn-gender-none',
                     sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: 'Single', showStitch: true,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Sweatshirt': { 
-                    fabric: 'btn-fabric-5050', pattern: 'Solid',
+                    fabric: 'btn-fabric-5050', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Hoodie': { 
-                    fabric: 'btn-fabric-5050', pattern: 'Solid',
+                    fabric: 'btn-fabric-5050', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Button Shirt': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Solid',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-men',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Polo': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Solid',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-men',
                     sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Sweater': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Cardigan': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Tank Top': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Solid',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Sleeveless', sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-light', layers: 'btn-layers-single'
                 },
                 'Blouse': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-women',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-light', layers: 'btn-layers-single'
                 },
                 'Tunic': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-women',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 // BOTTOMS
                 'Jeans': { 
-                    fabric: 'btn-fabric-denim', pattern: 'Solid',
+                    fabric: 'btn-fabric-denim', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: null, sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Pants': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: null, sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Shorts': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: null, sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Sweatpants': { 
-                    fabric: 'btn-fabric-5050', pattern: 'Solid',
+                    fabric: 'btn-fabric-5050', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: null, sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 // OUTER
                 'Jacket': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-lined'
                 },
                 'Coat': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-lined'
                 },
                 'Vest': { 
-                    fabric: null, pattern: 'Solid',
+                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Sleeveless', sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
             };
             
             const def = allDefaults[cat] || { 
-                fabric: 'btn-fabric-cotton', pattern: 'Solid',
+                fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                 sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                 thickness: 'btn-thick-standard', layers: 'btn-layers-single'
             };
@@ -1961,11 +1944,20 @@
                 }
             }
             
+            // Apply gender default
+            if (def.gender) {
+                const genderBtn = document.getElementById(def.gender);
+                if (genderBtn) {
+                    genderBtn.classList.remove('btn-tertiary');
+                    genderBtn.classList.add('btn-default');
+                }
+            }
+            
             // Return pattern for updatePatternHeroes
             return def.pattern;
         }
         
-        // V78: Update pattern hero buttons based on category
+        // V84: Update pattern hero buttons based on category
         function updatePatternHeroes(cat) {
             const heroContainer = document.getElementById('pattern-heroes');
             let heroHTML = '';
@@ -2006,19 +1998,25 @@
 
         function onSkuInput() { 
             data.sku = document.getElementById('sku-input').value;
-            if (data.sku && !itemStartTime) { startTimer(); scanFlash(); haptic('success'); data.scanTime = new Date(); }
-            if (data.sku) { completeSection('sku'); autoScroll('section-tag'); }
+            if (data.sku) { 
+                completeSection('sku'); 
+                haptic('light');
+            }
         }
 
         function toggleScanner() { const v = document.getElementById('scanner-view'); if(v.classList.contains('hidden')) { v.classList.remove('hidden'); startScanner(); } else { v.classList.add('hidden'); stopScanner(); } }
-        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; startTimer(); scanFlash(); haptic('success'); data.scanTime = new Date(); toggleScanner(); completeSection('sku'); autoScroll('section-tag'); }, () => {}).catch(e => console.error(e)); }
+        function startScanner() { if(!qrScanner) qrScanner = new Html5Qrcode("reader"); qrScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:100}}, t => { document.getElementById('sku-input').value = t; data.sku = t; haptic('success'); toggleScanner(); completeSection('sku'); }, () => {}).catch(e => console.error(e)); }
         function stopScanner() { if(qrScanner?.isScanning) qrScanner.stop().catch(e => console.error(e)); }
 
         function setTagStatus(status, btn) {
             haptic('medium');
             data.tagStatus = status;
-            document.querySelectorAll('.tag-status-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.tag-status-btn').forEach(b => { 
+                b.classList.remove('selected','btn-hero','btn-default','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            });
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default');
             document.getElementById('tag-size-section').classList.toggle('hidden', status !== 'has');
             document.getElementById('origin-section').classList.remove('hidden');
             document.getElementById('tag-gender-section').classList.remove('hidden');
@@ -2032,13 +2030,26 @@
         function setOrigin(type, btn) {
             haptic('light');
             data.origin = type;
-            document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
+            document.querySelectorAll('.origin-btn').forEach(b => { 
+                b.classList.remove('selected','btn-hero','btn-default','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            });
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default');
             document.getElementById('country-select').classList.toggle('hidden', type === 'usa');
             data.madeInCountry = type === 'usa' ? 'USA' : '';
         }
 
-        function setGender(g, btn) { haptic('light'); data.gender = g; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
+        function setGender(g, btn) { 
+            haptic('light'); 
+            data.gender = g; 
+            document.querySelectorAll('.gender-btn').forEach(b => {
+                b.classList.remove('selected','confirmed','btn-default');
+                b.classList.add('btn-tertiary');
+            }); 
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default');
+        }
 
         // ============ STEP 2: CHECK ============
         function setFabric(fabric, btn) {
@@ -2076,7 +2087,7 @@
             completeSection('fabric');
         }
         
-        // V78: Custom blend builder functions
+        // V84: Custom blend builder functions
         function toggleThirdMaterial() {
             const row = document.getElementById('blend-row-3');
             const btn = document.getElementById('btn-add-mat-3');
@@ -2120,44 +2131,37 @@
             btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
         }
         
-        function setColor(color, element) {
+        // V84: Toggle color selection (multiple allowed)
+        function toggleColor(color, element) {
             haptic('light');
-            data.colorPrimary = color;
-            // V78: Handle both old color-swatch and new color-item
-            document.querySelectorAll('.color-item').forEach(b => b.classList.remove('selected'));
-            document.querySelectorAll('.color-swatch').forEach(b => b.classList.remove('selected'));
-            // Find the color-item parent if clicked on swatch directly
+            // Initialize colors array if needed
+            if (!data.colors) data.colors = [];
+            
             const colorItem = element.classList.contains('color-item') ? element : element.closest('.color-item');
-            if (colorItem) colorItem.classList.add('selected');
-            else if (element.classList.contains('color-swatch')) element.classList.add('selected');
-            document.getElementById('selected-color').textContent = color;
-            completeSection('color');
-        }
-        
-        function setSecondaryColor(color, btn) {
-            haptic('light');
-            data.colorSecondary = color;
-            document.querySelectorAll('.color-swatch-sm').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-        }
-        
-        // V78: Secondary color from dropdown
-        function setSecondaryColorFromDropdown() {
-            const val = document.getElementById('secondary-color-select').value;
-            if (val) {
-                haptic('light');
-                data.colorSecondary = val;
+            
+            // Toggle color in array
+            const idx = data.colors.indexOf(color);
+            if (idx > -1) {
+                // Remove color
+                data.colors.splice(idx, 1);
+                if (colorItem) colorItem.classList.remove('selected');
+            } else {
+                // Add color
+                data.colors.push(color);
+                if (colorItem) colorItem.classList.add('selected');
+            }
+            
+            // Update display
+            const display = document.getElementById('selected-colors');
+            display.textContent = data.colors.length > 0 ? data.colors.join(' + ') : '';
+            
+            // Complete section if at least one color selected
+            if (data.colors.length > 0) {
+                completeSection('color');
             }
         }
         
-        function toggleSecondaryColor() {
-            const sec = document.getElementById('secondary-color-section');
-            const btn = document.getElementById('add-color-btn');
-            sec.classList.toggle('hidden');
-            btn.classList.add('hidden');
-        }
-        
-        // V78: Toggle other patterns
+        // V84: Toggle other patterns
         function toggleOtherPatterns() {
             const others = document.getElementById('pattern-others');
             const btn = document.getElementById('other-patterns-toggle');
@@ -2177,7 +2181,7 @@
             completeSection('pattern');
         }
 
-        // V78: Updated setSleeveType with cutoff section for T-Shirts
+        // V84: Updated setSleeveType with cutoff section for T-Shirts
         function setSleeveType(type, btn) { 
             haptic('light'); 
             data.sleeveType = type; 
@@ -2195,7 +2199,7 @@
             if (!showStyle) { data.sleeveStyle = 'N/A'; } 
             else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = ''; }
             
-            // V78: Show cutoff section for T-Shirt + Sleeveless
+            // V84: Show cutoff section for T-Shirt + Sleeveless
             const showCutoff = type === 'Sleeveless' && data.category === 'T-Shirt';
             document.getElementById('cutoff-section').classList.toggle('hidden', !showCutoff);
             if (!showCutoff) { data.isCutoff = false; data.cutoffType = ''; }
@@ -2215,7 +2219,7 @@
             checkConstructionComplete();
         }
         
-        // V78: Cutoff type for sleeveless T-Shirts
+        // V84: Cutoff type for sleeveless T-Shirts
         function setCutoffType(type, btn) {
             haptic('light');
             data.isCutoff = type === 'diy';
@@ -2224,7 +2228,7 @@
             btn.classList.add('selected','confirmed'); btn.classList.remove('btn-tertiary');
         }
         
-        // V78: Stitch type for T-Shirts (single vs double)
+        // V84: Stitch type for T-Shirts (single vs double)
         function setStitchType(type, btn) {
             haptic('light');
             data.stitchType = type;
@@ -2237,7 +2241,7 @@
             checkConstructionComplete();
         }
         
-        // V78: Check if construction profile is complete
+        // V84: Check if construction profile is complete
         function checkConstructionComplete() {
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const sleeveOk = !!data.sleeveType;
@@ -2272,7 +2276,7 @@
             checkFeelComplete(); 
         }
         
-        // V78: Check if fabric feel is complete
+        // V84: Check if fabric feel is complete
         function checkFeelComplete() {
             if (data.thickness && data.construction) {
                 completeSection('feel');
@@ -2280,43 +2284,81 @@
         }
 
         // ============ STEP 3: SNAP ============
-        function setHasDefects(has, btn) { 
+        // V84: Set clean (no defects)
+        function setClean(btn) { 
             haptic('medium'); 
-            data.hasDefects = has;
-            document.querySelectorAll('.defect-toggle-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary');
+            data.hasDefects = false;
+            data.defects = [];
+            // Clear defect button selections
+            document.querySelectorAll('.defect-type-btn').forEach(b => { 
+                b.classList.remove('selected','confirmed'); 
+                b.classList.add('btn-tertiary'); 
+            });
+            // Mark clean as confirmed
+            btn.classList.remove('btn-default','btn-tertiary');
+            btn.classList.add('confirmed');
             completeSection('issues');
         }
         
-        // V78: Simplified defect capture - opens camera directly
-        function captureDefect(defectType, btn) {
+        // V84: Toggle defect type (multiple allowed)
+        function toggleDefect(defectType, btn) {
             haptic('medium');
             data.hasDefects = true;
-            // Mark the clean button as unselected
-            document.querySelectorAll('.defect-toggle-btn').forEach(b => { 
-                b.classList.remove('selected','btn-hero'); 
-                b.classList.add('btn-secondary'); 
-            });
-            // Store the defect type and open camera
-            pendingDefect = { type: defectType, zone: 'general', side: 'front' };
-            cameraMode = 'defect';
-            openCamera('defect');
-            completeSection('issues');
+            
+            // Initialize defects array if needed
+            if (!data.defects) data.defects = [];
+            
+            // Toggle defect in array
+            const idx = data.defects.indexOf(defectType);
+            if (idx > -1) {
+                // Remove defect
+                data.defects.splice(idx, 1);
+                btn.classList.remove('selected','confirmed');
+                btn.classList.add('btn-tertiary');
+            } else {
+                // Add defect
+                data.defects.push(defectType);
+                btn.classList.add('selected','confirmed');
+                btn.classList.remove('btn-tertiary');
+            }
+            
+            // Deselect CLEAN button completely (make it tertiary)
+            const cleanBtn = document.getElementById('btn-clean');
+            if (cleanBtn) {
+                cleanBtn.classList.remove('confirmed','btn-default');
+                cleanBtn.classList.add('btn-tertiary');
+            }
+            
+            // If no defects selected, reset hasDefects and restore CLEAN default
+            if (data.defects.length === 0) {
+                data.hasDefects = null;
+                if (cleanBtn) {
+                    cleanBtn.classList.remove('btn-tertiary');
+                    cleanBtn.classList.add('btn-default');
+                }
+            } else {
+                completeSection('issues');
+            }
         }
 
+        // V84: Set fade level with btn-default support
         function setFade(level, btn) { 
             haptic('light'); 
             data.fadeLevel = level; 
-            document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-secondary'); b.classList.add('btn-tertiary'); }); 
-            btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary'); 
+            document.querySelectorAll('.fade-btn').forEach(b => { 
+                b.classList.remove('selected','confirmed','btn-default'); 
+                b.classList.add('btn-tertiary'); 
+            }); 
+            btn.classList.add('selected','confirmed'); 
+            btn.classList.remove('btn-tertiary','btn-default'); 
             completeSection('fade'); 
         }
         
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
-        // V78: Simplified - no body map needed
+        // V84: Simplified - no body map needed
         function initDefectSection() {
-            // No-op in V78 - defect mapping removed
+            // No-op in V84 - defect mapping removed
         }
 
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
@@ -2331,7 +2373,7 @@
             }
         }
 
-        // V78: Simplified defect photo display
+        // V84: Simplified defect photo display
         function renderDefectMarkers() {
             // Just render defect photo thumbnails in the defect-photos-thumbs container
             const container = document.getElementById('defect-photos-thumbs');
@@ -2350,13 +2392,13 @@
             if(mainContainer) {
                 mainContainer.innerHTML = data.mainPhotos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
             }
-            // Defect photos (V78)
+            // Defect photos (V84)
             renderDefectMarkers();
             updateAllChecks();
         }
 
         function updateMeasureHint() {
-            // V78: Measurement hints are now static in HTML
+            // V84: Measurement hints are now static in HTML
         }
 
         function updateWeight() {
@@ -2533,13 +2575,13 @@
         // ============ STEP 4: SEND ============
         function updateReviewCards() {
             document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.sku||'?'}<br>${data.tagSize||''} ${data.origin==='usa'?'🇺🇸':''} ${data.gender||''}`;
-            document.getElementById('summary-check').innerHTML = `${data.fabric||'?'}<br>${data.colorPrimary||''} • ${data.pattern||''}`;
+            document.getElementById('summary-check').innerHTML = `${data.fabric||'?'}<br>${(data.colors||[]).join(', ')||''} • ${data.pattern||''}`;
             const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
             document.getElementById('summary-snap').innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
             document.getElementById('summary-weight').innerHTML = data.itemWeightTotalOz > 0 ? `${data.itemWeightLb} lb ${data.itemWeightOz} oz` : 'No weight';
             
             setCardStatus('tag', !!data.category && !!data.sku && !!data.tagStatus);
-            setCardStatus('check', !!data.fabric && !!data.colorPrimary && !!data.pattern);
+            setCardStatus('check', !!data.fabric && data.colors && data.colors.length > 0 && !!data.pattern);
             setCardStatus('snap', !!data.audioMeasure && data.mainPhotos.length > 0);
             setCardStatus('weight', data.itemWeightTotalOz > 0);
             if(data.flagged) document.getElementById('flag-status').classList.remove('hidden');
@@ -2560,7 +2602,7 @@
             if(data.mainPhotos.length === 0) { haptic('error'); return alert("Add photo"); }
             if(data.itemWeightTotalOz === 0) { haptic('error'); return alert("Enter weight"); }
             if(!data.fabric) { haptic('error'); return alert("Select fabric"); }
-            if(!data.colorPrimary) { haptic('error'); return alert("Select color"); }
+            if(!data.colors || data.colors.length === 0) { haptic('error'); return alert("Select color"); }
             
             const itemTime = stopTimer();
             stats.itemsToday++;
@@ -2595,16 +2637,18 @@
             fd.append('construction', data.construction);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
+            fd.append('colors', JSON.stringify(data.colors || [])); // V84: colors array
             fd.append('pattern', data.pattern);
             fd.append('print_type', data.printType);
             fd.append('graphic_category', data.graphicCategory);
             fd.append('sleeve_type', data.sleeveType);
             fd.append('sleeve_style', data.sleeveStyle);
-            fd.append('is_cutoff', data.isCutoff); // V78
-            fd.append('cutoff_type', data.cutoffType); // V78
-            fd.append('stitch_type', data.stitchType); // V78
+            fd.append('is_cutoff', data.isCutoff);
+            fd.append('cutoff_type', data.cutoffType);
+            fd.append('stitch_type', data.stitchType);
             fd.append('wash', data.wash || '');
             fd.append('has_defects', data.hasDefects);
+            fd.append('defects', JSON.stringify(data.defects || [])); // V84: defects array
             fd.append('fade_level', data.fadeLevel);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
