@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>VintageLister v91</title>
+    <title>VintageLister v92</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -93,7 +93,7 @@
         /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
-        /* V91: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
+        /* V92: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
         .safe-top { padding-top: calc(12px + env(safe-area-inset-top, 20px)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
@@ -307,7 +307,7 @@
             box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
             transform: scale(1.05);
         }
-        /* V91: Labeled color swatches */
+        /* V92: Labeled color swatches */
         .color-item {
             display: flex;
             flex-direction: column;
@@ -602,7 +602,7 @@
         .card-green { border-left: 4px solid var(--color-success); background: var(--color-success-light); }
         .card-yellow { border-left: 4px solid var(--color-warning); background: var(--color-warning-light); }
         
-        /* ============ CAMERA (V91: Native camera - no overlay needed) ============ */
+        /* ============ CAMERA (V92: Native camera - no overlay needed) ============ */
         
         /* ============ MODAL ============ */
         #upload-modal { 
@@ -701,7 +701,7 @@
             </div>
             <button onclick="checkPin()" class="btn-standard btn-hero w-full text-lg">START LISTING →</button>
         </div>
-        <p class="text-slate-500 text-label mt-4">v91</p>
+        <p class="text-slate-500 text-label mt-4">v92</p>
     </div>
 
     <!-- CELEBRATION -->
@@ -732,13 +732,12 @@
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-slate-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-slate-400 text-label">v91</span>
+                    <span class="text-slate-400 text-label">v92</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <div class="streak-badge">
-                        <span>🔥</span>
-                        <span id="streak-count">1</span>
-                    </div>
+                    <button onclick="resetForm()" class="bg-slate-100 text-slate-600 text-label font-bold px-3 py-2 rounded-lg min-h-[36px] flex items-center gap-1 active:bg-slate-200">
+                        ↺ Reset
+                    </button>
                     <button onclick="showPhotographerChange()" id="photographer-badge" 
                             class="bg-indigo-100 text-indigo-700 text-label font-bold px-3 py-2 rounded-lg min-h-[36px] flex items-center">
                         P02
@@ -774,7 +773,10 @@
                 <div id="line-3" class="progress-line pending"></div>
                 <div id="dot-4" onclick="goToStep(4)" class="progress-dot pending" role="button" aria-label="Step 4: Send"></div>
             </div>
-            <div id="step-label" class="text-center text-slate-400 text-label font-semibold mt-2 uppercase tracking-wider">Tag</div>
+            <div class="text-center mt-2">
+                <span id="step-label" class="text-slate-400 text-label font-semibold uppercase tracking-wider">Tag</span>
+                <span id="category-label" class="text-blue-600 text-label font-bold uppercase tracking-wider"></span>
+            </div>
         </div>
     </header>
 
@@ -862,30 +864,33 @@
                         <button onclick="setOrigin('usa', this)" id="btn-origin-usa" class="btn-standard btn-default origin-btn text-sm">🇺🇸 USA MADE</button>
                         <button onclick="setOrigin('import', this)" class="btn-standard btn-tertiary origin-btn">🌍 Import</button>
                     </div>
-                    <select id="country-select" onchange="data.madeInCountry=this.value; haptic('light');" 
-                            class="hidden form-select text-sm">
-                        <option value="" disabled selected>Select Country...</option>
-                        <optgroup label="Common">
-                            <option value="Mexico">🇲🇽 Mexico</option>
-                            <option value="Honduras">🇭🇳 Honduras</option>
+                    <!-- V92: Common import countries as buttons -->
+                    <div id="import-countries" class="hidden mt-2">
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <button onclick="setCountry('China', this)" class="btn-compact btn-tertiary country-btn">🇨🇳 China</button>
+                            <button onclick="setCountry('Vietnam', this)" class="btn-compact btn-tertiary country-btn">🇻🇳 Vietnam</button>
+                            <button onclick="setCountry('Bangladesh', this)" class="btn-compact btn-tertiary country-btn">🇧🇩 Bangladesh</button>
+                            <button onclick="setCountry('Mexico', this)" class="btn-compact btn-tertiary country-btn">🇲🇽 Mexico</button>
+                            <button onclick="setCountry('Honduras', this)" class="btn-compact btn-tertiary country-btn">🇭🇳 Honduras</button>
+                            <button onclick="setCountry('Philippines', this)" class="btn-compact btn-tertiary country-btn">🇵🇭 Philippines</button>
+                        </div>
+                        <button onclick="toggleOtherCountries()" id="btn-other-country" class="btn-compact btn-tertiary w-full mb-2">🌍 Other...</button>
+                        <select id="country-select" onchange="setCountryFromSelect(this)" class="hidden form-select text-sm">
+                            <option value="" disabled selected>Select Country...</option>
                             <option value="Korea">🇰🇷 Korea</option>
                             <option value="Taiwan">🇹🇼 Taiwan</option>
-                            <option value="China">🇨🇳 China</option>
-                        </optgroup>
-                        <optgroup label="Other">
-                            <option value="Vietnam">🇻🇳 Vietnam</option>
-                            <option value="Bangladesh">🇧🇩 Bangladesh</option>
                             <option value="India">🇮🇳 India</option>
                             <option value="Indonesia">🇮🇩 Indonesia</option>
                             <option value="Cambodia">🇰🇭 Cambodia</option>
                             <option value="Pakistan">🇵🇰 Pakistan</option>
-                            <option value="Philippines">🇵🇭 Philippines</option>
                             <option value="Japan">🇯🇵 Japan</option>
                             <option value="Italy">🇮🇹 Italy</option>
                             <option value="Portugal">🇵🇹 Portugal</option>
+                            <option value="Sri Lanka">🇱🇰 Sri Lanka</option>
+                            <option value="Turkey">🇹🇷 Turkey</option>
                             <option value="Other">🌍 Other</option>
-                        </optgroup>
-                    </select>
+                        </select>
+                    </div>
                 </div>
                 
                 <!-- Gender (conditional) -->
@@ -905,7 +910,7 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK (V91: Reordered - Color → Pattern → Fabric → Construction) ========== -->
+        <!-- ========== STEP 2: CHECK (V92: Reordered - Color → Pattern → Fabric → Construction) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
             <!-- COLOR - Clean grid, 15 colors in 3 rows -->
@@ -916,7 +921,7 @@
                 </label>
                 <div class="text-xs text-slate-400 mb-3">Tap all that apply</div>
                 
-                <!-- V91: 15 colors in 3 rows of 5 -->
+                <!-- V92: 15 colors in 3 rows of 5 -->
                 <div class="grid grid-cols-5 gap-2">
                     <div class="color-item" onclick="toggleColor('White', this)"><div class="color-swatch-labeled" style="background:#ffffff;border:1px solid #ddd;"></div><span>White</span></div>
                     <div class="color-item" onclick="toggleColor('Ivory', this)"><div class="color-swatch-labeled" style="background:#fffff0;border:1px solid #ddd;"></div><span>Ivory</span></div>
@@ -938,7 +943,20 @@
                 </div>
             </section>
             
-            <!-- PATTERN (V91: Category-specific, single selection) -->
+            <!-- V92: FADE LEVEL moved under Color -->
+            <section id="section-fade" class="section-card">
+                <label class="section-label">
+                    <span id="check-fade" class="check-circle">○</span>
+                    Fade Level
+                </label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="setFade('None', this)" id="btn-fade-none" class="btn-compact btn-default fade-btn">None</button>
+                    <button onclick="setFade('Light', this)" id="btn-fade-light" class="btn-compact btn-tertiary fade-btn">Light</button>
+                    <button onclick="setFade('Heavy', this)" id="btn-fade-heavy" class="btn-compact btn-tertiary fade-btn">Heavy</button>
+                </div>
+            </section>
+            
+            <!-- PATTERN (V92: Category-specific, single selection) -->
             <section id="section-pattern" class="section-card">
                 <label class="section-label">
                     <span id="check-pattern" class="check-circle">○</span>
@@ -954,7 +972,7 @@
                 </div>
             </section>
             
-            <!-- FABRIC MATERIAL (V91: Category-specific, multiple selection) -->
+            <!-- FABRIC MATERIAL (V92: Category-specific, multiple selection) -->
             <section id="section-fabric" class="section-card">
                 <label class="section-label">
                     <span id="check-fabric" class="check-circle">○</span>
@@ -988,7 +1006,7 @@
                 </div>
             </section>
             
-            <!-- FABRIC TYPE (V91: Category-specific) -->
+            <!-- FABRIC TYPE (V92: Category-specific) -->
             <section id="section-fabric-type" class="section-card">
                 <label class="section-label">
                     <span id="check-fabric-type" class="check-circle">○</span>
@@ -1083,7 +1101,7 @@
             </div>
         </div>
 
-        <!-- ========== STEP 3: SNAP (V91: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
+        <!-- ========== STEP 3: SNAP (V92: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
         <div id="step-3" class="step-container space-y-3">
             
             <!-- MAIN PHOTOS -->
@@ -1100,7 +1118,7 @@
                 </button>
             </section>
             
-            <!-- SKU (V91: After photos) -->
+            <!-- SKU (V92: After photos) -->
             <section id="section-sku" class="section-card">
                 <label class="section-label">
                     <span id="check-sku" class="check-circle">○</span>
@@ -1122,7 +1140,7 @@
                 </div>
             </section>
             
-            <!-- ISSUES (V91: No Defects default, multiple defects allowed) -->
+            <!-- ISSUES (V92: No Defects default, multiple defects allowed) -->
             <section id="section-issues" class="section-card">
                 <label class="section-label">
                     <span id="check-issues" class="check-circle">○</span>
@@ -1132,7 +1150,7 @@
                     <span class="text-xl">✓</span> No Defects
                 </button>
                 
-                <!-- Defect Type Buttons (V91: Multiple selection allowed) -->
+                <!-- Defect Type Buttons (V92: Multiple selection allowed) -->
                 <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type:</div>
                 <div class="grid grid-cols-3 gap-2 mb-2">
                     <button onclick="toggleDefect('Stain', this)" id="btn-defect-stain" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
@@ -1151,20 +1169,7 @@
                 <div id="defect-photos-thumbs" class="flex gap-2 flex-wrap"></div>
             </section>
             
-            <!-- FADE LEVEL (V91: Default None, no Sun Fade) -->
-            <section id="section-fade" class="section-card">
-                <label class="section-label">
-                    <span id="check-fade" class="check-circle">○</span>
-                    Fade Level
-                </label>
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="setFade('None', this)" id="btn-fade-none" class="btn-compact btn-default fade-btn">None</button>
-                    <button onclick="setFade('Light', this)" id="btn-fade-light" class="btn-compact btn-tertiary fade-btn">Light</button>
-                    <button onclick="setFade('Heavy', this)" id="btn-fade-heavy" class="btn-compact btn-tertiary fade-btn">Heavy</button>
-                </div>
-            </section>
-            
-            <!-- MEASUREMENTS (V91: Vertical bullet list) -->
+            <!-- MEASUREMENTS (V92: Vertical bullet list) -->
             <section id="section-measure" class="section-card">
                 <label class="section-label">
                     <span id="check-measure" class="check-circle">○</span>
@@ -1301,12 +1306,12 @@
     </div>
 
     <!-- CAMERA (V76: Added grid + stabilizer + DONE button) -->
-    <!-- V91: Hidden file inputs for native camera (opens Samsung camera directly) -->
+    <!-- V92: Hidden file inputs for native camera (opens Samsung camera directly) -->
     <input type="file" id="camera-input-main" accept="image/*" capture="environment" style="display:none" onchange="handleNativePhoto(this, 'main')">
     <input type="file" id="camera-input-tag" accept="image/*" capture="environment" style="display:none" onchange="handleNativePhoto(this, 'tag')">
     <input type="file" id="camera-input-defect" accept="image/*" capture="environment" style="display:none" onchange="handleNativePhoto(this, 'defect')">
     
-    <!-- PHOTO PREVIEW MODAL (V91: Keep/Retake after native camera) -->
+    <!-- PHOTO PREVIEW MODAL (V92: Keep/Retake after native camera) -->
     <div id="photo-preview-modal" style="position:fixed;inset:0;z-index:65;background:black;display:none;flex-direction:column;">
         <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px;">
             <img id="preview-image" src="" alt="Preview" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;">
@@ -1355,7 +1360,7 @@
 
         // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
-        let cameraMode = null, cameraSubType = null, pendingCameraLabel = null; // V91: Simplified for native camera
+        let cameraMode = null, cameraSubType = null, pendingCameraLabel = null; // V92: Simplified for native camera
         let itemStartTime = null, timerInterval = null;
         let stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: null, bestTime: null };
         let pendingPhoto = null;
@@ -1364,11 +1369,11 @@
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabrics: [], fabricType: '', wash: '', colors: [], // V91: fabrics as array for multi-select
+            fabrics: [], fabricType: '', wash: '', colors: [], // V92: fabrics as array for multi-select
             pattern: '', printType: '', graphicCategory: '',
             sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
             isCutoff: false, cutoffType: '', stitchType: '',
-            hasDefects: null, defects: [], fadeLevel: '', // V91: defects as array
+            hasDefects: null, defects: [], fadeLevel: '', // V92: defects as array
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
@@ -1409,6 +1414,71 @@
             setTimeout(() => el.classList.remove('flash'), 350);
         }
 
+        // V92: Reset form to start fresh
+        function resetForm() {
+            if (!confirm('Reset form and start over?')) return;
+            
+            // Reset data
+            Object.assign(data, {
+                superCategory: 'tops', category: '', sku: '',
+                tagStatus: '', tagSize: '', gender: '',
+                origin: 'usa', madeInCountry: 'USA',
+                fabrics: [], fabricType: '', wash: '', colors: [],
+                pattern: '', printType: '', graphicCategory: '',
+                sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
+                isCutoff: false, cutoffType: '', stitchType: '',
+                hasDefects: null, defects: [], fadeLevel: '',
+                flagged: false,
+                mainPhotos: [], tagPhotos: [], defectPhotos: [],
+                audioMeasure: null, audioDuration: 0,
+                itemWeightLb: 0, itemWeightOz: 0, itemWeightTotalOz: 0,
+                timestamps: { start: new Date().toISOString() }
+            });
+            
+            // Reset timer
+            if (timerInterval) clearInterval(timerInterval);
+            itemStartTime = null;
+            document.getElementById('current-time').textContent = '0:00';
+            
+            // Reset step to 1
+            currentStep = 1;
+            document.querySelectorAll('.step-container').forEach(s => s.classList.add('hidden'));
+            document.getElementById('step-1').classList.remove('hidden');
+            
+            // Reset all checkmarks
+            document.querySelectorAll('.check-circle').forEach(c => {
+                c.innerHTML = '○';
+                c.classList.remove('complete');
+            });
+            
+            // Reset all button selections
+            document.querySelectorAll('.selected, .confirmed').forEach(b => {
+                b.classList.remove('selected', 'confirmed', 'btn-hero', 'btn-secondary');
+                b.classList.add('btn-tertiary');
+            });
+            
+            // Reset color selections
+            document.querySelectorAll('.color-item.selected').forEach(c => c.classList.remove('selected'));
+            
+            // Reset super category display
+            document.querySelectorAll('.super-btn').forEach(b => { 
+                b.classList.remove('selected','btn-hero'); 
+                b.classList.add('btn-secondary'); 
+            });
+            
+            // Reset progress dots
+            updateProgressDots();
+            document.getElementById('step-label').textContent = 'TAG';
+            document.getElementById('category-label').textContent = '';
+            
+            // Clear inputs
+            document.getElementById('sku-input').value = '';
+            document.getElementById('weight-lb').value = '0';
+            document.getElementById('weight-oz').value = '0';
+            
+            haptic('medium');
+        }
+
         // ============ INIT ============
         document.addEventListener('DOMContentLoaded', () => { 
             data.timestamps.start = new Date().toISOString();
@@ -1443,7 +1513,7 @@
 
         function loadStats() {
             try {
-                const saved = JSON.parse(localStorage.getItem('vl_stats_v91') || '{}');
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v92') || '{}');
                 const today = new Date().toDateString();
                 if (saved.lastDate === today) { stats = saved; }
                 else {
@@ -1455,7 +1525,7 @@
             } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
         }
 
-        function saveStats() { try { localStorage.setItem('vl_stats_v91', JSON.stringify(stats)); } catch(e) {} }
+        function saveStats() { try { localStorage.setItem('vl_stats_v92', JSON.stringify(stats)); } catch(e) {} }
 
         function updateStatsDisplay() {
             document.getElementById('streak-count').textContent = stats.streak;
@@ -1534,7 +1604,7 @@
         }
 
         function updateAllChecks() {
-            // V91: Construction check combines sleeve + stitch
+            // V92: Construction check combines sleeve + stitch
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const constructionOk = data.superCategory === 'bottoms' || (
                 !!data.sleeveType && 
@@ -1546,7 +1616,7 @@
                 category: !!data.category,
                 sku: !!data.sku,
                 tag: !!data.tagStatus,
-                fabric: data.fabrics && data.fabrics.length > 0, // V91: fabrics array
+                fabric: data.fabrics && data.fabrics.length > 0, // V92: fabrics array
                 'fabric-type': !!data.fabricType,
                 color: data.colors && data.colors.length > 0,
                 pattern: (data.fabrics && data.fabrics.includes('Denim')) || !!data.pattern,
@@ -1570,7 +1640,7 @@
         }
 
         function autoScroll(sectionId) {
-            // V91: Auto-scroll disabled per user request
+            // V92: Auto-scroll disabled per user request
         }
 
         // ============ NAVIGATION ============
@@ -1588,7 +1658,7 @@
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            // V91: Show construction profile for tops and outer (not bottoms)
+            // V92: Show construction profile for tops and outer (not bottoms)
             if(step===2) { document.getElementById('section-construction').classList.toggle('hidden', data.superCategory === 'bottoms'); }
             if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
@@ -1606,7 +1676,7 @@
             haptic('medium');
             data.superCategory = cat;
             
-            // V91: Start timer when super category selected
+            // V92: Start timer when super category selected
             if (!itemStartTime) { 
                 startTimer(); 
                 scanFlash(); 
@@ -1638,7 +1708,7 @@
         }
 
         function getCatEmoji(cat) {
-            const emojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🎽', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
+            const emojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
             return emojis[cat] || '👕';
         }
 
@@ -1655,22 +1725,25 @@
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             
-            // V91: Apply ALL defaults (fabric, pattern, construction, feel) based on category
+            // V92: Update category label in progress bar
+            document.getElementById('category-label').textContent = ' — ' + cat.toUpperCase();
+            
+            // V92: Apply ALL defaults (fabric, pattern, construction, feel) based on category
             const defaultPattern = applyAllDefaults(cat);
             
-            // V91: Update pattern buttons based on category
+            // V92: Update pattern buttons based on category
             updatePatternButtons(cat);
             
-            // V91: Update fabric material buttons based on category
+            // V92: Update fabric material buttons based on category
             updateFabricMaterialButtons(cat);
             
-            // V91: Update fabric type buttons based on category
+            // V92: Update fabric type buttons based on category
             updateFabricTypeButtons(cat);
             
             autoScroll('section-tag');
         }
         
-        // V91: Apply ALL defaults based on category (fabric, pattern, construction, feel)
+        // V92: Apply ALL defaults based on category (fabric, pattern, construction, feel)
         function applyAllDefaults(cat) {
             // Reset all defaultable buttons to tertiary
             document.querySelectorAll('.fabric-btn, .fabric-type-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn, .gender-btn').forEach(b => {
@@ -1678,7 +1751,7 @@
                 b.classList.add('btn-tertiary');
             });
             
-            // Comprehensive defaults by category (V91: Updated fabric material IDs)
+            // Comprehensive defaults by category (V92: Updated fabric material IDs)
             const allDefaults = {
                 // TOPS
                 'T-Shirt': { 
@@ -1699,7 +1772,7 @@
                 'Hoodie': { 
                     fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
-                    thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
+                    thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Button Shirt': { 
                     fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-men',
@@ -1781,7 +1854,7 @@
                 thickness: 'btn-thick-standard', layers: 'btn-layers-single'
             };
             
-            // V91: Fabric defaults removed - buttons are now dynamic per category
+            // V92: Fabric defaults removed - buttons are now dynamic per category
             
             // Apply sleeve length default
             const sleeveBtnMap = { 'Short': 'btn-sleeve-short', 'Long': 'btn-sleeve-long', '3/4': 'btn-sleeve-34', 'Sleeveless': 'btn-sleeve-none' };
@@ -1855,7 +1928,7 @@
             return def.pattern;
         }
         
-        // V91: Update pattern buttons based on category
+        // V92: Update pattern buttons based on category
         function updatePatternButtons(cat) {
             const container = document.getElementById('pattern-buttons');
             
@@ -1884,7 +1957,7 @@
                 'Vest': ['Solid', 'Plaid', 'Colorblock', 'Camouflage']
             };
             
-            // V91: Category-specific pattern defaults (shown as suggestions)
+            // V92: Category-specific pattern defaults (shown as suggestions)
             const patternDefaults = {
                 'T-Shirt': 'Graphic Print',
                 'Jersey': 'Graphic Print',
@@ -1900,10 +1973,10 @@
             const categoryPatterns = patterns[cat] || ['Solid', 'Graphic Print', 'Striped'];
             const defaultPattern = patternDefaults[cat] || 'Solid';
             
-            // V91: Don't auto-set data, just show as suggestion
+            // V92: Don't auto-set data, just show as suggestion
             data.pattern = '';
             
-            // V91: Add Other to the grid
+            // V92: Add Other to the grid
             const allPatterns = [...categoryPatterns, 'Other...'];
             container.innerHTML = allPatterns.map(pat => {
                 if (pat === 'Other...') {
@@ -1954,8 +2027,55 @@
             });
             btn.classList.add('selected','confirmed'); 
             btn.classList.remove('btn-tertiary','btn-default');
-            document.getElementById('country-select').classList.toggle('hidden', type === 'usa');
-            data.madeInCountry = type === 'usa' ? 'USA' : '';
+            // V92: Toggle import countries section
+            document.getElementById('import-countries').classList.toggle('hidden', type === 'usa');
+            document.getElementById('country-select').classList.add('hidden');
+            if (type === 'usa') {
+                data.madeInCountry = 'USA';
+                // Clear country button selections
+                document.querySelectorAll('.country-btn').forEach(b => {
+                    b.classList.remove('selected','confirmed');
+                    b.classList.add('btn-tertiary');
+                });
+            } else {
+                data.madeInCountry = '';
+            }
+        }
+        
+        // V92: Set country from button
+        function setCountry(country, btn) {
+            haptic('light');
+            data.madeInCountry = country;
+            document.querySelectorAll('.country-btn').forEach(b => {
+                b.classList.remove('selected','confirmed');
+                b.classList.add('btn-tertiary');
+            });
+            btn.classList.add('selected','confirmed');
+            btn.classList.remove('btn-tertiary');
+            document.getElementById('country-select').classList.add('hidden');
+            document.getElementById('btn-other-country').classList.remove('selected','confirmed');
+            document.getElementById('btn-other-country').classList.add('btn-tertiary');
+        }
+        
+        // V92: Toggle other countries dropdown
+        function toggleOtherCountries() {
+            const select = document.getElementById('country-select');
+            select.classList.toggle('hidden');
+            if (!select.classList.contains('hidden')) {
+                select.focus();
+            }
+        }
+        
+        // V92: Set country from dropdown
+        function setCountryFromSelect(select) {
+            haptic('light');
+            data.madeInCountry = select.value;
+            document.querySelectorAll('.country-btn').forEach(b => {
+                b.classList.remove('selected','confirmed');
+                b.classList.add('btn-tertiary');
+            });
+            document.getElementById('btn-other-country').classList.add('selected','confirmed');
+            document.getElementById('btn-other-country').classList.remove('btn-tertiary');
         }
 
         function setGender(g, btn) { 
@@ -1970,7 +2090,7 @@
         }
 
         // ============ STEP 2: CHECK ============
-        // V91: Toggle fabric material selection (multiple allowed)
+        // V92: Toggle fabric material selection (multiple allowed)
         function toggleFabricMaterial(material, btn) {
             haptic('light');
             if (!data.fabrics) data.fabrics = [];
@@ -2001,12 +2121,12 @@
             }
         }
         
-        // V91: Display removed - function kept for compatibility but does nothing
+        // V92: Display removed - function kept for compatibility but does nothing
         function updateFabricsDisplay() {
-            // V91: No longer displaying fabric tags
+            // V92: No longer displaying fabric tags
         }
         
-        // V91: Toggle other fabric input
+        // V92: Toggle other fabric input
         function toggleOtherFabric() {
             const section = document.getElementById('other-fabric-section');
             section.classList.toggle('hidden');
@@ -2015,7 +2135,7 @@
             }
         }
         
-        // V91: Add other fabric from input
+        // V92: Add other fabric from input
         function addOtherFabric() {
             const input = document.getElementById('fabric-other-input');
             const val = input.value.trim();
@@ -2032,7 +2152,7 @@
             }
         }
         
-        // V91: Update fabric material buttons based on category
+        // V92: Update fabric material buttons based on category
         function updateFabricMaterialButtons(cat) {
             const container = document.getElementById('fabric-material-buttons');
             
@@ -2061,7 +2181,7 @@
                 'Vest': ['Nylon', 'Polyester', 'Cotton', 'Wool']
             };
             
-            // V91: Category-specific fabric material defaults (shown as suggestions)
+            // V92: Category-specific fabric material defaults (shown as suggestions)
             const fabricDefaults = {
                 'T-Shirt': ['Cotton', 'Polyester'],
                 'Sweatshirt': ['Cotton', 'Polyester'],
@@ -2071,10 +2191,10 @@
             const materials = fabricMaterials[cat] || ['Cotton', 'Polyester', 'Rayon'];
             const defaults = fabricDefaults[cat] || [];
             
-            // V91: Don't auto-set data, just show as suggestions
+            // V92: Don't auto-set data, just show as suggestions
             data.fabrics = [];
             
-            // V91: Add Other to the grid
+            // V92: Add Other to the grid
             const allMaterials = [...materials, 'Other...'];
             container.innerHTML = allMaterials.map(mat => {
                 if (mat === 'Other...') {
@@ -2085,7 +2205,7 @@
             }).join('');
         }
         
-        // V91: Set fabric type
+        // V92: Set fabric type
         function setFabricType(type, btn) {
             haptic('light');
             data.fabricType = type;
@@ -2101,7 +2221,7 @@
             completeSection('fabric-type');
         }
         
-        // V91: Toggle other fabric type input
+        // V92: Toggle other fabric type input
         function toggleOtherFabricType() {
             const section = document.getElementById('other-fabric-type-section');
             section.classList.toggle('hidden');
@@ -2110,7 +2230,7 @@
             }
         }
         
-        // V91: Handle other fabric type input
+        // V92: Handle other fabric type input
         function onOtherFabricTypeInput() {
             const val = document.getElementById('fabric-type-other-input').value;
             if (val) {
@@ -2126,7 +2246,7 @@
             }
         }
         
-        // V91: Update fabric type buttons based on category
+        // V92: Update fabric type buttons based on category
         function updateFabricTypeButtons(cat) {
             const container = document.getElementById('fabric-type-buttons');
             
@@ -2157,7 +2277,7 @@
             
             const types = fabricTypes[cat] || ['Jersey', 'Knit', 'Woven'];
             
-            // V91: Category-specific fabric type defaults (shown as suggestions)
+            // V92: Category-specific fabric type defaults (shown as suggestions)
             const fabricTypeDefaults = {
                 'T-Shirt': 'Knit',
                 'Sweatshirt': 'Fleece',
@@ -2168,10 +2288,10 @@
             
             const defaultType = fabricTypeDefaults[cat] || '';
             
-            // V91: Don't auto-set data, just show as suggestion
+            // V92: Don't auto-set data, just show as suggestion
             data.fabricType = '';
             
-            // V91: Add Other to the grid
+            // V92: Add Other to the grid
             const allTypes = [...types, 'Other...'];
             container.innerHTML = allTypes.map(type => {
                 if (type === 'Other...') {
@@ -2189,7 +2309,7 @@
             btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
         }
         
-        // V91: Toggle color selection (multiple allowed)
+        // V92: Toggle color selection (multiple allowed)
         function toggleColor(color, element) {
             haptic('light');
             // Initialize colors array if needed
@@ -2209,7 +2329,7 @@
                 if (colorItem) colorItem.classList.add('selected');
             }
             
-            // V91: No longer displaying color list
+            // V92: No longer displaying color list
             
             // Complete section if at least one color selected
             if (data.colors.length > 0) {
@@ -2217,7 +2337,7 @@
             }
         }
         
-        // V91: Toggle other pattern input
+        // V92: Toggle other pattern input
         function toggleOtherPattern() {
             const section = document.getElementById('other-pattern-section');
             section.classList.toggle('hidden');
@@ -2226,7 +2346,7 @@
             }
         }
         
-        // V91: Handle other pattern input
+        // V92: Handle other pattern input
         function onOtherPatternInput() {
             const val = document.getElementById('pattern-other-input').value;
             if (val) {
@@ -2257,7 +2377,7 @@
             completeSection('pattern');
         }
 
-        // V91: Updated setSleeveType with cutoff section for T-Shirts
+        // V92: Updated setSleeveType with cutoff section for T-Shirts
         function setSleeveType(type, btn) { 
             haptic('light'); 
             data.sleeveType = type; 
@@ -2275,7 +2395,7 @@
             if (!showStyle) { data.sleeveStyle = 'N/A'; } 
             else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = ''; }
             
-            // V91: Show cutoff section for T-Shirt + Sleeveless
+            // V92: Show cutoff section for T-Shirt + Sleeveless
             const showCutoff = type === 'Sleeveless' && data.category === 'T-Shirt';
             document.getElementById('cutoff-section').classList.toggle('hidden', !showCutoff);
             if (!showCutoff) { data.isCutoff = false; data.cutoffType = ''; }
@@ -2295,7 +2415,7 @@
             checkConstructionComplete();
         }
         
-        // V91: Cutoff type for sleeveless T-Shirts
+        // V92: Cutoff type for sleeveless T-Shirts
         function setCutoffType(type, btn) {
             haptic('light');
             data.isCutoff = type === 'diy';
@@ -2304,7 +2424,7 @@
             btn.classList.add('selected','confirmed'); btn.classList.remove('btn-tertiary');
         }
         
-        // V91: Stitch type for T-Shirts (single vs double)
+        // V92: Stitch type for T-Shirts (single vs double)
         function setStitchType(type, btn) {
             haptic('light');
             data.stitchType = type;
@@ -2317,7 +2437,7 @@
             checkConstructionComplete();
         }
         
-        // V91: Check if construction profile is complete
+        // V92: Check if construction profile is complete
         function checkConstructionComplete() {
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const sleeveOk = !!data.sleeveType;
@@ -2352,7 +2472,7 @@
             checkFeelComplete(); 
         }
         
-        // V91: Check if fabric feel is complete
+        // V92: Check if fabric feel is complete
         function checkFeelComplete() {
             if (data.thickness && data.construction) {
                 completeSection('feel');
@@ -2360,7 +2480,7 @@
         }
 
         // ============ STEP 3: SNAP ============
-        // V91: Set clean (no defects)
+        // V92: Set clean (no defects)
         function setClean(btn) { 
             haptic('medium'); 
             data.hasDefects = false;
@@ -2376,7 +2496,7 @@
             completeSection('issues');
         }
         
-        // V91: Toggle defect type (multiple allowed)
+        // V92: Toggle defect type (multiple allowed)
         function toggleDefect(defectType, btn) {
             haptic('medium');
             data.hasDefects = true;
@@ -2417,7 +2537,7 @@
             }
         }
 
-        // V91: Set fade level with btn-default support
+        // V92: Set fade level with btn-default support
         function setFade(level, btn) { 
             haptic('light'); 
             data.fadeLevel = level; 
@@ -2432,9 +2552,9 @@
         
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
-        // V91: Simplified - no body map needed
+        // V92: Simplified - no body map needed
         function initDefectSection() {
-            // No-op in V91 - defect mapping removed
+            // No-op in V92 - defect mapping removed
         }
 
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
@@ -2449,7 +2569,7 @@
             }
         }
 
-        // V91: Simplified defect photo display
+        // V92: Simplified defect photo display
         function renderDefectMarkers() {
             // Just render defect photo thumbnails in the defect-photos-thumbs container
             const container = document.getElementById('defect-photos-thumbs');
@@ -2468,13 +2588,13 @@
             if(mainContainer) {
                 mainContainer.innerHTML = data.mainPhotos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
             }
-            // Defect photos (V91)
+            // Defect photos (V92)
             renderDefectMarkers();
             updateAllChecks();
         }
 
         function updateMeasureHint() {
-            // V91: Measurement hints are now static in HTML
+            // V92: Measurement hints are now static in HTML
         }
 
         function updateWeight() {
@@ -2485,8 +2605,8 @@
             haptic('light');
         }
 
-        // ============ CAMERA (V91: Native camera - opens Samsung camera directly) ============
-        // V91: Open native camera by triggering file input
+        // ============ CAMERA (V92: Native camera - opens Samsung camera directly) ============
+        // V92: Open native camera by triggering file input
         function openCamera(mode, subType = null) {
             cameraMode = mode; 
             cameraSubType = subType;
@@ -2510,7 +2630,7 @@
             }
         }
         
-        // V91: Handle photo from native camera
+        // V92: Handle photo from native camera
         function handleNativePhoto(input, mode) {
             if (!input.files || !input.files[0]) return;
             
@@ -2551,7 +2671,7 @@
             reader.readAsDataURL(file);
         }
         
-        // V91: No longer needed but keep for compatibility
+        // V92: No longer needed but keep for compatibility
         function closeCamera() {
             pendingDefect = null;
             renderPhotoThumbs();
@@ -2559,7 +2679,7 @@
 
         function finishPhotos() { closeCamera(); }
 
-        // V91: Stabilizer removed - using native Samsung camera instead
+        // V92: Stabilizer removed - using native Samsung camera instead
 
         function acceptPhoto() {
             if (!pendingPhoto) return;
@@ -2578,7 +2698,7 @@
             document.getElementById('photo-preview-modal').style.display = 'none';
             haptic('success');
             maybeQuickReward();
-            // V91: Handle defect completion
+            // V92: Handle defect completion
             if (cameraMode === 'defect') { 
                 renderDefectMarkers(); 
                 pendingDefect = null;
@@ -2590,7 +2710,7 @@
         function rejectPhoto() {
             pendingPhoto = null;
             document.getElementById('photo-preview-modal').style.display = 'none';
-            // V91: Reopen native camera for retake
+            // V92: Reopen native camera for retake
             openCamera(cameraMode, cameraSubType);
         }
 
@@ -2687,13 +2807,13 @@
             fd.append('tag_size', data.tagSize);
             fd.append('origin', data.origin);
             fd.append('made_in_country', data.madeInCountry);
-            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V91: fabrics array for multi-select
+            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V92: fabrics array for multi-select
             fd.append('fabric_type', data.fabricType);
             fd.append('thickness', data.thickness);
             fd.append('construction', data.construction);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
-            fd.append('colors', JSON.stringify(data.colors || [])); // V91: colors array
+            fd.append('colors', JSON.stringify(data.colors || [])); // V92: colors array
             fd.append('pattern', data.pattern);
             fd.append('print_type', data.printType);
             fd.append('graphic_category', data.graphicCategory);
@@ -2704,7 +2824,7 @@
             fd.append('stitch_type', data.stitchType);
             fd.append('wash', data.wash || '');
             fd.append('has_defects', data.hasDefects);
-            fd.append('defects', JSON.stringify(data.defects || [])); // V91: defects array
+            fd.append('defects', JSON.stringify(data.defects || [])); // V92: defects array
             fd.append('fade_level', data.fadeLevel);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
