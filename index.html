@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>VintageLister v94</title>
+    <title>VintageLister v97</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -93,7 +93,7 @@
         /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
-        /* V94: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
+        /* V97: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
         .safe-top { padding-top: calc(12px + env(safe-area-inset-top, 20px)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
@@ -307,7 +307,7 @@
             box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
             transform: scale(1.05);
         }
-        /* V94: Labeled color swatches */
+        /* V97: Labeled color swatches */
         .color-item {
             display: flex;
             flex-direction: column;
@@ -602,7 +602,7 @@
         .card-green { border-left: 4px solid var(--color-success); background: var(--color-success-light); }
         .card-yellow { border-left: 4px solid var(--color-warning); background: var(--color-warning-light); }
         
-        /* ============ CAMERA (V94: Native camera - no overlay needed) ============ */
+        /* ============ CAMERA (V97: Native camera - no overlay needed) ============ */
         
         /* ============ MODAL ============ */
         #upload-modal { 
@@ -648,6 +648,212 @@
             min-height: var(--touch-min);
         }
         .form-input:focus { border-color: var(--color-primary); }
+        
+        /* ============ V97: FABRIC SELECTOR ============ */
+        .fabric-filter-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .fabric-filter-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 8px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            color: var(--color-text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .fabric-filter-btn:active { transform: scale(0.96); }
+        .fabric-filter-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: white;
+        }
+        
+        .fabric-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .fabric-card {
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .fabric-card:active { transform: scale(0.98); }
+        .fabric-card.selected {
+            border-color: var(--color-primary) !important;
+            background: var(--color-primary) !important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+        }
+        .fabric-card.selected .fabric-card-name { color: white; }
+        .fabric-card.selected .fabric-card-desc { color: rgba(255,255,255,0.8); }
+        .fabric-card.selected .fabric-card-help { background: rgba(255,255,255,0.2); color: white; }
+        
+        /* Default card - dashed blue border, spans 2 columns */
+        .fabric-card.priority-1 {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 2px dashed var(--color-primary);
+        }
+        .fabric-card.priority-1 .fabric-card-name { font-size: 16px; }
+        .fabric-card.priority-1.selected {
+            border-style: solid;
+        }
+        
+        .fabric-card.dimmed {
+            opacity: 0.3;
+            pointer-events: none;
+            filter: grayscale(0.5);
+        }
+        
+        .fabric-card-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--color-text);
+            margin-bottom: 4px;
+        }
+        .fabric-card-desc {
+            font-size: 11px;
+            color: var(--color-text-muted);
+            line-height: 1.3;
+        }
+        .fabric-card-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--color-primary);
+            text-transform: uppercase;
+        }
+        .fabric-card-help {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(59,130,246,0.1);
+            color: var(--color-primary);
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+        }
+        .fabric-card-help:active { background: var(--color-primary); color: white; }
+        .priority-1 .fabric-card-help { right: auto; left: 8px; }
+        
+        .fabric-helper-text {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #92400e;
+            margin-top: 10px;
+            display: none;
+        }
+        .fabric-helper-text.visible { display: block; }
+        
+        /* V97: "Not Sure?" Button */
+        .fabric-not-sure-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 12px;
+            background: #fef3c7;
+            border: 2px dashed #f59e0b;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            color: #92400e;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .fabric-not-sure-btn:active {
+            transform: scale(0.98);
+            background: #fde68a;
+        }
+        .fabric-not-sure-btn.hidden { display: none; }
+        
+        /* V97: Questions Panel */
+        .fabric-questions-panel {
+            margin-top: 16px;
+            padding: 16px;
+            background: #fffbeb;
+            border: 2px solid #f59e0b;
+            border-radius: var(--radius-md);
+        }
+        .fabric-questions-panel.hidden { display: none; }
+        
+        .fabric-questions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #92400e;
+        }
+        .fabric-questions-close {
+            background: none;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: #b45309;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+        .fabric-questions-close:active { opacity: 0.7; }
+        
+        /* Fabric Reference Modal */
+        .fabric-ref-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .fabric-ref-modal.visible { display: flex; }
+        .fabric-ref-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+        }
+        .fabric-ref-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--color-text);
+            margin-bottom: 8px;
+        }
+        .fabric-ref-desc {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin-bottom: 16px;
+        }
         
         /* ============ UTILITY CLASSES ============ */
         .text-label { font-size: var(--text-xs); }
@@ -701,7 +907,7 @@
             </div>
             <button onclick="checkPin()" class="btn-standard btn-hero w-full text-lg">START LISTING →</button>
         </div>
-        <p class="text-slate-500 text-label mt-4">v94</p>
+        <p class="text-slate-500 text-label mt-4">v97</p>
     </div>
 
     <!-- CELEBRATION -->
@@ -732,7 +938,7 @@
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-slate-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-slate-400 text-label">v94</span>
+                    <span class="text-slate-400 text-label">v97</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="resetForm()" class="bg-slate-100 text-slate-600 text-label font-bold px-3 py-2 rounded-lg min-h-[36px] flex items-center gap-1 active:bg-slate-200">
@@ -864,7 +1070,7 @@
                         <button onclick="setOrigin('usa', this)" id="btn-origin-usa" class="btn-standard btn-default origin-btn text-sm">🇺🇸 USA MADE</button>
                         <button onclick="setOrigin('import', this)" class="btn-standard btn-tertiary origin-btn">🌍 Import</button>
                     </div>
-                    <!-- V94: Common import countries as buttons -->
+                    <!-- V97: Common import countries as buttons -->
                     <div id="import-countries" class="hidden mt-2">
                         <div class="grid grid-cols-3 gap-2 mb-2">
                             <button onclick="setCountry('China', this)" class="btn-compact btn-tertiary country-btn">🇨🇳 China</button>
@@ -910,7 +1116,7 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK (V94: Reordered - Color → Pattern → Fabric → Construction) ========== -->
+        <!-- ========== STEP 2: CHECK (V97: Reordered - Color → Pattern → Fabric → Construction) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
             <!-- COLOR - Clean grid, 15 colors in 3 rows -->
@@ -921,7 +1127,7 @@
                 </label>
                 <div class="text-xs text-slate-400 mb-3">Tap all that apply</div>
                 
-                <!-- V94: 15 colors in 3 rows of 5 -->
+                <!-- V97: 15 colors in 3 rows of 5 -->
                 <div class="grid grid-cols-5 gap-2">
                     <div class="color-item" onclick="toggleColor('White', this)"><div class="color-swatch-labeled" style="background:#ffffff;border:1px solid #ddd;"></div><span>White</span></div>
                     <div class="color-item" onclick="toggleColor('Ivory', this)"><div class="color-swatch-labeled" style="background:#fffff0;border:1px solid #ddd;"></div><span>Ivory</span></div>
@@ -943,7 +1149,7 @@
                 </div>
             </section>
             
-            <!-- V94: FADE LEVEL moved under Color -->
+            <!-- V97: FADE LEVEL moved under Color -->
             <section id="section-fade" class="section-card">
                 <label class="section-label">
                     <span id="check-fade" class="check-circle">○</span>
@@ -956,7 +1162,7 @@
                 </div>
             </section>
             
-            <!-- PATTERN (V94: Category-specific, single selection) -->
+            <!-- PATTERN (V97: Category-specific, single selection) -->
             <section id="section-pattern" class="section-card">
                 <label class="section-label">
                     <span id="check-pattern" class="check-circle">○</span>
@@ -972,7 +1178,7 @@
                 </div>
             </section>
             
-            <!-- FABRIC MATERIAL (V94: Category-specific, multiple selection) -->
+            <!-- FABRIC MATERIAL (V97: Category-specific, multiple selection) -->
             <section id="section-fabric" class="section-card">
                 <label class="section-label">
                     <span id="check-fabric" class="check-circle">○</span>
@@ -1006,21 +1212,74 @@
                 </div>
             </section>
             
-            <!-- FABRIC TYPE (V94: Category-specific) -->
+            <!-- FABRIC TYPE (V97: Smart Fabric Selector with "Not Sure?" helper) -->
             <section id="section-fabric-type" class="section-card">
                 <label class="section-label">
                     <span id="check-fabric-type" class="check-circle">○</span>
                     Fabric Type
                 </label>
-                <div id="fabric-type-buttons" class="grid grid-cols-3 gap-2 mb-2">
-                    <!-- Buttons will be updated based on category, Other integrated in grid -->
+                
+                <!-- V97: Fabric Cards Grid (shown first) -->
+                <div id="fabric-cards-grid" class="fabric-cards-grid">
+                    <!-- Cards populated by JS -->
                 </div>
-                <div id="other-fabric-type-section" class="hidden mt-2">
+                
+                <!-- V97: "Not Sure?" Button -->
+                <button id="fabric-not-sure-btn" onclick="toggleFabricHelp()" class="fabric-not-sure-btn">
+                    🤔 Not Sure? Tap here for help
+                </button>
+                
+                <!-- V97: Hidden Questions Panel (revealed by Not Sure) -->
+                <div id="fabric-questions-panel" class="fabric-questions-panel hidden">
+                    <div class="fabric-questions-header">
+                        <span>Answer these questions:</span>
+                        <button onclick="toggleFabricHelp()" class="fabric-questions-close">✕ Hide</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">How does it feel?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleFabricFilter('stretch', 'none', this)" class="fabric-filter-btn" data-filter="stretch-none">Rigid</button>
+                        <button onclick="toggleFabricFilter('stretch', 'high', this)" class="fabric-filter-btn" data-filter="stretch-high">Stretchy</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">Surface texture?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleFabricFilter('structure', 'smooth', this)" class="fabric-filter-btn" data-filter="structure-smooth">Smooth</button>
+                        <button onclick="toggleFabricFilter('structure', 'diagonal', this)" class="fabric-filter-btn" data-filter="structure-diagonal">Diagonal</button>
+                        <button onclick="toggleFabricFilter('structure', 'ribs', this)" class="fabric-filter-btn" data-filter="structure-ribs">Ribs</button>
+                        <button onclick="toggleFabricFilter('structure', 'rough', this)" class="fabric-filter-btn" data-filter="structure-rough">Rough</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">Inside texture?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleFabricFilter('interior', 'smooth', this)" class="fabric-filter-btn" data-filter="interior-smooth">Smooth</button>
+                        <button onclick="toggleFabricFilter('interior', 'fuzzy', this)" class="fabric-filter-btn" data-filter="interior-fuzzy">Fuzzy</button>
+                        <button onclick="toggleFabricFilter('interior', 'loops', this)" class="fabric-filter-btn" data-filter="interior-loops">Loops</button>
+                    </div>
+                    
+                    <!-- V97: Helper advice -->
+                    <div id="fabric-helper" class="fabric-helper-text"></div>
+                </div>
+                
+                <!-- Other fabric type input -->
+                <div id="other-fabric-type-section" class="hidden mt-3">
                     <input type="text" id="fabric-type-other-input" placeholder="Type fabric type..." 
                            oninput="onOtherFabricTypeInput()" 
                            class="form-input text-sm">
                 </div>
             </section>
+            
+            <!-- V97: Fabric Reference Modal -->
+            <div id="fabric-ref-modal" class="fabric-ref-modal">
+                <div class="fabric-ref-content">
+                    <div id="fabric-ref-title" class="fabric-ref-title">Jersey</div>
+                    <div id="fabric-ref-desc" class="fabric-ref-desc">Classic t-shirt material. Soft, stretchy, smooth on both sides.</div>
+                    <a id="fabric-ref-link" href="#" target="_blank" class="btn-standard btn-hero w-full mb-3" style="text-decoration:none;">
+                        🔍 See Examples
+                    </a>
+                    <button onclick="closeFabricRef()" class="btn-standard btn-secondary w-full">Close</button>
+                </div>
+            </div>
             
             <!-- CONSTRUCTION PROFILE (Sleeves + Stitch combined) -->
             <section id="section-construction" class="section-card hidden">
@@ -1101,7 +1360,7 @@
             </div>
         </div>
 
-        <!-- ========== STEP 3: SNAP (V94: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
+        <!-- ========== STEP 3: SNAP (V97: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
         <div id="step-3" class="step-container space-y-3">
             
             <!-- MAIN PHOTOS -->
@@ -1118,7 +1377,7 @@
                 </button>
             </section>
             
-            <!-- SKU (V94: After photos) -->
+            <!-- SKU (V97: After photos) -->
             <section id="section-sku" class="section-card">
                 <label class="section-label">
                     <span id="check-sku" class="check-circle">○</span>
@@ -1140,7 +1399,7 @@
                 </div>
             </section>
             
-            <!-- ISSUES (V94: No Defects default, multiple defects allowed) -->
+            <!-- ISSUES (V97: No Defects default, multiple defects allowed) -->
             <section id="section-issues" class="section-card">
                 <label class="section-label">
                     <span id="check-issues" class="check-circle">○</span>
@@ -1150,7 +1409,7 @@
                     <span class="text-xl">✓</span> No Defects
                 </button>
                 
-                <!-- Defect Type Buttons (V94: Multiple selection allowed) -->
+                <!-- Defect Type Buttons (V97: Multiple selection allowed) -->
                 <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type:</div>
                 <div class="grid grid-cols-3 gap-2 mb-2">
                     <button onclick="toggleDefect('Stain', this)" id="btn-defect-stain" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
@@ -1169,7 +1428,7 @@
                 <div id="defect-photos-thumbs" class="flex gap-2 flex-wrap"></div>
             </section>
             
-            <!-- MEASUREMENTS (V94: Vertical bullet list) -->
+            <!-- MEASUREMENTS (V97: Vertical bullet list) -->
             <section id="section-measure" class="section-card">
                 <label class="section-label">
                     <span id="check-measure" class="check-circle">○</span>
@@ -1305,16 +1564,59 @@
         </div>
     </div>
 
-    <!-- CAMERA (V94: Using dynamic input elements for better camera control) -->
-    
-    <!-- V94: RAPID FIRE STOP BUTTON - shows during main photo session -->
-    <div id="rapid-fire-overlay" style="position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:70;display:none;">
-        <button onclick="stopRapidFire()" style="background:#dc2626;color:white;font-weight:700;font-size:16px;padding:16px 32px;border-radius:50px;border:none;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
-            ✓ DONE — <span id="rapid-fire-count">0</span> photos
-        </button>
+    <!-- V97: FULL VIDEO STREAM CAMERA OVERLAY -->
+    <div id="camera-overlay" style="position:fixed;inset:0;z-index:60;background:black;display:none;flex-direction:column;">
+        <!-- Top bar -->
+        <div style="background:black;padding:16px;display:flex;justify-content:space-between;align-items:center;">
+            <button onclick="closeCamera()" style="color:white;font-size:24px;background:none;border:none;padding:8px;">✕</button>
+            <div id="camera-mode-label" style="color:white;font-weight:700;font-size:14px;">MAIN PHOTO</div>
+            <div id="photo-count" style="color:#22c55e;font-weight:700;font-size:14px;">0 📷</div>
+        </div>
+        
+        <!-- Video container with square crop -->
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+            <video id="camera-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;"></video>
+            
+            <!-- Square crop overlay (darkens outside area) -->
+            <div id="square-mask" style="position:absolute;inset:0;pointer-events:none;">
+                <!-- Top dark bar -->
+                <div id="mask-top" style="position:absolute;top:0;left:0;right:0;background:rgba(0,0,0,0.6);"></div>
+                <!-- Bottom dark bar -->
+                <div id="mask-bottom" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);"></div>
+            </div>
+            
+            <!-- Grid lines (3x3) inside square -->
+            <div id="camera-grid" style="position:absolute;pointer-events:none;border:2px solid rgba(255,255,255,0.5);">
+                <div style="position:absolute;left:33.33%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.3);"></div>
+                <div style="position:absolute;left:66.66%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.3);"></div>
+                <div style="position:absolute;top:33.33%;left:0;right:0;height:1px;background:rgba(255,255,255,0.3);"></div>
+                <div style="position:absolute;top:66.66%;left:0;right:0;height:1px;background:rgba(255,255,255,0.3);"></div>
+            </div>
+            
+            <!-- Stabilizer indicator -->
+            <div id="stabilizer" style="position:absolute;top:20px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:20px;font-size:12px;font-weight:700;transition:all 0.2s;">
+                HOLD STEADY
+            </div>
+        </div>
+        
+        <!-- Bottom controls -->
+        <div style="background:black;padding:24px;padding-bottom:max(24px, env(safe-area-inset-bottom));">
+            <div style="display:flex;align-items:center;justify-content:center;gap:40px;">
+                <!-- Done button -->
+                <button onclick="closeCamera()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:60px;height:60px;border-radius:50%;background:#374151;color:white;font-weight:700;font-size:10px;border:none;">
+                    <span style="font-size:18px;">✓</span>DONE
+                </button>
+                
+                <!-- Shutter button -->
+                <button id="shutter-btn" onclick="capturePhoto()" style="width:80px;height:80px;border-radius:50%;background:white;border:4px solid #9ca3af;box-shadow:0 0 0 4px black;"></button>
+                
+                <!-- Spacer for centering -->
+                <div style="width:60px;height:60px;"></div>
+            </div>
+        </div>
     </div>
     
-    <!-- PHOTO PREVIEW MODAL (V94: Keep/Retake for tag/defect photos only) -->
+    <!-- PHOTO PREVIEW MODAL (V97: Only for tag/defect photos) -->
     <div id="photo-preview-modal" style="position:fixed;inset:0;z-index:65;background:black;display:none;flex-direction:column;">
         <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px;">
             <img id="preview-image" src="" alt="Preview" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;">
@@ -1363,8 +1665,9 @@
 
         // ============ STATE ============
         let currentStep = 1, pendingDefect = null, qrScanner = null, mediaRecorder = null, audioChunks = [], isRecording = false, recordingStart = null;
-        let cameraMode = null, cameraSubType = null, pendingCameraLabel = null; // V94: Simplified for native camera
-        let rapidFireActive = false; // V94: Track rapid fire mode
+        let cameraMode = null, cameraSubType = null, pendingCameraLabel = null;
+        let cameraStream = null; // V97: Video stream
+        let isStable = false, lastMotion = 0; // V97: Stabilizer
         let itemStartTime = null, timerInterval = null;
         let stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: null, bestTime: null };
         let pendingPhoto = null;
@@ -1373,11 +1676,11 @@
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabrics: [], fabricType: '', wash: '', colors: [], // V94: fabrics as array for multi-select
+            fabrics: [], fabricType: '', wash: '', colors: [], // V97: fabrics as array for multi-select
             pattern: '', printType: '', graphicCategory: '',
             sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
             isCutoff: false, cutoffType: '', stitchType: '',
-            hasDefects: null, defects: [], fadeLevel: '', // V94: defects as array
+            hasDefects: null, defects: [], fadeLevel: '', // V97: defects as array
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
@@ -1418,7 +1721,7 @@
             setTimeout(() => el.classList.remove('flash'), 350);
         }
 
-        // V94: Reset form to start fresh
+        // V97: Reset form to start fresh
         function resetForm() {
             if (!confirm('Reset form and start over?')) return;
             
@@ -1517,7 +1820,7 @@
 
         function loadStats() {
             try {
-                const saved = JSON.parse(localStorage.getItem('vl_stats_v94') || '{}');
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v97') || '{}');
                 const today = new Date().toDateString();
                 if (saved.lastDate === today) { stats = saved; }
                 else {
@@ -1529,7 +1832,7 @@
             } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
         }
 
-        function saveStats() { try { localStorage.setItem('vl_stats_v94', JSON.stringify(stats)); } catch(e) {} }
+        function saveStats() { try { localStorage.setItem('vl_stats_v97', JSON.stringify(stats)); } catch(e) {} }
 
         function updateStatsDisplay() {
             document.getElementById('streak-count').textContent = stats.streak;
@@ -1608,7 +1911,7 @@
         }
 
         function updateAllChecks() {
-            // V94: Construction check combines sleeve + stitch
+            // V97: Construction check combines sleeve + stitch
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const constructionOk = data.superCategory === 'bottoms' || (
                 !!data.sleeveType && 
@@ -1620,7 +1923,7 @@
                 category: !!data.category,
                 sku: !!data.sku,
                 tag: !!data.tagStatus,
-                fabric: data.fabrics && data.fabrics.length > 0, // V94: fabrics array
+                fabric: data.fabrics && data.fabrics.length > 0, // V97: fabrics array
                 'fabric-type': !!data.fabricType,
                 color: data.colors && data.colors.length > 0,
                 pattern: (data.fabrics && data.fabrics.includes('Denim')) || !!data.pattern,
@@ -1644,7 +1947,7 @@
         }
 
         function autoScroll(sectionId) {
-            // V94: Auto-scroll disabled per user request
+            // V97: Auto-scroll disabled per user request
         }
 
         // ============ NAVIGATION ============
@@ -1662,7 +1965,7 @@
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            // V94: Show construction profile for tops and outer (not bottoms)
+            // V97: Show construction profile for tops and outer (not bottoms)
             if(step===2) { document.getElementById('section-construction').classList.toggle('hidden', data.superCategory === 'bottoms'); }
             if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
@@ -1680,7 +1983,7 @@
             haptic('medium');
             data.superCategory = cat;
             
-            // V94: Start timer when super category selected
+            // V97: Start timer when super category selected
             if (!itemStartTime) { 
                 startTimer(); 
                 scanFlash(); 
@@ -1729,25 +2032,25 @@
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             
-            // V94: Update category label in progress bar
+            // V97: Update category label in progress bar
             document.getElementById('category-label').textContent = ' — ' + cat.toUpperCase();
             
-            // V94: Apply ALL defaults (fabric, pattern, construction, feel) based on category
+            // V97: Apply ALL defaults (fabric, pattern, construction, feel) based on category
             const defaultPattern = applyAllDefaults(cat);
             
-            // V94: Update pattern buttons based on category
+            // V97: Update pattern buttons based on category
             updatePatternButtons(cat);
             
-            // V94: Update fabric material buttons based on category
+            // V97: Update fabric material buttons based on category
             updateFabricMaterialButtons(cat);
             
-            // V94: Update fabric type buttons based on category
+            // V97: Update fabric type buttons based on category
             updateFabricTypeButtons(cat);
             
             autoScroll('section-tag');
         }
         
-        // V94: Apply ALL defaults based on category (fabric, pattern, construction, feel)
+        // V97: Apply ALL defaults based on category (fabric, pattern, construction, feel)
         function applyAllDefaults(cat) {
             // Reset all defaultable buttons to tertiary
             document.querySelectorAll('.fabric-btn, .fabric-type-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn, .gender-btn').forEach(b => {
@@ -1755,7 +2058,7 @@
                 b.classList.add('btn-tertiary');
             });
             
-            // Comprehensive defaults by category (V94: Updated fabric material IDs)
+            // Comprehensive defaults by category (V97: Updated fabric material IDs)
             const allDefaults = {
                 // TOPS
                 'T-Shirt': { 
@@ -1858,7 +2161,7 @@
                 thickness: 'btn-thick-standard', layers: 'btn-layers-single'
             };
             
-            // V94: Fabric defaults removed - buttons are now dynamic per category
+            // V97: Fabric defaults removed - buttons are now dynamic per category
             
             // Apply sleeve length default
             const sleeveBtnMap = { 'Short': 'btn-sleeve-short', 'Long': 'btn-sleeve-long', '3/4': 'btn-sleeve-34', 'Sleeveless': 'btn-sleeve-none' };
@@ -1932,7 +2235,7 @@
             return def.pattern;
         }
         
-        // V94: Update pattern buttons based on category
+        // V97: Update pattern buttons based on category
         function updatePatternButtons(cat) {
             const container = document.getElementById('pattern-buttons');
             
@@ -1961,7 +2264,7 @@
                 'Vest': ['Solid', 'Plaid', 'Colorblock', 'Camouflage']
             };
             
-            // V94: Category-specific pattern defaults (shown as suggestions)
+            // V97: Category-specific pattern defaults (shown as suggestions)
             const patternDefaults = {
                 'T-Shirt': 'Graphic Print',
                 'Jersey': 'Graphic Print',
@@ -1977,10 +2280,10 @@
             const categoryPatterns = patterns[cat] || ['Solid', 'Graphic Print', 'Striped'];
             const defaultPattern = patternDefaults[cat] || 'Solid';
             
-            // V94: Don't auto-set data, just show as suggestion
+            // V97: Don't auto-set data, just show as suggestion
             data.pattern = '';
             
-            // V94: Add Other to the grid
+            // V97: Add Other to the grid
             const allPatterns = [...categoryPatterns, 'Other...'];
             container.innerHTML = allPatterns.map(pat => {
                 if (pat === 'Other...') {
@@ -2031,7 +2334,7 @@
             });
             btn.classList.add('selected','confirmed'); 
             btn.classList.remove('btn-tertiary','btn-default');
-            // V94: Toggle import countries section
+            // V97: Toggle import countries section
             document.getElementById('import-countries').classList.toggle('hidden', type === 'usa');
             document.getElementById('country-select').classList.add('hidden');
             if (type === 'usa') {
@@ -2046,7 +2349,7 @@
             }
         }
         
-        // V94: Set country from button
+        // V97: Set country from button
         function setCountry(country, btn) {
             haptic('light');
             data.madeInCountry = country;
@@ -2061,7 +2364,7 @@
             document.getElementById('btn-other-country').classList.add('btn-tertiary');
         }
         
-        // V94: Toggle other countries dropdown
+        // V97: Toggle other countries dropdown
         function toggleOtherCountries() {
             const select = document.getElementById('country-select');
             select.classList.toggle('hidden');
@@ -2070,7 +2373,7 @@
             }
         }
         
-        // V94: Set country from dropdown
+        // V97: Set country from dropdown
         function setCountryFromSelect(select) {
             haptic('light');
             data.madeInCountry = select.value;
@@ -2094,7 +2397,7 @@
         }
 
         // ============ STEP 2: CHECK ============
-        // V94: Toggle fabric material selection (multiple allowed)
+        // V97: Toggle fabric material selection (multiple allowed)
         function toggleFabricMaterial(material, btn) {
             haptic('light');
             if (!data.fabrics) data.fabrics = [];
@@ -2125,12 +2428,12 @@
             }
         }
         
-        // V94: Display removed - function kept for compatibility but does nothing
+        // V97: Display removed - function kept for compatibility but does nothing
         function updateFabricsDisplay() {
-            // V94: No longer displaying fabric tags
+            // V97: No longer displaying fabric tags
         }
         
-        // V94: Toggle other fabric input
+        // V97: Toggle other fabric input
         function toggleOtherFabric() {
             const section = document.getElementById('other-fabric-section');
             section.classList.toggle('hidden');
@@ -2139,7 +2442,7 @@
             }
         }
         
-        // V94: Add other fabric from input
+        // V97: Add other fabric from input
         function addOtherFabric() {
             const input = document.getElementById('fabric-other-input');
             const val = input.value.trim();
@@ -2156,7 +2459,7 @@
             }
         }
         
-        // V94: Update fabric material buttons based on category
+        // V97: Update fabric material buttons based on category
         function updateFabricMaterialButtons(cat) {
             const container = document.getElementById('fabric-material-buttons');
             
@@ -2185,7 +2488,7 @@
                 'Vest': ['Nylon', 'Polyester', 'Cotton', 'Wool']
             };
             
-            // V94: Category-specific fabric material defaults (shown as suggestions)
+            // V97: Category-specific fabric material defaults (shown as suggestions)
             const fabricDefaults = {
                 'T-Shirt': ['Cotton', 'Polyester'],
                 'Sweatshirt': ['Cotton', 'Polyester'],
@@ -2195,10 +2498,10 @@
             const materials = fabricMaterials[cat] || ['Cotton', 'Polyester', 'Rayon'];
             const defaults = fabricDefaults[cat] || [];
             
-            // V94: Don't auto-set data, just show as suggestions
+            // V97: Don't auto-set data, just show as suggestions
             data.fabrics = [];
             
-            // V94: Add Other to the grid
+            // V97: Add Other to the grid
             const allMaterials = [...materials, 'Other...'];
             container.innerHTML = allMaterials.map(mat => {
                 if (mat === 'Other...') {
@@ -2209,23 +2512,551 @@
             }).join('');
         }
         
-        // V94: Set fabric type
-        function setFabricType(type, btn) {
+        // ============ V97: SMART FABRIC SELECTOR ============
+        
+        // V97: Fabric database with traits per category
+        // V97: Fabric database - aligned with eBay fabric types
+        // DEFAULT = most common for category (shown as suggested)
+        // Traits help AI backend determine fabric from photos + observations
+        const fabricDB = {
+            "T-Shirt": [
+                { name: "Knit", priority: 1, default: true, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Standard tee material. Soft & stretchy." },
+                { name: "Jersey", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Same as knit. eBay term." },
+                { name: "Rayon", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Silky, drapey. 80s/90s soft tees." },
+                { name: "Mesh", priority: 3, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "See-through athletic material." },
+                { name: "Velour", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Soft pile. 70s/Y2K style." }
+            ],
+            "Sweatshirt": [
+                { name: "Fleece", priority: 1, default: true, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Fuzzy inside. Most common." },
+                { name: "French Terry", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "loops" }, desc: "Loops inside. Lighter weight." },
+                { name: "Velour", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Soft pile both sides. 70s/Y2K." }
+            ],
+            "Hoodie": [
+                { name: "Fleece", priority: 1, default: true, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Fuzzy inside. Standard hoodie." },
+                { name: "French Terry", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "loops" }, desc: "Loops inside. Lighter weight." },
+                { name: "Knit", priority: 3, traits: { stretch: "high", structure: "ribs", interior: "smooth" }, desc: "Sweater-style hoodie." },
+                { name: "Velour", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Soft pile. Juicy Couture style." }
+            ],
+            "Sweater": [
+                { name: "Knit", priority: 1, default: true, traits: { stretch: "high", structure: "ribs", interior: "smooth" }, desc: "Standard sweater knit." },
+                { name: "Fleece", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Fuzzy. Patagonia style." },
+                { name: "Crochet", priority: 3, traits: { stretch: "high", structure: "rough", interior: "rough" }, desc: "Open weave, handmade look." },
+                { name: "Velour", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Soft pile texture." }
+            ],
+            "Cardigan": [
+                { name: "Knit", priority: 1, default: true, traits: { stretch: "high", structure: "ribs", interior: "smooth" }, desc: "Standard cardigan." },
+                { name: "Fleece", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Fuzzy cardigan." },
+                { name: "Crochet", priority: 3, traits: { stretch: "high", structure: "rough", interior: "rough" }, desc: "Open weave, handmade." }
+            ],
+            "Button Shirt": [
+                { name: "Woven", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Standard dress/casual shirt." },
+                { name: "Flannel", priority: 1, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Soft, brushed. Plaid common." },
+                { name: "Chambray", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Light denim look. Workwear." },
+                { name: "Denim", priority: 2, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Western/work shirt." },
+                { name: "Poplin", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Crisp dress shirt." },
+                { name: "Oxford", priority: 2, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Textured dress shirt." },
+                { name: "Corduroy", priority: 3, traits: { stretch: "none", structure: "ribs", interior: "smooth" }, desc: "Vertical ridges." },
+                { name: "Seersucker", priority: 3, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Puckered stripes. Summer/preppy." },
+                { name: "Madras", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Lightweight plaid. Preppy." },
+                { name: "Linen", priority: 3, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Textured, breathable. Wrinkles." }
+            ],
+            "Polo": [
+                { name: "Pique", priority: 1, default: true, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "Classic polo texture. Waffle-like." },
+                { name: "Knit", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Smooth polo." },
+                { name: "Jersey", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Smooth, t-shirt like." },
+                { name: "Mesh", priority: 3, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "Athletic polo." },
+                { name: "Velour", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "70s style. Soft pile." }
+            ],
+            "Tank Top": [
+                { name: "Knit", priority: 1, default: true, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Standard tank material." },
+                { name: "Jersey", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Same as knit. Soft." },
+                { name: "Ribbed", priority: 2, traits: { stretch: "high", structure: "ribs", interior: "smooth" }, desc: "Wife beater style. Vertical lines." },
+                { name: "Mesh", priority: 3, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "Athletic see-through." },
+                { name: "Rayon", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Silky, flowy." }
+            ],
+            "Blouse": [
+                { name: "Woven", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Standard blouse." },
+                { name: "Chiffon", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Sheer, flowy." },
+                { name: "Satin", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Shiny, silky." },
+                { name: "Crepe", priority: 2, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Crinkled/pebbly texture." },
+                { name: "Georgette", priority: 3, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Sheer, slightly rough." },
+                { name: "Lace", priority: 3, traits: { stretch: "high", structure: "rough", interior: "rough" }, desc: "Decorative open weave." },
+                { name: "Rayon", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Silky, drapey." }
+            ],
+            "Tunic": [
+                { name: "Woven", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Standard tunic." },
+                { name: "Knit", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Stretchy tunic." },
+                { name: "Gauze", priority: 3, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Lightweight, breathable." },
+                { name: "Rayon", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Silky, flowy." }
+            ],
+            "Jersey": [
+                { name: "Mesh", priority: 1, default: true, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "Athletic mesh. Most sports jerseys." },
+                { name: "Polyester", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Shiny, smooth. 70s-90s jerseys." },
+                { name: "Knit", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Cotton jersey. Older vintage." }
+            ],
+            "Jeans": [
+                { name: "Denim", priority: 1, default: true, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Standard jean material." },
+                { name: "Selvage", priority: 2, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Premium raw. Red line on cuff." }
+            ],
+            "Pants": [
+                { name: "Twill", priority: 1, default: true, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Chinos, khakis, Dickies." },
+                { name: "Woven", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Dress pants, trousers." },
+                { name: "Corduroy", priority: 2, traits: { stretch: "none", structure: "ribs", interior: "smooth" }, desc: "Vertical ridges." },
+                { name: "Canvas", priority: 2, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Heavy workwear. Carhartt." },
+                { name: "Ponte", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "smooth" }, desc: "Stretchy dress pants. Modern." },
+                { name: "Moleskin", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Soft fuzzy surface." },
+                { name: "Wool", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Dress/suit pants." }
+            ],
+            "Shorts": [
+                { name: "Twill", priority: 1, default: true, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Chino shorts. Most common." },
+                { name: "Denim", priority: 2, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Jean shorts, cutoffs." },
+                { name: "Nylon", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Athletic, swim trunks." },
+                { name: "Mesh", priority: 2, traits: { stretch: "high", structure: "rough", interior: "smooth" }, desc: "Basketball shorts." },
+                { name: "Corduroy", priority: 3, traits: { stretch: "none", structure: "ribs", interior: "smooth" }, desc: "Cord shorts." },
+                { name: "Seersucker", priority: 3, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Puckered. Preppy/summer." }
+            ],
+            "Sweatpants": [
+                { name: "Fleece", priority: 1, default: true, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Fuzzy inside. Standard sweats." },
+                { name: "French Terry", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "loops" }, desc: "Loops inside. Lighter." },
+                { name: "Nylon", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Track pants. Windbreaker material." },
+                { name: "Softshell", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Tech/athletic. Water resistant." }
+            ],
+            "Jacket": [
+                { name: "Nylon", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Windbreaker, coach jacket." },
+                { name: "Denim", priority: 1, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Jean jacket. Trucker style." },
+                { name: "Canvas", priority: 2, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Work jacket. Carhartt, chore coat." },
+                { name: "Leather", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Moto, bomber, varsity." },
+                { name: "Satin", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Bomber, souvenir jacket. Shiny." },
+                { name: "Fleece", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Patagonia style. Soft." },
+                { name: "Softshell", priority: 3, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Tech jacket. North Face style." },
+                { name: "Corduroy", priority: 3, traits: { stretch: "none", structure: "ribs", interior: "smooth" }, desc: "Trucker style with ridges." },
+                { name: "Microfiber", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Lightweight tech material." }
+            ],
+            "Coat": [
+                { name: "Wool", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Peacoat, overcoat. Classic." },
+                { name: "Tweed", priority: 2, traits: { stretch: "none", structure: "rough", interior: "smooth" }, desc: "Wool with color flecks." },
+                { name: "Down", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Puffy, quilted. Very warm." },
+                { name: "Leather", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Trench, long coat." },
+                { name: "Shearling", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Wool/fur lined." },
+                { name: "Felt", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Matted wool. Stiff." }
+            ],
+            "Vest": [
+                { name: "Quilted", priority: 1, default: true, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Puffy vest. Down or poly fill." },
+                { name: "Fleece", priority: 2, traits: { stretch: "high", structure: "smooth", interior: "fuzzy" }, desc: "Patagonia style. Soft." },
+                { name: "Denim", priority: 2, traits: { stretch: "none", structure: "diagonal", interior: "smooth" }, desc: "Jean vest, cutoff." },
+                { name: "Down", priority: 2, traits: { stretch: "none", structure: "smooth", interior: "fuzzy" }, desc: "Puffy, very warm." },
+                { name: "Leather", priority: 3, traits: { stretch: "none", structure: "smooth", interior: "smooth" }, desc: "Biker, western style." },
+                { name: "Knit", priority: 3, traits: { stretch: "high", structure: "ribs", interior: "smooth" }, desc: "Sweater vest." }
+            ]
+        };
+        
+        // V97: Fabric filter state
+        let fabricFilters = { stretch: null, structure: null, interior: null };
+        let fabricHelpVisible = false;
+        
+        // V97: Toggle "Not Sure?" help panel
+        function toggleFabricHelp() {
             haptic('light');
-            data.fabricType = type;
-            document.querySelectorAll('.fabric-type-btn').forEach(b => { 
-                b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
-                b.classList.add('btn-tertiary'); 
-            });
-            if (btn) { 
-                btn.classList.add('selected','confirmed'); 
-                btn.classList.remove('btn-tertiary','btn-default'); 
+            fabricHelpVisible = !fabricHelpVisible;
+            
+            const panel = document.getElementById('fabric-questions-panel');
+            const btn = document.getElementById('fabric-not-sure-btn');
+            
+            if (fabricHelpVisible) {
+                panel.classList.remove('hidden');
+                btn.classList.add('hidden');
+            } else {
+                panel.classList.add('hidden');
+                btn.classList.remove('hidden');
+                // Reset filters when closing
+                fabricFilters = { stretch: null, structure: null, interior: null };
+                document.querySelectorAll('.fabric-filter-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('fabric-helper').classList.remove('visible');
+                renderFabricCards();
             }
+        }
+        
+        // V97: Toggle fabric filter
+        function toggleFabricFilter(type, value, btn) {
+            haptic('light');
+            
+            // Toggle logic
+            if (fabricFilters[type] === value) {
+                fabricFilters[type] = null;
+                btn.classList.remove('active');
+            } else {
+                fabricFilters[type] = value;
+                // Clear siblings in same row
+                const row = btn.parentElement;
+                row.querySelectorAll('.fabric-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            
+            // Generate helper advice
+            updateFabricHelper();
+            
+            // Re-render grid
+            renderFabricCards();
+        }
+        
+        // V97: Update helper text based on filters AND category
+        function updateFabricHelper() {
+            const helper = document.getElementById('fabric-helper');
+            const activeCount = Object.values(fabricFilters).filter(Boolean).length;
+            
+            if (activeCount === 0) {
+                helper.classList.remove('visible');
+                return;
+            }
+            
+            const cat = data.category || 'T-Shirt';
+            const fabrics = fabricDB[cat] || fabricDB['T-Shirt'];
+            
+            // Find which fabrics match current filters
+            const matches = fabrics.filter(fab => {
+                if (fabricFilters.stretch && fab.traits.stretch !== fabricFilters.stretch) return false;
+                if (fabricFilters.structure && fab.traits.structure !== fabricFilters.structure) return false;
+                if (fabricFilters.interior && fab.traits.interior !== fabricFilters.interior) return false;
+                return true;
+            });
+            
+            let advice = "";
+            
+            // Category-specific advice based on actual matches
+            if (matches.length === 0) {
+                advice = "⚠️ No matches - try adjusting filters";
+            } else if (matches.length === 1) {
+                advice = `💡 That's almost certainly ${matches[0].name}!`;
+            } else if (matches.length === 2) {
+                advice = `💡 Likely ${matches[0].name} or ${matches[1].name}`;
+            } else {
+                // Give contextual hints based on category + filters
+                advice = getCategorySpecificAdvice(cat, fabricFilters, matches);
+            }
+            
+            helper.textContent = advice;
+            helper.classList.add('visible');
+        }
+        
+        // V97: Get smart advice based on category and filters - VINTAGE EXPERT VERSION
+        function getCategorySpecificAdvice(cat, filters, matches) {
+            const matchNames = matches.map(m => m.name);
+            
+            // T-Shirts
+            if (cat === 'T-Shirt') {
+                if (filters.stretch === 'high' && filters.structure === 'smooth') {
+                    return "💡 Smooth & stretchy = Knit (standard) or Rayon (silky)";
+                }
+                if (filters.stretch === 'high' && filters.structure === 'rough') {
+                    return "💡 Rough & stretchy = Mesh (athletic)";
+                }
+                if (filters.stretch === 'none') {
+                    return "⚠️ Rigid t-shirts are very rare in vintage";
+                }
+            }
+            
+            // Tank Tops
+            if (cat === 'Tank Top') {
+                if (filters.structure === 'ribs') {
+                    return "💡 Ribbed tank = classic wife beater style";
+                }
+                if (filters.structure === 'rough') {
+                    return "💡 Rough texture = Mesh (athletic)";
+                }
+                return "💡 Most vintage tanks are Knit";
+            }
+            
+            // Sports Jerseys
+            if (cat === 'Jersey') {
+                if (filters.structure === 'rough') {
+                    return "💡 Mesh = most modern sports jerseys";
+                }
+                if (filters.structure === 'smooth') {
+                    return "💡 Smooth = Polyester (70s-90s) or older Knit";
+                }
+            }
+            
+            // Sweatshirts & Hoodies
+            if (['Sweatshirt', 'Hoodie'].includes(cat)) {
+                if (filters.interior === 'fuzzy') {
+                    return "💡 Fuzzy inside = Fleece (most common)";
+                }
+                if (filters.interior === 'loops') {
+                    return "💡 Loops inside = French Terry (lighter weight)";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Waffle/thermal texture = Thermal hoodie";
+                }
+            }
+            
+            // Sweaters & Cardigans
+            if (['Sweater', 'Cardigan'].includes(cat)) {
+                if (filters.structure === 'rough') {
+                    return "💡 Open/rough texture = Crochet (handmade)";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Rope/twist pattern? = Cable Knit";
+                }
+                return "💡 Most vintage sweaters are Knit";
+            }
+            
+            // Button Shirts
+            if (cat === 'Button Shirt') {
+                if (filters.interior === 'fuzzy') {
+                    return "💡 Fuzzy/brushed inside = Flannel";
+                }
+                if (filters.structure === 'diagonal') {
+                    return "💡 Diagonal weave = Denim (western/work shirt)";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Vertical ridges = Corduroy";
+                }
+                if (filters.structure === 'rough') {
+                    return "💡 Textured weave = Oxford cloth";
+                }
+                if (filters.structure === 'smooth' && filters.stretch === 'none') {
+                    return "💡 Smooth = Woven or Chambray (check if denim-like)";
+                }
+            }
+            
+            // Polo
+            if (cat === 'Polo') {
+                if (filters.structure === 'rough') {
+                    return "💡 Textured/waffle = Pique (classic polo)";
+                }
+                if (filters.structure === 'smooth') {
+                    return "💡 Smooth polo = Knit";
+                }
+            }
+            
+            // Jeans
+            if (cat === 'Jeans') {
+                return "💡 Check inside cuff for red line = Selvage (premium)";
+            }
+            
+            // Pants
+            if (cat === 'Pants') {
+                if (filters.structure === 'diagonal') {
+                    return "💡 Diagonal weave = Twill (chinos, khakis, Dickies)";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Vertical ridges = Corduroy";
+                }
+                if (filters.structure === 'rough') {
+                    return "💡 Rough/heavy = Canvas (Carhartt style)";
+                }
+                if (filters.structure === 'smooth') {
+                    return "💡 Smooth = Woven (dress) or Wool (suit pants)";
+                }
+            }
+            
+            // Shorts
+            if (cat === 'Shorts') {
+                if (filters.stretch === 'high' && filters.structure === 'rough') {
+                    return "💡 Stretchy mesh = Basketball shorts";
+                }
+                if (filters.structure === 'diagonal') {
+                    return "💡 Diagonal = Twill (chino) or Denim (cutoffs)";
+                }
+                if (filters.stretch === 'none' && filters.structure === 'smooth') {
+                    return "💡 Smooth rigid = Nylon (swim/athletic)";
+                }
+            }
+            
+            // Sweatpants
+            if (cat === 'Sweatpants') {
+                if (filters.interior === 'fuzzy') {
+                    return "💡 Fuzzy inside = Fleece (standard sweats)";
+                }
+                if (filters.interior === 'loops') {
+                    return "💡 Loops inside = French Terry (lighter)";
+                }
+                if (filters.stretch === 'none') {
+                    return "💡 Not stretchy = Nylon track pants";
+                }
+            }
+            
+            // Jacket
+            if (cat === 'Jacket') {
+                if (filters.structure === 'diagonal') {
+                    return "💡 Diagonal = Denim (trucker jacket)";
+                }
+                if (filters.structure === 'rough') {
+                    return "💡 Rough/heavy = Canvas (Carhartt, chore coat)";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Vertical ridges = Corduroy jacket";
+                }
+                if (filters.structure === 'smooth' && filters.stretch === 'none') {
+                    if (filters.interior === 'smooth') {
+                        return "💡 Smooth both sides = Nylon, Leather, or Satin (bomber)";
+                    }
+                    if (filters.interior === 'fuzzy') {
+                        return "💡 Smooth outside + fuzzy lined = Fleece jacket";
+                    }
+                }
+            }
+            
+            // Coat
+            if (cat === 'Coat') {
+                if (filters.structure === 'rough') {
+                    return "💡 Rough/speckled = Tweed";
+                }
+                if (filters.structure === 'smooth' && filters.interior === 'smooth') {
+                    return "💡 Smooth = Wool (peacoat) or Leather";
+                }
+                if (filters.interior === 'fuzzy') {
+                    return "💡 Fuzzy/puffy = Down coat or Shearling";
+                }
+            }
+            
+            // Vest
+            if (cat === 'Vest') {
+                if (filters.interior === 'fuzzy' && filters.stretch === 'none') {
+                    return "💡 Puffy = Quilted (down vest)";
+                }
+                if (filters.structure === 'diagonal') {
+                    return "💡 Diagonal weave = Denim vest";
+                }
+                if (filters.stretch === 'high' && filters.interior === 'fuzzy') {
+                    return "💡 Stretchy + soft = Fleece vest";
+                }
+                if (filters.structure === 'ribs') {
+                    return "💡 Ribbed knit = Sweater vest";
+                }
+            }
+            
+            // Blouse
+            if (cat === 'Blouse') {
+                if (filters.structure === 'rough') {
+                    return "💡 Textured/open = Lace";
+                }
+                if (filters.structure === 'smooth') {
+                    return "💡 Check sheen: matte=Woven, shiny=Silk/Satin, sheer=Chiffon";
+                }
+            }
+            
+            // Tunic
+            if (cat === 'Tunic') {
+                if (filters.stretch === 'high') {
+                    return "💡 Stretchy tunic = Knit";
+                }
+                if (filters.structure === 'rough') {
+                    return "💡 Airy/light = Gauze";
+                }
+                return "💡 Most tunics are Woven";
+            }
+            
+            // Default fallback - list the matches
+            if (matches.length <= 3) {
+                return `💡 Could be: ${matchNames.join(', ')}`;
+            }
+            return "💡 Narrow down with more filters";
+        }
+        
+        // V97: Render fabric cards based on category and filters
+        function renderFabricCards() {
+            const grid = document.getElementById('fabric-cards-grid');
+            if (!grid) return;
+            
+            const cat = data.category || 'T-Shirt';
+            const fabrics = fabricDB[cat] || fabricDB['T-Shirt'];
+            
+            grid.innerHTML = '';
+            
+            fabrics.forEach(fab => {
+                // Check if dimmed by filters
+                let dimmed = false;
+                if (fabricFilters.stretch && fab.traits.stretch !== fabricFilters.stretch) dimmed = true;
+                if (fabricFilters.structure && fab.traits.structure !== fabricFilters.structure) dimmed = true;
+                if (fabricFilters.interior && fab.traits.interior !== fabricFilters.interior) dimmed = true;
+                
+                const isDefault = fab.default === true;
+                const isSelected = data.fabricType === fab.name;
+                const priorityClass = isDefault ? 'priority-1' : '';
+                const selectedClass = isSelected ? 'selected' : '';
+                const defaultClass = (isDefault && !isSelected) ? 'fabric-default' : '';
+                const dimmedClass = dimmed ? 'dimmed' : '';
+                
+                const card = document.createElement('div');
+                card.className = `fabric-card ${priorityClass} ${selectedClass} ${defaultClass} ${dimmedClass}`.trim();
+                
+                // Badge shows DEFAULT or confirmed checkmark
+                let badge = '';
+                if (isDefault && !isSelected) {
+                    badge = '<span class="fabric-card-badge">★ DEFAULT</span>';
+                } else if (isSelected) {
+                    badge = '<span class="fabric-card-badge" style="color:#16a34a;">✓ SELECTED</span>';
+                }
+                
+                card.innerHTML = `
+                    ${badge}
+                    <button class="fabric-card-help" onclick="openFabricRef('${fab.name}', '${fab.desc.replace(/'/g, "\\'")}', event)">?</button>
+                    <div class="fabric-card-name">${fab.name}</div>
+                    <div class="fabric-card-desc">${fab.desc}</div>
+                `;
+                
+                if (!dimmed) {
+                    card.onclick = (e) => {
+                        if (e.target.classList.contains('fabric-card-help')) return;
+                        selectFabricType(fab.name);
+                    };
+                }
+                
+                grid.appendChild(card);
+            });
+            
+            // Add "Other" card at the end
+            const otherCard = document.createElement('div');
+            otherCard.className = 'fabric-card';
+            otherCard.innerHTML = `
+                <div class="fabric-card-name">Other...</div>
+                <div class="fabric-card-desc">Not listed above</div>
+            `;
+            otherCard.onclick = () => toggleOtherFabricType();
+            grid.appendChild(otherCard);
+        }
+        
+        // V97: Select fabric type from card
+        function selectFabricType(name) {
+            haptic('medium');
+            data.fabricType = name;
+            
+            // Hide the help panel if open
+            fabricHelpVisible = false;
+            document.getElementById('fabric-questions-panel').classList.add('hidden');
+            document.getElementById('fabric-not-sure-btn').classList.remove('hidden');
+            
+            renderFabricCards();
             document.getElementById('other-fabric-type-section').classList.add('hidden');
             completeSection('fabric-type');
         }
         
-        // V94: Toggle other fabric type input
+        // V97: Open fabric reference modal
+        function openFabricRef(name, desc, event) {
+            event.stopPropagation();
+            
+            document.getElementById('fabric-ref-title').textContent = name;
+            document.getElementById('fabric-ref-desc').textContent = desc;
+            
+            // Build Google image search URL
+            const cat = data.category || 'T-Shirt';
+            let query = `${name} fabric texture close up`;
+            if (name === 'Selvage') query = 'Selvage denim red line cuff';
+            if (name === 'French Terry') query = 'French Terry fabric loops inside';
+            if (name === 'Pique') query = 'Pique polo shirt fabric texture';
+            
+            document.getElementById('fabric-ref-link').href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+            
+            document.getElementById('fabric-ref-modal').classList.add('visible');
+        }
+        
+        // V97: Close fabric reference modal
+        function closeFabricRef() {
+            document.getElementById('fabric-ref-modal').classList.remove('visible');
+        }
+        
+        // V97: Toggle other fabric type input
         function toggleOtherFabricType() {
             const section = document.getElementById('other-fabric-type-section');
             section.classList.toggle('hidden');
@@ -2234,76 +3065,41 @@
             }
         }
         
-        // V94: Handle other fabric type input
+        // V97: Handle other fabric type input
         function onOtherFabricTypeInput() {
             const val = document.getElementById('fabric-type-other-input').value;
             if (val) {
                 haptic('light');
                 data.fabricType = val;
-                document.querySelectorAll('.fabric-type-btn').forEach(b => { 
-                    b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
-                    b.classList.add('btn-tertiary'); 
-                });
-                document.getElementById('btn-fabric-type-other').classList.add('selected','confirmed');
-                document.getElementById('btn-fabric-type-other').classList.remove('btn-tertiary');
+                renderFabricCards();
                 completeSection('fabric-type');
             }
         }
         
-        // V94: Update fabric type buttons based on category
+        // V97: Update fabric type section based on category (called by setCategory)
         function updateFabricTypeButtons(cat) {
-            const container = document.getElementById('fabric-type-buttons');
+            // Reset filters
+            fabricFilters = { stretch: null, structure: null, interior: null };
+            document.querySelectorAll('.fabric-filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('fabric-helper').classList.remove('visible');
             
-            // Category-specific fabric types based on internal docs
-            const fabricTypes = {
-                // TOPS
-                'T-Shirt': ['Jersey', 'Knit', 'Rayon', 'Woven', 'Mesh'],
-                'Jersey': ['Mesh', 'Jersey', 'Knit'],
-                'Sweatshirt': ['Fleece', 'French Terry', 'Knit', 'Jersey'],
-                'Hoodie': ['Fleece', 'French Terry', 'Knit', 'Jersey'],
-                'Sweater': ['Knit', 'Crochet', 'Jersey'],
-                'Cardigan': ['Knit', 'Crochet', 'Jersey'],
-                'Button Shirt': ['Woven', 'Poplin', 'Chambray', 'Denim', 'Flannel', 'Corduroy'],
-                'Polo': ['Knit', 'Jersey', 'Woven'],
-                'Tank Top': ['Jersey', 'Knit', 'Rayon', 'Mesh'],
-                'Blouse': ['Woven', 'Chiffon', 'Satin', 'Crepe', 'Lace', 'Georgette'],
-                'Tunic': ['Woven', 'Rayon', 'Knit', 'Crepe', 'Gauze'],
-                // BOTTOMS
-                'Jeans': ['Denim', 'Selvage'],
-                'Pants': ['Woven', 'Twill', 'Corduroy', 'Canvas', 'Moleskin', 'Ponte'],
-                'Shorts': ['Woven', 'Twill', 'Canvas', 'Denim', 'Mesh'],
-                'Sweatpants': ['Fleece', 'French Terry', 'Knit'],
-                // OUTER
-                'Jacket': ['Canvas', 'Nylon', 'Denim', 'Twill', 'Corduroy', 'Softshell'],
-                'Coat': ['Tweed', 'Woven', 'Velvet', 'Shearling', 'Felt', 'Taffeta'],
-                'Vest': ['Woven', 'Knit', 'Quilted', 'Fleece']
-            };
+            // Reset help panel
+            fabricHelpVisible = false;
+            document.getElementById('fabric-questions-panel').classList.add('hidden');
+            document.getElementById('fabric-not-sure-btn').classList.remove('hidden');
             
-            const types = fabricTypes[cat] || ['Jersey', 'Knit', 'Woven'];
-            
-            // V94: Category-specific fabric type defaults (shown as suggestions)
-            const fabricTypeDefaults = {
-                'T-Shirt': 'Knit',
-                'Sweatshirt': 'Fleece',
-                'Hoodie': 'Fleece',
-                'Jeans': 'Denim',
-                'Sweatpants': 'Fleece'
-            };
-            
-            const defaultType = fabricTypeDefaults[cat] || '';
-            
-            // V94: Don't auto-set data, just show as suggestion
+            // Reset selection
             data.fabricType = '';
+            document.getElementById('other-fabric-type-section').classList.add('hidden');
+            document.getElementById('fabric-type-other-input').value = '';
             
-            // V94: Add Other to the grid
-            const allTypes = [...types, 'Other...'];
-            container.innerHTML = allTypes.map(type => {
-                if (type === 'Other...') {
-                    return `<button onclick="toggleOtherFabricType()" id="btn-fabric-type-other" class="btn-compact btn-tertiary fabric-type-btn">Other...</button>`;
-                }
-                const isDefault = type === defaultType;
-                return `<button onclick="setFabricType('${type}', this)" class="btn-compact ${isDefault ? 'btn-default' : 'btn-tertiary'} fabric-type-btn">${type}</button>`;
-            }).join('');
+            // Render cards for new category
+            renderFabricCards();
+        }
+        
+        // Legacy function kept for compatibility
+        function setFabricType(type, btn) {
+            selectFabricType(type);
         }
         
         function setWash(wash, btn) {
@@ -2313,7 +3109,7 @@
             btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
         }
         
-        // V94: Toggle color selection (multiple allowed)
+        // V97: Toggle color selection (multiple allowed)
         function toggleColor(color, element) {
             haptic('light');
             // Initialize colors array if needed
@@ -2333,7 +3129,7 @@
                 if (colorItem) colorItem.classList.add('selected');
             }
             
-            // V94: No longer displaying color list
+            // V97: No longer displaying color list
             
             // Complete section if at least one color selected
             if (data.colors.length > 0) {
@@ -2341,7 +3137,7 @@
             }
         }
         
-        // V94: Toggle other pattern input
+        // V97: Toggle other pattern input
         function toggleOtherPattern() {
             const section = document.getElementById('other-pattern-section');
             section.classList.toggle('hidden');
@@ -2350,7 +3146,7 @@
             }
         }
         
-        // V94: Handle other pattern input
+        // V97: Handle other pattern input
         function onOtherPatternInput() {
             const val = document.getElementById('pattern-other-input').value;
             if (val) {
@@ -2381,7 +3177,7 @@
             completeSection('pattern');
         }
 
-        // V94: Updated setSleeveType with cutoff section for T-Shirts
+        // V97: Updated setSleeveType with cutoff section for T-Shirts
         function setSleeveType(type, btn) { 
             haptic('light'); 
             data.sleeveType = type; 
@@ -2399,7 +3195,7 @@
             if (!showStyle) { data.sleeveStyle = 'N/A'; } 
             else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = ''; }
             
-            // V94: Show cutoff section for T-Shirt + Sleeveless
+            // V97: Show cutoff section for T-Shirt + Sleeveless
             const showCutoff = type === 'Sleeveless' && data.category === 'T-Shirt';
             document.getElementById('cutoff-section').classList.toggle('hidden', !showCutoff);
             if (!showCutoff) { data.isCutoff = false; data.cutoffType = ''; }
@@ -2419,7 +3215,7 @@
             checkConstructionComplete();
         }
         
-        // V94: Cutoff type for sleeveless T-Shirts
+        // V97: Cutoff type for sleeveless T-Shirts
         function setCutoffType(type, btn) {
             haptic('light');
             data.isCutoff = type === 'diy';
@@ -2428,7 +3224,7 @@
             btn.classList.add('selected','confirmed'); btn.classList.remove('btn-tertiary');
         }
         
-        // V94: Stitch type for T-Shirts (single vs double)
+        // V97: Stitch type for T-Shirts (single vs double)
         function setStitchType(type, btn) {
             haptic('light');
             data.stitchType = type;
@@ -2441,7 +3237,7 @@
             checkConstructionComplete();
         }
         
-        // V94: Check if construction profile is complete
+        // V97: Check if construction profile is complete
         function checkConstructionComplete() {
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const sleeveOk = !!data.sleeveType;
@@ -2476,7 +3272,7 @@
             checkFeelComplete(); 
         }
         
-        // V94: Check if fabric feel is complete
+        // V97: Check if fabric feel is complete
         function checkFeelComplete() {
             if (data.thickness && data.construction) {
                 completeSection('feel');
@@ -2484,7 +3280,7 @@
         }
 
         // ============ STEP 3: SNAP ============
-        // V94: Set clean (no defects)
+        // V97: Set clean (no defects)
         function setClean(btn) { 
             haptic('medium'); 
             data.hasDefects = false;
@@ -2500,7 +3296,7 @@
             completeSection('issues');
         }
         
-        // V94: Toggle defect type (multiple allowed)
+        // V97: Toggle defect type (multiple allowed)
         function toggleDefect(defectType, btn) {
             haptic('medium');
             data.hasDefects = true;
@@ -2541,7 +3337,7 @@
             }
         }
 
-        // V94: Set fade level with btn-default support
+        // V97: Set fade level with btn-default support
         function setFade(level, btn) { 
             haptic('light'); 
             data.fadeLevel = level; 
@@ -2556,9 +3352,9 @@
         
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
-        // V94: Simplified - no body map needed
+        // V97: Simplified - no body map needed
         function initDefectSection() {
-            // No-op in V94 - defect mapping removed
+            // No-op in V97 - defect mapping removed
         }
 
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
@@ -2568,37 +3364,40 @@
             if(pendingDefect) {
                 pendingDefect.type = type;
                 document.getElementById('defect-modal').classList.add('hidden');
-                cameraMode = 'defect';
-                openCameraOverlay(`DEFECT: ${type}`);
+                openCamera('defect');
             }
         }
 
-        // V94: Simplified defect photo display
+        // V97: Simplified defect photo display
         function renderDefectMarkers() {
             // Just render defect photo thumbnails in the defect-photos-thumbs container
             const container = document.getElementById('defect-photos-thumbs');
             if (!container) return;
-            container.innerHTML = data.defectPhotos.map((p, i) => 
-                `<div class="relative">
-                    <img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.defectPhotos.splice(${i},1);renderDefectMarkers();haptic('light');}">
+            container.innerHTML = data.defectPhotos.map((p, i) => {
+                const url = p.dataUrl || (p.blob ? URL.createObjectURL(p.blob) : '');
+                return `<div class="relative">
+                    <img src="${url}" class="photo-thumb" onclick="if(confirm('Delete?')){data.defectPhotos.splice(${i},1);renderDefectMarkers();haptic('light');}">
                     <span class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">${p.defectMeta?.type?.[0] || '?'}</span>
-                </div>`
-            ).join('');
+                </div>`;
+            }).join('');
         }
 
         function renderPhotoThumbs() {
             // Main photos
             const mainContainer = document.getElementById('main-photos-thumbs');
             if(mainContainer) {
-                mainContainer.innerHTML = data.mainPhotos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
+                mainContainer.innerHTML = data.mainPhotos.map((p, i) => {
+                    const url = p.dataUrl || (p.blob ? URL.createObjectURL(p.blob) : '');
+                    return `<img src="${url}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`;
+                }).join('');
             }
-            // Defect photos (V94)
+            // Defect photos (V97)
             renderDefectMarkers();
             updateAllChecks();
         }
 
         function updateMeasureHint() {
-            // V94: Measurement hints are now static in HTML
+            // V97: Measurement hints are now static in HTML
         }
 
         function updateWeight() {
@@ -2609,15 +3408,15 @@
             haptic('light');
         }
 
-        // ============ CAMERA (V94: Native camera - opens Samsung camera directly) ============
-        // V94: Open native camera by creating fresh input element
-        // This helps ensure capture="environment" is respected on Samsung devices
-        function openCamera(mode, subType = null) {
+        // ============ CAMERA (V97: Video Stream with Grid + Stabilizer) ============
+        
+        // V97: Open camera with video stream
+        async function openCamera(mode, subType = null) {
             cameraMode = mode; 
             cameraSubType = subType;
             
-            // Determine the label for preview modal
-            let label = mode.toUpperCase();
+            // Determine the label
+            let label = mode.toUpperCase() + ' PHOTO';
             if(mode === 'tag') {
                 if (subType === 'neck') label = 'NECK TAG';
                 else if (subType === 'care') label = 'CARE LABEL';
@@ -2626,131 +3425,214 @@
             if(mode === 'defect' && pendingDefect) label = `DEFECT: ${pendingDefect.type}`;
             pendingCameraLabel = label;
             
-            // V94: Show rapid fire overlay for main photos
-            if (mode === 'main') {
-                rapidFireActive = true;
-                document.getElementById('rapid-fire-overlay').style.display = 'block';
-                document.getElementById('rapid-fire-count').textContent = data.mainPhotos.length;
+            document.getElementById('camera-mode-label').textContent = label;
+            updatePhotoCount();
+            
+            try {
+                // V97: Request highest quality rear camera
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 4096 },
+                        height: { ideal: 4096 },
+                        aspectRatio: { ideal: 1 }
+                    },
+                    audio: false
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('camera-video');
+                video.srcObject = cameraStream;
+                
+                // Wait for video to be ready
+                video.onloadedmetadata = () => {
+                    video.play();
+                    positionSquareOverlay();
+                    startStabilizer();
+                };
+                
+                document.getElementById('camera-overlay').style.display = 'flex';
+                haptic('light');
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                alert('Could not access camera. Please check permissions.');
             }
+        }
+        
+        // V97: Position the square overlay based on video dimensions
+        function positionSquareOverlay() {
+            const video = document.getElementById('camera-video');
+            const container = video.parentElement;
+            const containerRect = container.getBoundingClientRect();
             
-            // V94: Create fresh input element with explicit rear camera attributes
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            // V94: Multiple ways to request rear camera for better Samsung compatibility
-            input.setAttribute('capture', 'environment');
-            input.capture = 'environment';
-            input.style.display = 'none';
+            // Calculate square size (use the smaller dimension)
+            const size = Math.min(containerRect.width, containerRect.height);
+            const left = (containerRect.width - size) / 2;
+            const top = (containerRect.height - size) / 2;
             
-            input.onchange = function() {
-                if (this.files && this.files[0]) {
-                    handleNativePhoto(this, mode);
-                } else {
-                    // User cancelled - stop rapid fire
-                    stopRapidFire();
+            // Position grid
+            const grid = document.getElementById('camera-grid');
+            grid.style.width = size + 'px';
+            grid.style.height = size + 'px';
+            grid.style.left = left + 'px';
+            grid.style.top = top + 'px';
+            
+            // Position mask (dark areas outside square)
+            document.getElementById('mask-top').style.height = top + 'px';
+            document.getElementById('mask-bottom').style.height = top + 'px';
+        }
+        
+        // V97: Stabilizer using device motion
+        function startStabilizer() {
+            isStable = false;
+            lastMotion = Date.now();
+            updateStabilizerUI();
+            
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleMotion);
+            } else {
+                // No motion sensor - just show as stable
+                isStable = true;
+                updateStabilizerUI();
+            }
+        }
+        
+        function handleMotion(event) {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            
+            const movement = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
+            // Threshold for "stable" - lower = more sensitive
+            const threshold = 12;
+            
+            if (movement > threshold) {
+                lastMotion = Date.now();
+                if (isStable) {
+                    isStable = false;
+                    updateStabilizerUI();
                 }
-                // Clean up
-                if (this.parentNode) this.parentNode.removeChild(this);
-            };
-            
-            // V94: Handle cancel - user pressed back or cancelled camera
-            input.addEventListener('cancel', function() {
-                stopRapidFire();
-                if (this.parentNode) this.parentNode.removeChild(this);
-            });
-            
-            document.body.appendChild(input);
-            
-            // Small delay helps on some devices
-            setTimeout(() => input.click(), 50);
+            } else {
+                // Stable for 300ms = ready
+                if (!isStable && Date.now() - lastMotion > 300) {
+                    isStable = true;
+                    updateStabilizerUI();
+                }
+            }
         }
         
-        // V94: Stop rapid fire mode
-        function stopRapidFire() {
-            rapidFireActive = false;
-            document.getElementById('rapid-fire-overlay').style.display = 'none';
-            renderPhotoThumbs();
+        function updateStabilizerUI() {
+            const el = document.getElementById('stabilizer');
+            if (isStable) {
+                el.textContent = '● READY';
+                el.style.background = 'rgba(34, 197, 94, 0.9)';
+                el.style.color = 'white';
+            } else {
+                el.textContent = 'HOLD STEADY';
+                el.style.background = 'rgba(239, 68, 68, 0.9)';
+                el.style.color = 'white';
+            }
         }
         
-        // V94: Handle photo from native camera - different sizes for main vs tag
-        function handleNativePhoto(input, mode) {
-            if (!input.files || !input.files[0]) return;
-            
-            const file = input.files[0];
-            
-            // V94: Use createObjectURL instead of FileReader for better memory
-            const objectUrl = URL.createObjectURL(file);
-            const img = new Image();
-            
-            img.onload = function() {
-                // V94: Different max sizes - TAG photos need higher res for OCR
-                const MAX_SIZE = (mode === 'tag') ? 1800 : 1200;
-                const QUALITY = (mode === 'tag') ? 0.90 : 0.85;
-                
-                let size = Math.min(img.width, img.height);
-                const outputSize = Math.min(size, MAX_SIZE);
-                
-                const canvas = document.getElementById('photo-canvas');
-                canvas.width = outputSize; 
-                canvas.height = outputSize;
-                const ctx = canvas.getContext('2d');
-                
-                // Center crop and scale down
-                const sx = (img.width - size) / 2;
-                const sy = (img.height - size) / 2;
-                ctx.drawImage(img, sx, sy, size, size, 0, 0, outputSize, outputSize);
-                
-                // V94: Clean up object URL to free memory
-                URL.revokeObjectURL(objectUrl);
-                
-                // Convert to blob
-                canvas.toBlob(blob => {
-                    const photo = { blob, timestamp: new Date().toISOString() };
-                    
-                    // V94: Rapid fire for MAIN photos - skip preview, auto-reopen camera
-                    if (mode === 'main') {
-                        if (data.mainPhotos.length === 0) data.timestamps.first_photo = new Date().toISOString();
-                        data.mainPhotos.push(photo);
-                        completeSection('photos');
-                        renderPhotoThumbs();
-                        haptic('success');
-                        
-                        // V94: Update counter
-                        document.getElementById('rapid-fire-count').textContent = data.mainPhotos.length;
-                        
-                        // V94: AUTO-REOPEN camera for rapid fire if still active
-                        if (rapidFireActive) {
-                            setTimeout(() => openCamera('main'), 100);
-                        }
-                    } else {
-                        // TAG and DEFECT photos show preview
-                        pendingPhoto = photo;
-                        const previewUrl = URL.createObjectURL(blob);
-                        document.getElementById('preview-image').src = previewUrl;
-                        document.getElementById('preview-mode-label').textContent = pendingCameraLabel || mode.toUpperCase();
-                        document.getElementById('photo-preview-modal').style.display = 'flex';
-                        haptic('light');
-                    }
-                }, 'image/jpeg', QUALITY);
-            };
-            
-            img.onerror = function() {
-                URL.revokeObjectURL(objectUrl);
-                alert('Error loading photo. Please try again.');
-            };
-            
-            img.src = objectUrl;
+        function stopStabilizer() {
+            window.removeEventListener('devicemotion', handleMotion);
         }
         
-        // V94: No longer needed but keep for compatibility
+        // V97: Update photo count display
+        function updatePhotoCount() {
+            let count = 0;
+            if (cameraMode === 'main') count = data.mainPhotos.length;
+            else if (cameraMode === 'tag') count = data.tagPhotos.length;
+            else if (cameraMode === 'defect') count = data.defectPhotos.length;
+            document.getElementById('photo-count').textContent = count + ' 📷';
+        }
+        
+        // V97: Capture photo from video stream - SNAP!
+        function capturePhoto() {
+            if (!cameraStream) return;
+            
+            haptic('medium');
+            
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('photo-canvas');
+            
+            // V97: High quality output - 1400px for great quality
+            const OUTPUT_SIZE = (cameraMode === 'tag') ? 1600 : 1400;
+            canvas.width = OUTPUT_SIZE;
+            canvas.height = OUTPUT_SIZE;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate square crop from center of video
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+            const size = Math.min(videoWidth, videoHeight);
+            const sx = (videoWidth - size) / 2;
+            const sy = (videoHeight - size) / 2;
+            
+            // Draw cropped square to canvas
+            ctx.drawImage(video, sx, sy, size, size, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+            
+            // Flash effect
+            const shutterBtn = document.getElementById('shutter-btn');
+            shutterBtn.style.background = '#22c55e';
+            setTimeout(() => { shutterBtn.style.background = 'white'; }, 100);
+            
+            // Convert to blob
+            canvas.toBlob(blob => {
+                // V97: Create dataUrl for thumbnail display
+                const dataUrl = URL.createObjectURL(blob);
+                const photo = { blob, dataUrl, timestamp: new Date().toISOString() };
+                
+                // V97: Auto-save for MAIN photos (snap snap snap!)
+                if (cameraMode === 'main') {
+                    if (data.mainPhotos.length === 0) data.timestamps.first_photo = new Date().toISOString();
+                    data.mainPhotos.push(photo);
+                    completeSection('photos');
+                    updatePhotoCount();
+                    haptic('success');
+                    // Stay in camera - keep shooting!
+                } else if (cameraMode === 'tag') {
+                    // Tag photos also auto-save
+                    photo.tagType = cameraSubType;
+                    data.tagPhotos.push(photo);
+                    updatePhotoCount();
+                    haptic('success');
+                } else if (cameraMode === 'defect' && pendingDefect) {
+                    // Defect photos auto-save
+                    photo.defectMeta = { ...pendingDefect };
+                    data.defectPhotos.push(photo);
+                    renderDefectMarkers();
+                    pendingDefect = null;
+                    updatePhotoCount();
+                    haptic('success');
+                    // Close camera after defect photo
+                    closeCamera();
+                }
+                
+                // Clear canvas to free memory
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.width = 1;
+                canvas.height = 1;
+                
+            }, 'image/jpeg', 0.92);
+        }
+        
+        // V97: Close camera and stop stream
         function closeCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            stopStabilizer();
+            document.getElementById('camera-overlay').style.display = 'none';
+            document.getElementById('camera-video').srcObject = null;
             pendingDefect = null;
             renderPhotoThumbs();
+            updateAllChecks();
         }
 
         function finishPhotos() { closeCamera(); }
-
-        // V94: Stabilizer removed - using native Samsung camera instead
 
         function acceptPhoto() {
             if (!pendingPhoto) return;
@@ -2766,7 +3648,7 @@
                 data.defectPhotos.push(pendingPhoto);
             }
             pendingPhoto = null;
-            // V94: Clean up preview image URL
+            // V97: Clean up preview image URL
             const previewImg = document.getElementById('preview-image');
             if (previewImg.src.startsWith('blob:')) {
                 URL.revokeObjectURL(previewImg.src);
@@ -2774,7 +3656,7 @@
             document.getElementById('photo-preview-modal').style.display = 'none';
             haptic('success');
             maybeQuickReward();
-            // V94: Handle defect completion
+            // V97: Handle defect completion
             if (cameraMode === 'defect') { 
                 renderDefectMarkers(); 
                 pendingDefect = null;
@@ -2785,13 +3667,13 @@
 
         function rejectPhoto() {
             pendingPhoto = null;
-            // V94: Clean up preview image URL
+            // V97: Clean up preview image URL
             const previewImg = document.getElementById('preview-image');
             if (previewImg.src.startsWith('blob:')) {
                 URL.revokeObjectURL(previewImg.src);
             }
             document.getElementById('photo-preview-modal').style.display = 'none';
-            // V94: Reopen native camera for retake
+            // Reopen camera
             openCamera(cameraMode, cameraSubType);
         }
 
@@ -2888,13 +3770,13 @@
             fd.append('tag_size', data.tagSize);
             fd.append('origin', data.origin);
             fd.append('made_in_country', data.madeInCountry);
-            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V94: fabrics array for multi-select
+            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V97: fabrics array for multi-select
             fd.append('fabric_type', data.fabricType);
             fd.append('thickness', data.thickness);
             fd.append('construction', data.construction);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
-            fd.append('colors', JSON.stringify(data.colors || [])); // V94: colors array
+            fd.append('colors', JSON.stringify(data.colors || [])); // V97: colors array
             fd.append('pattern', data.pattern);
             fd.append('print_type', data.printType);
             fd.append('graphic_category', data.graphicCategory);
@@ -2905,7 +3787,7 @@
             fd.append('stitch_type', data.stitchType);
             fd.append('wash', data.wash || '');
             fd.append('has_defects', data.hasDefects);
-            fd.append('defects', JSON.stringify(data.defects || [])); // V94: defects array
+            fd.append('defects', JSON.stringify(data.defects || [])); // V97: defects array
             fd.append('fade_level', data.fadeLevel);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
