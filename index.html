@@ -734,11 +734,9 @@
         .fabric-card-badge {
             position: absolute;
             top: 8px;
-            right: 8px;
-            font-size: 9px;
+            left: 8px;
+            font-size: 14px;
             font-weight: 800;
-            color: var(--color-primary);
-            text-transform: uppercase;
         }
         .fabric-card-help {
             position: absolute;
@@ -758,7 +756,6 @@
             cursor: pointer;
         }
         .fabric-card-help:active { background: var(--color-primary); color: white; }
-        .priority-1 .fabric-card-help { right: auto; left: 8px; }
         
         .fabric-helper-text {
             background: #fef3c7;
@@ -821,6 +818,35 @@
             padding: 4px 8px;
         }
         .fabric-questions-close:active { opacity: 0.7; }
+        
+        /* V97: Material Section Specific */
+        .material-tag-warning {
+            background: #fef2f2;
+            border: 2px solid #fca5a5;
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #b91c1c;
+            text-align: center;
+        }
+        .material-tag-warning.hidden { display: none; }
+        
+        .material-expert-btn {
+            width: 100%;
+            padding: 10px;
+            margin-top: 12px;
+            background: transparent;
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            cursor: pointer;
+        }
+        .material-expert-btn:active { background: var(--color-background); }
+        .material-expert-btn.hidden { display: none; }
         
         /* Fabric Reference Modal */
         .fabric-ref-modal {
@@ -1178,40 +1204,6 @@
                 </div>
             </section>
             
-            <!-- FABRIC MATERIAL (V97: Category-specific, multiple selection) -->
-            <section id="section-fabric" class="section-card">
-                <label class="section-label">
-                    <span id="check-fabric" class="check-circle">○</span>
-                    Fabric Material
-                </label>
-                <div class="text-xs text-slate-400 mb-2">Select all that apply</div>
-                <div id="fabric-material-buttons" class="grid grid-cols-3 gap-2 mb-2">
-                    <!-- Buttons will be updated based on category, Other integrated in grid -->
-                </div>
-                <div id="other-fabric-section" class="hidden mt-2">
-                    <input type="text" id="fabric-other-input" placeholder="Type fabric material..." 
-                           onkeydown="if(event.key==='Enter'){addOtherFabric();}" 
-                           class="form-input text-sm">
-                    <button onclick="addOtherFabric()" class="btn-compact btn-tertiary mt-2 w-full">+ Add</button>
-                </div>
-                
-                <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
-                    <div class="grid grid-cols-4 gap-2">
-                        <button onclick="setWash('Light', this)" class="btn-compact btn-tertiary wash-btn">Light</button>
-                        <button onclick="setWash('Medium', this)" class="btn-compact btn-tertiary wash-btn">Medium</button>
-                        <button onclick="setWash('Dark', this)" class="btn-compact btn-tertiary wash-btn">Dark</button>
-                        <button onclick="setWash('Raw', this)" class="btn-compact btn-tertiary wash-btn">Raw</button>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2 mt-2">
-                        <button onclick="setWash('Acid', this)" class="btn-compact btn-tertiary wash-btn">Acid</button>
-                        <button onclick="setWash('Stone', this)" class="btn-compact btn-tertiary wash-btn">Stone</button>
-                        <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
-                        <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
-                    </div>
-                </div>
-            </section>
-            
             <!-- FABRIC TYPE (V97: Smart Fabric Selector with "Not Sure?" helper) -->
             <section id="section-fabric-type" class="section-card">
                 <label class="section-label">
@@ -1267,6 +1259,23 @@
                            oninput="onOtherFabricTypeInput()" 
                            class="form-input text-sm">
                 </div>
+                
+                <!-- Denim Wash (shown when Denim is selected) -->
+                <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setWash('Light', this)" class="btn-compact btn-tertiary wash-btn">Light</button>
+                        <button onclick="setWash('Medium', this)" class="btn-compact btn-tertiary wash-btn">Medium</button>
+                        <button onclick="setWash('Dark', this)" class="btn-compact btn-tertiary wash-btn">Dark</button>
+                        <button onclick="setWash('Raw', this)" class="btn-compact btn-tertiary wash-btn">Raw</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        <button onclick="setWash('Acid', this)" class="btn-compact btn-tertiary wash-btn">Acid</button>
+                        <button onclick="setWash('Stone', this)" class="btn-compact btn-tertiary wash-btn">Stone</button>
+                        <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
+                        <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
+                    </div>
+                </div>
             </section>
             
             <!-- V97: Fabric Reference Modal -->
@@ -1278,6 +1287,85 @@
                         🔍 See Examples
                     </a>
                     <button onclick="closeFabricRef()" class="btn-standard btn-secondary w-full">Close</button>
+                </div>
+            </div>
+            
+            <!-- V97: MATERIAL SECTION -->
+            <section id="section-material" class="section-card">
+                <label class="section-label">
+                    <span id="check-material" class="check-circle">○</span>
+                    Material
+                </label>
+                
+                <!-- Tag missing warning (shown when tag is worn/none) -->
+                <div id="material-tag-warning" class="material-tag-warning hidden">
+                    ⚠️ No readable tag — use touch tests below
+                </div>
+                
+                <!-- V97: Material Cards Grid -->
+                <div id="material-cards-grid" class="fabric-cards-grid">
+                    <!-- Cards populated by JS -->
+                </div>
+                
+                <!-- V97: "Not Sure?" Button (hidden when tag missing) -->
+                <button id="material-not-sure-btn" onclick="toggleMaterialHelp()" class="fabric-not-sure-btn">
+                    🤔 Not Sure? Tap here for help
+                </button>
+                
+                <!-- V97: Expert bypass (shown when questions visible) -->
+                <button id="material-expert-btn" onclick="toggleMaterialHelp()" class="material-expert-btn hidden">
+                    I know the material — hide questions
+                </button>
+                
+                <!-- V97: Hidden Questions Panel (auto-shown when tag missing) -->
+                <div id="material-questions-panel" class="fabric-questions-panel hidden">
+                    <div class="fabric-questions-header">
+                        <span>Touch tests:</span>
+                        <button onclick="toggleMaterialHelp()" class="fabric-questions-close">✕ Hide</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">Temperature when you touch it?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleMaterialFilter('temp', 'cool', this)" class="fabric-filter-btn material-filter-btn">Cool</button>
+                        <button onclick="toggleMaterialFilter('temp', 'warm', this)" class="fabric-filter-btn material-filter-btn">Warm</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">Surface shine?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleMaterialFilter('shine', 'matte', this)" class="fabric-filter-btn material-filter-btn">Matte</button>
+                        <button onclick="toggleMaterialFilter('shine', 'sheen', this)" class="fabric-filter-btn material-filter-btn">Slight Sheen</button>
+                        <button onclick="toggleMaterialFilter('shine', 'shiny', this)" class="fabric-filter-btn material-filter-btn">Shiny</button>
+                    </div>
+                    
+                    <div class="text-label text-slate-400 font-bold mb-2 mt-3">How does it feel?</div>
+                    <div class="fabric-filter-row">
+                        <button onclick="toggleMaterialFilter('feel', 'soft', this)" class="fabric-filter-btn material-filter-btn">Soft</button>
+                        <button onclick="toggleMaterialFilter('feel', 'crisp', this)" class="fabric-filter-btn material-filter-btn">Crisp</button>
+                        <button onclick="toggleMaterialFilter('feel', 'scratchy', this)" class="fabric-filter-btn material-filter-btn">Scratchy</button>
+                        <button onclick="toggleMaterialFilter('feel', 'slick', this)" class="fabric-filter-btn material-filter-btn">Slick</button>
+                    </div>
+                    
+                    <!-- V97: Helper advice -->
+                    <div id="material-helper" class="fabric-helper-text"></div>
+                </div>
+                
+                <!-- Other material input -->
+                <div id="other-material-section" class="hidden mt-3">
+                    <input type="text" id="material-other-input" placeholder="Type material..." 
+                           oninput="onOtherMaterialInput()" 
+                           class="form-input text-sm">
+                </div>
+            </section>
+            
+            <!-- V97: Material Reference Modal -->
+            <div id="material-ref-modal" class="fabric-ref-modal">
+                <div class="fabric-ref-content">
+                    <div id="material-ref-title" class="fabric-ref-title">Cotton</div>
+                    <div id="material-ref-desc" class="fabric-ref-desc">Natural fiber. Cool to touch, matte finish, soft and breathable.</div>
+                    <a id="material-ref-link" href="#" target="_blank" class="btn-standard btn-hero w-full mb-3" style="text-decoration:none;">
+                        🔍 See Examples
+                    </a>
+                    <button onclick="closeMaterialRef()" class="btn-standard btn-secondary w-full">Close</button>
                 </div>
             </div>
             
@@ -1676,7 +1764,7 @@
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabrics: [], fabricType: '', wash: '', colors: [], // V97: fabrics as array for multi-select
+            fabricType: '', material: '', wash: '', colors: [], // V97: colors as array for multi-select
             pattern: '', printType: '', graphicCategory: '',
             sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
             isCutoff: false, cutoffType: '', stitchType: '',
@@ -1730,7 +1818,7 @@
                 superCategory: 'tops', category: '', sku: '',
                 tagStatus: '', tagSize: '', gender: '',
                 origin: 'usa', madeInCountry: 'USA',
-                fabrics: [], fabricType: '', wash: '', colors: [],
+                fabricType: '', material: '', wash: '', colors: [],
                 pattern: '', printType: '', graphicCategory: '',
                 sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
                 isCutoff: false, cutoffType: '', stitchType: '',
@@ -1923,10 +2011,10 @@
                 category: !!data.category,
                 sku: !!data.sku,
                 tag: !!data.tagStatus,
-                fabric: data.fabrics && data.fabrics.length > 0, // V97: fabrics array
                 'fabric-type': !!data.fabricType,
+                material: !!data.material,
                 color: data.colors && data.colors.length > 0,
-                pattern: (data.fabrics && data.fabrics.includes('Denim')) || !!data.pattern,
+                pattern: !!data.pattern,
                 construction: constructionOk,
                 feel: !!data.thickness && !!data.construction,
                 issues: data.hasDefects !== null,
@@ -2041,11 +2129,11 @@
             // V97: Update pattern buttons based on category
             updatePatternButtons(cat);
             
-            // V97: Update fabric material buttons based on category
-            updateFabricMaterialButtons(cat);
-            
             // V97: Update fabric type buttons based on category
             updateFabricTypeButtons(cat);
+            
+            // V97: Update material section based on category and tag status
+            updateMaterialSection(cat);
             
             autoScroll('section-tag');
         }
@@ -2318,6 +2406,10 @@
             document.getElementById('tag-size-section').classList.toggle('hidden', status !== 'has');
             document.getElementById('origin-section').classList.remove('hidden');
             document.getElementById('tag-gender-section').classList.remove('hidden');
+            
+            // V97: Update material section based on tag status (auto-show questions if tag missing)
+            updateMaterialSection(data.category);
+            
             completeSection('tag');
         }
 
@@ -2397,120 +2489,6 @@
         }
 
         // ============ STEP 2: CHECK ============
-        // V97: Toggle fabric material selection (multiple allowed)
-        function toggleFabricMaterial(material, btn) {
-            haptic('light');
-            if (!data.fabrics) data.fabrics = [];
-            
-            const idx = data.fabrics.indexOf(material);
-            if (idx > -1) {
-                // Remove material
-                data.fabrics.splice(idx, 1);
-                btn.classList.remove('selected','confirmed');
-                btn.classList.add('btn-tertiary');
-            } else {
-                // Add material
-                data.fabrics.push(material);
-                btn.classList.add('selected','confirmed');
-                btn.classList.remove('btn-tertiary');
-            }
-            
-            // Update display
-            updateFabricsDisplay();
-            
-            // Show wash section if any fabric contains Denim
-            const hasDenim = data.fabrics.some(f => f.toLowerCase().includes('denim'));
-            document.getElementById('wash-section').classList.toggle('hidden', !hasDenim);
-            if (!hasDenim) data.wash = '';
-            
-            if (data.fabrics.length > 0) {
-                completeSection('fabric');
-            }
-        }
-        
-        // V97: Display removed - function kept for compatibility but does nothing
-        function updateFabricsDisplay() {
-            // V97: No longer displaying fabric tags
-        }
-        
-        // V97: Toggle other fabric input
-        function toggleOtherFabric() {
-            const section = document.getElementById('other-fabric-section');
-            section.classList.toggle('hidden');
-            if (!section.classList.contains('hidden')) {
-                document.getElementById('fabric-other-input').focus();
-            }
-        }
-        
-        // V97: Add other fabric from input
-        function addOtherFabric() {
-            const input = document.getElementById('fabric-other-input');
-            const val = input.value.trim();
-            if (val) {
-                haptic('light');
-                if (!data.fabrics) data.fabrics = [];
-                if (!data.fabrics.includes(val)) {
-                    data.fabrics.push(val);
-                }
-                input.value = '';
-                updateFabricsDisplay();
-                document.getElementById('other-fabric-section').classList.add('hidden');
-                completeSection('fabric');
-            }
-        }
-        
-        // V97: Update fabric material buttons based on category
-        function updateFabricMaterialButtons(cat) {
-            const container = document.getElementById('fabric-material-buttons');
-            
-            // Category-specific fabric materials based on internal docs
-            const fabricMaterials = {
-                // TOPS
-                'T-Shirt': ['Cotton', 'Polyester', 'Rayon', 'Nylon', 'Acrylic'],
-                'Jersey': ['Polyester', 'Nylon', 'Cotton', 'Rayon'],
-                'Sweatshirt': ['Cotton', 'Polyester', 'Acrylic', 'Wool'],
-                'Hoodie': ['Cotton', 'Polyester', 'Acrylic', 'Nylon'],
-                'Sweater': ['Wool', 'Acrylic', 'Cotton', 'Cashmere', 'Mohair'],
-                'Cardigan': ['Wool', 'Acrylic', 'Cotton', 'Cashmere', 'Mohair'],
-                'Button Shirt': ['Cotton', 'Polyester', 'Rayon', 'Linen', 'Silk'],
-                'Polo': ['Cotton', 'Polyester', 'Acrylic'],
-                'Tank Top': ['Cotton', 'Polyester', 'Rayon', 'Nylon'],
-                'Blouse': ['Polyester', 'Rayon', 'Silk', 'Cotton', 'Nylon'],
-                'Tunic': ['Cotton', 'Rayon', 'Linen', 'Wool'],
-                // BOTTOMS
-                'Jeans': ['Cotton', 'Polyester'],
-                'Pants': ['Polyester', 'Cotton', 'Wool', 'Rayon', 'Nylon'],
-                'Shorts': ['Cotton', 'Nylon', 'Polyester', 'Rayon'],
-                'Sweatpants': ['Cotton', 'Polyester', 'Acrylic'],
-                // OUTER
-                'Jacket': ['Nylon', 'Polyester', 'Cotton', 'Leather', 'Wool'],
-                'Coat': ['Wool', 'Leather', 'Nylon', 'Polyester', 'Cashmere'],
-                'Vest': ['Nylon', 'Polyester', 'Cotton', 'Wool']
-            };
-            
-            // V97: Category-specific fabric material defaults (shown as suggestions)
-            const fabricDefaults = {
-                'T-Shirt': ['Cotton', 'Polyester'],
-                'Sweatshirt': ['Cotton', 'Polyester'],
-                'Hoodie': ['Cotton', 'Polyester']
-            };
-            
-            const materials = fabricMaterials[cat] || ['Cotton', 'Polyester', 'Rayon'];
-            const defaults = fabricDefaults[cat] || [];
-            
-            // V97: Don't auto-set data, just show as suggestions
-            data.fabrics = [];
-            
-            // V97: Add Other to the grid
-            const allMaterials = [...materials, 'Other...'];
-            container.innerHTML = allMaterials.map(mat => {
-                if (mat === 'Other...') {
-                    return `<button onclick="toggleOtherFabric()" id="btn-fabric-other" class="btn-compact btn-tertiary fabric-btn">Other...</button>`;
-                }
-                const isDefault = defaults.includes(mat);
-                return `<button onclick="toggleFabricMaterial('${mat}', this)" class="btn-compact ${isDefault ? 'btn-default' : 'btn-tertiary'} fabric-btn">${mat}</button>`;
-            }).join('');
-        }
         
         // ============ V97: SMART FABRIC SELECTOR ============
         
@@ -2981,12 +2959,10 @@
                 const card = document.createElement('div');
                 card.className = `fabric-card ${priorityClass} ${selectedClass} ${defaultClass} ${dimmedClass}`.trim();
                 
-                // Badge shows DEFAULT or confirmed checkmark
+                // Badge only shows confirmed checkmark (default indicated by dashed border)
                 let badge = '';
-                if (isDefault && !isSelected) {
-                    badge = '<span class="fabric-card-badge">★ DEFAULT</span>';
-                } else if (isSelected) {
-                    badge = '<span class="fabric-card-badge" style="color:#16a34a;">✓ SELECTED</span>';
+                if (isSelected) {
+                    badge = '<span class="fabric-card-badge" style="color:#16a34a;">✓</span>';
                 }
                 
                 card.innerHTML = `
@@ -3026,6 +3002,10 @@
             fabricHelpVisible = false;
             document.getElementById('fabric-questions-panel').classList.add('hidden');
             document.getElementById('fabric-not-sure-btn').classList.remove('hidden');
+            
+            // Show wash section for Denim fabric types
+            const isDenim = name.toLowerCase().includes('denim') || name === 'Selvage';
+            document.getElementById('wash-section').classList.toggle('hidden', !isDenim);
             
             renderFabricCards();
             document.getElementById('other-fabric-type-section').classList.add('hidden');
@@ -3100,6 +3080,364 @@
         // Legacy function kept for compatibility
         function setFabricType(type, btn) {
             selectFabricType(type);
+        }
+        
+        // ============ V97: MATERIAL SELECTOR ============
+        
+        // Material database with touch traits - aligned with eBay material list
+        const materialDB = {
+            "T-Shirt": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Natural fiber. Cool, soft, breathable." },
+                { name: "50/50 Blend", priority: 1, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Cotton/Poly mix. Soft, durable." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Synthetic. Slight sheen, slick feel." },
+                { name: "Rayon", priority: 2, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Semi-synthetic. Silky, drapey." },
+                { name: "Tri-Blend", priority: 3, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Cotton/Poly/Rayon mix. Ultra soft." }
+            ],
+            "Sweatshirt": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Natural. Soft, absorbs moisture." },
+                { name: "Cotton/Poly Blend", priority: 1, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Common blend. Soft, durable." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Synthetic. Athletic/tech fleece." }
+            ],
+            "Hoodie": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Natural. Soft, breathable." },
+                { name: "Cotton/Poly Blend", priority: 1, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Common blend. Durable." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Tech fleece, athletic." }
+            ],
+            "Sweater": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Lightweight sweater." },
+                { name: "Wool", priority: 1, traits: { temp: "warm", shine: "matte", feel: "scratchy" }, desc: "Animal fiber. Warm, can be itchy." },
+                { name: "Acrylic", priority: 2, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Synthetic wool alternative." },
+                { name: "Cashmere", priority: 3, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Luxury. Extremely soft." }
+            ],
+            "Cardigan": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Lightweight." },
+                { name: "Wool", priority: 1, traits: { temp: "warm", shine: "matte", feel: "scratchy" }, desc: "Classic cardigan material." },
+                { name: "Acrylic", priority: 2, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Synthetic alternative." }
+            ],
+            "Button Shirt": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Natural. Crisp, breathable." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Synthetic. Wrinkle-resistant." },
+                { name: "Linen", priority: 2, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Natural. Cool, wrinkles easily." },
+                { name: "Rayon", priority: 2, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Silky hand feel." },
+                { name: "Silk", priority: 3, traits: { temp: "cool", shine: "shiny", feel: "slick" }, desc: "Luxury. Shiny, smooth." }
+            ],
+            "Polo": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Classic polo material." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Athletic/golf polos." },
+                { name: "Cotton/Poly Blend", priority: 2, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Durable blend." }
+            ],
+            "Tank Top": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Standard tank." },
+                { name: "Rayon", priority: 2, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Flowy, drapey." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Athletic tanks." }
+            ],
+            "Blouse": [
+                { name: "Polyester", priority: 1, default: true, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Most common for blouses." },
+                { name: "Silk", priority: 2, traits: { temp: "cool", shine: "shiny", feel: "slick" }, desc: "Luxury. Very smooth." },
+                { name: "Rayon", priority: 2, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Silky feel, affordable." },
+                { name: "Cotton", priority: 3, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Natural, breathable." }
+            ],
+            "Jersey": [
+                { name: "Polyester", priority: 1, default: true, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Modern sports jerseys." },
+                { name: "Nylon", priority: 2, traits: { temp: "warm", shine: "shiny", feel: "slick" }, desc: "Shiny athletic material." },
+                { name: "Cotton", priority: 3, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Vintage jerseys." }
+            ],
+            "Jeans": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "100% cotton denim." },
+                { name: "Cotton/Poly Blend", priority: 2, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Stretch denim." },
+                { name: "Cotton/Spandex", priority: 2, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Stretch jeans." }
+            ],
+            "Pants": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Chinos, khakis." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Dress pants." },
+                { name: "Wool", priority: 2, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Suit pants, trousers." },
+                { name: "Nylon", priority: 3, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Athletic, track pants." }
+            ],
+            "Shorts": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Chino shorts." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Athletic shorts." },
+                { name: "Nylon", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Swim trunks, athletic." }
+            ],
+            "Sweatpants": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Classic sweats." },
+                { name: "Cotton/Poly Blend", priority: 1, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Durable sweats." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Track pants, tech fleece." },
+                { name: "Nylon", priority: 2, traits: { temp: "warm", shine: "shiny", feel: "slick" }, desc: "Windbreaker pants." }
+            ],
+            "Jacket": [
+                { name: "Cotton", priority: 1, default: true, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Denim, canvas jackets." },
+                { name: "Nylon", priority: 1, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Windbreakers, coaches." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Bombers, athletic." },
+                { name: "Leather", priority: 2, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Moto, varsity jackets." },
+                { name: "Wool", priority: 3, traits: { temp: "warm", shine: "matte", feel: "scratchy" }, desc: "Varsity, blazers." }
+            ],
+            "Coat": [
+                { name: "Wool", priority: 1, default: true, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Peacoats, overcoats." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Puffer coats." },
+                { name: "Down", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "soft" }, desc: "Puffy insulation." },
+                { name: "Leather", priority: 3, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Leather coats." }
+            ],
+            "Vest": [
+                { name: "Polyester", priority: 1, default: true, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Puffer vests." },
+                { name: "Cotton", priority: 2, traits: { temp: "cool", shine: "matte", feel: "crisp" }, desc: "Denim vests." },
+                { name: "Wool", priority: 2, traits: { temp: "warm", shine: "matte", feel: "soft" }, desc: "Sweater vests." },
+                { name: "Down", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "soft" }, desc: "Down vests." }
+            ],
+            "Tunic": [
+                { name: "Rayon", priority: 1, default: true, traits: { temp: "cool", shine: "sheen", feel: "soft" }, desc: "Flowy tunics." },
+                { name: "Cotton", priority: 2, traits: { temp: "cool", shine: "matte", feel: "soft" }, desc: "Casual tunics." },
+                { name: "Polyester", priority: 2, traits: { temp: "warm", shine: "sheen", feel: "slick" }, desc: "Dressy tunics." }
+            ]
+        };
+        
+        // Material filter state
+        let materialFilters = { temp: null, shine: null, feel: null };
+        let materialHelpVisible = false;
+        
+        // Toggle material help panel
+        function toggleMaterialHelp() {
+            haptic('light');
+            materialHelpVisible = !materialHelpVisible;
+            
+            const panel = document.getElementById('material-questions-panel');
+            const notSureBtn = document.getElementById('material-not-sure-btn');
+            const expertBtn = document.getElementById('material-expert-btn');
+            
+            if (materialHelpVisible) {
+                panel.classList.remove('hidden');
+                notSureBtn.classList.add('hidden');
+                expertBtn.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+                notSureBtn.classList.remove('hidden');
+                expertBtn.classList.add('hidden');
+                // Reset filters when closing
+                materialFilters = { temp: null, shine: null, feel: null };
+                document.querySelectorAll('.material-filter-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('material-helper').classList.remove('visible');
+                renderMaterialCards();
+            }
+        }
+        
+        // Toggle material filter
+        function toggleMaterialFilter(type, value, btn) {
+            haptic('light');
+            
+            if (materialFilters[type] === value) {
+                materialFilters[type] = null;
+                btn.classList.remove('active');
+            } else {
+                materialFilters[type] = value;
+                const row = btn.parentElement;
+                row.querySelectorAll('.fabric-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            
+            updateMaterialHelper();
+            renderMaterialCards();
+        }
+        
+        // Update material helper text
+        function updateMaterialHelper() {
+            const helper = document.getElementById('material-helper');
+            const activeCount = Object.values(materialFilters).filter(Boolean).length;
+            
+            if (activeCount === 0) {
+                helper.classList.remove('visible');
+                return;
+            }
+            
+            let advice = "";
+            
+            // Temperature-based advice
+            if (materialFilters.temp === 'cool') {
+                advice = "💡 Cool touch = Natural fibers (Cotton, Linen, Rayon)";
+            } else if (materialFilters.temp === 'warm') {
+                advice = "💡 Warm touch = Synthetics (Polyester, Nylon) or Wool";
+            }
+            
+            // Shine-based advice
+            if (materialFilters.shine === 'shiny') {
+                if (advice) advice += "<br>";
+                advice += "💡 Shiny = Silk, Nylon, or Satin finish";
+            } else if (materialFilters.shine === 'sheen') {
+                if (advice) advice += "<br>";
+                advice += "💡 Slight sheen = Polyester, Rayon";
+            }
+            
+            // Feel-based advice
+            if (materialFilters.feel === 'scratchy') {
+                if (advice) advice += "<br>";
+                advice += "💡 Scratchy = Wool or low-quality synthetic";
+            } else if (materialFilters.feel === 'slick') {
+                if (advice) advice += "<br>";
+                advice += "💡 Slick/smooth = Polyester, Nylon, Silk";
+            }
+            
+            // Combination advice
+            if (materialFilters.temp === 'cool' && materialFilters.shine === 'matte' && materialFilters.feel === 'soft') {
+                advice = "💡 Almost certainly Cotton!";
+            }
+            if (materialFilters.temp === 'warm' && materialFilters.shine === 'sheen' && materialFilters.feel === 'slick') {
+                advice = "💡 Almost certainly Polyester!";
+            }
+            
+            helper.innerHTML = advice;
+            helper.classList.add('visible');
+        }
+        
+        // Render material cards
+        function renderMaterialCards() {
+            const grid = document.getElementById('material-cards-grid');
+            if (!grid) return;
+            
+            const cat = data.category || 'T-Shirt';
+            const materials = materialDB[cat] || materialDB['T-Shirt'];
+            
+            grid.innerHTML = '';
+            
+            materials.forEach(mat => {
+                // Check if dimmed by filters
+                let dimmed = false;
+                if (materialFilters.temp && mat.traits.temp !== materialFilters.temp) dimmed = true;
+                if (materialFilters.shine && mat.traits.shine !== materialFilters.shine) dimmed = true;
+                if (materialFilters.feel && mat.traits.feel !== materialFilters.feel) dimmed = true;
+                
+                const isDefault = mat.default === true;
+                const isSelected = data.material === mat.name;
+                const priorityClass = isDefault ? 'priority-1' : '';
+                const selectedClass = isSelected ? 'selected' : '';
+                const dimmedClass = dimmed ? 'dimmed' : '';
+                
+                const card = document.createElement('div');
+                card.className = `fabric-card ${priorityClass} ${selectedClass} ${dimmedClass}`.trim();
+                
+                let badge = '';
+                if (isSelected) {
+                    badge = '<span class="fabric-card-badge" style="color:#16a34a;">✓</span>';
+                }
+                
+                card.innerHTML = `
+                    ${badge}
+                    <button class="fabric-card-help" onclick="openMaterialRef('${mat.name}', '${mat.desc.replace(/'/g, "\\'")}', event)">?</button>
+                    <div class="fabric-card-name">${mat.name}</div>
+                    <div class="fabric-card-desc">${mat.desc}</div>
+                `;
+                
+                if (!dimmed) {
+                    card.onclick = (e) => {
+                        if (e.target.classList.contains('fabric-card-help')) return;
+                        selectMaterial(mat.name);
+                    };
+                }
+                
+                grid.appendChild(card);
+            });
+            
+            // Add "Other" card
+            const otherCard = document.createElement('div');
+            otherCard.className = 'fabric-card';
+            otherCard.innerHTML = `
+                <div class="fabric-card-name">Other...</div>
+                <div class="fabric-card-desc">Not listed above</div>
+            `;
+            otherCard.onclick = () => toggleOtherMaterial();
+            grid.appendChild(otherCard);
+        }
+        
+        // Select material
+        function selectMaterial(name) {
+            haptic('medium');
+            data.material = name;
+            
+            // Hide help panel
+            materialHelpVisible = false;
+            document.getElementById('material-questions-panel').classList.add('hidden');
+            document.getElementById('material-not-sure-btn').classList.remove('hidden');
+            document.getElementById('material-expert-btn').classList.add('hidden');
+            
+            renderMaterialCards();
+            document.getElementById('other-material-section').classList.add('hidden');
+            completeSection('material');
+        }
+        
+        // Open material reference modal
+        function openMaterialRef(name, desc, event) {
+            event.stopPropagation();
+            
+            document.getElementById('material-ref-title').textContent = name;
+            document.getElementById('material-ref-desc').textContent = desc;
+            
+            let query = `${name} fabric material texture`;
+            if (name === '50/50 Blend') query = '50 50 cotton polyester blend t-shirt';
+            if (name === 'Tri-Blend') query = 'tri-blend t-shirt fabric soft';
+            
+            document.getElementById('material-ref-link').href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+            document.getElementById('material-ref-modal').classList.add('visible');
+        }
+        
+        // Close material reference modal
+        function closeMaterialRef() {
+            document.getElementById('material-ref-modal').classList.remove('visible');
+        }
+        
+        // Toggle other material input
+        function toggleOtherMaterial() {
+            const section = document.getElementById('other-material-section');
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                document.getElementById('material-other-input').focus();
+            }
+        }
+        
+        // Handle other material input
+        function onOtherMaterialInput() {
+            const val = document.getElementById('material-other-input').value;
+            if (val) {
+                haptic('light');
+                data.material = val;
+                renderMaterialCards();
+                completeSection('material');
+            }
+        }
+        
+        // Update material section based on category and tag status
+        function updateMaterialSection(cat) {
+            // Reset filters
+            materialFilters = { temp: null, shine: null, feel: null };
+            document.querySelectorAll('.material-filter-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('material-helper').classList.remove('visible');
+            
+            // Reset selection
+            data.material = '';
+            document.getElementById('other-material-section').classList.add('hidden');
+            document.getElementById('material-other-input').value = '';
+            
+            // Check tag status - auto-show questions if tag is worn/none
+            const tagMissing = data.tagStatus === 'worn' || data.tagStatus === 'none';
+            const warningEl = document.getElementById('material-tag-warning');
+            const notSureBtn = document.getElementById('material-not-sure-btn');
+            const expertBtn = document.getElementById('material-expert-btn');
+            const panel = document.getElementById('material-questions-panel');
+            
+            if (tagMissing) {
+                // Show warning and auto-expand questions
+                warningEl.classList.remove('hidden');
+                panel.classList.remove('hidden');
+                notSureBtn.classList.add('hidden');
+                expertBtn.classList.remove('hidden');
+                materialHelpVisible = true;
+            } else {
+                // Normal mode - hide warning, show Not Sure button
+                warningEl.classList.add('hidden');
+                panel.classList.add('hidden');
+                notSureBtn.classList.remove('hidden');
+                expertBtn.classList.add('hidden');
+                materialHelpVisible = false;
+            }
+            
+            // Render cards for new category
+            renderMaterialCards();
         }
         
         function setWash(wash, btn) {
@@ -3770,7 +4108,7 @@
             fd.append('tag_size', data.tagSize);
             fd.append('origin', data.origin);
             fd.append('made_in_country', data.madeInCountry);
-            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V97: fabrics array for multi-select
+            fd.append('material', data.material);
             fd.append('fabric_type', data.fabricType);
             fd.append('thickness', data.thickness);
             fd.append('construction', data.construction);
