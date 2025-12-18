@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>VintageLister v78</title>
+    <title>VintageLister v87</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -93,7 +93,7 @@
         /* ============ LAYOUT ============ */
         .step-container { display: none; }
         .step-container.active { display: block; }
-        /* V84: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
+        /* V87: Fixed safe-top - base padding plus safe-area-inset for notch/dynamic island */
         .safe-top { padding-top: calc(12px + env(safe-area-inset-top, 20px)); }
         .safe-bottom { padding-bottom: max(100px, calc(80px + env(safe-area-inset-bottom))); }
         
@@ -307,7 +307,7 @@
             box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
             transform: scale(1.05);
         }
-        /* V84: Labeled color swatches */
+        /* V87: Labeled color swatches */
         .color-item {
             display: flex;
             flex-direction: column;
@@ -721,7 +721,7 @@
             </div>
             <button onclick="checkPin()" class="btn-standard btn-hero w-full text-lg">START LISTING →</button>
         </div>
-        <p class="text-slate-500 text-label mt-4">v78</p>
+        <p class="text-slate-500 text-label mt-4">v87</p>
     </div>
 
     <!-- CELEBRATION -->
@@ -752,7 +752,7 @@
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-slate-800 font-bold text-base">Vintage<span class="text-blue-600">Lister</span></span>
-                    <span class="text-slate-400 text-label">v78</span>
+                    <span class="text-slate-400 text-label">v87</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="streak-badge">
@@ -860,13 +860,14 @@
                 <div id="tag-size-section" class="hidden nested-section nested-section-amber mt-3">
                     <label class="nested-label text-amber-700">Tag Size</label>
                     <div class="grid grid-cols-4 gap-2 mb-2">
+                        <button onclick="setTagSize('2XS', this)" class="btn-compact btn-tertiary size-btn">2XS</button>
+                        <button onclick="setTagSize('XS', this)" class="btn-compact btn-tertiary size-btn">XS</button>
                         <button onclick="setTagSize('S', this)" class="btn-compact btn-tertiary size-btn">S</button>
                         <button onclick="setTagSize('M', this)" class="btn-compact btn-tertiary size-btn">M</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-2 mb-2">
                         <button onclick="setTagSize('L', this)" class="btn-compact btn-tertiary size-btn">L</button>
                         <button onclick="setTagSize('XL', this)" class="btn-compact btn-tertiary size-btn">XL</button>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 mb-2">
-                        <button onclick="setTagSize('XS', this)" class="btn-compact btn-tertiary size-btn">XS</button>
                         <button onclick="setTagSize('2XL', this)" class="btn-compact btn-tertiary size-btn">2XL</button>
                         <button onclick="setTagSize('3XL', this)" class="btn-compact btn-tertiary size-btn">3XL</button>
                     </div>
@@ -924,7 +925,7 @@
             </button>
         </div>
 
-        <!-- ========== STEP 2: CHECK (V84: Reordered - Color → Pattern → Fabric → Construction) ========== -->
+        <!-- ========== STEP 2: CHECK (V87: Reordered - Color → Pattern → Fabric → Construction) ========== -->
         <div id="step-2" class="step-container space-y-3">
             
             <!-- COLOR - Clean grid, eBay colors -->
@@ -962,100 +963,51 @@
                 <div id="selected-colors" class="text-center text-slate-800 text-sm font-bold mt-3"></div>
             </section>
             
-            <!-- PATTERN (Second) - Simplified, no print type or graphic category -->
+            <!-- PATTERN (V87: Category-specific, single selection) -->
             <section id="section-pattern" class="section-card">
                 <label class="section-label">
                     <span id="check-pattern" class="check-circle">○</span>
                     Pattern
                 </label>
-                <div id="pattern-heroes" class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-tertiary pattern-btn">Solid</button>
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-tertiary pattern-btn">🎨 Graphic</button>
-                </div>
-                <div id="pattern-common" class="grid grid-cols-4 gap-2 mb-2">
+                <div id="pattern-buttons" class="grid grid-cols-3 gap-2 mb-2">
+                    <!-- Default buttons, will be updated based on category -->
+                    <button onclick="setPattern('Graphic Print', this)" class="btn-compact btn-tertiary pattern-btn">Graphic Print</button>
+                    <button onclick="setPattern('Solid', this)" class="btn-compact btn-tertiary pattern-btn">Solid</button>
                     <button onclick="setPattern('Striped', this)" class="btn-compact btn-tertiary pattern-btn">Striped</button>
-                    <button onclick="setPattern('Plaid', this)" class="btn-compact btn-tertiary pattern-btn">Plaid</button>
-                    <button onclick="setPattern('Tie Dye', this)" class="btn-compact btn-tertiary pattern-btn">Tie Dye</button>
-                    <button onclick="setPattern('Camo', this)" class="btn-compact btn-tertiary pattern-btn">Camo</button>
                 </div>
-                <button onclick="toggleOtherPatterns()" id="other-patterns-toggle" class="text-slate-400 text-label min-h-[44px] w-full text-left px-2">+ Other patterns</button>
-                <div id="pattern-others" class="hidden grid grid-cols-4 gap-2 mt-2">
-                    <button onclick="setPattern('Color Block', this)" class="btn-compact btn-tertiary pattern-btn">Color Block</button>
-                    <button onclick="setPattern('Embroidered', this)" class="btn-compact btn-tertiary pattern-btn">Emb.</button>
-                    <button onclick="setPattern('Polka Dot', this)" class="btn-compact btn-tertiary pattern-btn">Polka</button>
-                    <button onclick="setPattern('Paisley', this)" class="btn-compact btn-tertiary pattern-btn">Paisley</button>
-                    <button onclick="setPattern('Floral', this)" class="btn-compact btn-tertiary pattern-btn">Floral</button>
-                    <button onclick="setPattern('Animal', this)" class="btn-compact btn-tertiary pattern-btn">Animal</button>
-                    <button onclick="setPattern('Geometric', this)" class="btn-compact btn-tertiary pattern-btn">Geo</button>
-                    <button onclick="setPattern('Other', this)" class="btn-compact btn-tertiary pattern-btn">Other</button>
+                <div class="flex gap-2">
+                    <button onclick="toggleOtherPattern()" id="btn-pattern-other" class="btn-compact btn-tertiary pattern-btn flex-1">Other...</button>
+                </div>
+                <div id="other-pattern-section" class="hidden mt-2">
+                    <input type="text" id="pattern-other-input" placeholder="Type pattern..." 
+                           oninput="onOtherPatternInput()" 
+                           class="form-input text-sm">
                 </div>
             </section>
             
-            <!-- FABRIC (Third) -->
+            <!-- FABRIC MATERIAL (V87: Category-specific, multiple selection) -->
             <section id="section-fabric" class="section-card">
                 <label class="section-label">
                     <span id="check-fabric" class="check-circle">○</span>
-                    Fabric
+                    Fabric Material
                 </label>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <button onclick="setFabric('100% Cotton', this)" id="btn-fabric-cotton" class="btn-standard btn-tertiary fabric-btn">100% Cotton</button>
-                    <button onclick="setFabric('50/50', this)" id="btn-fabric-5050" class="btn-standard btn-tertiary fabric-btn">50/50 Blend</button>
+                <div class="text-xs text-slate-400 mb-2">Select all that apply</div>
+                <div id="fabric-material-buttons" class="grid grid-cols-3 gap-2 mb-2">
+                    <!-- Default buttons, will be updated based on category -->
+                    <button onclick="toggleFabricMaterial('Cotton', this)" class="btn-compact btn-tertiary fabric-btn">Cotton</button>
+                    <button onclick="toggleFabricMaterial('Polyester', this)" class="btn-compact btn-tertiary fabric-btn">Polyester</button>
+                    <button onclick="toggleFabricMaterial('Rayon', this)" class="btn-compact btn-tertiary fabric-btn">Rayon</button>
                 </div>
-                <div class="grid grid-cols-3 gap-2 mb-2">
-                    <button onclick="setFabric('100% Polyester', this)" id="btn-fabric-poly" class="btn-compact btn-tertiary fabric-btn">Polyester</button>
-                    <button onclick="setFabric('Tri-Blend', this)" id="btn-fabric-tri" class="btn-compact btn-tertiary fabric-btn">Tri-Blend</button>
-                    <button onclick="setFabric('Denim', this)" id="btn-fabric-denim" class="btn-compact btn-tertiary fabric-btn">Denim</button>
+                <div class="flex gap-2">
+                    <button onclick="toggleOtherFabric()" id="btn-fabric-other" class="btn-compact btn-tertiary fabric-btn flex-1">Other...</button>
                 </div>
-                <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select text-sm">
-                    <option value="" selected>Other fabrics...</option>
-                    <option value="Fleece">Fleece</option>
-                    <option value="Corduroy">Corduroy</option>
-                    <option value="Wool">Wool</option>
-                    <option value="Linen">Linen</option>
-                    <option value="Rayon">Rayon</option>
-                    <option value="Nylon">Nylon</option>
-                    <option value="Silk">Silk</option>
-                    <option value="Custom">Custom Blend...</option>
-                </select>
-                
-                <div id="custom-blend-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <label class="text-label font-bold text-blue-700 mb-2 block">Build Your Blend</label>
-                    <div class="flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-1" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 1...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-1" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <div class="flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-2" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 2...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-2" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <button onclick="toggleThirdMaterial()" id="btn-add-mat-3" class="text-xs text-blue-600 font-medium mb-2">+ Add 3rd material (tri-blend)</button>
-                    <div id="blend-row-3" class="hidden flex gap-2 mb-2 items-center">
-                        <select id="blend-mat-3" onchange="updateBlendPreview()" class="flex-1 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white">
-                            <option value="">Material 3...</option>
-                            <option>Cotton</option><option>Polyester</option><option>Rayon</option><option>Spandex</option><option>Nylon</option><option>Acrylic</option><option>Wool</option><option>Linen</option><option>Modal</option><option>Viscose</option><option>Other</option>
-                        </select>
-                        <select id="blend-pct-3" onchange="updateBlendPreview()" class="w-20 p-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-blue-500 bg-white font-bold text-center">
-                            <option value="">%</option>
-                            <option>5</option><option>10</option><option>15</option><option>20</option><option>25</option><option>30</option><option>35</option><option>40</option><option>45</option><option>50</option><option>55</option><option>60</option><option>65</option><option>70</option><option>75</option><option>80</option><option>85</option><option>90</option><option>95</option>
-                        </select>
-                    </div>
-                    <div id="blend-preview" class="mt-2 p-2 bg-white rounded-lg border border-blue-300 text-center">
-                        <span class="text-sm text-slate-400">Select materials above</span>
-                    </div>
-                    <input type="hidden" id="fabric-custom" value="">
+                <div id="other-fabric-section" class="hidden mt-2">
+                    <input type="text" id="fabric-other-input" placeholder="Type fabric material..." 
+                           onkeydown="if(event.key==='Enter'){addOtherFabric();}" 
+                           class="form-input text-sm">
+                    <button onclick="addOtherFabric()" class="btn-compact btn-tertiary mt-2 w-full">+ Add</button>
                 </div>
+                <div id="selected-fabrics" class="text-center text-slate-800 text-sm font-bold mt-2"></div>
                 
                 <div id="wash-section" class="hidden mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
                     <div class="text-label text-blue-700 font-bold mb-2">Denim Wash</div>
@@ -1071,6 +1023,28 @@
                         <button onclick="setWash('Rinse', this)" class="btn-compact btn-tertiary wash-btn">Rinse</button>
                         <button onclick="setWash('Charcoal', this)" class="btn-compact btn-tertiary wash-btn">Charcoal</button>
                     </div>
+                </div>
+            </section>
+            
+            <!-- FABRIC TYPE (V87: Category-specific) -->
+            <section id="section-fabric-type" class="section-card">
+                <label class="section-label">
+                    <span id="check-fabric-type" class="check-circle">○</span>
+                    Fabric Type
+                </label>
+                <div id="fabric-type-buttons" class="grid grid-cols-3 gap-2 mb-2">
+                    <!-- Default buttons, will be updated based on category -->
+                    <button onclick="setFabricType('Jersey', this)" class="btn-compact btn-tertiary fabric-type-btn">Jersey</button>
+                    <button onclick="setFabricType('Knit', this)" class="btn-compact btn-tertiary fabric-type-btn">Knit</button>
+                    <button onclick="setFabricType('Woven', this)" class="btn-compact btn-tertiary fabric-type-btn">Woven</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleOtherFabricType()" id="btn-fabric-type-other" class="btn-compact btn-tertiary fabric-type-btn flex-1">Other...</button>
+                </div>
+                <div id="other-fabric-type-section" class="hidden mt-2">
+                    <input type="text" id="fabric-type-other-input" placeholder="Type fabric type..." 
+                           oninput="onOtherFabricTypeInput()" 
+                           class="form-input text-sm">
                 </div>
             </section>
             
@@ -1153,7 +1127,7 @@
             </div>
         </div>
 
-        <!-- ========== STEP 3: SNAP (V84: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
+        <!-- ========== STEP 3: SNAP (V87: Simplified - Photos → SKU → Issues → Measurements → Weight) ========== -->
         <div id="step-3" class="step-container space-y-3">
             
             <!-- MAIN PHOTOS -->
@@ -1170,7 +1144,7 @@
                 </button>
             </section>
             
-            <!-- SKU (V84: After photos) -->
+            <!-- SKU (V87: After photos) -->
             <section id="section-sku" class="section-card">
                 <label class="section-label">
                     <span id="check-sku" class="check-circle">○</span>
@@ -1192,7 +1166,7 @@
                 </div>
             </section>
             
-            <!-- ISSUES (V84: No Defects default, multiple defects allowed) -->
+            <!-- ISSUES (V87: No Defects default, multiple defects allowed) -->
             <section id="section-issues" class="section-card">
                 <label class="section-label">
                     <span id="check-issues" class="check-circle">○</span>
@@ -1202,7 +1176,7 @@
                     <span class="text-xl">✓</span> No Defects
                 </button>
                 
-                <!-- Defect Type Buttons (V84: Multiple selection allowed) -->
+                <!-- Defect Type Buttons (V87: Multiple selection allowed) -->
                 <div class="text-label text-slate-500 font-bold mb-2">Or tap defect type:</div>
                 <div class="grid grid-cols-3 gap-2 mb-2">
                     <button onclick="toggleDefect('Stain', this)" id="btn-defect-stain" class="btn-standard btn-tertiary defect-type-btn flex flex-col items-center py-3">
@@ -1221,7 +1195,7 @@
                 <div id="defect-photos-thumbs" class="flex gap-2 flex-wrap"></div>
             </section>
             
-            <!-- FADE LEVEL (V84: Default None, no Sun Fade) -->
+            <!-- FADE LEVEL (V87: Default None, no Sun Fade) -->
             <section id="section-fade" class="section-card">
                 <label class="section-label">
                     <span id="check-fade" class="check-circle">○</span>
@@ -1234,7 +1208,7 @@
                 </div>
             </section>
             
-            <!-- MEASUREMENTS (V84: Vertical bullet list) -->
+            <!-- MEASUREMENTS (V87: Vertical bullet list) -->
             <section id="section-measure" class="section-card">
                 <label class="section-label">
                     <span id="check-measure" class="check-circle">○</span>
@@ -1466,11 +1440,11 @@
             superCategory: 'tops', category: '', sku: '',
             tagStatus: '', tagSize: '', gender: '',
             origin: 'usa', madeInCountry: 'USA',
-            fabric: '', wash: '', colors: [], // V84: colors as array
+            fabrics: [], fabricType: '', wash: '', colors: [], // V87: fabrics as array for multi-select
             pattern: '', printType: '', graphicCategory: '',
             sleeveType: '', sleeveStyle: '', thickness: '', construction: '',
             isCutoff: false, cutoffType: '', stitchType: '',
-            hasDefects: null, defects: [], fadeLevel: '', // V84: defects as array
+            hasDefects: null, defects: [], fadeLevel: '', // V87: defects as array
             flagged: false,
             mainPhotos: [], tagPhotos: [], defectPhotos: [],
             audioMeasure: null, audioDuration: 0,
@@ -1545,7 +1519,7 @@
 
         function loadStats() {
             try {
-                const saved = JSON.parse(localStorage.getItem('vl_stats_v78') || '{}');
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v87') || '{}');
                 const today = new Date().toDateString();
                 if (saved.lastDate === today) { stats = saved; }
                 else {
@@ -1557,7 +1531,7 @@
             } catch(e) { stats = { itemsToday: 0, totalTime: 0, streak: 1, lastDate: new Date().toDateString(), bestTime: null }; }
         }
 
-        function saveStats() { try { localStorage.setItem('vl_stats_v78', JSON.stringify(stats)); } catch(e) {} }
+        function saveStats() { try { localStorage.setItem('vl_stats_v87', JSON.stringify(stats)); } catch(e) {} }
 
         function updateStatsDisplay() {
             document.getElementById('streak-count').textContent = stats.streak;
@@ -1636,7 +1610,7 @@
         }
 
         function updateAllChecks() {
-            // V84: Construction check combines sleeve + stitch
+            // V87: Construction check combines sleeve + stitch
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const constructionOk = data.superCategory === 'bottoms' || (
                 !!data.sleeveType && 
@@ -1648,9 +1622,10 @@
                 category: !!data.category,
                 sku: !!data.sku,
                 tag: !!data.tagStatus,
-                fabric: !!data.fabric,
+                fabric: data.fabrics && data.fabrics.length > 0, // V87: fabrics array
+                'fabric-type': !!data.fabricType,
                 color: data.colors && data.colors.length > 0,
-                pattern: data.fabric === 'Denim' || !!data.pattern,
+                pattern: (data.fabrics && data.fabrics.includes('Denim')) || !!data.pattern,
                 construction: constructionOk,
                 feel: !!data.thickness && !!data.construction,
                 issues: data.hasDefects !== null,
@@ -1671,7 +1646,7 @@
         }
 
         function autoScroll(sectionId) {
-            // V84: Auto-scroll disabled per user request
+            // V87: Auto-scroll disabled per user request
         }
 
         // ============ NAVIGATION ============
@@ -1689,7 +1664,7 @@
             currentStep = step;
             updateProgressBar(step);
             document.getElementById('step-label').textContent = stepLabels[step];
-            // V84: Show construction profile for tops and outer (not bottoms)
+            // V87: Show construction profile for tops and outer (not bottoms)
             if(step===2) { document.getElementById('section-construction').classList.toggle('hidden', data.superCategory === 'bottoms'); }
             if(step===3) { initDefectSection(); updateMeasureHint(); renderPhotoThumbs(); }
             if(step===4) { updateReviewCards(); }
@@ -1707,7 +1682,7 @@
             haptic('medium');
             data.superCategory = cat;
             
-            // V84: Start timer when super category selected
+            // V87: Start timer when super category selected
             if (!itemStartTime) { 
                 startTimer(); 
                 scanFlash(); 
@@ -1756,24 +1731,30 @@
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             
-            // V84: Apply ALL defaults (fabric, pattern, construction, feel) based on category
+            // V87: Apply ALL defaults (fabric, pattern, construction, feel) based on category
             const defaultPattern = applyAllDefaults(cat);
             
-            // V84: Update pattern hero buttons based on category
-            updatePatternHeroes(cat);
+            // V87: Update pattern buttons based on category
+            updatePatternButtons(cat);
+            
+            // V87: Update fabric material buttons based on category
+            updateFabricMaterialButtons(cat);
+            
+            // V87: Update fabric type buttons based on category
+            updateFabricTypeButtons(cat);
             
             autoScroll('section-tag');
         }
         
-        // V84: Apply ALL defaults based on category (fabric, pattern, construction, feel)
+        // V87: Apply ALL defaults based on category (fabric, pattern, construction, feel)
         function applyAllDefaults(cat) {
             // Reset all defaultable buttons to tertiary
-            document.querySelectorAll('.fabric-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn, .gender-btn').forEach(b => {
+            document.querySelectorAll('.fabric-btn, .fabric-type-btn, .pattern-btn, .sleeve-type-btn, .sleeve-style-btn, .stitch-btn, .thickness-btn, .construction-btn, .gender-btn').forEach(b => {
                 b.classList.remove('btn-default', 'btn-hero', 'btn-secondary', 'selected', 'confirmed');
                 b.classList.add('btn-tertiary');
             });
             
-            // Comprehensive defaults by category
+            // Comprehensive defaults by category (V87: Updated fabric material IDs)
             const allDefaults = {
                 // TOPS
                 'T-Shirt': { 
@@ -1782,17 +1763,17 @@
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Jersey': { 
-                    fabric: 'btn-fabric-cotton', pattern: 'Graphic', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-poly', pattern: 'Graphic', gender: 'btn-gender-none',
                     sleeveLength: 'Short', sleeveStyle: 'Standard', stitch: 'Single', showStitch: true,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Sweatshirt': { 
-                    fabric: 'btn-fabric-5050', pattern: 'Solid', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Hoodie': { 
-                    fabric: 'btn-fabric-5050', pattern: 'Solid', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
@@ -1807,12 +1788,12 @@
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 'Sweater': { 
-                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-wool', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
                 'Cardigan': { 
-                    fabric: null, pattern: 'Solid', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-wool', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
@@ -1822,18 +1803,18 @@
                     thickness: 'btn-thick-light', layers: 'btn-layers-single'
                 },
                 'Blouse': { 
-                    fabric: null, pattern: 'Solid', gender: 'btn-gender-women',
+                    fabric: 'btn-fabric-poly', pattern: 'Solid', gender: 'btn-gender-women',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-light', layers: 'btn-layers-single'
                 },
                 'Tunic': { 
-                    fabric: null, pattern: 'Solid', gender: 'btn-gender-women',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-women',
                     sleeveLength: 'Long', sleeveStyle: 'Standard', stitch: null, showStitch: false,
                     thickness: 'btn-thick-standard', layers: 'btn-layers-single'
                 },
                 // BOTTOMS
                 'Jeans': { 
-                    fabric: 'btn-fabric-denim', pattern: 'Solid', gender: 'btn-gender-none',
+                    fabric: 'btn-fabric-cotton', pattern: 'Solid', gender: 'btn-gender-none',
                     sleeveLength: null, sleeveStyle: null, stitch: null, showStitch: false,
                     thickness: 'btn-thick-heavy', layers: 'btn-layers-single'
                 },
@@ -1876,14 +1857,7 @@
                 thickness: 'btn-thick-standard', layers: 'btn-layers-single'
             };
             
-            // Apply fabric default
-            if (def.fabric) {
-                const fabricBtn = document.getElementById(def.fabric);
-                if (fabricBtn) {
-                    fabricBtn.classList.remove('btn-tertiary');
-                    fabricBtn.classList.add('btn-default');
-                }
-            }
+            // V87: Fabric defaults removed - buttons are now dynamic per category
             
             // Apply sleeve length default
             const sleeveBtnMap = { 'Short': 'btn-sleeve-short', 'Long': 'btn-sleeve-long', '3/4': 'btn-sleeve-34', 'Sleeveless': 'btn-sleeve-none' };
@@ -1953,47 +1927,47 @@
                 }
             }
             
-            // Return pattern for updatePatternHeroes
+            // Return pattern for reference
             return def.pattern;
         }
         
-        // V84: Update pattern hero buttons based on category
-        function updatePatternHeroes(cat) {
-            const heroContainer = document.getElementById('pattern-heroes');
-            let heroHTML = '';
+        // V87: Update pattern buttons based on category
+        function updatePatternButtons(cat) {
+            const container = document.getElementById('pattern-buttons');
             
-            if (cat === 'T-Shirt' || cat === 'Jersey') {
-                // T-Shirts: Graphic is default (needs confirmation)
-                heroHTML = `
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-default pattern-btn">🎨 Graphic</button>
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-tertiary pattern-btn">Solid</button>
-                `;
-            } else if (cat === 'Button Shirt') {
-                // Button shirts: Solid is default
-                heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
-                    <button onclick="setPattern('Plaid', this)" class="btn-standard btn-tertiary pattern-btn">Plaid</button>
-                `;
-            } else if (cat === 'Sweatshirt' || cat === 'Hoodie') {
-                // Sweatshirts/Hoodies: Solid is default
-                heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
-                    <button onclick="setPattern('Color Block', this)" class="btn-standard btn-tertiary pattern-btn">Color Block</button>
-                `;
-            } else if (cat === 'Jacket' || cat === 'Coat' || cat === 'Vest') {
-                // Outerwear: Solid is default
-                heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
-                    <button onclick="setPattern('Camo', this)" class="btn-standard btn-tertiary pattern-btn">Camo</button>
-                `;
-            } else {
-                // Default: Solid is default
-                heroHTML = `
-                    <button onclick="setPattern('Solid', this)" class="btn-standard btn-default pattern-btn">Solid</button>
-                    <button onclick="setPattern('Graphic', this)" class="btn-standard btn-tertiary pattern-btn">🎨 Graphic</button>
-                `;
-            }
-            heroContainer.innerHTML = heroHTML;
+            // Category-specific patterns based on internal docs
+            const patterns = {
+                // TOPS
+                'T-Shirt': ['Graphic Print', 'Solid', 'Striped', 'Colorblock', 'Geometric'],
+                'Jersey': ['Graphic Print', 'Solid', 'Colorblock', 'Striped'],
+                'Sweatshirt': ['Solid', 'Graphic Print', 'Colorblock', 'Striped'],
+                'Hoodie': ['Solid', 'Graphic Print', 'Colorblock', 'Camouflage'],
+                'Sweater': ['Solid', 'Fair Isle', 'Argyle', 'Herringbone', 'Striped', 'Geometric'],
+                'Cardigan': ['Solid', 'Fair Isle', 'Argyle', 'Herringbone', 'Striped'],
+                'Button Shirt': ['Solid', 'Plaid', 'Striped', 'Check', 'Gingham', 'Paisley'],
+                'Polo': ['Solid', 'Striped', 'Colorblock', 'Geometric'],
+                'Tank Top': ['Solid', 'Graphic Print', 'Striped', 'Geometric'],
+                'Blouse': ['Floral', 'Solid', 'Paisley', 'Geometric', 'Polka Dot'],
+                'Tunic': ['Solid', 'Floral', 'Paisley', 'Geometric', 'Patchwork'],
+                // BOTTOMS
+                'Jeans': ['Solid', 'Pinstriped', 'Colorblock', 'Patchwork'],
+                'Pants': ['Solid', 'Plaid', 'Striped', 'Herringbone', 'Check', 'Pinstripe'],
+                'Shorts': ['Solid', 'Camouflage', 'Plaid', 'Striped', 'Graphic Print'],
+                'Sweatpants': ['Solid', 'Graphic Print', 'Colorblock'],
+                // OUTER
+                'Jacket': ['Solid', 'Camouflage', 'Colorblock', 'Plaid', 'Graphic Print', 'Striped'],
+                'Coat': ['Solid', 'Herringbone', 'Plaid', 'Check', 'Houndstooth'],
+                'Vest': ['Solid', 'Plaid', 'Colorblock', 'Camouflage']
+            };
+            
+            const categoryPatterns = patterns[cat] || ['Solid', 'Graphic Print', 'Striped'];
+            
+            // Clear pattern when category changes
+            data.pattern = '';
+            
+            container.innerHTML = categoryPatterns.map(pat => 
+                `<button onclick="setPattern('${pat}', this)" class="btn-compact btn-tertiary pattern-btn">${pat}</button>`
+            ).join('');
         }
 
         function onSkuInput() { 
@@ -2052,10 +2026,118 @@
         }
 
         // ============ STEP 2: CHECK ============
-        function setFabric(fabric, btn) {
+        // V87: Toggle fabric material selection (multiple allowed)
+        function toggleFabricMaterial(material, btn) {
             haptic('light');
-            data.fabric = fabric;
-            document.querySelectorAll('.fabric-btn').forEach(b => { 
+            if (!data.fabrics) data.fabrics = [];
+            
+            const idx = data.fabrics.indexOf(material);
+            if (idx > -1) {
+                // Remove material
+                data.fabrics.splice(idx, 1);
+                btn.classList.remove('selected','confirmed');
+                btn.classList.add('btn-tertiary');
+            } else {
+                // Add material
+                data.fabrics.push(material);
+                btn.classList.add('selected','confirmed');
+                btn.classList.remove('btn-tertiary');
+            }
+            
+            // Update display
+            updateFabricsDisplay();
+            
+            // Show wash section if any fabric contains Denim
+            const hasDenim = data.fabrics.some(f => f.toLowerCase().includes('denim'));
+            document.getElementById('wash-section').classList.toggle('hidden', !hasDenim);
+            if (!hasDenim) data.wash = '';
+            
+            if (data.fabrics.length > 0) {
+                completeSection('fabric');
+            }
+        }
+        
+        // V87: Update fabrics display
+        function updateFabricsDisplay() {
+            const display = document.getElementById('selected-fabrics');
+            if (data.fabrics && data.fabrics.length > 0) {
+                display.textContent = data.fabrics.join(' + ');
+            } else {
+                display.textContent = '';
+            }
+        }
+        
+        // V87: Toggle other fabric input
+        function toggleOtherFabric() {
+            const section = document.getElementById('other-fabric-section');
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                document.getElementById('fabric-other-input').focus();
+            }
+        }
+        
+        // V87: Add other fabric from input
+        function addOtherFabric() {
+            const input = document.getElementById('fabric-other-input');
+            const val = input.value.trim();
+            if (val) {
+                haptic('light');
+                if (!data.fabrics) data.fabrics = [];
+                if (!data.fabrics.includes(val)) {
+                    data.fabrics.push(val);
+                }
+                input.value = '';
+                updateFabricsDisplay();
+                document.getElementById('other-fabric-section').classList.add('hidden');
+                completeSection('fabric');
+            }
+        }
+        
+        // V87: Update fabric material buttons based on category
+        function updateFabricMaterialButtons(cat) {
+            const container = document.getElementById('fabric-material-buttons');
+            
+            // Category-specific fabric materials based on internal docs
+            const fabricMaterials = {
+                // TOPS
+                'T-Shirt': ['Cotton', 'Polyester', 'Rayon', 'Nylon', 'Acrylic'],
+                'Jersey': ['Polyester', 'Nylon', 'Cotton', 'Rayon'],
+                'Sweatshirt': ['Cotton', 'Polyester', 'Acrylic', 'Wool'],
+                'Hoodie': ['Cotton', 'Polyester', 'Acrylic', 'Nylon'],
+                'Sweater': ['Wool', 'Acrylic', 'Cotton', 'Cashmere', 'Mohair'],
+                'Cardigan': ['Wool', 'Acrylic', 'Cotton', 'Cashmere', 'Mohair'],
+                'Button Shirt': ['Cotton', 'Polyester', 'Rayon', 'Linen', 'Silk'],
+                'Polo': ['Cotton', 'Polyester', 'Acrylic'],
+                'Tank Top': ['Cotton', 'Polyester', 'Rayon', 'Nylon'],
+                'Blouse': ['Polyester', 'Rayon', 'Silk', 'Cotton', 'Nylon'],
+                'Tunic': ['Cotton', 'Rayon', 'Linen', 'Wool'],
+                // BOTTOMS
+                'Jeans': ['Cotton', 'Polyester'],
+                'Pants': ['Polyester', 'Cotton', 'Wool', 'Rayon', 'Nylon'],
+                'Shorts': ['Cotton', 'Nylon', 'Polyester', 'Rayon'],
+                'Sweatpants': ['Cotton', 'Polyester', 'Acrylic'],
+                // OUTER
+                'Jacket': ['Nylon', 'Polyester', 'Cotton', 'Leather', 'Wool'],
+                'Coat': ['Wool', 'Leather', 'Nylon', 'Polyester', 'Cashmere'],
+                'Vest': ['Nylon', 'Polyester', 'Cotton', 'Wool']
+            };
+            
+            const materials = fabricMaterials[cat] || ['Cotton', 'Polyester', 'Rayon'];
+            
+            // Clear existing selections when category changes
+            data.fabrics = [];
+            updateFabricsDisplay();
+            
+            container.innerHTML = materials.map(mat => 
+                `<button onclick="toggleFabricMaterial('${mat}', this)" class="btn-compact btn-tertiary fabric-btn">${mat}</button>`
+            ).join('');
+        }
+        
+        // V87: Set fabric type
+        function setFabricType(type, btn) {
+            haptic('light');
+            data.fabricType = type;
+            document.querySelectorAll('.fabric-type-btn').forEach(b => { 
                 b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
                 b.classList.add('btn-tertiary'); 
             });
@@ -2063,65 +2145,72 @@
                 btn.classList.add('selected','confirmed'); 
                 btn.classList.remove('btn-tertiary','btn-default'); 
             }
-            document.getElementById('fabric-other-select').value = '';
-            document.getElementById('custom-blend-section').classList.add('hidden');
-            // V76: Show wash section when Denim
-            document.getElementById('wash-section').classList.toggle('hidden', fabric !== 'Denim');
-            if (fabric !== 'Denim') data.wash = '';
-            completeSection('fabric');
+            document.getElementById('other-fabric-type-section').classList.add('hidden');
+            completeSection('fabric-type');
         }
         
-        function onFabricOtherChange() {
-            const val = document.getElementById('fabric-other-select').value;
-            if (!val) return;
-            haptic('light');
-            data.fabric = val;
-            document.querySelectorAll('.fabric-btn').forEach(b => { 
-                b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
-                b.classList.add('btn-tertiary'); 
-            });
-            // Show custom blend builder
-            document.getElementById('custom-blend-section').classList.toggle('hidden', val !== 'Custom');
-            document.getElementById('wash-section').classList.add('hidden');
-            data.wash = '';
-            completeSection('fabric');
-        }
-        
-        // V84: Custom blend builder functions
-        function toggleThirdMaterial() {
-            const row = document.getElementById('blend-row-3');
-            const btn = document.getElementById('btn-add-mat-3');
-            row.classList.toggle('hidden');
-            btn.textContent = row.classList.contains('hidden') ? '+ Add 3rd material (tri-blend)' : '- Remove 3rd material';
-            updateBlendPreview();
-        }
-        
-        function updateBlendPreview() {
-            const m1 = document.getElementById('blend-mat-1').value;
-            const p1 = document.getElementById('blend-pct-1').value;
-            const m2 = document.getElementById('blend-mat-2').value;
-            const p2 = document.getElementById('blend-pct-2').value;
-            const m3 = document.getElementById('blend-mat-3').value;
-            const p3 = document.getElementById('blend-pct-3').value;
-            
-            let parts = [];
-            let total = 0;
-            if (m1 && p1) { parts.push(`${p1}% ${m1}`); total += parseInt(p1); }
-            if (m2 && p2) { parts.push(`${p2}% ${m2}`); total += parseInt(p2); }
-            if (m3 && p3 && !document.getElementById('blend-row-3').classList.contains('hidden')) { 
-                parts.push(`${p3}% ${m3}`); total += parseInt(p3); 
+        // V87: Toggle other fabric type input
+        function toggleOtherFabricType() {
+            const section = document.getElementById('other-fabric-type-section');
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                document.getElementById('fabric-type-other-input').focus();
             }
-            
-            const preview = document.getElementById('blend-preview');
-            if (parts.length > 0) {
-                const isValid = total === 100;
-                preview.innerHTML = `<span class="text-sm font-bold text-slate-700">${parts.join(' / ')}</span>
-                    <span class="block text-xs ${isValid ? 'text-green-600' : 'text-amber-600'}">${isValid ? '✓ 100%' : `Total: ${total}% (should be 100%)`}</span>`;
-                document.getElementById('fabric-custom').value = parts.join(' / ');
-            } else {
-                preview.innerHTML = '<span class="text-sm text-slate-400">Select materials above</span>';
-                document.getElementById('fabric-custom').value = '';
+        }
+        
+        // V87: Handle other fabric type input
+        function onOtherFabricTypeInput() {
+            const val = document.getElementById('fabric-type-other-input').value;
+            if (val) {
+                haptic('light');
+                data.fabricType = val;
+                document.querySelectorAll('.fabric-type-btn').forEach(b => { 
+                    b.classList.remove('selected','btn-hero','btn-secondary','btn-default','confirmed'); 
+                    b.classList.add('btn-tertiary'); 
+                });
+                document.getElementById('btn-fabric-type-other').classList.add('selected','confirmed');
+                document.getElementById('btn-fabric-type-other').classList.remove('btn-tertiary');
+                completeSection('fabric-type');
             }
+        }
+        
+        // V87: Update fabric type buttons based on category
+        function updateFabricTypeButtons(cat) {
+            const container = document.getElementById('fabric-type-buttons');
+            
+            // Category-specific fabric types based on internal docs
+            const fabricTypes = {
+                // TOPS
+                'T-Shirt': ['Jersey', 'Knit', 'Rayon', 'Woven', 'Mesh'],
+                'Jersey': ['Mesh', 'Jersey', 'Knit'],
+                'Sweatshirt': ['Fleece', 'French Terry', 'Knit', 'Jersey'],
+                'Hoodie': ['Fleece', 'French Terry', 'Knit', 'Jersey'],
+                'Sweater': ['Knit', 'Crochet', 'Jersey'],
+                'Cardigan': ['Knit', 'Crochet', 'Jersey'],
+                'Button Shirt': ['Woven', 'Poplin', 'Chambray', 'Denim', 'Flannel', 'Corduroy'],
+                'Polo': ['Knit', 'Jersey', 'Woven'],
+                'Tank Top': ['Jersey', 'Knit', 'Rayon', 'Mesh'],
+                'Blouse': ['Woven', 'Chiffon', 'Satin', 'Crepe', 'Lace', 'Georgette'],
+                'Tunic': ['Woven', 'Rayon', 'Knit', 'Crepe', 'Gauze'],
+                // BOTTOMS
+                'Jeans': ['Denim', 'Selvage'],
+                'Pants': ['Woven', 'Twill', 'Corduroy', 'Canvas', 'Moleskin', 'Ponte'],
+                'Shorts': ['Woven', 'Twill', 'Canvas', 'Denim', 'Mesh'],
+                'Sweatpants': ['Fleece', 'French Terry', 'Knit'],
+                // OUTER
+                'Jacket': ['Canvas', 'Nylon', 'Denim', 'Twill', 'Corduroy', 'Softshell'],
+                'Coat': ['Tweed', 'Woven', 'Velvet', 'Shearling', 'Felt', 'Taffeta'],
+                'Vest': ['Woven', 'Knit', 'Quilted', 'Fleece']
+            };
+            
+            const types = fabricTypes[cat] || ['Jersey', 'Knit', 'Woven'];
+            
+            // Clear fabric type when category changes
+            data.fabricType = '';
+            
+            container.innerHTML = types.map(type => 
+                `<button onclick="setFabricType('${type}', this)" class="btn-compact btn-tertiary fabric-type-btn">${type}</button>`
+            ).join('');
         }
         
         function setWash(wash, btn) {
@@ -2131,7 +2220,7 @@
             btn.classList.add('selected','btn-secondary'); btn.classList.remove('btn-tertiary');
         }
         
-        // V84: Toggle color selection (multiple allowed)
+        // V87: Toggle color selection (multiple allowed)
         function toggleColor(color, element) {
             haptic('light');
             // Initialize colors array if needed
@@ -2161,12 +2250,29 @@
             }
         }
         
-        // V84: Toggle other patterns
-        function toggleOtherPatterns() {
-            const others = document.getElementById('pattern-others');
-            const btn = document.getElementById('other-patterns-toggle');
-            others.classList.toggle('hidden');
-            btn.textContent = others.classList.contains('hidden') ? '+ Other patterns' : '- Hide other patterns';
+        // V87: Toggle other pattern input
+        function toggleOtherPattern() {
+            const section = document.getElementById('other-pattern-section');
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                document.getElementById('pattern-other-input').focus();
+            }
+        }
+        
+        // V87: Handle other pattern input
+        function onOtherPatternInput() {
+            const val = document.getElementById('pattern-other-input').value;
+            if (val) {
+                haptic('light');
+                data.pattern = val;
+                document.querySelectorAll('.pattern-btn').forEach(b => { 
+                    b.classList.remove('selected','btn-hero','btn-default','confirmed'); 
+                    b.classList.add('btn-tertiary'); 
+                });
+                document.getElementById('btn-pattern-other').classList.add('selected','confirmed');
+                document.getElementById('btn-pattern-other').classList.remove('btn-tertiary');
+                completeSection('pattern');
+            }
         }
 
         function setPattern(pat, btn) { 
@@ -2178,10 +2284,13 @@
             }); 
             btn.classList.add('selected','confirmed'); 
             btn.classList.remove('btn-tertiary','btn-default');
+            // Hide other section
+            document.getElementById('other-pattern-section').classList.add('hidden');
+            document.getElementById('pattern-other-input').value = '';
             completeSection('pattern');
         }
 
-        // V84: Updated setSleeveType with cutoff section for T-Shirts
+        // V87: Updated setSleeveType with cutoff section for T-Shirts
         function setSleeveType(type, btn) { 
             haptic('light'); 
             data.sleeveType = type; 
@@ -2199,7 +2308,7 @@
             if (!showStyle) { data.sleeveStyle = 'N/A'; } 
             else if (data.sleeveStyle === 'N/A') { data.sleeveStyle = ''; }
             
-            // V84: Show cutoff section for T-Shirt + Sleeveless
+            // V87: Show cutoff section for T-Shirt + Sleeveless
             const showCutoff = type === 'Sleeveless' && data.category === 'T-Shirt';
             document.getElementById('cutoff-section').classList.toggle('hidden', !showCutoff);
             if (!showCutoff) { data.isCutoff = false; data.cutoffType = ''; }
@@ -2219,7 +2328,7 @@
             checkConstructionComplete();
         }
         
-        // V84: Cutoff type for sleeveless T-Shirts
+        // V87: Cutoff type for sleeveless T-Shirts
         function setCutoffType(type, btn) {
             haptic('light');
             data.isCutoff = type === 'diy';
@@ -2228,7 +2337,7 @@
             btn.classList.add('selected','confirmed'); btn.classList.remove('btn-tertiary');
         }
         
-        // V84: Stitch type for T-Shirts (single vs double)
+        // V87: Stitch type for T-Shirts (single vs double)
         function setStitchType(type, btn) {
             haptic('light');
             data.stitchType = type;
@@ -2241,7 +2350,7 @@
             checkConstructionComplete();
         }
         
-        // V84: Check if construction profile is complete
+        // V87: Check if construction profile is complete
         function checkConstructionComplete() {
             const needsStitch = data.category === 'T-Shirt' || data.category === 'Jersey';
             const sleeveOk = !!data.sleeveType;
@@ -2276,7 +2385,7 @@
             checkFeelComplete(); 
         }
         
-        // V84: Check if fabric feel is complete
+        // V87: Check if fabric feel is complete
         function checkFeelComplete() {
             if (data.thickness && data.construction) {
                 completeSection('feel');
@@ -2284,7 +2393,7 @@
         }
 
         // ============ STEP 3: SNAP ============
-        // V84: Set clean (no defects)
+        // V87: Set clean (no defects)
         function setClean(btn) { 
             haptic('medium'); 
             data.hasDefects = false;
@@ -2300,7 +2409,7 @@
             completeSection('issues');
         }
         
-        // V84: Toggle defect type (multiple allowed)
+        // V87: Toggle defect type (multiple allowed)
         function toggleDefect(defectType, btn) {
             haptic('medium');
             data.hasDefects = true;
@@ -2341,7 +2450,7 @@
             }
         }
 
-        // V84: Set fade level with btn-default support
+        // V87: Set fade level with btn-default support
         function setFade(level, btn) { 
             haptic('light'); 
             data.fadeLevel = level; 
@@ -2356,9 +2465,9 @@
         
         function flagUnusual() { haptic('medium'); data.flagged = true; const btn = document.getElementById('flag-btn'); btn.classList.add('flagged'); btn.innerHTML = '🚩 FLAGGED'; }
 
-        // V84: Simplified - no body map needed
+        // V87: Simplified - no body map needed
         function initDefectSection() {
-            // No-op in V84 - defect mapping removed
+            // No-op in V87 - defect mapping removed
         }
 
         function closeDefectModal(e) { if(!e || e.target === e.currentTarget) { document.getElementById('defect-modal').classList.add('hidden'); pendingDefect = null; } }
@@ -2373,7 +2482,7 @@
             }
         }
 
-        // V84: Simplified defect photo display
+        // V87: Simplified defect photo display
         function renderDefectMarkers() {
             // Just render defect photo thumbnails in the defect-photos-thumbs container
             const container = document.getElementById('defect-photos-thumbs');
@@ -2392,13 +2501,13 @@
             if(mainContainer) {
                 mainContainer.innerHTML = data.mainPhotos.map((p, i) => `<img src="${p.dataUrl}" class="photo-thumb" onclick="if(confirm('Delete?')){data.mainPhotos.splice(${i},1);renderPhotoThumbs();haptic('light');}">`).join('');
             }
-            // Defect photos (V84)
+            // Defect photos (V87)
             renderDefectMarkers();
             updateAllChecks();
         }
 
         function updateMeasureHint() {
-            // V84: Measurement hints are now static in HTML
+            // V87: Measurement hints are now static in HTML
         }
 
         function updateWeight() {
@@ -2632,12 +2741,13 @@
             fd.append('tag_size', data.tagSize);
             fd.append('origin', data.origin);
             fd.append('made_in_country', data.madeInCountry);
-            fd.append('fabric', data.fabric === 'Custom Blend' ? document.getElementById('fabric-custom').value : data.fabric);
+            fd.append('fabrics', JSON.stringify(data.fabrics || [])); // V87: fabrics array for multi-select
+            fd.append('fabric_type', data.fabricType);
             fd.append('thickness', data.thickness);
             fd.append('construction', data.construction);
             fd.append('color_primary', data.colorPrimary);
             fd.append('color_secondary', data.colorSecondary);
-            fd.append('colors', JSON.stringify(data.colors || [])); // V84: colors array
+            fd.append('colors', JSON.stringify(data.colors || [])); // V87: colors array
             fd.append('pattern', data.pattern);
             fd.append('print_type', data.printType);
             fd.append('graphic_category', data.graphicCategory);
@@ -2648,7 +2758,7 @@
             fd.append('stitch_type', data.stitchType);
             fd.append('wash', data.wash || '');
             fd.append('has_defects', data.hasDefects);
-            fd.append('defects', JSON.stringify(data.defects || [])); // V84: defects array
+            fd.append('defects', JSON.stringify(data.defects || [])); // V87: defects array
             fd.append('fade_level', data.fadeLevel);
             fd.append('flagged', data.flagged);
             fd.append('item_weight_lb', data.itemWeightLb);
