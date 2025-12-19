@@ -263,7 +263,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v98.6 Desktop Station</div>
+        <div class="pin-version">v98.7 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -658,6 +658,7 @@
                 <select id="camera-select" class="camera-select" onchange="switchCamera(this.value)"><option value="">Select Camera...</option></select>
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 BRIO</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
+                <span style="background:#16a34a;color:white;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;">FULL RES</span>
                 <div id="camera-status" class="camera-status">No camera</div>
             </div>
             <div class="camera-view">
@@ -923,45 +924,35 @@
             document.getElementById('flash-overlay').classList.add('flash'); 
             setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100); 
             
-            // Capture at full resolution
+            // Capture at FULL native resolution - NO DOWNSCALING
             const canvas = document.createElement('canvas'); 
             canvas.width = video.videoWidth; 
             canvas.height = video.videoHeight; 
             const ctx = canvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(video,0,0); 
+            ctx.drawImage(video, 0, 0); 
             
-            // High quality output sizes:
-            // Main: 2400px - high quality product shots
-            // Tag: 2000px - readable text on tags
-            // Defect: 2000px - visible defect details
-            const maxSizes = { main: 2400, tag: 2000, defect: 2000 };
-            const maxSize = maxSizes[photoMode] || 2400;
-            
-            let finalCanvas = canvas;
-            if(canvas.width > maxSize || canvas.height > maxSize) { 
-                const scale = maxSize / Math.max(canvas.width, canvas.height); 
-                const resized = document.createElement('canvas'); 
-                resized.width = Math.round(canvas.width * scale); 
-                resized.height = Math.round(canvas.height * scale); 
-                const resizedCtx = resized.getContext('2d');
-                resizedCtx.imageSmoothingEnabled = true;
-                resizedCtx.imageSmoothingQuality = 'high';
-                resizedCtx.drawImage(canvas, 0, 0, resized.width, resized.height); 
-                finalCanvas = resized;
-            }
-            
-            // High JPEG quality (0.92 = excellent quality, reasonable file size)
-            finalCanvas.toBlob(blob => { 
-                const photo = { blob, url: URL.createObjectURL(blob), width: finalCanvas.width, height: finalCanvas.height }; 
+            // Maximum JPEG quality (0.95) for best detail preservation
+            // Full 4K = ~3840x2160, perfect for AI cropping in backend
+            canvas.toBlob(blob => { 
+                const photo = { 
+                    blob, 
+                    url: URL.createObjectURL(blob), 
+                    width: canvas.width, 
+                    height: canvas.height 
+                }; 
                 if(photoMode === 'main') data.mainPhotos.push(photo); 
                 else if(photoMode === 'tag') data.tagPhotos.push(photo); 
+                else if(photoMode === 'sku') { /* SKU mode doesn't save photos */ }
                 else data.defectPhotos.push(photo); 
-                console.log(`Captured ${photoMode} photo: ${finalCanvas.width}x${finalCanvas.height}, ${(blob.size/1024).toFixed(0)}KB`);
+                
+                const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+                console.log(`📸 ${photoMode.toUpperCase()}: ${canvas.width}×${canvas.height} | ${sizeMB}MB | FULL RESOLUTION`);
+                
                 updatePhotoGrids(); 
                 updateValidation(); 
-            }, 'image/jpeg', 0.92); 
+            }, 'image/jpeg', 0.95); 
         }
         function updatePhotoGrids() { 
             const renderGrid = (photos, gridId, mode) => { 
@@ -991,7 +982,9 @@
             
             const photo = photos[index];
             document.getElementById('preview-image').src = photo.url;
-            document.getElementById('preview-type').textContent = mode.toUpperCase() + (photo.width ? ` (${photo.width}×${photo.height})` : '');
+            const is4K = photo.width >= 3800;
+            const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
+            document.getElementById('preview-type').textContent = mode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
             document.getElementById('preview-type').style.background = mode === 'main' ? '#3b82f6' : mode === 'tag' ? '#f59e0b' : '#ef4444';
             updatePreviewNav();
             document.getElementById('preview-modal').classList.add('active');
@@ -1012,7 +1005,9 @@
             if(previewIndex >= photos.length) previewIndex = photos.length - 1;
             const photo = photos[previewIndex];
             document.getElementById('preview-image').src = photo.url;
-            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (photo.width ? ` (${photo.width}×${photo.height})` : '');
+            const is4K = photo.width >= 3800;
+            const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
+            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
             updatePreviewNav();
         }
         
@@ -1034,7 +1029,9 @@
             if(previewIndex >= photos.length) previewIndex = photos.length - 1;
             const photo = photos[previewIndex];
             document.getElementById('preview-image').src = photo.url;
-            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (photo.width ? ` (${photo.width}×${photo.height})` : '');
+            const is4K = photo.width >= 3800;
+            const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
+            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
             updatePreviewNav();
         }
         
