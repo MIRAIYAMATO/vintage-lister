@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.15 - Desktop Station</title>
+    <title>VintageLister v99.16 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
@@ -308,7 +308,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.15 Desktop Station</div>
+        <div class="pin-version">v99.16 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -346,7 +346,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.15</span>
+                    <span class="version-badge">v99.16</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -688,57 +688,126 @@
                     
                     <div class="section-card" id="construction-section">
                         <div class="section-label"><span id="check-construction" class="check-circle">○</span> Construction</div>
-                        <div class="sub-label">Sleeve Length</div>
-                        <div class="btn-grid btn-grid-4" style="margin-bottom:10px;">
-                            <button onclick="setSleeve('Short', this)" class="btn btn-default sleeve-btn">Short</button>
-                            <button onclick="setSleeve('Long', this)" class="btn btn-secondary sleeve-btn">Long</button>
-                            <button onclick="setSleeve('3/4', this)" class="btn btn-secondary sleeve-btn">3/4</button>
-                            <button onclick="setSleeve('None', this)" class="btn btn-secondary sleeve-btn">None</button>
-                        </div>
-                        <div id="sleeve-style-section">
-                            <div class="sub-label">Sleeve Style</div>
-                            <div class="btn-grid btn-grid-3" style="margin-bottom:10px;">
-                                <button onclick="setSleeveStyle('Standard', this)" class="btn btn-default style-btn">Standard</button>
-                                <button onclick="setSleeveStyle('Raglan', this)" class="btn btn-secondary style-btn">Raglan</button>
-                                <button onclick="setSleeveStyle('Dolman', this)" class="btn btn-secondary style-btn">Dolman</button>
+                        
+                        <!-- TOPS/OUTER Construction: Sleeves -->
+                        <div id="tops-construction">
+                            <div class="sub-label">Sleeve Length</div>
+                            <div class="btn-grid btn-grid-4" style="margin-bottom:10px;">
+                                <button onclick="setSleeve('Short', this)" class="btn btn-default sleeve-btn">Short</button>
+                                <button onclick="setSleeve('Long', this)" class="btn btn-secondary sleeve-btn">Long</button>
+                                <button onclick="setSleeve('3/4', this)" class="btn btn-secondary sleeve-btn">3/4</button>
+                                <button onclick="setSleeve('None', this)" class="btn btn-secondary sleeve-btn">None</button>
                             </div>
-                            <!-- Raglan/Dolman Measurement Notice -->
-                            <div id="sleeve-measurement-notice" class="hidden" style="background:#fef3c7; border:1px solid #f59e0b; border-radius:10px; padding:10px; margin-bottom:10px;">
-                                <div style="display:flex; align-items:flex-start; gap:8px;">
-                                    <span style="font-size:18px;">📏</span>
-                                    <div>
-                                        <div style="font-size:11px; font-weight:700; color:#92400e;">Special Sleeve Measurement</div>
-                                        <div style="font-size:10px; color:#b45309; margin-top:4px;">
-                                            <strong>No shoulder seam exists!</strong><br>
-                                            Measure: <strong>Center of neck → Cuff</strong><br>
-                                            (Not shoulder to cuff)
+                            <div id="sleeve-style-section">
+                                <div class="sub-label">Sleeve Style</div>
+                                <div class="btn-grid btn-grid-3" style="margin-bottom:10px;">
+                                    <button onclick="setSleeveStyle('Standard', this)" class="btn btn-default style-btn">Standard</button>
+                                    <button onclick="setSleeveStyle('Raglan', this)" class="btn btn-secondary style-btn">Raglan</button>
+                                    <button onclick="setSleeveStyle('Dolman', this)" class="btn btn-secondary style-btn">Dolman</button>
+                                </div>
+                                <!-- Raglan/Dolman Measurement Notice -->
+                                <div id="sleeve-measurement-notice" class="hidden" style="background:#fef3c7; border:1px solid #f59e0b; border-radius:10px; padding:10px; margin-bottom:10px;">
+                                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                                        <span style="font-size:18px;">📏</span>
+                                        <div>
+                                            <div style="font-size:11px; font-weight:700; color:#92400e;">Special Sleeve Measurement</div>
+                                            <div style="font-size:10px; color:#b45309; margin-top:4px;">
+                                                <strong>No shoulder seam exists!</strong><br>
+                                                Measure: <strong>Center of neck → Cuff</strong><br>
+                                                (Not shoulder to cuff)
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <!-- Cutoff Section (shows when Sleeve = None on T-Shirts) -->
-                        <div id="cutoff-section" class="hidden nested-section nested-amber" style="margin-bottom:10px;">
-                            <div class="sub-label" style="color:#92400e; margin-top:0;">🔪 Cut-off / Muscle Tee?</div>
-                            <div class="btn-grid btn-grid-2" style="margin-bottom:8px;">
-                                <button onclick="setCutoff('diy', this)" class="btn btn-secondary cutoff-btn" style="display:flex; flex-direction:column; align-items:center; padding:12px 8px;">
-                                    <span style="font-size:20px;">✂️</span>
-                                    <span style="font-size:11px; font-weight:700;">DIY Cut-off</span>
-                                    <span style="font-size:9px; color:#666;">Sleeves removed</span>
-                                </button>
-                                <button onclick="setCutoff('manufactured', this)" class="btn btn-secondary cutoff-btn" style="display:flex; flex-direction:column; align-items:center; padding:12px 8px;">
-                                    <span style="font-size:20px;">🏭</span>
-                                    <span style="font-size:11px; font-weight:700;">Manufactured</span>
-                                    <span style="font-size:9px; color:#666;">Made sleeveless</span>
-                                </button>
+                            <!-- Cutoff Section (shows when Sleeve = None on T-Shirts) -->
+                            <div id="cutoff-section" class="hidden nested-section nested-amber" style="margin-bottom:10px;">
+                                <div class="sub-label" style="color:#92400e; margin-top:0;">🔪 Cut-off / Muscle Tee?</div>
+                                <div class="btn-grid btn-grid-2" style="margin-bottom:8px;">
+                                    <button onclick="setCutoff('diy', this)" class="btn btn-secondary cutoff-btn" style="display:flex; flex-direction:column; align-items:center; padding:12px 8px;">
+                                        <span style="font-size:20px;">✂️</span>
+                                        <span style="font-size:11px; font-weight:700;">DIY Cut-off</span>
+                                        <span style="font-size:9px; color:#666;">Sleeves removed</span>
+                                    </button>
+                                    <button onclick="setCutoff('manufactured', this)" class="btn btn-secondary cutoff-btn" style="display:flex; flex-direction:column; align-items:center; padding:12px 8px;">
+                                        <span style="font-size:20px;">🏭</span>
+                                        <span style="font-size:11px; font-weight:700;">Manufactured</span>
+                                        <span style="font-size:9px; color:#666;">Made sleeveless</span>
+                                    </button>
+                                </div>
+                                <div style="font-size:10px; color:#92400e;">💡 This stays categorized as T-Shirt for searchability</div>
                             </div>
-                            <div style="font-size:10px; color:#92400e;">💡 This stays categorized as T-Shirt for searchability</div>
+                            <div id="stitch-section">
+                                <div class="sub-label">Stitch Type</div>
+                                <div class="btn-grid btn-grid-2">
+                                    <button onclick="setStitch('Single', this)" class="btn btn-secondary stitch-btn">Single Stitch</button>
+                                    <button onclick="setStitch('Double', this)" class="btn btn-default stitch-btn">Double Stitch</button>
+                                </div>
+                            </div>
                         </div>
-                        <div id="stitch-section">
-                            <div class="sub-label">Stitch Type</div>
-                            <div class="btn-grid btn-grid-2">
-                                <button onclick="setStitch('Single', this)" class="btn btn-secondary stitch-btn">Single Stitch</button>
-                                <button onclick="setStitch('Double', this)" class="btn btn-default stitch-btn">Double Stitch</button>
+                        
+                        <!-- BOTTOMS Construction: Leg Style -->
+                        <div id="bottoms-construction" class="hidden">
+                            <div class="sub-label">Leg Style / Cut</div>
+                            <div class="btn-grid btn-grid-4" style="margin-bottom:8px;">
+                                <button onclick="setLegStyle('Straight', this)" class="btn btn-default leg-btn">Straight</button>
+                                <button onclick="setLegStyle('Bootcut', this)" class="btn btn-secondary leg-btn">Bootcut</button>
+                                <button onclick="setLegStyle('Relaxed', this)" class="btn btn-secondary leg-btn">Relaxed</button>
+                                <button onclick="setLegStyle('Tapered', this)" class="btn btn-secondary leg-btn">Tapered</button>
+                            </div>
+                            <div class="btn-grid btn-grid-4" style="margin-bottom:8px;">
+                                <button onclick="setLegStyle('Skinny', this)" class="btn btn-secondary leg-btn">Skinny</button>
+                                <button onclick="setLegStyle('Wide Leg', this)" class="btn btn-secondary leg-btn">Wide Leg</button>
+                                <button onclick="setLegStyle('Flare', this)" class="btn btn-secondary leg-btn">Flare</button>
+                                <button onclick="setLegStyle('Baggy', this)" class="btn btn-secondary leg-btn">Baggy</button>
+                            </div>
+                            <div class="btn-grid btn-grid-3" style="margin-bottom:10px;">
+                                <button onclick="setLegStyle('Capri', this)" class="btn btn-secondary leg-btn">Capri</button>
+                                <button onclick="setLegStyle('Jogger', this)" class="btn btn-secondary leg-btn">Jogger</button>
+                                <button onclick="setLegStyle('Cargo', this)" class="btn btn-secondary leg-btn">Cargo</button>
+                            </div>
+                            
+                            <!-- Leg Style Help -->
+                            <button id="leg-help-btn" onclick="toggleLegStyleHelp()" class="help-btn">🤔 Not sure? See examples</button>
+                            <div id="leg-style-help" class="help-panel hidden" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);border-color:#3b82f6;">
+                                <div style="font-weight:700;color:#1e40af;margin-bottom:8px;font-size:12px;">👖 Leg Style Guide</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;">
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Straight</strong><br>Same width hip to ankle
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Bootcut</strong><br>Slight flare below knee for boots
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Relaxed</strong><br>Loose through thigh, straight leg
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Tapered</strong><br>Wider at thigh, narrow at ankle
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Skinny</strong><br>Tight from hip to ankle
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Wide Leg</strong><br>Wide from hip to ankle
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Flare</strong><br>Dramatic flare from knee down (70s)
+                                    </div>
+                                    <div style="background:white;padding:6px;border-radius:6px;">
+                                        <strong>Baggy</strong><br>Very loose/oversized throughout
+                                    </div>
+                                </div>
+                                <div style="margin-top:8px;font-size:10px;color:#1e40af;">
+                                    💡 <strong>Quick test:</strong> Lay flat, measure thigh width vs ankle opening. If ankle is smaller = tapered, same = straight, wider = bootcut/flare
+                                </div>
+                            </div>
+                            
+                            <!-- Rise (for jeans/pants) -->
+                            <div class="sub-label" style="margin-top:10px;">Rise</div>
+                            <div class="btn-grid btn-grid-3">
+                                <button onclick="setRise('Low', this)" class="btn btn-secondary rise-btn">Low Rise</button>
+                                <button onclick="setRise('Mid', this)" class="btn btn-default rise-btn">Mid Rise</button>
+                                <button onclick="setRise('High', this)" class="btn btn-secondary rise-btn">High Rise</button>
                             </div>
                         </div>
                     </div>
@@ -1007,7 +1076,7 @@
     <script>
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', material:'', materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], flagged:false, elasticCheck:'' };
+        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', material:'', materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
@@ -1029,7 +1098,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.15: fabricDB with full traits (stretch, surface, interior)
+        // V99.16: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1288,7 +1357,7 @@
             ]
         };
 
-        // V99.15: patternDB with traits for dynamic pattern identification
+        // V99.16: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1313,16 +1382,16 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.15: Tag Location Database - Where to find tags by category
+        // V99.16: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
                 primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
                 secondary: [
-                    { location: "Left side seam", desc: "Hip/waist area on the left side - common on Y2K and modern tees", icon: "📍" },
-                    { location: "Bottom hem", desc: "Inside the bottom hem, usually left side", icon: "📍" }
+                    { location: "Bottom hem (inside)", desc: "70s/80s VINTAGE: Champion, Russell Athletic often have tags sewn inside the bottom hem!", icon: "⭐" },
+                    { location: "Left side seam", desc: "Hip/waist area on the left side - common on Y2K and modern tees", icon: "📍" }
                 ],
-                tips: "Vintage tees (pre-90s) usually ONLY have neck tags. Modern/Y2K may have style codes on side seams."
+                tips: "70s/80s vintage (Champion, Russell): Check INSIDE the bottom hem! Modern/Y2K: Check side seams. Pre-90s vintage usually ONLY have neck tags."
             },
             "Polo": {
                 primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
@@ -1344,18 +1413,19 @@
             "Sweatshirt": {
                 primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
                 secondary: [
-                    { location: "Left side seam", desc: "Hip/waist area", icon: "📍" },
-                    { location: "Inside bottom hem", desc: "Near the ribbing", icon: "📍" }
+                    { location: "Inside bottom hem/ribbing", desc: "70s/80s VINTAGE: Champion, Russell Athletic often have tags sewn inside the bottom ribbing!", icon: "⭐" },
+                    { location: "Left side seam", desc: "Hip/waist area - Champion reverse weave often here", icon: "📍" }
                 ],
-                tips: "Champion reverse weave often has tags on the side seam. Russell Athletic uses neck tags."
+                tips: "70s/80s vintage: Check INSIDE the bottom ribbing! Champion reverse weave: side seam. Modern Champion: usually neck tag."
             },
             "Hoodie": {
                 primary: { location: "Back of neck", desc: "Inside below the hood attachment", icon: "👔" },
                 secondary: [
                     { location: "Inside kangaroo pocket", desc: "Check inside the front pouch pocket!", icon: "⭐" },
+                    { location: "Inside bottom hem/ribbing", desc: "70s/80s vintage Champion/Russell: inside the bottom ribbing", icon: "⭐" },
                     { location: "Left side seam", desc: "Hip/waist area", icon: "📍" }
                 ],
-                tips: "Some brands hide tags inside the kangaroo pocket to keep them from showing."
+                tips: "70s/80s vintage: Check bottom ribbing! Some brands hide tags inside the kangaroo pocket."
             },
             "Sweater": {
                 primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
@@ -1575,7 +1645,7 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.15: Aggressive max resolution switch for BRIO
+        // V99.16: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -2235,7 +2305,30 @@
             }
         });
         
-        function setSuperCategory(cat, btn) { data.superCategory = cat; data.category = ''; document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); renderSubCategories(cat); updateValidation(); }
+        function setSuperCategory(cat, btn) { 
+            data.superCategory = cat; 
+            data.category = ''; 
+            document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
+            btn.classList.add('selected','btn-hero'); 
+            btn.classList.remove('btn-secondary'); 
+            
+            // Toggle Construction sections based on category type
+            const isBottoms = (cat === 'bottoms');
+            document.getElementById('tops-construction').classList.toggle('hidden', isBottoms);
+            document.getElementById('bottoms-construction').classList.toggle('hidden', !isBottoms);
+            
+            // Clear construction data when switching
+            if(isBottoms) {
+                data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = '';
+                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+            } else {
+                data.legStyle = ''; data.rise = '';
+                document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+            }
+            
+            renderSubCategories(cat); 
+            updateValidation(); 
+        }
         function renderSubCategories(superCat) { 
             const config = categoryConfig[superCat]; 
             const container = document.getElementById('sub-categories'); 
@@ -2403,6 +2496,25 @@
             if(notice) notice.classList.toggle('hidden', style === 'Standard');
         }
         function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
+        
+        // BOTTOMS: Leg Style Functions
+        function setLegStyle(style, btn) { 
+            data.legStyle = style; 
+            document.querySelectorAll('.leg-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            btn.classList.add('selected','btn-hero'); 
+            btn.classList.remove('btn-secondary','btn-default'); 
+            updateValidation(); 
+        }
+        function setRise(rise, btn) { 
+            data.rise = rise; 
+            document.querySelectorAll('.rise-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            btn.classList.add('selected','btn-hero'); 
+            btn.classList.remove('btn-secondary','btn-default'); 
+        }
+        function toggleLegStyleHelp() {
+            document.getElementById('leg-style-help').classList.toggle('hidden');
+        }
+        
         function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
         function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
         function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
@@ -2519,7 +2631,7 @@
             }
         }
         
-        // V99.15: Camera-based Barcode Scanning using BarcodeDetector API
+        // V99.16: Camera-based Barcode Scanning using BarcodeDetector API
         async function initBarcodeDetector() {
             if('BarcodeDetector' in window) {
                 try {
@@ -2791,7 +2903,7 @@
             }
         }
         
-        // V99.15: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.16: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -2897,7 +3009,7 @@
             }
         }
         
-        // V99.15: Pattern Cards with ? help buttons
+        // V99.16: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3026,7 +3138,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.15: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.16: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3080,7 +3192,7 @@
             }
         }
         
-        // V99.15: Tag Location Helper Functions
+        // V99.16: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -3125,7 +3237,7 @@
             content.innerHTML = html;
         }
         
-        // V99.15: Pattern Helper Functions
+        // V99.16: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -3155,7 +3267,7 @@
             }
         }
         
-        // V99.15: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.16: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3209,7 +3321,9 @@
         }
         
         function updateValidation() { 
-            const checks = { category:!!data.category, tag:!!data.tagStatus, color:data.colors.length>0, fade:!!data.fade, pattern:!!data.pattern, 'fabric-type':!!data.fabricType, material:!!data.material, construction:!!data.sleeveLength, feel:!!data.thickness&&!!data.layers, condition:data.hasDefects!==null, weight:data.weightLb>0||data.weightOz>0, audio:!!data.audioMeasure, sku:!!data.sku }; 
+            // Construction check depends on superCategory: bottoms need legStyle, tops/outer need sleeveLength
+            const constructionOk = data.superCategory === 'bottoms' ? !!data.legStyle : !!data.sleeveLength;
+            const checks = { category:!!data.category, tag:!!data.tagStatus, color:data.colors.length>0, fade:!!data.fade, pattern:!!data.pattern, 'fabric-type':!!data.fabricType, material:!!data.material, construction:constructionOk, feel:!!data.thickness&&!!data.layers, condition:data.hasDefects!==null, weight:data.weightLb>0||data.weightOz>0, audio:!!data.audioMeasure, sku:!!data.sku }; 
             Object.entries(checks).forEach(([key,ok])=>{ const el = document.getElementById(`check-${key}`); if(el){el.innerHTML=ok?'✓':'○';el.classList.toggle('complete',ok);} }); 
             const allRequired = checks.category&&checks.tag&&checks.color&&checks.fade&&checks.pattern&&checks['fabric-type']&&checks.material&&checks.construction&&checks.feel&&checks.condition&&checks.weight&&checks.audio&&checks.sku; 
             const hasPhotos = data.mainPhotos.length>0; 
@@ -3248,6 +3362,8 @@
             formData.append('sleeveStyle', data.sleeveStyle);
             formData.append('cutoffType', data.cutoffType);
             formData.append('stitch', data.stitch);
+            formData.append('legStyle', data.legStyle);
+            formData.append('rise', data.rise);
             formData.append('thickness', data.thickness);
             formData.append('layers', data.layers);
             formData.append('hasDefects', data.hasDefects);
@@ -3271,10 +3387,10 @@
             
             recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
         }
-        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); }
+        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.15')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.15',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.16')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.16',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
