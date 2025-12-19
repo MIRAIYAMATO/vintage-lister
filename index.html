@@ -6,53 +6,43 @@
     <title>VintageLister v98 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --color-primary: #3b82f6;
-            --color-primary-dark: #2563eb;
-            --color-primary-light: #dbeafe;
-            --color-success: #22c55e;
-            --color-warning: #f59e0b;
-            --color-error: #ef4444;
-            --color-surface: #ffffff;
-            --color-background: #f1f5f9;
-            --color-text: #1e293b;
-            --color-text-muted: #64748b;
-            --color-border: #e2e8f0;
-        }
+        :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
         * { box-sizing: border-box; }
         html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        
+        /* PIN LOCK SCREEN */
+        .pin-screen { position: fixed; inset: 0; z-index: 1000; background: linear-gradient(135deg, #1e293b, #0f172a); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .pin-screen.hidden { display: none; }
+        .pin-box { background: white; border-radius: 20px; padding: 32px; width: 340px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
+        .pin-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+        .pin-subtitle { color: var(--color-text-muted); font-size: 14px; margin-bottom: 20px; }
+        .pin-input { width: 100%; padding: 16px; font-size: 32px; text-align: center; letter-spacing: 12px; border: 2px solid var(--color-border); border-radius: 12px; font-family: monospace; margin-bottom: 16px; }
+        .pin-input:focus { outline: none; border-color: var(--color-primary); }
+        .pin-input.shake { animation: shake 0.3s; border-color: var(--color-error); }
+        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+        .photographer-select { width: 100%; padding: 12px; border: 2px solid var(--color-border); border-radius: 10px; font-size: 14px; margin-bottom: 20px; }
+        .pin-btn { width: 100%; padding: 16px; background: var(--color-primary); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+        .pin-btn:hover { background: var(--color-primary-dark); }
+        .pin-version { color: #475569; font-size: 12px; margin-top: 16px; }
         
         .desktop-layout { display: grid; grid-template-columns: 420px 1fr 280px; height: 100vh; }
         .form-panel { background: var(--color-surface); display: flex; flex-direction: column; overflow: hidden; }
         .camera-panel { background: #000; display: flex; flex-direction: column; }
         .photos-panel { background: var(--color-background); overflow-y: auto; padding: 16px; border-left: 1px solid var(--color-border); }
         
-        /* FLOATING TIMER - Always visible */
-        .floating-timer {
-            position: sticky; top: 0; z-index: 10;
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-            color: white; padding: 12px 16px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
-        }
+        /* FLOATING TIMER */
+        .floating-timer { position: sticky; top: 0; z-index: 10; background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
         .timer-main { font-size: 28px; font-weight: 800; font-family: monospace; }
         .timer-stats { text-align: right; font-size: 11px; opacity: 0.9; }
         .timer-label { font-size: 10px; opacity: 0.7; }
+        .photographer-badge { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
         
         /* PROGRESS BAR */
-        .progress-bar {
-            display: flex; justify-content: center; gap: 8px;
-            padding: 12px 16px; background: var(--color-background);
-            border-bottom: 1px solid var(--color-border);
-        }
-        .progress-dot {
-            width: 12px; height: 12px; border-radius: 50%;
-            background: var(--color-border); cursor: pointer;
-            transition: all 0.2s;
-        }
+        .progress-bar { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px 16px; background: var(--color-background); border-bottom: 1px solid var(--color-border); }
+        .progress-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--color-border); cursor: pointer; transition: all 0.2s; }
         .progress-dot.active { background: var(--color-primary); transform: scale(1.3); }
         .progress-dot.complete { background: var(--color-success); }
-        .progress-label { font-size: 10px; color: var(--color-text-muted); font-weight: 600; }
+        .progress-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; margin-left: 8px; }
         
         /* STEP CONTAINER */
         .step-area { flex: 1; overflow-y: auto; padding: 16px; }
@@ -80,19 +70,20 @@
         .btn-grid-3 { grid-template-columns: repeat(3, 1fr); }
         .btn-grid-4 { grid-template-columns: repeat(4, 1fr); }
         
-        .form-input { width: 100%; padding: 10px 12px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 14px; }
-        .form-input:focus { outline: none; border-color: var(--color-primary); }
+        .form-input, .form-select { width: 100%; padding: 10px 12px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: var(--color-primary); }
         
         .sub-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; margin: 10px 0 8px 0; }
         .nested-section { background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 12px; margin-top: 10px; }
+        .nested-amber { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); }
         
-        /* Super Category Buttons */
+        /* Super Category */
         .super-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 12px; font-size: 11px; font-weight: 700; }
         .super-btn .emoji { font-size: 24px; }
         .super-btn.selected { background: var(--color-primary) !important; color: white !important; border-color: var(--color-primary) !important; }
         
-        /* Category hero buttons */
-        .cat-hero { background: var(--color-primary); color: white; padding: 16px; font-size: 15px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        /* Category buttons */
+        .cat-hero { background: var(--color-primary); color: white; padding: 16px; font-size: 15px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 8px; }
         .cat-hero:hover { background: var(--color-primary-dark); }
         .cat-hero.selected { box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
         .cat-secondary { background: white; color: var(--color-text); border: 2px solid var(--color-border); padding: 12px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -108,7 +99,7 @@
         .color-btn.selected { border-color: var(--color-text); box-shadow: 0 0 0 2px white, 0 0 0 4px var(--color-text); }
         .color-btn.selected::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
         
-        /* Fabric/Material Cards */
+        /* Cards */
         .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
         .card { background: white; border: 2px solid var(--color-border); border-radius: 8px; padding: 12px; cursor: pointer; position: relative; }
         .card:hover { background: var(--color-background); }
@@ -136,14 +127,19 @@
         .tag-warning { background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; padding: 10px; font-size: 11px; font-weight: 600; color: #b91c1c; text-align: center; margin-bottom: 10px; }
         .tag-warning.hidden { display: none; }
         
-        /* Navigation buttons */
+        /* Defect buttons with emoji */
+        .defect-card { display: flex; flex-direction: column; align-items: center; padding: 12px 8px; gap: 4px; }
+        .defect-card .emoji { font-size: 24px; }
+        .defect-card .label { font-size: 10px; font-weight: 700; }
+        
+        /* Navigation */
         .nav-buttons { display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border); }
         .nav-btn { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; }
         .nav-btn-back { background: white; color: var(--color-text); border: 2px solid var(--color-border); }
         .nav-btn-next { background: var(--color-primary); color: white; flex: 2; }
         .nav-btn-next:hover { background: var(--color-primary-dark); }
         
-        /* Camera styles */
+        /* Camera */
         .camera-header { background: #111; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         .camera-select { background: #222; border: 1px solid #444; color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; min-width: 200px; }
         .camera-status { font-size: 11px; font-weight: 700; color: #555; }
@@ -160,8 +156,8 @@
         .shutter-btn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid #333; cursor: pointer; }
         .shutter-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.3); }
         .shutter-btn:active { transform: scale(0.95); background: #ddd; }
-        .shutter-btn.flash { animation: flash 0.15s; }
-        @keyframes flash { 0%{background:white} 50%{background:var(--color-primary)} 100%{background:white} }
+        .shutter-btn.flash { animation: btnflash 0.15s; }
+        @keyframes btnflash { 0%{background:white} 50%{background:var(--color-primary)} 100%{background:white} }
         .shutter-hint { color: #555; font-size: 11px; text-align: center; }
         .shutter-hint kbd { background: #333; padding: 3px 6px; border-radius: 4px; font-family: monospace; color: #aaa; }
         .mode-btn { padding: 10px 16px; background: #222; border: 2px solid #333; color: #666; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -187,17 +183,54 @@
         .submit-btn { width: 100%; padding: 16px; background: var(--color-success); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; }
         .submit-btn:disabled { background: var(--color-border); cursor: not-allowed; }
         
-        .flash-overlay { position: fixed; inset: 0; background: white; z-index: 1000; opacity: 0; pointer-events: none; }
+        .flash-overlay { position: fixed; inset: 0; background: white; z-index: 500; opacity: 0; pointer-events: none; }
         .flash-overlay.flash { opacity: 1; }
         .hidden { display: none !important; }
+        
+        /* SKU with scan button */
+        .sku-row { display: flex; gap: 8px; }
+        .sku-row input { flex: 1; }
+        .scan-btn { background: #1e293b; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        .scan-btn:hover { background: #334155; }
+        
+        /* Review cards */
+        .review-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .review-card { border-radius: 10px; padding: 14px; cursor: pointer; transition: transform 0.1s; }
+        .review-card:hover { transform: scale(0.98); }
+        .review-card:active { transform: scale(0.96); }
+        .card-green { border-left: 4px solid var(--color-success); background: #f0fdf4; }
+        .card-yellow { border-left: 4px solid var(--color-warning); background: #fffbeb; }
+        .review-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .review-card-header .icon { font-size: 16px; }
+        .review-card-header .title { font-size: 12px; font-weight: 700; color: var(--color-text); }
+        .review-card-summary { font-size: 11px; color: var(--color-text-muted); line-height: 1.4; }
+        .review-banner { background: var(--color-success); color: white; padding: 14px; border-radius: 10px; text-align: center; font-weight: 700; margin-bottom: 12px; }
+        .flag-banner { background: #fef3c7; border: 2px solid #f59e0b; color: #92400e; padding: 12px; border-radius: 10px; text-align: center; font-weight: 700; margin-bottom: 12px; }
     </style>
 </head>
 <body>
+    <!-- PIN LOCK SCREEN -->
+    <div id="pin-screen" class="pin-screen">
+        <div class="pin-box">
+            <div class="pin-title">VintageLister</div>
+            <div class="pin-subtitle">Enter Warehouse PIN</div>
+            <input type="tel" id="pin-input" class="pin-input" maxlength="4" placeholder="••••" inputmode="numeric" autocomplete="off">
+            <div class="sub-label">Photographer</div>
+            <select id="photographer-select" class="photographer-select">
+                <option value="P01">P01 – Jeff Koga</option>
+                <option value="P02" selected>P02 – Elaine Donato</option>
+                <option value="P03">P03 – Kobe Gaza</option>
+            </select>
+            <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
+        </div>
+        <div class="pin-version">v98 Desktop Station</div>
+    </div>
+    
     <div class="flash-overlay" id="flash-overlay"></div>
+    
     <div class="desktop-layout">
-        <!-- LEFT: Form Panel with Steps -->
+        <!-- LEFT: Form Panel -->
         <div class="form-panel">
-            <!-- Floating Timer -->
             <div class="floating-timer">
                 <div>
                     <div class="timer-label">CURRENT ITEM</div>
@@ -207,22 +240,23 @@
                     <div>Avg: <strong id="timer-avg">--</strong></div>
                     <div>Last: <strong id="timer-last">--</strong></div>
                 </div>
-                <button class="reset-btn" onclick="resetForm()">↻ Reset</button>
+                <div>
+                    <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
+                    <button class="reset-btn" onclick="resetForm()" style="margin-left:8px;">↻</button>
+                </div>
             </div>
             
-            <!-- Progress Bar -->
             <div class="progress-bar">
                 <div class="progress-dot active" id="dot-1" onclick="goToStep(1)"></div>
                 <div class="progress-dot" id="dot-2" onclick="goToStep(2)"></div>
                 <div class="progress-dot" id="dot-3" onclick="goToStep(3)"></div>
+                <div class="progress-dot" id="dot-4" onclick="goToStep(4)"></div>
                 <span class="progress-label" id="step-label">Step 1: Tag</span>
             </div>
             
-            <!-- Step Content Area -->
             <div class="step-area">
                 <!-- STEP 1: TAG -->
                 <div id="step-1" class="step-container active">
-                    <!-- Category -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-category" class="check-circle">○</span> What is it?</div>
                         <div class="btn-grid btn-grid-3" style="margin-bottom:12px;">
@@ -233,7 +267,6 @@
                         <div id="sub-categories"></div>
                     </div>
                     
-                    <!-- Tag Info -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-tag" class="check-circle">○</span> Tag Info</div>
                         <button onclick="setTagStatus('has', this)" class="btn btn-default tag-btn" style="width:100%;margin-bottom:8px;">✓ TAG READABLE</button>
@@ -254,7 +287,6 @@
                                 <button onclick="setSize('3XL', this)" class="btn btn-tertiary size-btn">3XL</button>
                                 <button onclick="setSize('4XL', this)" class="btn btn-tertiary size-btn">4XL</button>
                             </div>
-                            
                             <div class="sub-label">Origin</div>
                             <div class="btn-grid btn-grid-2" style="margin-bottom:8px;">
                                 <button onclick="setOrigin('usa', this)" class="btn btn-default origin-btn">🇺🇸 USA Made</button>
@@ -267,10 +299,9 @@
                                     <button onclick="setCountry('Bangladesh', this)" class="btn btn-tertiary country-btn">🇧🇩 Bangladesh</button>
                                     <button onclick="setCountry('Mexico', this)" class="btn btn-tertiary country-btn">🇲🇽 Mexico</button>
                                     <button onclick="setCountry('Honduras', this)" class="btn btn-tertiary country-btn">🇭🇳 Honduras</button>
-                                    <button onclick="setCountry('Other', this)" class="btn btn-tertiary country-btn">🌍 Other</button>
+                                    <button onclick="setCountry('Philippines', this)" class="btn btn-tertiary country-btn">🇵🇭 Philippines</button>
                                 </div>
                             </div>
-                            
                             <div class="sub-label">Gender on Tag</div>
                             <div class="btn-grid btn-grid-4">
                                 <button onclick="setGender('Men', this)" class="btn btn-tertiary gender-btn">Men's</button>
@@ -288,7 +319,6 @@
                 
                 <!-- STEP 2: CHECK -->
                 <div id="step-2" class="step-container">
-                    <!-- Color -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-color" class="check-circle">○</span> Color(s)</div>
                         <div class="color-grid">
@@ -310,7 +340,16 @@
                         </div>
                     </div>
                     
-                    <!-- Pattern -->
+                    <!-- FADE -->
+                    <div class="section-card">
+                        <div class="section-label"><span id="check-fade" class="check-circle">○</span> Fade Level</div>
+                        <div class="btn-grid btn-grid-3">
+                            <button onclick="setFade('None', this)" class="btn btn-default fade-btn">None</button>
+                            <button onclick="setFade('Light', this)" class="btn btn-tertiary fade-btn">Light</button>
+                            <button onclick="setFade('Heavy', this)" class="btn btn-tertiary fade-btn">Heavy</button>
+                        </div>
+                    </div>
+                    
                     <div class="section-card">
                         <div class="section-label"><span id="check-pattern" class="check-circle">○</span> Pattern</div>
                         <div class="btn-grid btn-grid-3">
@@ -323,22 +362,29 @@
                         </div>
                     </div>
                     
-                    <!-- Fabric Type -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-fabric-type" class="check-circle">○</span> Fabric Type</div>
                         <div id="fabric-cards-grid" class="cards-grid"></div>
-                        <button id="fabric-help-btn" onclick="toggleFabricHelp()" class="help-btn">🤔 Not Sure?</button>
+                        <!-- Denim Wash (shows when denim selected) -->
+                        <div id="wash-section" class="hidden nested-section" style="margin-top:10px;">
+                            <div class="sub-label" style="color:#0369a1;">Denim Wash</div>
+                            <div class="btn-grid btn-grid-4">
+                                <button onclick="setWash('Light', this)" class="btn btn-tertiary wash-btn">Light</button>
+                                <button onclick="setWash('Medium', this)" class="btn btn-tertiary wash-btn">Medium</button>
+                                <button onclick="setWash('Dark', this)" class="btn btn-default wash-btn">Dark</button>
+                                <button onclick="setWash('Raw', this)" class="btn btn-tertiary wash-btn">Raw</button>
+                                <button onclick="setWash('Acid', this)" class="btn btn-tertiary wash-btn">Acid</button>
+                                <button onclick="setWash('Stone', this)" class="btn btn-tertiary wash-btn">Stone</button>
+                                <button onclick="setWash('Rinse', this)" class="btn btn-tertiary wash-btn">Rinse</button>
+                                <button onclick="setWash('Black', this)" class="btn btn-tertiary wash-btn">Black</button>
+                            </div>
+                        </div>
+                        <button id="fabric-help-btn" onclick="toggleFabricHelp()" class="help-btn" style="margin-top:8px;">🤔 Not Sure?</button>
                         <div id="fabric-help-panel" class="help-panel hidden">
                             <div class="sub-label" style="color:#92400e;">How does it feel?</div>
                             <div class="filter-row">
                                 <button onclick="toggleFabricFilter('stretch','none',this)" class="filter-btn fabric-filter">Rigid</button>
                                 <button onclick="toggleFabricFilter('stretch','high',this)" class="filter-btn fabric-filter">Stretchy</button>
-                            </div>
-                            <div class="sub-label" style="color:#92400e;">Surface?</div>
-                            <div class="filter-row">
-                                <button onclick="toggleFabricFilter('structure','smooth',this)" class="filter-btn fabric-filter">Smooth</button>
-                                <button onclick="toggleFabricFilter('structure','diagonal',this)" class="filter-btn fabric-filter">Diagonal</button>
-                                <button onclick="toggleFabricFilter('structure','ribs',this)" class="filter-btn fabric-filter">Ribs</button>
                             </div>
                             <div class="sub-label" style="color:#92400e;">Inside?</div>
                             <div class="filter-row">
@@ -350,7 +396,6 @@
                         </div>
                     </div>
                     
-                    <!-- Material -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-material" class="check-circle">○</span> Material</div>
                         <div id="material-tag-warning" class="tag-warning hidden">⚠️ No readable tag — use touch tests</div>
@@ -367,17 +412,10 @@
                                 <button onclick="toggleMaterialFilter('shine','matte',this)" class="filter-btn material-filter">Matte</button>
                                 <button onclick="toggleMaterialFilter('shine','sheen',this)" class="filter-btn material-filter">Sheen</button>
                             </div>
-                            <div class="sub-label" style="color:#92400e;">Feel?</div>
-                            <div class="filter-row">
-                                <button onclick="toggleMaterialFilter('feel','soft',this)" class="filter-btn material-filter">Soft</button>
-                                <button onclick="toggleMaterialFilter('feel','crisp',this)" class="filter-btn material-filter">Crisp</button>
-                                <button onclick="toggleMaterialFilter('feel','slick',this)" class="filter-btn material-filter">Slick</button>
-                            </div>
                             <div id="material-helper" class="help-text hidden"></div>
                         </div>
                     </div>
                     
-                    <!-- Construction -->
                     <div class="section-card" id="construction-section">
                         <div class="section-label"><span id="check-construction" class="check-circle">○</span> Construction</div>
                         <div class="sub-label">Sleeve Length</div>
@@ -404,7 +442,6 @@
                         </div>
                     </div>
                     
-                    <!-- Feel -->
                     <div class="section-card">
                         <div class="section-label"><span id="check-feel" class="check-circle">○</span> Feel</div>
                         <div class="sub-label">Thickness</div>
@@ -430,35 +467,103 @@
                 
                 <!-- STEP 3: SNAP & SEND -->
                 <div id="step-3" class="step-container">
-                    <!-- Condition -->
                     <div class="section-card">
-                        <div class="section-label"><span id="check-condition" class="check-circle">○</span> Condition</div>
-                        <div class="btn-grid btn-grid-2">
-                            <button onclick="setDefects(false, this)" class="btn btn-default defect-btn">✓ No Defects</button>
-                            <button onclick="setDefects(true, this)" class="btn btn-tertiary defect-btn">⚠️ Has Defects</button>
-                        </div>
-                        <div id="defects-detail" class="hidden nested-section" style="margin-top:10px;">
-                            <div class="sub-label">Defect Types</div>
-                            <div class="btn-grid btn-grid-3">
-                                <button onclick="toggleDefect('Stain', this)" class="btn btn-tertiary defect-type-btn">Stain</button>
-                                <button onclick="toggleDefect('Hole', this)" class="btn btn-tertiary defect-type-btn">Hole</button>
-                                <button onclick="toggleDefect('Tear', this)" class="btn btn-tertiary defect-type-btn">Tear</button>
-                                <button onclick="toggleDefect('Fade', this)" class="btn btn-tertiary defect-type-btn">Fade</button>
-                                <button onclick="toggleDefect('Pilling', this)" class="btn btn-tertiary defect-type-btn">Pilling</button>
-                                <button onclick="toggleDefect('Other', this)" class="btn btn-tertiary defect-type-btn">Other</button>
-                            </div>
+                        <div class="section-label"><span id="check-condition" class="check-circle">○</span> Any Issues?</div>
+                        <button onclick="setClean(this)" id="btn-clean" class="btn btn-default" style="width:100%;margin-bottom:10px;padding:14px;">✓ No Defects</button>
+                        <div class="sub-label">Or tap defect type:</div>
+                        <div class="btn-grid btn-grid-3">
+                            <button onclick="toggleDefect('Stain', this)" class="btn btn-tertiary defect-type-btn defect-card"><span class="emoji">💧</span><span class="label">Stain</span></button>
+                            <button onclick="toggleDefect('Hole', this)" class="btn btn-tertiary defect-type-btn defect-card"><span class="emoji">🕳️</span><span class="label">Hole</span></button>
+                            <button onclick="toggleDefect('Repair', this)" class="btn btn-tertiary defect-type-btn defect-card"><span class="emoji">🧵</span><span class="label">Repair</span></button>
                         </div>
                     </div>
                     
-                    <!-- SKU -->
+                    <div class="section-card">
+                        <div class="section-label"><span id="check-weight" class="check-circle">○</span> ⚖️ Weight</div>
+                        <div class="btn-grid btn-grid-2">
+                            <select id="weight-lb" onchange="updateWeight()" class="form-select" style="font-size:16px;font-weight:700;">
+                                <option value="0" selected>0 lb</option>
+                                <option value="1">1 lb</option>
+                                <option value="2">2 lb</option>
+                                <option value="3">3 lb</option>
+                                <option value="4">4 lb</option>
+                                <option value="5">5 lb</option>
+                            </select>
+                            <select id="weight-oz" onchange="updateWeight()" class="form-select" style="font-size:16px;font-weight:700;">
+                                <option value="0" selected>0 oz</option>
+                                <option value="3">3 oz</option>
+                                <option value="4">4 oz</option>
+                                <option value="5">5 oz</option>
+                                <option value="6">6 oz</option>
+                                <option value="7">7 oz</option>
+                                <option value="8">8 oz</option>
+                                <option value="9">9 oz</option>
+                                <option value="10">10 oz</option>
+                                <option value="11">11 oz</option>
+                                <option value="12">12 oz</option>
+                                <option value="13">13 oz</option>
+                                <option value="14">14 oz</option>
+                                <option value="15">15 oz</option>
+                            </select>
+                        </div>
+                        <div style="margin-top:8px;font-size:11px;color:var(--color-text-muted);">⬆️ <strong>Always round up</strong></div>
+                    </div>
+                    
                     <div class="section-card">
                         <div class="section-label"><span id="check-sku" class="check-circle">○</span> SKU</div>
-                        <input type="text" id="sku-input" class="form-input" placeholder="Scan or type SKU..." oninput="data.sku=this.value.trim();updateValidation()">
+                        <div class="sku-row">
+                            <input type="text" id="sku-input" class="form-input" placeholder="Scan barcode..." inputmode="numeric" oninput="data.sku=this.value.trim();updateValidation()" style="font-size:18px;font-family:monospace;">
+                            <button onclick="focusSku()" class="scan-btn">📷</button>
+                        </div>
                     </div>
                     
                     <div class="nav-buttons">
                         <button onclick="goToStep(2)" class="nav-btn nav-btn-back">← Back</button>
-                        <button id="submit-btn" class="submit-btn" onclick="submitItem()" disabled style="flex:2;">✓ Submit Item</button>
+                        <button onclick="goToStep(4)" class="nav-btn nav-btn-next" style="flex:2;">Next: Review →</button>
+                    </div>
+                </div>
+                
+                <!-- STEP 4: REVIEW -->
+                <div id="step-4" class="step-container">
+                    <div class="review-banner">✨ Almost done! Quick review</div>
+                    
+                    <div class="review-grid">
+                        <div id="card-tag" onclick="goToStep(1)" class="review-card card-yellow">
+                            <div class="review-card-header">
+                                <span class="icon" id="icon-tag">⚠️</span>
+                                <span class="title">TAG</span>
+                            </div>
+                            <div class="review-card-summary" id="summary-tag">--</div>
+                        </div>
+                        <div id="card-check" onclick="goToStep(2)" class="review-card card-yellow">
+                            <div class="review-card-header">
+                                <span class="icon" id="icon-check">⚠️</span>
+                                <span class="title">CHECK</span>
+                            </div>
+                            <div class="review-card-summary" id="summary-check">--</div>
+                        </div>
+                        <div id="card-snap" onclick="goToStep(3)" class="review-card card-yellow">
+                            <div class="review-card-header">
+                                <span class="icon" id="icon-snap">⚠️</span>
+                                <span class="title">SNAP</span>
+                            </div>
+                            <div class="review-card-summary" id="summary-snap">--</div>
+                        </div>
+                        <div id="card-weight" onclick="goToStep(3)" class="review-card card-yellow">
+                            <div class="review-card-header">
+                                <span class="icon" id="icon-weight">⚠️</span>
+                                <span class="title">WEIGHT</span>
+                            </div>
+                            <div class="review-card-summary" id="summary-weight">--</div>
+                        </div>
+                    </div>
+                    
+                    <div id="flag-status" class="flag-banner hidden">🚩 FLAGGED FOR REVIEW</div>
+                    
+                    <button id="submit-btn" class="submit-btn" onclick="submitItem()" disabled>SUBMIT ✓</button>
+                    
+                    <div class="nav-buttons" style="border-top:none;padding-top:8px;">
+                        <button onclick="goToStep(3)" class="nav-btn nav-btn-back" style="flex:1;">← Back</button>
                     </div>
                 </div>
             </div>
@@ -516,9 +621,10 @@
         </div>
     </div>
     <script>
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], pattern:'', fabricType:'', material:'', sleeveLength:'', sleeveStyle:'', stitch:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], sku:'', mainPhotos:[], tagPhotos:[], defectPhotos:[] };
+        const APP_PIN = "1234";
+        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', fabricType:'', wash:'', material:'', sleeveLength:'', sleeveStyle:'', stitch:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', mainPhotos:[], tagPhotos:[], defectPhotos:[] };
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
-        let fabricFilters = { stretch:null, structure:null, interior:null }, materialFilters = { temp:null, shine:null, feel:null };
+        let fabricFilters = { stretch:null, interior:null }, materialFilters = { temp:null, shine:null };
         let timerStart = null, timerInterval = null, itemTimes = [];
 
         const categoryConfig = {
@@ -529,34 +635,50 @@
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
         const fabricDB = {
-            "T-Shirt": [{ name:"Knit", priority:1, default:true, traits:{stretch:"high",structure:"smooth",interior:"smooth"}, desc:"Standard tee. Soft & stretchy." },{ name:"Jersey", priority:2, traits:{stretch:"high",structure:"smooth",interior:"smooth"}, desc:"Same as knit. eBay term." },{ name:"Mesh", priority:3, traits:{stretch:"high",structure:"rough",interior:"smooth"}, desc:"See-through athletic." }],
-            "Sweatshirt": [{ name:"Fleece", priority:1, default:true, traits:{stretch:"high",structure:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside. Most common." },{ name:"French Terry", priority:2, traits:{stretch:"high",structure:"smooth",interior:"loops"}, desc:"Loops inside. Lighter." }],
-            "Hoodie": [{ name:"Fleece", priority:1, default:true, traits:{stretch:"high",structure:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside. Standard." },{ name:"French Terry", priority:2, traits:{stretch:"high",structure:"smooth",interior:"loops"}, desc:"Loops inside. Lighter." }],
-            "Button Shirt": [{ name:"Woven", priority:1, default:true, traits:{stretch:"none",structure:"smooth",interior:"smooth"}, desc:"Standard dress shirt." },{ name:"Flannel", priority:1, traits:{stretch:"none",structure:"smooth",interior:"fuzzy"}, desc:"Soft, brushed." },{ name:"Denim", priority:2, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Western shirt." }],
-            "Polo": [{ name:"Pique", priority:1, default:true, traits:{stretch:"high",structure:"rough",interior:"smooth"}, desc:"Classic polo texture." },{ name:"Knit", priority:2, traits:{stretch:"high",structure:"smooth",interior:"smooth"}, desc:"Smooth polo." }],
-            "Sweater": [{ name:"Knit", priority:1, default:true, traits:{stretch:"high",structure:"ribs",interior:"smooth"}, desc:"Standard sweater." },{ name:"Fleece", priority:2, traits:{stretch:"high",structure:"smooth",interior:"fuzzy"}, desc:"Patagonia style." }],
-            "Jacket": [{ name:"Nylon", priority:1, default:true, traits:{stretch:"none",structure:"smooth",interior:"smooth"}, desc:"Windbreaker." },{ name:"Denim", priority:1, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Jean jacket." },{ name:"Canvas", priority:2, traits:{stretch:"none",structure:"rough",interior:"smooth"}, desc:"Work jacket." },{ name:"Leather", priority:2, traits:{stretch:"none",structure:"smooth",interior:"smooth"}, desc:"Moto, bomber." }],
-            "Coat": [{ name:"Wool", priority:1, default:true, traits:{stretch:"none",structure:"smooth",interior:"smooth"}, desc:"Dress coat." },{ name:"Down", priority:2, traits:{stretch:"none",structure:"smooth",interior:"smooth"}, desc:"Puffer coat." }],
-            "Jeans": [{ name:"Denim", priority:1, default:true, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Standard jean." },{ name:"Selvage", priority:2, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Premium. Red line." }],
-            "Pants": [{ name:"Twill", priority:1, default:true, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Chinos, khakis." },{ name:"Corduroy", priority:2, traits:{stretch:"none",structure:"ribs",interior:"smooth"}, desc:"Vertical ridges." }],
-            "Shorts": [{ name:"Twill", priority:1, default:true, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Chino shorts." },{ name:"Denim", priority:2, traits:{stretch:"none",structure:"diagonal",interior:"smooth"}, desc:"Jean shorts." }],
-            "default": [{ name:"Knit", priority:1, default:true, traits:{stretch:"high",structure:"smooth",interior:"smooth"}, desc:"Standard fabric." }]
+            "T-Shirt": [{ name:"Knit", priority:1, default:true, traits:{stretch:"high",interior:"smooth"}, desc:"Standard tee." },{ name:"Jersey", priority:2, traits:{stretch:"high",interior:"smooth"}, desc:"eBay term for knit." },{ name:"Mesh", priority:3, traits:{stretch:"high",interior:"smooth"}, desc:"See-through." }],
+            "Sweatshirt": [{ name:"Fleece", priority:1, default:true, traits:{stretch:"high",interior:"fuzzy"}, desc:"Fuzzy inside." },{ name:"French Terry", priority:2, traits:{stretch:"high",interior:"loops"}, desc:"Loops inside." }],
+            "Hoodie": [{ name:"Fleece", priority:1, default:true, traits:{stretch:"high",interior:"fuzzy"}, desc:"Fuzzy inside." },{ name:"French Terry", priority:2, traits:{stretch:"high",interior:"loops"}, desc:"Loops inside." }],
+            "Button Shirt": [{ name:"Woven", priority:1, default:true, traits:{stretch:"none",interior:"smooth"}, desc:"Dress shirt." },{ name:"Flannel", priority:1, traits:{stretch:"none",interior:"fuzzy"}, desc:"Soft, brushed." },{ name:"Denim", priority:2, traits:{stretch:"none",interior:"smooth"}, desc:"Western shirt." }],
+            "Jeans": [{ name:"Denim", priority:1, default:true, traits:{stretch:"none",interior:"smooth"}, desc:"Standard jean." },{ name:"Selvage", priority:2, traits:{stretch:"none",interior:"smooth"}, desc:"Premium." }],
+            "Pants": [{ name:"Twill", priority:1, default:true, traits:{stretch:"none",interior:"smooth"}, desc:"Chinos." },{ name:"Corduroy", priority:2, traits:{stretch:"none",interior:"smooth"}, desc:"Ridges." }],
+            "Jacket": [{ name:"Nylon", priority:1, default:true, traits:{stretch:"none",interior:"smooth"}, desc:"Windbreaker." },{ name:"Denim", priority:1, traits:{stretch:"none",interior:"smooth"}, desc:"Jean jacket." },{ name:"Leather", priority:2, traits:{stretch:"none",interior:"smooth"}, desc:"Moto." }],
+            "default": [{ name:"Knit", priority:1, default:true, traits:{stretch:"high",interior:"smooth"}, desc:"Standard." }]
         };
         const materialDB = {
-            "T-Shirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Natural. Cool, soft." },{ name:"50/50 Blend", priority:1, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Cotton/Poly mix." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Synthetic." },{ name:"Tri-Blend", priority:2, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Ultra soft." }],
-            "Sweatshirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Natural." },{ name:"Cotton/Poly", priority:1, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Common blend." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Athletic." }],
-            "Hoodie": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Natural." },{ name:"Cotton/Poly", priority:1, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Common blend." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Tech fleece." }],
-            "Button Shirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"crisp"}, desc:"Natural." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Wrinkle-free." },{ name:"Linen", priority:2, traits:{temp:"cool",shine:"matte",feel:"crisp"}, desc:"Natural. Wrinkles." }],
-            "Sweater": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Lightweight." },{ name:"Wool", priority:1, traits:{temp:"warm",shine:"matte",feel:"soft"}, desc:"Warm." },{ name:"Acrylic", priority:2, traits:{temp:"warm",shine:"matte",feel:"soft"}, desc:"Synthetic wool." }],
-            "Jacket": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"crisp"}, desc:"Denim, canvas." },{ name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Windbreaker." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Athletic." },{ name:"Leather", priority:2, traits:{temp:"cool",shine:"sheen",feel:"soft"}, desc:"Real leather." }],
-            "Jeans": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"crisp"}, desc:"100% denim." },{ name:"Cotton/Spandex", priority:2, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Stretch jeans." }],
-            "Pants": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"crisp"}, desc:"Chinos." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen",feel:"slick"}, desc:"Dress pants." }],
-            "default": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte",feel:"soft"}, desc:"Natural fiber." }]
+            "T-Shirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },{ name:"50/50 Blend", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Cotton/Poly." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic." },{ name:"Tri-Blend", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Ultra soft." }],
+            "Sweatshirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },{ name:"Cotton/Poly", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Blend." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." }],
+            "Hoodie": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },{ name:"Cotton/Poly", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Blend." }],
+            "Button Shirt": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },{ name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Wrinkle-free." }],
+            "Jeans": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"100% denim." },{ name:"Cotton/Spandex", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Stretch." }],
+            "Jacket": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Canvas/denim." },{ name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Windbreaker." },{ name:"Leather", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Real leather." }],
+            "default": [{ name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." }]
         };
 
-        document.addEventListener('DOMContentLoaded', () => { loadStats(); enumerateCameras(); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); updateValidation(); startTimer(); document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT') { e.preventDefault(); capturePhoto(); } }); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); updateValidation(); 
+            document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') { e.preventDefault(); capturePhoto(); } }); 
+            document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
+        });
         
-        function goToStep(step) { currentStep = step; document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active')); document.getElementById(`step-${step}`).classList.add('active'); document.querySelectorAll('.progress-dot').forEach((d,i) => { d.classList.remove('active'); if(i+1 < step) d.classList.add('complete'); else d.classList.remove('complete'); if(i+1 === step) d.classList.add('active'); }); const labels = {1:'Step 1: Tag', 2:'Step 2: Check', 3:'Step 3: Snap'}; document.getElementById('step-label').textContent = labels[step] || ''; }
+        function checkAuth() { try { if(localStorage.getItem('vl_auth')===APP_PIN){ document.getElementById('pin-screen').classList.add('hidden'); data.photographer=localStorage.getItem('vl_photographer')||'P02'; document.getElementById('photographer-badge').textContent=data.photographer; startTimer(); } } catch(e){} }
+        function checkPin() { if(document.getElementById('pin-input').value===APP_PIN){ try{ localStorage.setItem('vl_auth',APP_PIN); data.photographer=document.getElementById('photographer-select').value; localStorage.setItem('vl_photographer',data.photographer); document.getElementById('photographer-badge').textContent=data.photographer; }catch(e){} document.getElementById('pin-screen').classList.add('hidden'); startTimer(); } else { document.getElementById('pin-input').value=''; document.getElementById('pin-input').classList.add('shake'); setTimeout(()=>document.getElementById('pin-input').classList.remove('shake'),300); } }
+        function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
+        
+        function goToStep(step) { currentStep = step; document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active')); document.getElementById(`step-${step}`).classList.add('active'); document.querySelectorAll('.progress-dot').forEach((d,i) => { d.classList.remove('active'); if(i+1 < step) d.classList.add('complete'); else d.classList.remove('complete'); if(i+1 === step) d.classList.add('active'); }); const labels = {1:'Step 1: Tag', 2:'Step 2: Check', 3:'Step 3: Snap', 4:'Step 4: Review'}; document.getElementById('step-label').textContent = labels[step] || ''; if(step===4) updateReviewCards(); }
+        
+        function updateReviewCards() {
+            document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'🇺🇸 USA':data.country||''} • ${data.gender||''}`;
+            document.getElementById('summary-check').innerHTML = `${data.fabricType||'?'} / ${data.material||'?'}<br>${(data.colors||[]).slice(0,3).join(', ')||'?'} • ${data.pattern||'?'}`;
+            const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
+            document.getElementById('summary-snap').innerHTML = `${pc} photo(s)<br>SKU: ${data.sku||'?'}`;
+            document.getElementById('summary-weight').innerHTML = (data.weightLb>0||data.weightOz>0) ? `${data.weightLb} lb ${data.weightOz} oz` : 'No weight';
+            
+            setCardStatus('tag', !!data.category && !!data.tagStatus);
+            setCardStatus('check', !!data.fabricType && data.colors.length>0 && !!data.pattern && !!data.material);
+            setCardStatus('snap', data.mainPhotos.length>0 && !!data.sku);
+            setCardStatus('weight', data.weightLb>0 || data.weightOz>0);
+        }
+        function setCardStatus(name, ok) { const card = document.getElementById(`card-${name}`); const icon = document.getElementById(`icon-${name}`); card.classList.remove('card-green','card-yellow'); card.classList.add(ok?'card-green':'card-yellow'); icon.textContent = ok?'✅':'⚠️'; }
         
         function startTimer() { timerStart = Date.now(); if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(updateTimerDisplay, 1000); updateTimerDisplay(); }
         function updateTimerDisplay() { if (!timerStart) return; const elapsed = Math.floor((Date.now() - timerStart) / 1000); document.getElementById('timer-current').textContent = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`; }
@@ -570,7 +692,7 @@
         function deletePhoto(mode,index) { if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} else if(mode==='tag'){URL.revokeObjectURL(data.tagPhotos[index].url);data.tagPhotos.splice(index,1);} else{URL.revokeObjectURL(data.defectPhotos[index].url);data.defectPhotos.splice(index,1);} updatePhotoGrids(); updateValidation(); }
         
         function setSuperCategory(cat, btn) { data.superCategory = cat; data.category = ''; document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); renderSubCategories(cat); updateValidation(); }
-        function renderSubCategories(superCat) { const config = categoryConfig[superCat]; const container = document.getElementById('sub-categories'); container.innerHTML = `<button onclick="setCategory('${config.heroes[0]}', this)" class="cat-hero cat-btn" style="width:100%;margin-bottom:8px;"><span style="font-size:20px;">${catEmojis[config.heroes[0]]||'👕'}</span> ${config.heroes[0].toUpperCase()}</button><div class="btn-grid btn-grid-2" style="margin-bottom:8px;">${config.heroes.slice(1).map(c=>`<button onclick="setCategory('${c}', this)" class="cat-secondary cat-btn"><span>${catEmojis[c]||'👕'}</span> ${c}</button>`).join('')}</div><div class="btn-grid btn-grid-4">${config.others.map(c=>`<button onclick="setCategory('${c}', this)" class="cat-other cat-btn">${c}</button>`).join('')}</div>`; }
+        function renderSubCategories(superCat) { const config = categoryConfig[superCat]; const container = document.getElementById('sub-categories'); container.innerHTML = `<button onclick="setCategory('${config.heroes[0]}', this)" class="cat-hero cat-btn"><span style="font-size:20px;">${catEmojis[config.heroes[0]]||'👕'}</span> ${config.heroes[0].toUpperCase()}</button><div class="btn-grid btn-grid-2" style="margin-bottom:8px;">${config.heroes.slice(1).map(c=>`<button onclick="setCategory('${c}', this)" class="cat-secondary cat-btn"><span>${catEmojis[c]||'👕'}</span> ${c}</button>`).join('')}</div><div class="btn-grid btn-grid-4">${config.others.map(c=>`<button onclick="setCategory('${c}', this)" class="cat-other cat-btn">${c}</button>`).join('')}</div>`; }
         function setCategory(cat, btn) { data.category = cat; document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); renderFabricCards(); renderMaterialCards(); updateValidation(); }
         
         function setTagStatus(status, btn) { data.tagStatus = status; document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('tag-details').classList.toggle('hidden', status !== 'has'); document.getElementById('material-tag-warning').classList.toggle('hidden', status === 'has'); updateValidation(); }
@@ -579,27 +701,38 @@
         function setCountry(country, btn) { data.country = country; document.querySelectorAll('.country-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         function setGender(gender, btn) { data.gender = gender; document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         function toggleColor(color, btn) { const idx = data.colors.indexOf(color); if(idx>-1){data.colors.splice(idx,1);btn.classList.remove('selected');} else{data.colors.push(color);btn.classList.add('selected');} updateValidation(); }
+        function setFade(fade, btn) { data.fade = fade; document.querySelectorAll('.fade-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); updateValidation(); }
         function setPattern(pattern, btn) { data.pattern = pattern; document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); updateValidation(); }
         function setSleeve(length, btn) { data.sleeveLength = length; document.querySelectorAll('.sleeve-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('sleeve-style-section').classList.toggle('hidden', length==='None'); updateValidation(); }
         function setSleeveStyle(style, btn) { data.sleeveStyle = style; document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
         function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); updateValidation(); }
         function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); updateValidation(); }
-        function setDefects(hasDefects, btn) { data.hasDefects = hasDefects; document.querySelectorAll('.defect-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); document.getElementById('defects-detail').classList.toggle('hidden', !hasDefects); if(!hasDefects)data.defectTypes=[]; updateValidation(); }
-        function toggleDefect(type, btn) { const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} }
+        function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); }
+        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.add('selected'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
+        function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null;} updateValidation(); }
+        function updateWeight() { data.weightLb = parseInt(document.getElementById('weight-lb').value); data.weightOz = parseInt(document.getElementById('weight-oz').value); updateValidation(); }
+        function focusSku() { document.getElementById('sku-input').focus(); }
         
-        function renderFabricCards() { const grid = document.getElementById('fabric-cards-grid'); const fabrics = fabricDB[data.category] || fabricDB['default']; grid.innerHTML = ''; fabrics.forEach(fab=>{ let dimmed = false; if(fabricFilters.stretch&&fab.traits.stretch!==fabricFilters.stretch)dimmed=true; if(fabricFilters.structure&&fab.traits.structure!==fabricFilters.structure)dimmed=true; if(fabricFilters.interior&&fab.traits.interior!==fabricFilters.interior)dimmed=true; const card = document.createElement('div'); card.className = `card ${fab.default?'priority-1':''} ${data.fabricType===fab.name?'selected':''} ${dimmed?'dimmed':''}`; card.innerHTML = `<button class="card-help" onclick="event.stopPropagation();">?</button><div class="card-name">${fab.name}</div><div class="card-desc">${fab.desc}</div>`; if(!dimmed)card.onclick = ()=>{ data.fabricType=fab.name; renderFabricCards(); updateValidation(); }; grid.appendChild(card); }); }
-        function toggleFabricHelp() { const panel = document.getElementById('fabric-help-panel'); panel.classList.toggle('hidden'); }
-        function toggleFabricFilter(type, value, btn) { if(fabricFilters[type]===value){fabricFilters[type]=null;btn.classList.remove('active');} else{fabricFilters[type]=value;btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');} renderFabricCards(); const helper = document.getElementById('fabric-helper'); let advice = ''; if(fabricFilters.interior==='fuzzy')advice='💡 Fuzzy inside = Fleece'; else if(fabricFilters.interior==='loops')advice='💡 Loops inside = French Terry'; else if(fabricFilters.structure==='diagonal')advice='💡 Diagonal = Denim or Twill'; if(advice){helper.innerHTML=advice;helper.classList.remove('hidden');} else helper.classList.add('hidden'); }
+        function renderFabricCards() { const grid = document.getElementById('fabric-cards-grid'); const fabrics = fabricDB[data.category] || fabricDB['default']; grid.innerHTML = ''; fabrics.forEach(fab=>{ let dimmed = false; if(fabricFilters.stretch&&fab.traits.stretch!==fabricFilters.stretch)dimmed=true; if(fabricFilters.interior&&fab.traits.interior!==fabricFilters.interior)dimmed=true; const card = document.createElement('div'); card.className = `card ${fab.default?'priority-1':''} ${data.fabricType===fab.name?'selected':''} ${dimmed?'dimmed':''}`; card.innerHTML = `<button class="card-help" onclick="event.stopPropagation();">?</button><div class="card-name">${fab.name}</div><div class="card-desc">${fab.desc}</div>`; if(!dimmed)card.onclick = ()=>{ data.fabricType=fab.name; document.getElementById('wash-section').classList.toggle('hidden', fab.name!=='Denim'); renderFabricCards(); updateValidation(); }; grid.appendChild(card); }); }
+        function toggleFabricHelp() { document.getElementById('fabric-help-panel').classList.toggle('hidden'); }
+        function toggleFabricFilter(type, value, btn) { if(fabricFilters[type]===value){fabricFilters[type]=null;btn.classList.remove('active');} else{fabricFilters[type]=value;btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');} renderFabricCards(); const helper = document.getElementById('fabric-helper'); let advice = ''; if(fabricFilters.interior==='fuzzy')advice='💡 Fuzzy inside = Fleece'; else if(fabricFilters.interior==='loops')advice='💡 Loops inside = French Terry'; if(advice){helper.innerHTML=advice;helper.classList.remove('hidden');} else helper.classList.add('hidden'); }
         
-        function renderMaterialCards() { const grid = document.getElementById('material-cards-grid'); const materials = materialDB[data.category] || materialDB['default']; grid.innerHTML = ''; materials.forEach(mat=>{ let dimmed = false; if(materialFilters.temp&&mat.traits.temp!==materialFilters.temp)dimmed=true; if(materialFilters.shine&&mat.traits.shine!==materialFilters.shine)dimmed=true; if(materialFilters.feel&&mat.traits.feel!==materialFilters.feel)dimmed=true; const card = document.createElement('div'); card.className = `card ${mat.default?'priority-1':''} ${data.material===mat.name?'selected':''} ${dimmed?'dimmed':''}`; card.innerHTML = `<button class="card-help" onclick="event.stopPropagation();">?</button><div class="card-name">${mat.name}</div><div class="card-desc">${mat.desc}</div>`; if(!dimmed)card.onclick = ()=>{ data.material=mat.name; renderMaterialCards(); updateValidation(); }; grid.appendChild(card); }); }
-        function toggleMaterialHelp() { const panel = document.getElementById('material-help-panel'); panel.classList.toggle('hidden'); }
-        function toggleMaterialFilter(type, value, btn) { if(materialFilters[type]===value){materialFilters[type]=null;btn.classList.remove('active');} else{materialFilters[type]=value;btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');} renderMaterialCards(); const helper = document.getElementById('material-helper'); let advice = ''; if(materialFilters.temp==='cool'&&materialFilters.shine==='matte'&&materialFilters.feel==='soft')advice='💡 Almost certainly Cotton!'; else if(materialFilters.temp==='warm'&&materialFilters.shine==='sheen')advice='💡 Likely Polyester'; else if(materialFilters.temp==='cool')advice='💡 Cool = Cotton, Linen, Rayon'; if(advice){helper.innerHTML=advice;helper.classList.remove('hidden');} else helper.classList.add('hidden'); }
+        function renderMaterialCards() { const grid = document.getElementById('material-cards-grid'); const materials = materialDB[data.category] || materialDB['default']; grid.innerHTML = ''; materials.forEach(mat=>{ let dimmed = false; if(materialFilters.temp&&mat.traits.temp!==materialFilters.temp)dimmed=true; if(materialFilters.shine&&mat.traits.shine!==materialFilters.shine)dimmed=true; const card = document.createElement('div'); card.className = `card ${mat.default?'priority-1':''} ${data.material===mat.name?'selected':''} ${dimmed?'dimmed':''}`; card.innerHTML = `<button class="card-help" onclick="event.stopPropagation();">?</button><div class="card-name">${mat.name}</div><div class="card-desc">${mat.desc}</div>`; if(!dimmed)card.onclick = ()=>{ data.material=mat.name; renderMaterialCards(); updateValidation(); }; grid.appendChild(card); }); }
+        function toggleMaterialHelp() { document.getElementById('material-help-panel').classList.toggle('hidden'); }
+        function toggleMaterialFilter(type, value, btn) { if(materialFilters[type]===value){materialFilters[type]=null;btn.classList.remove('active');} else{materialFilters[type]=value;btn.parentElement.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');} renderMaterialCards(); const helper = document.getElementById('material-helper'); let advice = ''; if(materialFilters.temp==='cool'&&materialFilters.shine==='matte')advice='💡 Likely Cotton!'; else if(materialFilters.temp==='warm'&&materialFilters.shine==='sheen')advice='💡 Likely Polyester'; if(advice){helper.innerHTML=advice;helper.classList.remove('hidden');} else helper.classList.add('hidden'); }
         
-        function updateValidation() { const checks = { category:!!data.category, tag:!!data.tagStatus, color:data.colors.length>0, pattern:!!data.pattern, 'fabric-type':!!data.fabricType, material:!!data.material, construction:!!data.sleeveLength, feel:!!data.thickness&&!!data.layers, condition:data.hasDefects!==null, sku:!!data.sku }; Object.entries(checks).forEach(([key,ok])=>{ const el = document.getElementById(`check-${key}`); if(el){el.innerHTML=ok?'✓':'○';el.classList.toggle('complete',ok);} }); const allRequired = checks.category&&checks.tag&&checks.color&&checks.pattern&&checks['fabric-type']&&checks.material&&checks.construction&&checks.feel&&checks.condition&&checks.sku; const hasPhotos = data.mainPhotos.length>0; document.getElementById('submit-btn').disabled = !(allRequired&&hasPhotos); }
+        function updateValidation() { 
+            const checks = { category:!!data.category, tag:!!data.tagStatus, color:data.colors.length>0, fade:!!data.fade, pattern:!!data.pattern, 'fabric-type':!!data.fabricType, material:!!data.material, construction:!!data.sleeveLength, feel:!!data.thickness&&!!data.layers, condition:data.hasDefects!==null, weight:data.weightLb>0||data.weightOz>0, sku:!!data.sku }; 
+            Object.entries(checks).forEach(([key,ok])=>{ const el = document.getElementById(`check-${key}`); if(el){el.innerHTML=ok?'✓':'○';el.classList.toggle('complete',ok);} }); 
+            const allRequired = checks.category&&checks.tag&&checks.color&&checks.fade&&checks.pattern&&checks['fabric-type']&&checks.material&&checks.construction&&checks.feel&&checks.condition&&checks.weight&&checks.sku; 
+            const hasPhotos = data.mainPhotos.length>0; 
+            document.getElementById('submit-btn').disabled = !(allRequired&&hasPhotos);
+            if(currentStep===4) updateReviewCards();
+        }
         
         function submitItem() { recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); }
-        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],pattern:'',fabricType:'',material:'',sleeveLength:'',sleeveStyle:'',stitch:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],sku:'',mainPhotos:[],tagPhotos:[],defectPhotos:[]}; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('defects-detail').classList.add('hidden'); fabricFilters={stretch:null,structure:null,interior:null}; materialFilters={temp:null,shine:null,feel:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); updatePhotoGrids(); updateValidation(); goToStep(1); }
+        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',fabricType:'',wash:'',material:'',sleeveLength:'',sleeveStyle:'',stitch:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,mainPhotos:[],tagPhotos:[],defectPhotos:[]}; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('wash-section').classList.add('hidden'); fabricFilters={stretch:null,interior:null}; materialFilters={temp:null,shine:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); updatePhotoGrids(); updateValidation(); goToStep(1); }
         
         function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v98')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
         function saveStats() { try{localStorage.setItem('vl_stats_v98',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
