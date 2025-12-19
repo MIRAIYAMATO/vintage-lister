@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.12 - Desktop Station</title>
+    <title>VintageLister v99.13 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
@@ -308,7 +308,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.12 Desktop Station</div>
+        <div class="pin-version">v99.13 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -346,7 +346,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.12</span>
+                    <span class="version-badge">v99.13</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -945,7 +945,7 @@
                 <select id="camera-select" class="camera-select" onchange="switchCamera(this.value)"><option value="">Select Camera...</option></select>
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 BRIO</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
-                <span style="background:#16a34a;color:white;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;">FULL RES</span>
+                <button onclick="forceMaxResolution()" style="background:#16a34a;color:white;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;border:none;cursor:pointer;" title="Click to force maximum resolution">FULL RES</button>
                 <div id="camera-status" class="camera-status">No camera</div>
             </div>
             <div class="camera-view">
@@ -1028,7 +1028,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.12: fabricDB with full traits (stretch, surface, interior)
+        // V99.13: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1287,7 +1287,7 @@
             ]
         };
 
-        // V99.12: patternDB with traits for dynamic pattern identification
+        // V99.13: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1312,7 +1312,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.12: Tag Location Database - Where to find tags by category
+        // V99.13: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1519,7 +1519,18 @@
         
         async function enumerateCameras() { 
             try { 
-                await navigator.mediaDevices.getUserMedia({video:true}); 
+                // IMPORTANT: Request permission with HIGH resolution to avoid Chrome caching low res
+                console.log('📷 Requesting camera permission with high resolution hint...');
+                const permStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 3840 }, 
+                        height: { ideal: 2160 } 
+                    }
+                }); 
+                // Stop permission stream immediately
+                permStream.getTracks().forEach(t => t.stop());
+                await new Promise(r => setTimeout(r, 300));
+                
                 const devices = await navigator.mediaDevices.enumerateDevices(); 
                 const videoDevices = devices.filter(d=>d.kind==='videoinput'); 
                 const select = document.getElementById('camera-select'); 
@@ -1550,7 +1561,8 @@
                 // Start with main camera if detected
                 if(mainCameraId) {
                     select.value = mainCameraId;
-                    switchCamera(mainCameraId);
+                    // For BRIO, use aggressive max resolution
+                    await switchCameraMaxRes(mainCameraId);
                 } else if(videoDevices.length > 0) {
                     // Fallback to first camera
                     mainCameraId = videoDevices[0].deviceId;
@@ -1561,6 +1573,185 @@
                 updateCameraIndicator();
             } catch(err){ console.error('Camera error:', err); } 
         }
+        
+        // V99.13: Aggressive max resolution switch for BRIO
+        async function switchCameraMaxRes(deviceId) {
+            if(!deviceId) return;
+            
+            console.log('📷 switchCameraMaxRes: Forcing 4K...');
+            const video = document.getElementById('camera-video');
+            video.classList.add('switching');
+            
+            // Stop everything first
+            stopStabilizer();
+            if(currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            // Longer delay for camera to fully release
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Try 4K first, then fall back
+            const resolutions = [
+                { w: 3840, h: 2160, name: '4K' },
+                { w: 2560, h: 1440, name: '1440p' },
+                { w: 1920, h: 1080, name: '1080p' },
+                { w: 1280, h: 720, name: '720p' }
+            ];
+            
+            for(const res of resolutions) {
+                try {
+                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
+                    
+                    // Use EXACT constraint - this forces the resolution or fails
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: deviceId },
+                            width: { exact: res.w },
+                            height: { exact: res.h }
+                        }
+                    });
+                    
+                    const track = currentStream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    console.log(`✅ Got ${settings.width}x${settings.height}`);
+                    
+                    video.srcObject = currentStream;
+                    video.style.display = 'block';
+                    document.getElementById('camera-placeholder').style.display = 'none';
+                    document.getElementById('camera-overlay').style.display = 'block';
+                    document.getElementById('camera-status').textContent = 'LIVE';
+                    document.getElementById('camera-status').classList.add('live');
+                    activeCameraId = deviceId;
+                    document.getElementById('camera-select').value = deviceId;
+                    
+                    video.onloadedmetadata = () => {
+                        const w = video.videoWidth;
+                        const h = video.videoHeight;
+                        console.log(`📷 Video ready: ${w}x${h}`);
+                        document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+                        
+                        const resEl = document.getElementById('camera-resolution');
+                        if(w >= 3800) {
+                            resEl.style.color = '#22c55e';
+                        } else if(w >= 1900) {
+                            resEl.style.color = '#3b82f6';
+                        } else if(w >= 1200) {
+                            resEl.style.color = '#f59e0b';
+                        } else {
+                            resEl.style.color = '#ef4444';
+                        }
+                        
+                        video.classList.remove('switching');
+                        setTimeout(() => startStabilizer(), 200);
+                    };
+                    
+                    updateCameraIndicator();
+                    return; // Success!
+                    
+                } catch(err) {
+                    console.log(`❌ ${res.name} failed: ${err.message}`);
+                    if(currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+                    await new Promise(r => setTimeout(r, 200));
+                }
+            }
+            
+            // All exact resolutions failed - fall back to ideal constraints
+            console.log('⚠️ Exact constraints failed, trying ideal...');
+            await switchCamera(deviceId);
+        }
+        
+        // Force maximum resolution by restarting camera with strict constraints
+        async function forceMaxResolution() {
+            if(!activeCameraId) {
+                alert('No camera active. Select a camera first.');
+                return;
+            }
+            
+            console.log('🔄 FULL RES: Forcing maximum resolution...');
+            document.getElementById('camera-resolution').textContent = 'Switching...';
+            document.getElementById('camera-resolution').style.color = '#f59e0b';
+            
+            const video = document.getElementById('camera-video');
+            
+            // Stop current stream completely
+            if(currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            // Wait for camera to fully release
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Get max capabilities
+            let maxWidth = 1920, maxHeight = 1080;
+            try {
+                const tempStream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: activeCameraId } }
+                });
+                const track = tempStream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                
+                if(capabilities.width?.max) maxWidth = capabilities.width.max;
+                if(capabilities.height?.max) maxHeight = capabilities.height.max;
+                
+                console.log(`📷 FULL RES: Max capability: ${maxWidth}x${maxHeight}`);
+                tempStream.getTracks().forEach(t => t.stop());
+                await new Promise(r => setTimeout(r, 300));
+            } catch(e) {
+                console.log('📷 FULL RES: Could not get capabilities, trying defaults');
+            }
+            
+            // Now request EXACT max resolution
+            try {
+                const constraints = {
+                    video: {
+                        deviceId: { exact: activeCameraId },
+                        width: { ideal: maxWidth, min: Math.min(maxWidth, 1920) },
+                        height: { ideal: maxHeight, min: Math.min(maxHeight, 1080) }
+                    }
+                };
+                
+                console.log(`📷 FULL RES: Requesting ${maxWidth}x${maxHeight}...`);
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                document.getElementById('camera-placeholder').style.display = 'none';
+                document.getElementById('camera-overlay').style.display = 'block';
+                document.getElementById('camera-status').textContent = 'LIVE';
+                document.getElementById('camera-status').classList.add('live');
+                
+                video.onloadedmetadata = () => {
+                    const actualW = video.videoWidth;
+                    const actualH = video.videoHeight;
+                    console.log(`✅ FULL RES: Got ${actualW}x${actualH}`);
+                    document.getElementById('camera-resolution').textContent = `${actualW}×${actualH}`;
+                    
+                    if(actualW >= 3800) {
+                        document.getElementById('camera-resolution').style.color = '#22c55e';
+                        alert(`✅ 4K Resolution Active!\n${actualW}×${actualH}\n\nPhotos will capture at full 4K for AI processing.`);
+                    } else if(actualW >= 1900) {
+                        document.getElementById('camera-resolution').style.color = '#3b82f6';
+                        alert(`📷 1080p Resolution Active\n${actualW}×${actualH}\n\nCamera max capability: ${maxWidth}×${maxHeight}\n\nIf you expected higher, check:\n• USB 3.0 port (blue inside)\n• Logitech Camera Settings app\n• Close other apps using camera`);
+                    } else {
+                        document.getElementById('camera-resolution').style.color = '#ef4444';
+                        alert(`⚠️ Low Resolution: ${actualW}×${actualH}\n\nTroubleshooting:\n• Use USB 3.0 port\n• Check Logitech Camera Settings app\n• Restart browser`);
+                    }
+                };
+                
+            } catch(err) {
+                console.error('📷 FULL RES: Failed:', err);
+                alert(`Could not set ${maxWidth}×${maxHeight}.\n\nError: ${err.message}\n\nTry:\n• Restart browser\n• Check USB connection\n• Use Logitech Camera Settings app`);
+                // Fall back to normal switch
+                switchCamera(activeCameraId);
+            }
+        }
+        
         async function switchCamera(deviceId) { 
             if(!deviceId) {
                 console.error('❌ switchCamera called with no deviceId');
@@ -1585,48 +1776,70 @@
             }
             
             // Small delay to let camera release
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 200));
             
-            // Different resolution preferences for different cameras
-            let resolutions;
-            const isBrio = deviceId === mainCameraId;
-            
-            if(isBrio) {
-                // BRIO supports 4K
-                resolutions = [
-                    { width: 3840, height: 2160, name: '4K' },
-                    { width: 1920, height: 1080, name: '1080p' },
-                    { width: 1280, height: 720, name: '720p' }
-                ];
-            } else {
-                // C922X maxes at 1080p
-                resolutions = [
-                    { width: 1920, height: 1080, name: '1080p' },
-                    { width: 1280, height: 720, name: '720p' },
-                    { width: 640, height: 480, name: '480p' }
-                ];
+            // STEP 1: Get camera capabilities first
+            let maxWidth = 1920, maxHeight = 1080;
+            try {
+                const tempStream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId } }
+                });
+                const track = tempStream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                
+                if(capabilities.width?.max) maxWidth = capabilities.width.max;
+                if(capabilities.height?.max) maxHeight = capabilities.height.max;
+                
+                console.log(`📷 Camera capabilities: max ${maxWidth}x${maxHeight}`);
+                tempStream.getTracks().forEach(t => t.stop());
+                await new Promise(r => setTimeout(r, 100));
+            } catch(e) {
+                console.log('📷 Could not get capabilities, using defaults');
             }
             
+            // STEP 2: Request the MAXIMUM resolution with exact/min constraints
+            const isBrio = deviceId === mainCameraId;
             let success = false;
+            
+            // Try exact max resolution first, then fall back
+            const resolutions = [];
+            
+            if(maxWidth >= 3840) {
+                resolutions.push({ width: 3840, height: 2160, name: '4K' });
+            }
+            if(maxWidth >= 1920) {
+                resolutions.push({ width: 1920, height: 1080, name: '1080p' });
+            }
+            resolutions.push({ width: 1280, height: 720, name: '720p' });
+            resolutions.push({ width: 640, height: 480, name: '480p' });
             
             for(const res of resolutions) {
                 try {
-                    console.log(`📷 Trying ${res.name} (${res.width}x${res.height})...`);
+                    console.log(`📷 Requesting ${res.name} (${res.width}x${res.height}) with min constraint...`);
                     
+                    // Use 'min' to FORCE at least this resolution, 'ideal' for target
                     const constraints = {
                         video: {
                             deviceId: { exact: deviceId },
-                            width: { ideal: res.width },
-                            height: { ideal: res.height }
+                            width: { min: res.width, ideal: res.width },
+                            height: { min: res.height, ideal: res.height }
                         }
                     };
                     
                     currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                     
-                    // Get actual track settings
+                    // Verify we got what we asked for
                     const track = currentStream.getVideoTracks()[0];
                     const settings = track.getSettings();
-                    console.log(`✅ Got ${res.name}: ${settings.width}x${settings.height}`);
+                    console.log(`✅ Got stream: ${settings.width}x${settings.height}`);
+                    
+                    // Check if resolution is acceptable
+                    if(settings.width < res.width * 0.9) {
+                        console.log(`⚠️ Resolution too low (${settings.width} < ${res.width}), trying next...`);
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                        continue;
+                    }
                     
                     video.srcObject = currentStream; 
                     video.style.display = 'block'; 
@@ -1638,7 +1851,7 @@
                     document.getElementById('camera-select').value = deviceId;
                     
                     video.onloadedmetadata = () => {
-                        console.log(`📷 Video element: ${video.videoWidth}x${video.videoHeight}`);
+                        console.log(`📷 Video element ready: ${video.videoWidth}x${video.videoHeight}`);
                         document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
                         
                         // Color code resolution
@@ -1665,7 +1878,7 @@
                     break;
                     
                 } catch(err) {
-                    console.log(`❌ ${res.name} not supported:`, err.message);
+                    console.log(`❌ ${res.name} failed:`, err.message);
                 }
             }
             
@@ -1720,8 +1933,8 @@
             // Auto-switch cameras based on mode
             if(mode === 'main') {
                 if(mainCameraId && activeCameraId !== mainCameraId) {
-                    console.log('📷 Switching to MAIN camera (BRIO)...');
-                    switchCamera(mainCameraId);
+                    console.log('📷 Switching to MAIN camera (BRIO) with max res...');
+                    switchCameraMaxRes(mainCameraId);
                 } else {
                     console.log('📷 Already on MAIN camera or mainCameraId not set');
                 }
@@ -2450,7 +2663,7 @@
             }
         }
         
-        // V99.12: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.13: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -2556,7 +2769,7 @@
             }
         }
         
-        // V99.12: Pattern Cards with ? help buttons
+        // V99.13: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -2685,7 +2898,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.12: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.13: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -2739,7 +2952,7 @@
             }
         }
         
-        // V99.12: Tag Location Helper Functions
+        // V99.13: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -2784,7 +2997,7 @@
             content.innerHTML = html;
         }
         
-        // V99.12: Pattern Helper Functions
+        // V99.13: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -2814,7 +3027,7 @@
             }
         }
         
-        // V99.12: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.13: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -2932,8 +3145,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.12')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.12',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.13')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.13',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
