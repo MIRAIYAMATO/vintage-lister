@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.16 - Desktop Station</title>
+    <title>VintageLister v99.17 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
@@ -308,7 +308,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.16 Desktop Station</div>
+        <div class="pin-version">v99.17 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -346,7 +346,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.16</span>
+                    <span class="version-badge">v99.17</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -939,10 +939,10 @@
                         <div class="section-label"><span id="check-sku" class="check-circle">○</span> SKU</div>
                         <div class="sku-row">
                             <input type="text" id="sku-input" class="form-input" placeholder="Scan or type SKU..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onSkuInput()" onkeydown="handleSkuKeydown(event)" style="font-size:18px;font-family:monospace;">
-                            <button onclick="activateSkuScan()" class="scan-btn" title="Scan with C922X camera">📷</button>
+                            <button onclick="activateSkuScan()" class="scan-btn" title="Scan with phone camera">📷</button>
                         </div>
                         <div id="sku-status" style="font-size:10px;color:var(--color-text-muted);margin-top:4px;"></div>
-                        <div id="sku-camera-status" style="font-size:10px;color:#16a34a;margin-top:4px;display:none;">📷 C922X active - scan barcode now</div>
+                        <div id="sku-camera-status" style="font-size:10px;color:#16a34a;margin-top:4px;display:none;">📱 Phone active - scan barcode now</div>
                     </div>
                     
                     <!-- FLAG AS UNUSUAL -->
@@ -1037,13 +1037,13 @@
             </div>
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio</small></button>
-                <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small id="tag-cam-label" style="font-size:9px;opacity:0.7;">Phone</small></button>
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
                 </div>
-                <button class="mode-btn" id="mode-defect" onclick="setPhotoMode('defect')">⚠️ Defects<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
-                <button class="mode-btn mode-btn-sku" id="mode-sku" onclick="setPhotoMode('sku')">📷 SKU<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-defect" onclick="setPhotoMode('defect')">⚠️ Defects<br><small id="defect-cam-label" style="font-size:9px;opacity:0.7;">Phone</small></button>
+                <button class="mode-btn mode-btn-sku" id="mode-sku" onclick="setPhotoMode('sku')">📷 SKU<br><small id="sku-cam-label" style="font-size:9px;opacity:0.7;">Phone</small></button>
             </div>
         </div>
         
@@ -1083,6 +1083,7 @@
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
+        let secondaryCameraType = 'c922x'; // 'phone' or 'c922x'
         let barcodeDetector = null, barcodeScanInterval = null;
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
@@ -1098,7 +1099,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.16: fabricDB with full traits (stretch, surface, interior)
+        // V99.17: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1357,7 +1358,7 @@
             ]
         };
 
-        // V99.16: patternDB with traits for dynamic pattern identification
+        // V99.17: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1382,7 +1383,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.16: Tag Location Database - Where to find tags by category
+        // V99.17: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1623,8 +1624,14 @@
                         mainCameraId = device.deviceId;
                         console.log('  → Set as MAIN camera (Brio 4K)');
                     }
-                    if(label.includes('c922') || label.includes('922')) {
+                    // Secondary camera: DroidCam (phone) or C922X as fallback
+                    if(label.includes('droidcam') || label.includes('droid cam')) {
                         secondaryCameraId = device.deviceId;
+                        secondaryCameraType = 'phone';
+                        console.log('  → Set as SECONDARY camera (📱 Phone via DroidCam)');
+                    } else if((label.includes('c922') || label.includes('922')) && !secondaryCameraId) {
+                        secondaryCameraId = device.deviceId;
+                        secondaryCameraType = 'c922x';
                         console.log('  → Set as SECONDARY camera (C922X)');
                     }
                 });
@@ -1642,10 +1649,23 @@
                 }
                 
                 updateCameraIndicator();
+                updateModeButtonLabels();
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.16: Aggressive max resolution switch for BRIO
+        // Update mode button labels based on detected cameras
+        function updateModeButtonLabels() {
+            const label = secondaryCameraType === 'phone' ? 'Phone' : 'C922X';
+            const tagLabel = document.getElementById('tag-cam-label');
+            const defectLabel = document.getElementById('defect-cam-label');
+            const skuLabel = document.getElementById('sku-cam-label');
+            if(tagLabel) tagLabel.textContent = label;
+            if(defectLabel) defectLabel.textContent = label;
+            if(skuLabel) skuLabel.textContent = label;
+            console.log(`📷 Mode button labels updated to: ${label}`);
+        }
+        
+        // V99.17: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -2016,7 +2036,7 @@
                 }
             } else if(mode === 'tag' || mode === 'defect' || mode === 'sku') {
                 if(secondaryCameraId && activeCameraId !== secondaryCameraId) {
-                    console.log('📷 Switching to SECONDARY camera (C922X)...');
+                    console.log(`📷 Switching to SECONDARY camera (${secondaryCameraType === 'phone' ? 'Phone' : 'C922X'})...`);
                     switchCamera(secondaryCameraId);
                 } else if(!secondaryCameraId) {
                     console.warn('⚠️ No secondary camera detected - using current camera');
@@ -2064,11 +2084,12 @@
                 indicator.textContent = '📦 BRIO (Main)';
                 indicator.style.background = '#3b82f6';
             } else if(activeCameraId === secondaryCameraId) {
+                const camName = secondaryCameraType === 'phone' ? '📱 Phone' : '📷 C922X';
                 if(photoMode === 'sku') {
-                    indicator.textContent = '📷 C922X (SKU Scan)';
+                    indicator.textContent = `${camName} (SKU Scan)`;
                     indicator.style.background = '#16a34a';
                 } else {
-                    indicator.textContent = '🏷️ C922X (Tag/Defect)';
+                    indicator.textContent = `${camName} (Tag/Defect)`;
                     indicator.style.background = '#f59e0b';
                 }
             } else {
@@ -2558,7 +2579,8 @@
             // Show status
             const statusEl = document.getElementById('sku-camera-status');
             statusEl.style.display = 'block';
-            statusEl.textContent = '📷 Switching to C922X...';
+            const camName = secondaryCameraType === 'phone' ? '📱 Phone' : '📷 C922X';
+            statusEl.textContent = `${camName} Switching...`;
             statusEl.style.color = '#f59e0b';
             
             // Switch to SKU photo mode (this will switch camera)
@@ -2573,7 +2595,7 @@
                 // Start barcode scanning
                 setTimeout(() => startBarcodeScanning(), 300);
             } else if(!secondaryCameraId) {
-                statusEl.textContent = '⚠️ No secondary camera detected - type SKU manually';
+                statusEl.textContent = '⚠️ No phone/secondary camera detected - type SKU manually';
                 statusEl.style.color = '#ef4444';
             } else {
                 statusEl.textContent = '⚠️ Camera switch may have failed - try again';
@@ -2631,7 +2653,7 @@
             }
         }
         
-        // V99.16: Camera-based Barcode Scanning using BarcodeDetector API
+        // V99.17: Camera-based Barcode Scanning using BarcodeDetector API
         async function initBarcodeDetector() {
             if('BarcodeDetector' in window) {
                 try {
@@ -2903,7 +2925,7 @@
             }
         }
         
-        // V99.16: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.17: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3009,7 +3031,7 @@
             }
         }
         
-        // V99.16: Pattern Cards with ? help buttons
+        // V99.17: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3138,7 +3160,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.16: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.17: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3192,7 +3214,7 @@
             }
         }
         
-        // V99.16: Tag Location Helper Functions
+        // V99.17: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -3237,7 +3259,7 @@
             content.innerHTML = html;
         }
         
-        // V99.16: Pattern Helper Functions
+        // V99.17: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -3267,7 +3289,7 @@
             }
         }
         
-        // V99.16: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.17: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3389,8 +3411,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.16')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.16',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.17')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.17',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
