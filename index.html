@@ -3,12 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.26 - Desktop Station</title>
+    <title>VintageLister v99.28 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
+        :root { 
+            /* Primary Colors */
+            --color-primary: #3b82f6; 
+            --color-primary-dark: #2563eb; 
+            --color-primary-light: #dbeafe;
+            --color-primary-lighter: #eff6ff;
+            
+            /* Status Colors */
+            --color-success: #22c55e;
+            --color-success-dark: #16a34a;
+            --color-warning: #f59e0b;
+            --color-warning-dark: #d97706;
+            --color-warning-light: #fef3c7;
+            --color-warning-lighter: #fffbeb;
+            --color-warning-text: #92400e;
+            --color-error: #ef4444;
+            --color-error-dark: #dc2626;
+            --color-error-light: #fef2f2;
+            
+            /* Neutral Colors */
+            --color-surface: #ffffff; 
+            --color-background: #f1f5f9; 
+            --color-text: #1e293b; 
+            --color-text-muted: #64748b; 
+            --color-text-light: #94a3b8;
+            --color-border: #e2e8f0;
+            --color-border-dark: #cbd5e1;
+            
+            /* Dark UI Colors */
+            --color-dark: #1e293b;
+            --color-dark-lighter: #334155;
+            --color-dark-border: #475569;
+            
+            /* Spacing */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 10px;
+            --radius-xl: 12px;
+            
+            /* Transitions */
+            --transition-fast: 0.1s ease;
+            --transition-normal: 0.2s ease;
+        }
+        
+        /* Utility Classes */
+        .text-success { color: var(--color-success) !important; }
+        .text-success-dark { color: var(--color-success-dark) !important; }
+        .text-error { color: var(--color-error) !important; }
+        .text-warning { color: var(--color-warning) !important; }
+        .text-warning-text { color: var(--color-warning-text) !important; }
+        .text-primary { color: var(--color-primary) !important; }
+        .text-muted { color: var(--color-text-muted) !important; }
+        .bg-success { background: var(--color-success) !important; }
+        .bg-error { background: var(--color-error) !important; }
+        .bg-warning { background: var(--color-warning-light) !important; }
         * { box-sizing: border-box; }
         html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        
+        /* TOAST NOTIFICATIONS */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: #1e293b; color: white; padding: 14px 20px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; min-width: 280px; max-width: 400px; animation: slideIn 0.3s ease; pointer-events: auto; }
+        .toast.success { background: linear-gradient(135deg, #059669, #047857); }
+        .toast.error { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+        .toast.warning { background: linear-gradient(135deg, #d97706, #b45309); }
+        .toast.info { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .toast-icon { font-size: 20px; flex-shrink: 0; }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+        .toast-message { font-size: 12px; opacity: 0.9; line-height: 1.4; }
+        .toast-close { background: rgba(255,255,255,0.2); border: none; color: white; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        .toast-close:hover { background: rgba(255,255,255,0.3); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .toast.hiding { animation: slideOut 0.3s ease forwards; }
         
         /* PIN LOCK SCREEN */
         .pin-screen { position: fixed; inset: 0; z-index: 1000; background: linear-gradient(135deg, #1e293b, #0f172a); display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -16,13 +87,15 @@
         .pin-box { background: white; border-radius: 20px; padding: 32px; width: 340px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
         .pin-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
         .pin-subtitle { color: var(--color-text-muted); font-size: 14px; margin-bottom: 20px; }
-        .pin-input { width: 100%; padding: 16px; font-size: 32px; text-align: center; letter-spacing: 12px; border: 2px solid var(--color-border); border-radius: 12px; font-family: monospace; margin-bottom: 16px; }
+        .pin-input { width: 100%; padding: 16px; font-size: 32px; text-align: center; letter-spacing: 12px; border: 2px solid var(--color-border); border-radius: var(--radius-xl); font-family: monospace; margin-bottom: 16px; transition: var(--transition-fast); }
         .pin-input:focus { outline: none; border-color: var(--color-primary); }
         .pin-input.shake { animation: shake 0.3s; border-color: var(--color-error); }
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
-        .photographer-select { width: 100%; padding: 12px; border: 2px solid var(--color-border); border-radius: 10px; font-size: 14px; margin-bottom: 20px; }
-        .pin-btn { width: 100%; padding: 16px; background: var(--color-primary); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+        .photographer-select { width: 100%; padding: 12px; border: 2px solid var(--color-border); border-radius: var(--radius-lg); font-size: 14px; margin-bottom: 20px; transition: var(--transition-fast); }
+        .photographer-select:focus { outline: none; border-color: var(--color-primary); }
+        .pin-btn { width: 100%; padding: 16px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-xl); font-size: 16px; font-weight: 700; cursor: pointer; transition: var(--transition-fast); }
         .pin-btn:hover { background: var(--color-primary-dark); }
+        .pin-btn:active { transform: scale(0.98); }
         .pin-version { color: #475569; font-size: 12px; margin-top: 16px; }
         
         .desktop-layout { display: grid; grid-template-columns: 420px 1fr 280px; height: 100vh; overflow: hidden; }
@@ -58,7 +131,7 @@
         .check-circle { width: 20px; height: 20px; border-radius: 50%; background: var(--color-border); color: #999; display: flex; align-items: center; justify-content: center; font-size: 11px; }
         .check-circle.complete { background: var(--color-success); color: white; }
         
-        .btn { padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: all 0.1s; text-align: center; }
+        .btn { padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid transparent; transition: var(--transition-fast); text-align: center; }
         .btn:active { transform: scale(0.97); }
         .btn-tertiary { background: white; color: var(--color-text-muted); border: 1px solid var(--color-border); }
         .btn-tertiary:hover { background: var(--color-background); }
@@ -74,15 +147,15 @@
         .btn-hero.selected { background: var(--color-primary-dark); box-shadow: 0 0 0 3px rgba(59,130,246,0.3); }
         /* btn-secondary = white with gray border (other options) */
         .btn-secondary { background: white; color: var(--color-text); border: 2px solid var(--color-border); }
-        .btn-secondary:hover { background: var(--color-background); }
+        .btn-secondary:hover { background: var(--color-background); border-color: var(--color-border-dark); }
         .btn-secondary:active { transform: scale(0.98); }
-        .btn-secondary.selected { border-color: var(--color-primary); background: #dbeafe; }
+        .btn-secondary.selected { border-color: var(--color-primary); background: var(--color-primary-light); }
         .btn-grid { display: grid; gap: 8px; }
         .btn-grid-2 { grid-template-columns: repeat(2, 1fr); }
         .btn-grid-3 { grid-template-columns: repeat(3, 1fr); }
         .btn-grid-4 { grid-template-columns: repeat(4, 1fr); }
         
-        .form-input, .form-select { width: 100%; padding: 10px 12px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 14px; }
+        .form-input, .form-select { width: 100%; padding: 10px 12px; border: 2px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; transition: var(--transition-fast); }
         .form-input:focus, .form-select:focus { outline: none; border-color: var(--color-primary); }
         
         .sub-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; margin: 10px 0 8px 0; }
@@ -144,11 +217,15 @@
         .ref-modal-close { width: 100%; padding: 12px; background: #f1f5f9; color: var(--color-text-muted); border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
         
         /* Help panel */
-        .help-btn { width: 100%; padding: 10px; background: #fef3c7; border: 2px dashed #f59e0b; border-radius: 8px; font-size: 12px; font-weight: 600; color: #92400e; cursor: pointer; }
+        .help-btn { width: 100%; padding: 10px; background: var(--color-warning-light); border: 2px dashed var(--color-warning); border-radius: var(--radius-md); font-size: 12px; font-weight: 600; color: var(--color-warning-text); cursor: pointer; transition: var(--transition-fast); }
+        .help-btn:hover { background: var(--color-warning-lighter); border-color: var(--color-warning-dark); }
+        .help-btn:active { transform: scale(0.98); }
         .help-panel { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px; margin-top: 10px; }
         .help-panel.hidden { display: none; }
         .filter-row { display: flex; gap: 6px; margin-bottom: 8px; }
-        .filter-btn { flex: 1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: white; border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text-muted); cursor: pointer; }
+        .filter-btn { flex: 1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; transition: var(--transition-fast); }
+        .filter-btn:hover { background: var(--color-background); border-color: var(--color-border-dark); }
+        .filter-btn:active { transform: scale(0.97); }
         .filter-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
         .help-text { background: #fef3c7; border-radius: 6px; padding: 8px 10px; font-size: 11px; color: #92400e; margin-top: 8px; }
         .help-text.hidden { display: none; }
@@ -163,14 +240,17 @@
         
         /* Navigation */
         .nav-buttons { display: flex; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border); }
-        .nav-btn { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; }
+        .nav-btn { flex: 1; padding: 14px; border-radius: var(--radius-lg); font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: var(--transition-fast); }
+        .nav-btn:active { transform: scale(0.98); }
         .nav-btn-back { background: white; color: var(--color-text); border: 2px solid var(--color-border); }
+        .nav-btn-back:hover { background: var(--color-background); border-color: var(--color-border-dark); }
         .nav-btn-next { background: var(--color-primary); color: white; flex: 2; }
         .nav-btn-next:hover { background: var(--color-primary-dark); }
         
         /* Camera */
         .camera-header { background: #111; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid #333; flex-shrink: 0; }
-        .camera-select { background: #222; border: 1px solid #444; color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; flex: 1; max-width: 220px; }
+        .camera-select { background: var(--color-dark); border: 1px solid var(--color-dark-border); color: white; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; flex: 1; max-width: 220px; transition: var(--transition-fast); }
+        .camera-select:focus { outline: none; border-color: var(--color-primary); }
         .camera-status { font-size: 11px; font-weight: 700; color: #555; }
         .camera-status.live { color: #22c55e; }
         .camera-status.live::before { content: '●'; margin-right: 6px; animation: pulse 2s infinite; }
@@ -199,17 +279,20 @@
         @keyframes pulse-green { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); } 50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); } }
         .stabilizer-text { color: white; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
         .camera-footer { background: #111; padding: 16px; display: flex; justify-content: center; align-items: center; gap: 16px; border-top: 1px solid #333; flex-shrink: 0; }
-        .shutter-btn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid #333; cursor: pointer; }
+        .shutter-btn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid var(--color-dark-border); cursor: pointer; transition: var(--transition-fast); }
         .shutter-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.3); }
-        .shutter-btn:active { transform: scale(0.95); background: #ddd; }
+        .shutter-btn:active { transform: scale(0.95); background: var(--color-background); }
         .shutter-btn.flash { animation: btnflash 0.15s; }
         @keyframes btnflash { 0%{background:white} 50%{background:var(--color-primary)} 100%{background:white} }
         .shutter-hint { color: #555; font-size: 11px; text-align: center; }
         .shutter-hint kbd { background: #333; padding: 3px 6px; border-radius: 4px; font-family: monospace; color: #aaa; }
-        .mode-btn { padding: 10px 16px; background: #222; border: 2px solid #333; color: #666; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1.3; min-width: 80px; }
+        .mode-btn { padding: 10px 16px; background: var(--color-dark); border: 2px solid var(--color-dark-border); color: var(--color-text-light); border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer; line-height: 1.3; min-width: 80px; transition: var(--transition-fast); }
+        .mode-btn:hover { border-color: var(--color-primary); }
+        .mode-btn:active { transform: scale(0.97); }
         .mode-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
-        .mode-btn.mode-btn-sku { background: #1a1a2e; border-color: #16a34a; }
-        .mode-btn.mode-btn-sku.active { background: #16a34a; border-color: #16a34a; color: white; }
+        .mode-btn.mode-btn-sku { background: var(--color-dark); border-color: var(--color-success); }
+        .mode-btn.mode-btn-sku:hover { border-color: var(--color-success-dark); }
+        .mode-btn.mode-btn-sku.active { background: var(--color-success); border-color: var(--color-success); color: white; }
         .mode-btn small { display: block; }
         
         /* Photos panel */
@@ -230,8 +313,15 @@
         .stat-value { font-size: 20px; font-weight: 800; }
         .stat-label { font-size: 9px; color: var(--color-text-muted); text-transform: uppercase; }
         
-        .reset-btn { padding: 6px 12px; background: var(--color-error); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
-        .submit-btn { width: 100%; padding: 16px; background: var(--color-success); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .reset-btn { padding: 6px 12px; background: var(--color-error); color: white; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; transition: var(--transition-fast); }
+        .reset-btn:hover { background: var(--color-error-dark); }
+        .reset-btn:active { transform: scale(0.97); }
+        .fullres-btn { background: var(--color-success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; border: none; cursor: pointer; transition: var(--transition-fast); }
+        .fullres-btn:hover { background: var(--color-success-dark); }
+        .fullres-btn:active { transform: scale(0.97); }
+        .submit-btn { width: 100%; padding: 16px; background: var(--color-success); color: white; border: none; border-radius: var(--radius-lg); font-size: 15px; font-weight: 700; cursor: pointer; transition: var(--transition-fast); }
+        .submit-btn:hover { background: var(--color-success-dark); }
+        .submit-btn:active { transform: scale(0.98); }
         .submit-btn:disabled { background: var(--color-border); cursor: not-allowed; }
         
         .flash-overlay { position: fixed; inset: 0; background: white; z-index: 500; opacity: 0; pointer-events: none; }
@@ -256,18 +346,20 @@
         .preview-nav.next { right: 20px; }
         .preview-nav:disabled { opacity: 0.3; cursor: not-allowed; }
         .preview-footer { display: flex; justify-content: center; gap: 12px; padding: 16px; background: #111; }
-        .preview-btn { padding: 12px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
-        .preview-btn-delete { background: #ef4444; color: white; }
-        .preview-btn-delete:hover { background: #dc2626; }
-        .preview-btn-close { background: #374151; color: white; }
-        .preview-btn-close:hover { background: #4b5563; }
+        .preview-btn { padding: 12px 24px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: var(--transition-fast); }
+        .preview-btn:active { transform: scale(0.97); }
+        .preview-btn-delete { background: var(--color-error); color: white; }
+        .preview-btn-delete:hover { background: var(--color-error-dark); }
+        .preview-btn-close { background: var(--color-dark-border); color: white; }
+        .preview-btn-close:hover { background: var(--color-text-muted); }
         .preview-counter { color: #9ca3af; font-size: 12px; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); }
         
         /* SKU with scan button */
         .sku-row { display: flex; gap: 8px; }
         .sku-row input { flex: 1; }
-        .scan-btn { background: #1e293b; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 18px; cursor: pointer; }
-        .scan-btn:hover { background: #334155; }
+        .scan-btn { background: var(--color-dark); color: white; border: none; padding: 10px 16px; border-radius: var(--radius-md); font-size: 18px; cursor: pointer; transition: var(--transition-fast); }
+        .scan-btn:hover { background: var(--color-dark-lighter); }
+        .scan-btn:active { transform: scale(0.97); }
         
         /* Review cards */
         .review-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
@@ -282,15 +374,19 @@
         .review-card-summary { font-size: 11px; color: var(--color-text-muted); line-height: 1.4; }
         .review-banner { background: var(--color-success); color: white; padding: 14px; border-radius: 10px; text-align: center; font-weight: 700; margin-bottom: 12px; }
         .flag-banner { background: #fef3c7; border: 2px solid #f59e0b; color: #92400e; padding: 12px; border-radius: 10px; text-align: center; font-weight: 700; margin-bottom: 12px; }
-        .flag-unusual-btn { width:100%; padding:14px; background:linear-gradient(135deg,#fffbeb,#fef3c7); border:2px dashed #f59e0b; border-radius:10px; font-weight:700; color:#92400e; cursor:pointer; margin-bottom:12px; text-align:center; transition:all 0.2s; }
-        .flag-unusual-btn:hover { background:linear-gradient(135deg,#fef3c7,#fde68a); }
-        .flag-unusual-btn.flagged { background:linear-gradient(135deg,#fde68a,#fbbf24); border-style:solid; border-color:#d97706; }
+        .flag-unusual-btn { width:100%; padding:14px; background:linear-gradient(135deg, var(--color-warning-lighter), var(--color-warning-light)); border:2px dashed var(--color-warning); border-radius: var(--radius-lg); font-weight:700; color: var(--color-warning-text); cursor:pointer; margin-bottom:12px; text-align:center; transition: var(--transition-normal); }
+        .flag-unusual-btn:hover { background:linear-gradient(135deg, var(--color-warning-light), #fde68a); }
+        .flag-unusual-btn:active { transform: scale(0.98); }
+        .flag-unusual-btn.flagged { background:linear-gradient(135deg,#fde68a,#fbbf24); border-style:solid; border-color: var(--color-warning-dark); }
         .elastic-section { background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-top:10px; }
     </style>
     <!-- QuaggaJS Barcode Scanner Library - works in all browsers -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
 <body>
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+    
     <!-- Reference Modal (Visual Search) -->
     <div id="ref-modal-overlay" class="ref-modal-overlay" onclick="closeRefModal()">
         <div class="ref-modal" onclick="event.stopPropagation()">
@@ -315,7 +411,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.26 Desktop Station</div>
+        <div class="pin-version">v99.28 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -353,7 +449,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.26</span>
+                    <span class="version-badge">v99.28</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1021,7 +1117,7 @@
                 <select id="camera-select" class="camera-select" onchange="switchCamera(this.value)"><option value="">Select Camera...</option></select>
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 BRIO</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
-                <button onclick="forceMaxResolution()" style="background:#16a34a;color:white;padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;border:none;cursor:pointer;" title="Click to force maximum resolution">FULL RES</button>
+                <button class="fullres-btn" onclick="forceMaxResolution()" title="Click to force maximum resolution">FULL RES</button>
                 <!-- Zoom Control -->
                 <div style="display:flex;align-items:center;gap:6px;">
                     <span style="color:#888;font-size:10px;">🔍</span>
@@ -1105,6 +1201,33 @@
         const STABILITY_THRESHOLD = 8; // Lower = more sensitive
         const FRAMES_NEEDED = 3; // Frames needed to be "stable"
         let previewMode = null, previewIndex = 0;
+        
+        // ============ TOAST NOTIFICATION SYSTEM ============
+        function showToast(type, title, message, duration = 4000) {
+            const container = document.getElementById('toast-container');
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    ${message ? `<div class="toast-message">${message}</div>` : ''}
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+            
+            return toast;
+        }
 
         const categoryConfig = {
             tops: { heroes: ['T-Shirt', 'Sweatshirt', 'Hoodie'], others: ['Sweater', 'Button Shirt', 'Polo', 'Jersey', 'Tank Top', 'Cardigan', 'Blouse', 'Tunic'] },
@@ -1113,7 +1236,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.26: fabricDB with full traits (stretch, surface, interior)
+        // V99.28: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1372,7 +1495,7 @@
             ]
         };
 
-        // V99.26: patternDB with traits for dynamic pattern identification
+        // V99.28: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1397,7 +1520,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.26: Tag Location Database - Where to find tags by category
+        // V99.28: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1660,7 +1783,7 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.26: Aggressive max resolution switch for BRIO
+        // V99.28: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -1762,7 +1885,7 @@
         // Force maximum resolution by restarting camera with strict constraints
         async function forceMaxResolution() {
             if(!activeCameraId) {
-                alert('No camera active. Select a camera first.');
+                showToast('warning', 'No Camera', 'Select a camera first');
                 return;
             }
             
@@ -1836,19 +1959,19 @@
                     
                     if(actualW >= 3800) {
                         document.getElementById('camera-resolution').style.color = '#22c55e';
-                        alert(`✅ 4K Resolution Active!\n${actualW}×${actualH}\n\nPhotos will capture at full 4K for AI processing.`);
+                        showToast('success', '4K Resolution Active', `${actualW}×${actualH} - Full quality for AI processing`);
                     } else if(actualW >= 1900) {
                         document.getElementById('camera-resolution').style.color = '#3b82f6';
-                        alert(`📷 1080p Resolution Active\n${actualW}×${actualH}\n\nCamera max capability: ${maxWidth}×${maxHeight}\n\nIf you expected higher, check:\n• USB 3.0 port (blue inside)\n• Logitech Camera Settings app\n• Close other apps using camera`);
+                        showToast('info', '1080p Resolution', `${actualW}×${actualH} - Good quality`, 3000);
                     } else {
                         document.getElementById('camera-resolution').style.color = '#ef4444';
-                        alert(`⚠️ Low Resolution: ${actualW}×${actualH}\n\nTroubleshooting:\n• Use USB 3.0 port\n• Check Logitech Camera Settings app\n• Restart browser`);
+                        showToast('warning', 'Low Resolution', `${actualW}×${actualH} - Check USB 3.0 port`, 5000);
                     }
                 };
                 
             } catch(err) {
                 console.error('📷 FULL RES: Failed:', err);
-                alert(`Could not set ${maxWidth}×${maxHeight}.\n\nError: ${err.message}\n\nTry:\n• Restart browser\n• Check USB connection\n• Use Logitech Camera Settings app`);
+                showToast('error', 'Resolution Error', err.message);
                 // Fall back to normal switch
                 switchCamera(activeCameraId);
             }
@@ -2102,7 +2225,7 @@
                     success = true;
                 } catch(err2) {
                     console.error('❌ All camera attempts failed:', err2);
-                    alert('Failed to switch camera: ' + err2.message);
+                    showToast('error', 'Camera Error', err2.message);
                     video.classList.remove('switching');
                 }
             }
@@ -2228,7 +2351,7 @@
             // Check resolution before capture
             if(video.videoWidth < 1280) {
                 console.error(`⚠️ LOW RESOLUTION CAPTURE: ${video.videoWidth}x${video.videoHeight}`);
-                alert(`Warning: Capturing at low resolution (${video.videoWidth}x${video.videoHeight}). Check camera settings.`);
+                showToast('warning', 'Low Resolution', `Capturing at ${video.videoWidth}x${video.videoHeight}`, 3000);
             }
             
             // Flash effect
@@ -2275,13 +2398,22 @@
                     width: canvas.width, 
                     height: canvas.height 
                 }; 
-                if(photoMode === 'main') data.mainPhotos.push(photo); 
-                else if(photoMode === 'tag') data.tagPhotos.push(photo); 
+                if(photoMode === 'main') {
+                    data.mainPhotos.push(photo);
+                    showToast('success', `Main Photo ${data.mainPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
+                }
+                else if(photoMode === 'tag') {
+                    data.tagPhotos.push(photo);
+                    showToast('success', `Tag Photo ${data.tagPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
+                }
                 else if(photoMode === 'sku') { /* SKU mode doesn't save photos */ }
-                else data.defectPhotos.push(photo); 
+                else {
+                    data.defectPhotos.push(photo);
+                    showToast('success', `Defect Photo ${data.defectPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
+                }
                 
                 const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
-                console.log(`📸 ${photoMode.toUpperCase()}: ${canvas.width}×${canvas.height} PORTRAIT | ${sizeMB}MB`);
+                console.log(`📸 ${photoMode.toUpperCase()}: ${canvas.width}×${canvas.height} | ${sizeMB}MB`);
                 
                 updatePhotoGrids(); 
                 updateValidation(); 
@@ -2797,7 +2929,7 @@
             }
         }
         
-        // V99.26: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
+        // V99.28: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
         let quaggaRunning = false;
         
         async function startBarcodeScanning() {
@@ -2936,7 +3068,7 @@
                 document.getElementById('record-btn').style.background = '#dc2626';
                 document.getElementById('record-btn').classList.add('recording');
                 recordingInterval = setInterval(updateRecordingTime, 1000);
-            } catch(e) { alert('Microphone access denied'); }
+            } catch(e) { showToast('error', 'Microphone Error', 'Microphone access denied'); }
         }
         function stopRecording() {
             if(mediaRecorder && mediaRecorder.state === 'recording') {
@@ -3073,7 +3205,7 @@
             }
         }
         
-        // V99.26: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.28: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3179,7 +3311,7 @@
             }
         }
         
-        // V99.26: Pattern Cards with ? help buttons
+        // V99.28: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3308,7 +3440,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.26: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.28: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3362,7 +3494,7 @@
             }
         }
         
-        // V99.26: Tag Location Helper Functions
+        // V99.28: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -3407,7 +3539,7 @@
             content.innerHTML = html;
         }
         
-        // V99.26: Pattern Helper Functions
+        // V99.28: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -3437,7 +3569,7 @@
             }
         }
         
-        // V99.26: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.28: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3502,10 +3634,10 @@
         }
         
         function submitItem() { 
-            if(!data.sku) { alert('Enter SKU'); return; }
-            if(data.mainPhotos.length===0) { alert('Add at least one photo'); return; }
-            if(data.weightLb===0 && data.weightOz===0) { alert('Enter weight'); return; }
-            if(!data.audioMeasure) { alert('Record measurements'); return; }
+            if(!data.sku) { showToast('error', 'Missing SKU', 'Enter or scan a SKU number'); return; }
+            if(data.mainPhotos.length===0) { showToast('error', 'Missing Photo', 'Add at least one main photo'); return; }
+            if(data.weightLb===0 && data.weightOz===0) { showToast('error', 'Missing Weight', 'Enter the item weight'); return; }
+            if(!data.audioMeasure) { showToast('error', 'Missing Measurements', 'Record voice measurements'); return; }
             
             // Send to n8n webhook
             const formData = new FormData();
@@ -3551,16 +3683,26 @@
             
             const xhr = new XMLHttpRequest();
             xhr.open('POST', N8N_WEBHOOK_URL, true);
-            xhr.onload = () => { if(xhr.status===200) { console.log('Submitted to n8n'); } };
-            xhr.onerror = () => { console.error('Webhook error'); };
+            xhr.onload = () => { 
+                if(xhr.status===200) { 
+                    console.log('Submitted to n8n'); 
+                    showToast('success', 'Item Submitted!', `SKU ${data.sku} saved successfully`);
+                } else {
+                    showToast('warning', 'Submission Issue', 'Item saved locally, server may have issues');
+                }
+            };
+            xhr.onerror = () => { 
+                console.error('Webhook error'); 
+                showToast('error', 'Network Error', 'Item saved locally, check connection');
+            };
             xhr.send(formData);
             
             recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.26')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.26',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.28')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.28',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
