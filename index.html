@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.25 - Desktop Station</title>
+    <title>VintageLister v99.26 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
@@ -176,7 +176,7 @@
         .camera-status.live::before { content: '●'; margin-right: 6px; animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .camera-view { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #000; min-height: 0; }
-        .camera-view-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .camera-view-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: visible; }
         .camera-view video { 
             max-height: 100%;
             max-width: 100%;
@@ -185,12 +185,8 @@
         }
         /* Portrait mode: rotate video 90 degrees for MAIN photos */
         .camera-view video.portrait-mode {
-            transform: rotate(-90deg);
-            /* When rotated, swap how we constrain dimensions */
-            max-height: none;
-            max-width: none;
-            height: auto;
-            width: 100%;
+            transform-origin: center center;
+            /* Transform is set dynamically by JS to include proper scaling */
         }
         .camera-view video.switching { opacity: 0.3; }
         .camera-placeholder { color: #444; text-align: center; position: absolute; z-index: 1; }
@@ -319,7 +315,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.25 Desktop Station</div>
+        <div class="pin-version">v99.26 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -357,7 +353,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.25</span>
+                    <span class="version-badge">v99.26</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1117,7 +1113,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.25: fabricDB with full traits (stretch, surface, interior)
+        // V99.26: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1376,7 +1372,7 @@
             ]
         };
 
-        // V99.25: patternDB with traits for dynamic pattern identification
+        // V99.26: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1401,7 +1397,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.25: Tag Location Database - Where to find tags by category
+        // V99.26: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1664,7 +1660,7 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.25: Aggressive max resolution switch for BRIO
+        // V99.26: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -1739,6 +1735,7 @@
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
                             console.log('📷 Portrait mode applied on load');
+                            setTimeout(() => updatePortraitTransform(), 100);
                         }
                         
                         setTimeout(() => startStabilizer(), 200);
@@ -1832,6 +1829,7 @@
                     // Apply portrait mode if in main photo mode
                     if(photoMode === 'main') {
                         video.classList.add('portrait-mode');
+                        setTimeout(() => updatePortraitTransform(), 100);
                     } else {
                         video.classList.remove('portrait-mode');
                     }
@@ -1856,18 +1854,54 @@
             }
         }
         
+        // ============ PORTRAIT MODE SIZING ============
+        function updatePortraitTransform() {
+            const video = document.getElementById('camera-video');
+            if(!video.classList.contains('portrait-mode')) {
+                video.style.transform = currentZoom !== 1.0 ? `scale(${currentZoom})` : '';
+                return;
+            }
+            
+            // Get container dimensions
+            const container = document.querySelector('.camera-view');
+            if(!container) return;
+            
+            const containerW = container.clientWidth;
+            const containerH = container.clientHeight;
+            
+            // Video dimensions (before rotation)
+            const videoW = video.videoWidth || 1920;
+            const videoH = video.videoHeight || 1080;
+            
+            // After 90° rotation, dimensions swap: visual width = videoH, visual height = videoW
+            const rotatedW = videoH; // 1080
+            const rotatedH = videoW; // 1920
+            
+            // Calculate scale to fit rotated video in container
+            const scaleW = containerW / rotatedW;
+            const scaleH = containerH / rotatedH;
+            const fitScale = Math.min(scaleW, scaleH);
+            
+            // Apply rotation + fit scale + user zoom
+            const totalScale = fitScale * currentZoom;
+            video.style.transform = `rotate(-90deg) scale(${totalScale})`;
+            
+            console.log(`📐 Portrait sizing: container ${containerW}x${containerH}, video ${videoW}x${videoH}, fitScale ${fitScale.toFixed(3)}`);
+        }
+        
+        // Update on window resize
+        window.addEventListener('resize', () => {
+            if(document.getElementById('camera-video')?.classList.contains('portrait-mode')) {
+                updatePortraitTransform();
+            }
+        });
+        
         // ============ ZOOM FUNCTIONS ============
         let currentZoom = 1.0;
         
         function setZoom(value) {
             currentZoom = value / 100;
-            const video = document.getElementById('camera-video');
-            // Combine zoom with portrait rotation if in main mode
-            if(video.classList.contains('portrait-mode')) {
-                video.style.transform = `rotate(-90deg) scale(${currentZoom})`;
-            } else {
-                video.style.transform = `scale(${currentZoom})`;
-            }
+            updatePortraitTransform();
             document.getElementById('zoom-level').textContent = `${currentZoom.toFixed(1)}x`;
             
             // Update zoom level indicator color
@@ -1884,13 +1918,7 @@
         function resetZoom() {
             currentZoom = 1.0;
             document.getElementById('zoom-slider').value = 100;
-            const video = document.getElementById('camera-video');
-            // Reset but keep portrait rotation if active
-            if(video.classList.contains('portrait-mode')) {
-                video.style.transform = 'rotate(-90deg) scale(1)';
-            } else {
-                video.style.transform = 'scale(1)';
-            }
+            updatePortraitTransform();
             document.getElementById('zoom-level').textContent = '1.0x';
             document.getElementById('zoom-level').style.color = '#888';
         }
@@ -2017,6 +2045,7 @@
                         // Apply portrait mode if in main photo mode
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
+                            setTimeout(() => updatePortraitTransform(), 100);
                         } else {
                             video.classList.remove('portrait-mode');
                         }
@@ -2060,6 +2089,7 @@
                         // Apply portrait mode if in main photo mode
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
+                            setTimeout(() => updatePortraitTransform(), 100);
                         } else {
                             video.classList.remove('portrait-mode');
                         }
@@ -2100,8 +2130,11 @@
             if(mode === 'main') {
                 video.classList.add('portrait-mode');
                 console.log('📷 Portrait mode ON (rotated 90°)');
+                // Apply proper sizing for rotated video
+                setTimeout(() => updatePortraitTransform(), 50);
             } else {
                 video.classList.remove('portrait-mode');
+                video.style.transform = ''; // Clear transform
                 console.log('📷 Portrait mode OFF (landscape)');
             }
             
@@ -2764,7 +2797,7 @@
             }
         }
         
-        // V99.25: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
+        // V99.26: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
         let quaggaRunning = false;
         
         async function startBarcodeScanning() {
@@ -3040,7 +3073,7 @@
             }
         }
         
-        // V99.25: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.26: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3146,7 +3179,7 @@
             }
         }
         
-        // V99.25: Pattern Cards with ? help buttons
+        // V99.26: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3275,7 +3308,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.25: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.26: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3329,7 +3362,7 @@
             }
         }
         
-        // V99.25: Tag Location Helper Functions
+        // V99.26: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -3374,7 +3407,7 @@
             content.innerHTML = html;
         }
         
-        // V99.25: Pattern Helper Functions
+        // V99.26: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -3404,7 +3437,7 @@
             }
         }
         
-        // V99.25: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.26: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3526,8 +3559,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.25')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.25',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.26')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.26',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
