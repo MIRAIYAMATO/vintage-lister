@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.21 - Desktop Station</title>
+    <title>VintageLister v99.22 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --color-primary: #3b82f6; --color-primary-dark: #2563eb; --color-primary-light: #dbeafe; --color-success: #22c55e; --color-warning: #f59e0b; --color-error: #ef4444; --color-surface: #ffffff; --color-background: #f1f5f9; --color-text: #1e293b; --color-text-muted: #64748b; --color-border: #e2e8f0; }
@@ -291,6 +291,8 @@
         .flag-unusual-btn.flagged { background:linear-gradient(135deg,#fde68a,#fbbf24); border-style:solid; border-color:#d97706; }
         .elastic-section { background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px; margin-top:10px; }
     </style>
+    <!-- QuaggaJS Barcode Scanner Library - works in all browsers -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
 <body>
     <!-- Reference Modal (Visual Search) -->
@@ -317,7 +319,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.21 Desktop Station</div>
+        <div class="pin-version">v99.22 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -355,7 +357,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.21</span>
+                    <span class="version-badge">v99.22</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1101,7 +1103,7 @@
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
-        let barcodeDetector = null, barcodeScanInterval = null;
+        let barcodeScanInterval = null;
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
         let previousFrame = null, stableFrameCount = 0, isStable = false;
@@ -1116,7 +1118,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.21: fabricDB with full traits (stretch, surface, interior)
+        // V99.22: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1375,7 +1377,7 @@
             ]
         };
 
-        // V99.21: patternDB with traits for dynamic pattern identification
+        // V99.22: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1400,7 +1402,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.21: Tag Location Database - Where to find tags by category
+        // V99.22: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1663,7 +1665,7 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.21: Aggressive max resolution switch for BRIO
+        // V99.22: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -2735,100 +2737,90 @@
             }
         }
         
-        // V99.21: Camera-based Barcode Scanning using BarcodeDetector API
-        // Requires Chrome 83+ or Edge 83+ with barcode detection support
-        
-        async function initBarcodeDetector() {
-            // Check if BarcodeDetector is available
-            if(!('BarcodeDetector' in window)) {
-                console.log('⚠️ BarcodeDetector API not available');
-                console.log('   This feature requires Chrome 83+ or Edge 83+');
-                console.log('   Or enable: chrome://flags → "Experimental Web Platform features"');
-                return false;
-            }
-            
-            try {
-                // Check supported formats
-                const formats = await BarcodeDetector.getSupportedFormats();
-                console.log('✅ BarcodeDetector supported formats:', formats);
-                
-                if(formats.length === 0) {
-                    console.log('⚠️ No barcode formats supported');
-                    return false;
-                }
-                
-                barcodeDetector = new BarcodeDetector({
-                    formats: formats.filter(f => ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'codabar', 'itf'].includes(f))
-                });
-                console.log('✅ BarcodeDetector initialized');
-                return true;
-            } catch(e) {
-                console.log('❌ BarcodeDetector init failed:', e);
-                return false;
-            }
-        }
+        // V99.22: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
+        let quaggaRunning = false;
         
         async function startBarcodeScanning() {
             const statusEl = document.getElementById('sku-camera-status');
             statusEl.style.display = 'block';
             
-            if(!barcodeDetector) {
-                const initialized = await initBarcodeDetector();
-                if(!initialized) {
-                    statusEl.innerHTML = '⚠️ Camera barcode scanning not available<br><small style="font-size:9px;">Use Chrome 83+ or type SKU manually</small>';
-                    statusEl.style.color = '#f59e0b';
-                    return;
-                }
+            // Check if Quagga loaded
+            if(typeof Quagga === 'undefined') {
+                statusEl.innerHTML = '⚠️ Barcode library failed to load<br><small style="font-size:9px;">Type SKU manually or use USB scanner</small>';
+                statusEl.style.color = '#f59e0b';
+                console.log('❌ QuaggaJS not loaded');
+                return;
             }
             
-            stopBarcodeScanning(); // Clear any existing interval
+            stopBarcodeScanning(); // Clear any existing
             
             const video = document.getElementById('camera-video');
+            if(!video.srcObject) {
+                statusEl.textContent = '⚠️ Camera not active';
+                statusEl.style.color = '#f59e0b';
+                return;
+            }
             
-            console.log('🔍 Starting barcode scanning...');
+            console.log('🔍 Starting QuaggaJS barcode scanning...');
             statusEl.textContent = '🔍 Scanning for barcode...';
             statusEl.style.color = '#3b82f6';
             
+            // Create a canvas to capture frames from video
+            const scanCanvas = document.createElement('canvas');
+            const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+            
             let scanCount = 0;
             
-            barcodeScanInterval = setInterval(async () => {
+            barcodeScanInterval = setInterval(() => {
                 if(!video.videoWidth || video.paused || video.ended) return;
                 if(photoMode !== 'sku') {
                     stopBarcodeScanning();
                     return;
                 }
                 
-                try {
-                    const barcodes = await barcodeDetector.detect(video);
-                    scanCount++;
-                    
-                    // Update status periodically
-                    if(scanCount % 10 === 0) {
-                        statusEl.textContent = '🔍 Scanning... (point camera at barcode)';
-                    }
-                    
-                    if(barcodes.length > 0) {
-                        const barcode = barcodes[0];
-                        console.log('✅ Barcode detected:', barcode.rawValue, barcode.format);
+                scanCount++;
+                
+                // Update status periodically
+                if(scanCount % 5 === 0) {
+                    statusEl.textContent = '🔍 Scanning... (point camera at barcode)';
+                }
+                
+                // Capture current frame
+                scanCanvas.width = video.videoWidth;
+                scanCanvas.height = video.videoHeight;
+                scanCtx.drawImage(video, 0, 0);
+                
+                // Decode using Quagga
+                Quagga.decodeSingle({
+                    src: scanCanvas.toDataURL('image/jpeg'),
+                    numOfWorkers: 0, // Use main thread for speed
+                    decoder: {
+                        readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_39_reader', 'codabar_reader', 'i2of5_reader']
+                    },
+                    locate: true
+                }, function(result) {
+                    if(result && result.codeResult) {
+                        const barcodeValue = result.codeResult.code;
+                        console.log('✅ Barcode detected:', barcodeValue, result.codeResult.format);
                         
                         // Fill in the SKU
                         const skuInput = document.getElementById('sku-input');
-                        skuInput.value = barcode.rawValue;
-                        data.sku = barcode.rawValue;
+                        skuInput.value = barcodeValue;
+                        data.sku = barcodeValue;
                         
                         // Show success
-                        statusEl.textContent = '✅ Scanned: ' + barcode.rawValue;
+                        statusEl.textContent = '✅ Scanned: ' + barcodeValue;
                         statusEl.style.color = '#16a34a';
                         
-                        document.getElementById('sku-status').innerHTML = '✅ SKU scanned: <strong>' + barcode.rawValue + '</strong>';
+                        document.getElementById('sku-status').innerHTML = '✅ SKU scanned: <strong>' + barcodeValue + '</strong>';
                         document.getElementById('sku-status').style.color = '#16a34a';
                         
                         // Update badge
                         const skuBadge = document.getElementById('sku-badge');
-                        skuBadge.textContent = 'SKU: ' + barcode.rawValue;
+                        skuBadge.textContent = 'SKU: ' + barcodeValue;
                         skuBadge.classList.add('visible');
                         
-                        // Play success sound (optional beep)
+                        // Play success beep
                         try {
                             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                             const oscillator = audioCtx.createOscillator();
@@ -2852,10 +2844,8 @@
                         
                         updateValidation();
                     }
-                } catch(e) {
-                    // Silently continue on detection errors
-                }
-            }, 200); // Scan 5 times per second
+                });
+            }, 300); // Scan ~3 times per second
         }
         
         function stopBarcodeScanning() {
@@ -3023,7 +3013,7 @@
             }
         }
         
-        // V99.21: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.22: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3129,7 +3119,7 @@
             }
         }
         
-        // V99.21: Pattern Cards with ? help buttons
+        // V99.22: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3258,7 +3248,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.21: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.22: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3312,7 +3302,7 @@
             }
         }
         
-        // V99.21: Tag Location Helper Functions
+        // V99.22: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -3357,7 +3347,7 @@
             content.innerHTML = html;
         }
         
-        // V99.21: Pattern Helper Functions
+        // V99.22: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -3387,7 +3377,7 @@
             }
         }
         
-        // V99.21: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.22: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3509,8 +3499,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.21')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.21',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.22')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.22',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
