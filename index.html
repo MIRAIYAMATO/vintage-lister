@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.28 - Desktop Station</title>
+    <title>VintageLister v99.29 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -411,7 +411,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.28 Desktop Station</div>
+        <div class="pin-version">v99.29 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -449,7 +449,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.28</span>
+                    <span class="version-badge">v99.29</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1185,26 +1185,60 @@
         </div>
     </div>
     <script>
+        // ============ CONFIG ============
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', material:'', materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], flagged:false, elasticCheck:'' };
+        const DEBUG = false; // Set to true for console logging
+        
+        // ============ HELPER FUNCTIONS ============
+        const log = (...args) => DEBUG && console.log(...args);
+        const $ = id => document.getElementById(id);
+        const $$ = sel => document.querySelectorAll(sel);
+        const hide = id => $(id)?.classList.add('hidden');
+        const show = id => $(id)?.classList.remove('hidden');
+        const toggle = (id, condition) => $(id)?.classList.toggle('hidden', !condition);
+        
+        // Button selection helper - handles the common pattern of deselecting all then selecting one
+        function selectBtn(selector, btn, heroClass = 'btn-hero') {
+            $$(selector).forEach(b => {
+                b.classList.remove('selected', 'btn-hero', 'btn-default');
+                b.classList.add('btn-secondary');
+            });
+            if (btn) {
+                btn.classList.add('selected', heroClass);
+                btn.classList.remove('btn-secondary', 'btn-default');
+            }
+        }
+        
+        // ============ DATA MODEL ============
+        const defaultData = {
+            superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', 
+            gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, 
+            printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, 
+            wash:'', material:'', materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', 
+            cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, 
+            defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, 
+            audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], flagged:false, elasticCheck:''
+        };
+        let data = { ...defaultData };
+        
+        // ============ STATE ============
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
-        let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
+        let tagCutMode = false;
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
         let barcodeScanInterval = null;
-        // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
         let previousFrame = null, stableFrameCount = 0, isStable = false;
-        const STABILITY_THRESHOLD = 8; // Lower = more sensitive
-        const FRAMES_NEEDED = 3; // Frames needed to be "stable"
+        const STABILITY_THRESHOLD = 8;
+        const FRAMES_NEEDED = 3;
         let previewMode = null, previewIndex = 0;
         
         // ============ TOAST NOTIFICATION SYSTEM ============
         function showToast(type, title, message, duration = 4000) {
-            const container = document.getElementById('toast-container');
+            const container = ;
             const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
             
             const toast = document.createElement('div');
@@ -1236,7 +1270,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.28: fabricDB with full traits (stretch, surface, interior)
+        // V99.29: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1495,7 +1529,7 @@
             ]
         };
 
-        // V99.28: patternDB with traits for dynamic pattern identification
+        // V99.29: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1520,7 +1554,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.28: Tag Location Database - Where to find tags by category
+        // V99.29: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -1676,44 +1710,90 @@
             const videoDevices = devices.filter(d => d.kind === 'videoinput');
             
             for(const device of videoDevices) {
-                console.log(`\n📷 ${device.label}`);
+                //log(`\n📷 ${device.label}`);
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { deviceId: { exact: device.deviceId } }
                     });
                     const track = stream.getVideoTracks()[0];
                     const capabilities = track.getCapabilities();
-                    console.log('  Width range:', capabilities.width?.min, '-', capabilities.width?.max);
-                    console.log('  Height range:', capabilities.height?.min, '-', capabilities.height?.max);
-                    if(capabilities.width?.max >= 3840) console.log('    ✅ 4K (3840x2160)');
-                    if(capabilities.width?.max >= 1920) console.log('    ✅ 1080p (1920x1080)');
-                    if(capabilities.width?.max >= 1280) console.log('    ✅ 720p (1280x720)');
+                    //log('  Width range:', capabilities.width?.min, '-', capabilities.width?.max);
+                    //log('  Height range:', capabilities.height?.min, '-', capabilities.height?.max);
+                    if(capabilities.width?.max >= 3840) //log('    ✅ 4K (3840x2160)');
+                    if(capabilities.width?.max >= 1920) //log('    ✅ 1080p (1920x1080)');
+                    if(capabilities.width?.max >= 1280) //log('    ✅ 720p (1280x720)');
                     stream.getTracks().forEach(t => t.stop());
                 } catch(e) {
-                    console.log('  Error:', e.message);
+                    log('  Error:', e.message);
                 }
             }
-            console.log('\n💡 If 4K is not showing, try: Camera settings app → set to 4K');
+            //log('\n💡 If 4K is not showing, try: Camera settings app → set to 4K');
         };
         
         document.addEventListener('DOMContentLoaded', () => { 
             checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
-            document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
-            document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
+            document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !.classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
+            .addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
         });
         
-        function checkAuth() { try { if(localStorage.getItem('vl_auth')===APP_PIN){ document.getElementById('pin-screen').classList.add('hidden'); data.photographer=localStorage.getItem('vl_photographer')||'P02'; document.getElementById('photographer-badge').textContent=data.photographer; startTimer(); } } catch(e){} }
-        function checkPin() { if(document.getElementById('pin-input').value===APP_PIN){ try{ localStorage.setItem('vl_auth',APP_PIN); data.photographer=document.getElementById('photographer-select').value; localStorage.setItem('vl_photographer',data.photographer); document.getElementById('photographer-badge').textContent=data.photographer; }catch(e){} document.getElementById('pin-screen').classList.add('hidden'); startTimer(); } else { document.getElementById('pin-input').value=''; document.getElementById('pin-input').classList.add('shake'); setTimeout(()=>document.getElementById('pin-input').classList.remove('shake'),300); } }
-        function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
+        function checkAuth() {
+            try {
+                if (localStorage.getItem('vl_auth') === APP_PIN) {
+                    hide($('pin-screen'));
+                    data.photographer = localStorage.getItem('vl_photographer') || 'P02';
+                    $('photographer-badge').textContent = data.photographer;
+                    startTimer();
+                }
+            } catch (e) { /* ignore */ }
+        }
         
-        function goToStep(step) { currentStep = step; document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active')); document.getElementById(`step-${step}`).classList.add('active'); document.querySelectorAll('.progress-dot').forEach((d,i) => { d.classList.remove('active'); if(i+1 < step) d.classList.add('complete'); else d.classList.remove('complete'); if(i+1 === step) d.classList.add('active'); }); const labels = {1:'Step 1: Tag', 2:'Step 2: Check', 3:'Step 3: Snap', 4:'Step 4: Review'}; document.getElementById('step-label').textContent = labels[step] || ''; if(step===4) updateReviewCards(); }
+        function checkPin() {
+            const pinInput = $('pin-input');
+            if (pinInput.value === APP_PIN) {
+                try {
+                    localStorage.setItem('vl_auth', APP_PIN);
+                    data.photographer = $('photographer-select').value;
+                    localStorage.setItem('vl_photographer', data.photographer);
+                    $('photographer-badge').textContent = data.photographer;
+                } catch (e) { /* ignore */ }
+                hide($('pin-screen'));
+                startTimer();
+            } else {
+                pinInput.value = '';
+                pinInput.classList.add('shake');
+                setTimeout(() => pinInput.classList.remove('shake'), 300);
+            }
+        }
+        
+        function showPinScreen() {
+            show($('pin-screen'));
+            $('pin-input').value = '';
+            $('pin-input').focus();
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            $$('.step-container').forEach(s => s.classList.remove('active'));
+            $(`step-${step}`).classList.add('active');
+            
+            $$('.progress-dot').forEach((d, i) => {
+                d.classList.remove('active', 'complete');
+                if (i + 1 < step) d.classList.add('complete');
+                if (i + 1 === step) d.classList.add('active');
+            });
+            
+            const labels = { 1: 'Step 1: Tag', 2: 'Step 2: Check', 3: 'Step 3: Snap', 4: 'Step 4: Review' };
+            $('step-label').textContent = labels[step] || '';
+            
+            if (step === 4) updateReviewCards();
+        }
         
         function updateReviewCards() {
-            document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'<img src="https://flagcdn.com/w16/us.png" style="vertical-align:middle;"> USA':data.country||''} • ${data.gender||''}`;
-            document.getElementById('summary-check').innerHTML = `${data.fabricType||'?'} / ${data.material||'?'}<br>${(data.colors||[]).slice(0,3).join(', ')||'?'} • ${data.pattern||'?'}`;
+            .innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'<img src="https://flagcdn.com/w16/us.png" style="vertical-align:middle;"> USA':data.country||''} • ${data.gender||''}`;
+            .innerHTML = `${data.fabricType||'?'} / ${data.material||'?'}<br>${(data.colors||[]).slice(0,3).join(', ')||'?'} • ${data.pattern||'?'}`;
             const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
-            document.getElementById('summary-snap').innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
-            document.getElementById('summary-weight').innerHTML = (data.weightLb>0||data.weightOz>0) ? `${data.weightLb} lb ${data.weightOz} oz<br>SKU: ${data.sku||'?'}` : 'No weight';
+            .innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
+            .innerHTML = (data.weightLb>0||data.weightOz>0) ? `${data.weightLb} lb ${data.weightOz} oz<br>SKU: ${data.sku||'?'}` : 'No weight';
             
             setCardStatus('tag', !!data.category && !!data.tagStatus);
             setCardStatus('check', !!data.fabricType && data.colors.length>0 && !!data.pattern && !!data.material);
@@ -1723,13 +1803,13 @@
         function setCardStatus(name, ok) { const card = document.getElementById(`card-${name}`); const icon = document.getElementById(`icon-${name}`); card.classList.remove('card-green','card-yellow'); card.classList.add(ok?'card-green':'card-yellow'); icon.textContent = ok?'✅':'⚠️'; }
         
         function startTimer() { timerStart = Date.now(); if (timerInterval) clearInterval(timerInterval); timerInterval = setInterval(updateTimerDisplay, 1000); updateTimerDisplay(); }
-        function updateTimerDisplay() { if (!timerStart) return; const elapsed = Math.floor((Date.now() - timerStart) / 1000); document.getElementById('timer-current').textContent = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`; }
-        function recordItemTime() { if (!timerStart) return; const elapsed = Math.floor((Date.now() - timerStart) / 1000); itemTimes.push(elapsed); document.getElementById('timer-last').textContent = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`; const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; startTimer(); }
+        function updateTimerDisplay() { if (!timerStart) return; const elapsed = Math.floor((Date.now() - timerStart) / 1000); .textContent = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`; }
+        function recordItemTime() { if (!timerStart) return; const elapsed = Math.floor((Date.now() - timerStart) / 1000); itemTimes.push(elapsed); .textContent = `${Math.floor(elapsed/60)}:${(elapsed%60).toString().padStart(2,'0')}`; const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); .textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; startTimer(); }
         
         async function enumerateCameras() { 
             try { 
                 // IMPORTANT: Request permission with HIGH resolution to avoid Chrome caching low res
-                console.log('📷 Requesting camera permission with high resolution hint...');
+                log('📷 Requesting camera permission with high resolution hint...');
                 const permStream = await navigator.mediaDevices.getUserMedia({
                     video: { 
                         width: { ideal: 3840 }, 
@@ -1742,10 +1822,10 @@
                 
                 const devices = await navigator.mediaDevices.enumerateDevices(); 
                 const videoDevices = devices.filter(d=>d.kind==='videoinput'); 
-                const select = document.getElementById('camera-select'); 
+                const select = ; 
                 select.innerHTML = '<option value="">Select Camera...</option>'; 
                 
-                console.log(`📷 Found ${videoDevices.length} cameras:`);
+                log(`📷 Found ${videoDevices.length} cameras:`);
                 
                 videoDevices.forEach((device,i)=>{ 
                     const option = document.createElement('option'); 
@@ -1753,17 +1833,17 @@
                     option.textContent = device.label || `Camera ${i+1}`; 
                     select.appendChild(option);
                     
-                    console.log(`  ${i+1}. ${device.label} (${device.deviceId.slice(0,8)}...)`);
+                    log(`  ${i+1}. ${device.label} (${device.deviceId.slice(0,8)}...)`);
                     
                     // Auto-detect cameras by name
                     const label = device.label.toLowerCase();
                     if(label.includes('brio')) {
                         mainCameraId = device.deviceId;
-                        console.log('  → Set as MAIN camera (Brio 4K)');
+                        log('  → Set as MAIN camera (Brio 4K)');
                     }
                     if(label.includes('c922') || label.includes('922')) {
                         secondaryCameraId = device.deviceId;
-                        console.log('  → Set as SECONDARY camera (C922X)');
+                        log('  → Set as SECONDARY camera (C922X)');
                     }
                 });
                 
@@ -1783,12 +1863,12 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.28: Aggressive max resolution switch for BRIO
+        // V99.29: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
-            console.log('📷 switchCameraMaxRes: Forcing 4K...');
-            const video = document.getElementById('camera-video');
+            log('📷 switchCameraMaxRes: Forcing 4K...');
+            const video = ;
             video.classList.add('switching');
             
             // Stop everything first
@@ -1811,7 +1891,7 @@
             
             for(const res of resolutions) {
                 try {
-                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
+                    //log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
                     
                     // Use EXACT constraint - this forces the resolution or fails
                     currentStream = await navigator.mediaDevices.getUserMedia({
@@ -1824,24 +1904,24 @@
                     
                     const track = currentStream.getVideoTracks()[0];
                     const settings = track.getSettings();
-                    console.log(`✅ Got ${settings.width}x${settings.height}`);
+                    //log(`✅ Got ${settings.width}x${settings.height}`);
                     
                     video.srcObject = currentStream;
                     video.style.display = 'block';
-                    document.getElementById('camera-placeholder').style.display = 'none';
-                    document.getElementById('camera-overlay').style.display = 'block';
-                    document.getElementById('camera-status').textContent = 'LIVE';
-                    document.getElementById('camera-status').classList.add('live');
+                    .style.display = 'none';
+                    .style.display = 'block';
+                    .textContent = 'LIVE';
+                    .classList.add('live');
                     activeCameraId = deviceId;
-                    document.getElementById('camera-select').value = deviceId;
+                    .value = deviceId;
                     
                     video.onloadedmetadata = () => {
                         const w = video.videoWidth;
                         const h = video.videoHeight;
-                        console.log(`📷 Video ready: ${w}x${h}`);
-                        document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+                        //log(`📷 Video ready: ${w}x${h}`);
+                        .textContent = `${w}×${h}`;
                         
-                        const resEl = document.getElementById('camera-resolution');
+                        const resEl = ;
                         if(w >= 3800) {
                             resEl.style.color = '#22c55e';
                         } else if(w >= 1900) {
@@ -1857,7 +1937,7 @@
                         // Apply portrait mode if in main photo mode
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
-                            console.log('📷 Portrait mode applied on load');
+                            //log('📷 Portrait mode applied on load');
                             setTimeout(() => updatePortraitTransform(), 100);
                         }
                         
@@ -1868,7 +1948,7 @@
                     return; // Success!
                     
                 } catch(err) {
-                    console.log(`❌ ${res.name} failed: ${err.message}`);
+                    log(`❌ ${res.name} failed: ${err.message}`);
                     if(currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
@@ -1878,7 +1958,7 @@
             }
             
             // All exact resolutions failed - fall back to ideal constraints
-            console.log('⚠️ Exact constraints failed, trying ideal...');
+            log('⚠️ Exact constraints failed, trying ideal...');
             await switchCamera(deviceId);
         }
         
@@ -1889,11 +1969,11 @@
                 return;
             }
             
-            console.log('🔄 FULL RES: Forcing maximum resolution...');
-            document.getElementById('camera-resolution').textContent = 'Switching...';
-            document.getElementById('camera-resolution').style.color = '#f59e0b';
+            log('🔄 FULL RES: Forcing maximum resolution...');
+            .textContent = 'Switching...';
+            .style.color = '#f59e0b';
             
-            const video = document.getElementById('camera-video');
+            const video = ;
             
             // Stop current stream completely
             if(currentStream) {
@@ -1916,11 +1996,11 @@
                 if(capabilities.width?.max) maxWidth = capabilities.width.max;
                 if(capabilities.height?.max) maxHeight = capabilities.height.max;
                 
-                console.log(`📷 FULL RES: Max capability: ${maxWidth}x${maxHeight}`);
+                log(`📷 FULL RES: Max capability: ${maxWidth}x${maxHeight}`);
                 tempStream.getTracks().forEach(t => t.stop());
                 await new Promise(r => setTimeout(r, 300));
             } catch(e) {
-                console.log('📷 FULL RES: Could not get capabilities, trying defaults');
+                log('📷 FULL RES: Could not get capabilities, trying defaults');
             }
             
             // Now request EXACT max resolution
@@ -1933,21 +2013,21 @@
                     }
                 };
                 
-                console.log(`📷 FULL RES: Requesting ${maxWidth}x${maxHeight}...`);
+                log(`📷 FULL RES: Requesting ${maxWidth}x${maxHeight}...`);
                 currentStream = await navigator.mediaDevices.getUserMedia(constraints);
                 
                 video.srcObject = currentStream;
                 video.style.display = 'block';
-                document.getElementById('camera-placeholder').style.display = 'none';
-                document.getElementById('camera-overlay').style.display = 'block';
-                document.getElementById('camera-status').textContent = 'LIVE';
-                document.getElementById('camera-status').classList.add('live');
+                .style.display = 'none';
+                .style.display = 'block';
+                .textContent = 'LIVE';
+                .classList.add('live');
                 
                 video.onloadedmetadata = () => {
                     const actualW = video.videoWidth;
                     const actualH = video.videoHeight;
-                    console.log(`✅ FULL RES: Got ${actualW}x${actualH}`);
-                    document.getElementById('camera-resolution').textContent = `${actualW}×${actualH}`;
+                    log(`✅ FULL RES: Got ${actualW}x${actualH}`);
+                    .textContent = `${actualW}×${actualH}`;
                     
                     // Apply portrait mode if in main photo mode
                     if(photoMode === 'main') {
@@ -1958,13 +2038,13 @@
                     }
                     
                     if(actualW >= 3800) {
-                        document.getElementById('camera-resolution').style.color = '#22c55e';
+                        .style.color = '#22c55e';
                         showToast('success', '4K Resolution Active', `${actualW}×${actualH} - Full quality for AI processing`);
                     } else if(actualW >= 1900) {
-                        document.getElementById('camera-resolution').style.color = '#3b82f6';
+                        .style.color = '#3b82f6';
                         showToast('info', '1080p Resolution', `${actualW}×${actualH} - Good quality`, 3000);
                     } else {
-                        document.getElementById('camera-resolution').style.color = '#ef4444';
+                        .style.color = '#ef4444';
                         showToast('warning', 'Low Resolution', `${actualW}×${actualH} - Check USB 3.0 port`, 5000);
                     }
                 };
@@ -1979,7 +2059,7 @@
         
         // ============ PORTRAIT MODE SIZING ============
         function updatePortraitTransform() {
-            const video = document.getElementById('camera-video');
+            const video = ;
             if(!video.classList.contains('portrait-mode')) {
                 video.style.transform = currentZoom !== 1.0 ? `scale(${currentZoom})` : '';
                 return;
@@ -2009,12 +2089,12 @@
             const totalScale = fitScale * currentZoom;
             video.style.transform = `rotate(-90deg) scale(${totalScale})`;
             
-            console.log(`📐 Portrait sizing: container ${containerW}x${containerH}, video ${videoW}x${videoH}, fitScale ${fitScale.toFixed(3)}`);
+            //log(`📐 Portrait sizing: container ${containerW}x${containerH}, video ${videoW}x${videoH}, fitScale ${fitScale.toFixed(3)}`);
         }
         
         // Update on window resize
         window.addEventListener('resize', () => {
-            if(document.getElementById('camera-video')?.classList.contains('portrait-mode')) {
+            if(?.classList.contains('portrait-mode')) {
                 updatePortraitTransform();
             }
         });
@@ -2025,10 +2105,10 @@
         function setZoom(value) {
             currentZoom = value / 100;
             updatePortraitTransform();
-            document.getElementById('zoom-level').textContent = `${currentZoom.toFixed(1)}x`;
+            .textContent = `${currentZoom.toFixed(1)}x`;
             
             // Update zoom level indicator color
-            const zoomLevel = document.getElementById('zoom-level');
+            const zoomLevel = ;
             if(currentZoom > 2) {
                 zoomLevel.style.color = '#f59e0b'; // Orange for high zoom
             } else if(currentZoom > 1) {
@@ -2040,10 +2120,10 @@
         
         function resetZoom() {
             currentZoom = 1.0;
-            document.getElementById('zoom-slider').value = 100;
+            .value = 100;
             updatePortraitTransform();
-            document.getElementById('zoom-level').textContent = '1.0x';
-            document.getElementById('zoom-level').style.color = '#888';
+            .textContent = '1.0x';
+            .style.color = '#888';
         }
         
         async function switchCamera(deviceId) { 
@@ -2052,9 +2132,9 @@
                 return; 
             }
             
-            console.log(`📷 Switching to camera: ${deviceId.slice(0,8)}...`);
+            //log(`📷 Switching to camera: ${deviceId.slice(0,8)}...`);
             
-            const video = document.getElementById('camera-video');
+            const video = ;
             
             // Add switching class for smooth transition
             video.classList.add('switching');
@@ -2067,7 +2147,7 @@
             
             // Stop current stream first
             if(currentStream) {
-                console.log('📷 Stopping current stream...');
+                //log('📷 Stopping current stream...');
                 currentStream.getTracks().forEach(t=>t.stop()); 
                 currentStream = null;
             }
@@ -2087,11 +2167,11 @@
                 if(capabilities.width?.max) maxWidth = capabilities.width.max;
                 if(capabilities.height?.max) maxHeight = capabilities.height.max;
                 
-                console.log(`📷 Camera capabilities: max ${maxWidth}x${maxHeight}`);
+                //log(`📷 Camera capabilities: max ${maxWidth}x${maxHeight}`);
                 tempStream.getTracks().forEach(t => t.stop());
                 await new Promise(r => setTimeout(r, 100));
             } catch(e) {
-                console.log('📷 Could not get capabilities, using defaults');
+                //log('📷 Could not get capabilities, using defaults');
             }
             
             // STEP 2: Request the MAXIMUM resolution with exact/min constraints
@@ -2112,7 +2192,7 @@
             
             for(const res of resolutions) {
                 try {
-                    console.log(`📷 Requesting ${res.name} (${res.width}x${res.height}) with min constraint...`);
+                    log(`📷 Requesting ${res.name} (${res.width}x${res.height}) with min constraint...`);
                     
                     // Use 'min' to FORCE at least this resolution, 'ideal' for target
                     const constraints = {
@@ -2128,11 +2208,11 @@
                     // Verify we got what we asked for
                     const track = currentStream.getVideoTracks()[0];
                     const settings = track.getSettings();
-                    console.log(`✅ Got stream: ${settings.width}x${settings.height}`);
+                    //log(`✅ Got stream: ${settings.width}x${settings.height}`);
                     
                     // Check if resolution is acceptable
                     if(settings.width < res.width * 0.9) {
-                        console.log(`⚠️ Resolution too low (${settings.width} < ${res.width}), trying next...`);
+                        log(`⚠️ Resolution too low (${settings.width} < ${res.width}), trying next...`);
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                         continue;
@@ -2140,19 +2220,19 @@
                     
                     video.srcObject = currentStream; 
                     video.style.display = 'block'; 
-                    document.getElementById('camera-placeholder').style.display = 'none'; 
-                    document.getElementById('camera-overlay').style.display = 'block'; 
-                    document.getElementById('camera-status').textContent = 'LIVE'; 
-                    document.getElementById('camera-status').classList.add('live'); 
+                    .style.display = 'none'; 
+                    .style.display = 'block'; 
+                    .textContent = 'LIVE'; 
+                    .classList.add('live'); 
                     activeCameraId = deviceId;
-                    document.getElementById('camera-select').value = deviceId;
+                    .value = deviceId;
                     
                     video.onloadedmetadata = () => {
-                        console.log(`📷 Video element ready: ${video.videoWidth}x${video.videoHeight}`);
-                        document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
+                        log(`📷 Video element ready: ${video.videoWidth}x${video.videoHeight}`);
+                        .textContent = `${video.videoWidth}×${video.videoHeight}`;
                         
                         // Color code resolution
-                        const resEl = document.getElementById('camera-resolution');
+                        const resEl = ;
                         if(video.videoWidth >= 3800) {
                             resEl.style.color = '#22c55e'; // Green for 4K
                         } else if(video.videoWidth >= 1900) {
@@ -2183,30 +2263,30 @@
                     break;
                     
                 } catch(err) {
-                    console.log(`❌ ${res.name} failed:`, err.message);
+                    log(`❌ ${res.name} failed:`, err.message);
                 }
             }
             
             if(!success) {
                 // Last resort: let browser pick any resolution
-                console.log('📷 Fallback: letting browser choose resolution...');
+                log('📷 Fallback: letting browser choose resolution...');
                 try {
                     currentStream = await navigator.mediaDevices.getUserMedia({
                         video: { deviceId: { exact: deviceId } }
                     });
                     video.srcObject = currentStream;
                     video.style.display = 'block';
-                    document.getElementById('camera-placeholder').style.display = 'none';
-                    document.getElementById('camera-overlay').style.display = 'block';
-                    document.getElementById('camera-status').textContent = 'LIVE';
-                    document.getElementById('camera-status').classList.add('live');
+                    .style.display = 'none';
+                    .style.display = 'block';
+                    .textContent = 'LIVE';
+                    .classList.add('live');
                     activeCameraId = deviceId;
-                    document.getElementById('camera-select').value = deviceId;
+                    .value = deviceId;
                     
                     video.onloadedmetadata = () => {
-                        console.log(`⚠️ Fallback resolution: ${video.videoWidth}x${video.videoHeight}`);
-                        document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
-                        document.getElementById('camera-resolution').style.color = '#ef4444';
+                        log(`⚠️ Fallback resolution: ${video.videoWidth}x${video.videoHeight}`);
+                        .textContent = `${video.videoWidth}×${video.videoHeight}`;
+                        .style.color = '#ef4444';
                         video.classList.remove('switching');
                         
                         // Apply portrait mode if in main photo mode
@@ -2230,14 +2310,14 @@
                 }
             }
             
-            console.log(`📷 Camera switch ${success ? 'SUCCESS' : 'FAILED'}, activeCameraId: ${activeCameraId?.slice(0,8)}...`);
+            log(`📷 Camera switch ${success ? 'SUCCESS' : 'FAILED'}, activeCameraId: ${activeCameraId?.slice(0,8)}...`);
         }
         
         function setPhotoMode(mode) { 
-            console.log(`📷 setPhotoMode: ${mode}`);
-            console.log(`   mainCameraId: ${mainCameraId?.slice(0,8) || 'null'}`);
-            console.log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8) || 'null'}`);
-            console.log(`   activeCameraId: ${activeCameraId?.slice(0,8) || 'null'}`);
+            log(`📷 setPhotoMode: ${mode}`);
+            log(`   mainCameraId: ${mainCameraId?.slice(0,8) || 'null'}`);
+            log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8) || 'null'}`);
+            log(`   activeCameraId: ${activeCameraId?.slice(0,8) || 'null'}`);
             
             // Stop barcode scanning if leaving SKU mode
             if(photoMode === 'sku' && mode !== 'sku') {
@@ -2245,20 +2325,20 @@
             }
             
             photoMode = mode; 
-            document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); 
+            $$('.mode-btn').forEach(b=>b.classList.remove('active')); 
             document.getElementById(`mode-${mode}`).classList.add('active'); 
             
             // Toggle portrait mode for main photos only
-            const video = document.getElementById('camera-video');
+            const video = ;
             if(mode === 'main') {
                 video.classList.add('portrait-mode');
-                console.log('📷 Portrait mode ON (rotated 90°)');
+                log('📷 Portrait mode ON (rotated 90°)');
                 // Apply proper sizing for rotated video
                 setTimeout(() => updatePortraitTransform(), 50);
             } else {
                 video.classList.remove('portrait-mode');
                 video.style.transform = ''; // Clear transform
-                console.log('📷 Portrait mode OFF (landscape)');
+                log('📷 Portrait mode OFF (landscape)');
             }
             
             // Reset zoom when switching modes
@@ -2267,20 +2347,20 @@
             // Auto-switch cameras based on mode
             if(mode === 'main') {
                 if(mainCameraId && activeCameraId !== mainCameraId) {
-                    console.log('📷 Switching to MAIN camera (BRIO) with max res...');
+                    log('📷 Switching to MAIN camera (BRIO) with max res...');
                     switchCameraMaxRes(mainCameraId);
                 } else {
-                    console.log('📷 Already on MAIN camera or mainCameraId not set');
+                    log('📷 Already on MAIN camera or mainCameraId not set');
                 }
             } else if(mode === 'tag' || mode === 'defect' || mode === 'sku') {
                 if(secondaryCameraId && activeCameraId !== secondaryCameraId) {
-                    console.log('📷 Switching to SECONDARY camera (C922X)...');
+                    log('📷 Switching to SECONDARY camera (C922X)...');
                     switchCamera(secondaryCameraId);
                 } else if(!secondaryCameraId) {
                     console.warn('⚠️ No secondary camera detected - using current camera');
                     // If no secondary, stay on current but still update indicator
                 } else {
-                    console.log('📷 Already on SECONDARY camera');
+                    log('📷 Already on SECONDARY camera');
                 }
             }
             
@@ -2290,20 +2370,20 @@
                 goToStep(3);
                 
                 // Show scanning status immediately
-                const statusEl = document.getElementById('sku-camera-status');
+                const statusEl = ;
                 statusEl.style.display = 'block';
                 statusEl.textContent = '📷 Switching to C922X for scan...';
                 statusEl.style.color = '#f59e0b';
                 
                 // Focus SKU input with multiple attempts to ensure it works
                 const focusSkuInput = () => {
-                    const skuInput = document.getElementById('sku-input');
+                    const skuInput = ;
                     if(skuInput) {
                         skuInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         skuInput.value = ''; // Clear for fresh scan
                         skuInput.focus();
                         skuInput.select();
-                        console.log('📷 SKU mode: Input focused, ready for scan');
+                        log('📷 SKU mode: Input focused, ready for scan');
                     }
                 };
                 
@@ -2314,7 +2394,7 @@
                 // Start camera-based barcode scanning after camera switches
                 // Use shorter delay for faster scanning
                 setTimeout(() => {
-                    console.log('📷 SKU: Auto-starting barcode scan...');
+                    log('📷 SKU: Auto-starting barcode scan...');
                     startBarcodeScanning();
                 }, 500);
             }
@@ -2323,7 +2403,7 @@
         }
         
         function updateCameraIndicator() {
-            const indicator = document.getElementById('camera-indicator');
+            const indicator = ;
             if(!indicator) return;
             if(activeCameraId === mainCameraId) {
                 indicator.textContent = '📦 BRIO (Main)';
@@ -2342,7 +2422,7 @@
             }
         }
         function capturePhoto() { 
-            const video = document.getElementById('camera-video'); 
+            const video = ; 
             if(!video.srcObject) return; 
             
             // Warn if not stable but still allow capture
@@ -2355,8 +2435,8 @@
             }
             
             // Flash effect
-            document.getElementById('flash-overlay').classList.add('flash'); 
-            setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100); 
+            .classList.add('flash'); 
+            setTimeout(()=>.classList.remove('flash'),100); 
             
             const sourceW = video.videoWidth;
             const sourceH = video.videoHeight;
@@ -2376,7 +2456,7 @@
                 ctx.rotate(-Math.PI / 2);
                 ctx.drawImage(video, 0, 0, sourceW, sourceH);
                 
-                console.log(`📸 MAIN Portrait ROTATED: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (true portrait)`);
+                log(`📸 MAIN Portrait ROTATED: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (true portrait)`);
             } else {
                 // TAG/DEFECTS/SKU: Square 1:1 ratio (center crop)
                 const size = Math.min(sourceW, sourceH);
@@ -2387,7 +2467,7 @@
                 canvas.height = size;
                 ctx.drawImage(video, cropX, cropY, size, size, 0, 0, size, size);
                 
-                console.log(`📸 ${photoMode.toUpperCase()} Square: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (1:1 ratio)`);
+                log(`📸 ${photoMode.toUpperCase()} Square: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (1:1 ratio)`);
             }
             
             // Maximum JPEG quality (0.95) for best detail preservation
@@ -2413,7 +2493,7 @@
                 }
                 
                 const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
-                console.log(`📸 ${photoMode.toUpperCase()}: ${canvas.width}×${canvas.height} | ${sizeMB}MB`);
+                log(`📸 ${photoMode.toUpperCase()}: ${canvas.width}×${canvas.height} | ${sizeMB}MB`);
                 
                 updatePhotoGrids(); 
                 updateValidation(); 
@@ -2422,7 +2502,7 @@
         
         // ============ STABILIZER FUNCTIONS ============
         function startStabilizer() {
-            const video = document.getElementById('camera-video');
+            const video = ;
             if(!video || !video.srcObject) return;
             
             // Create small canvas for frame comparison (very lightweight)
@@ -2441,7 +2521,7 @@
                 checkStability(video);
             }, 100);
             
-            console.log('📷 Stabilizer started');
+            log('📷 Stabilizer started');
         }
         
         function checkStability(video) {
@@ -2484,8 +2564,8 @@
         }
         
         function updateStabilizerUI(stable) {
-            const dot = document.getElementById('stabilizer-dot');
-            const text = document.getElementById('stabilizer-text');
+            const dot = ;
+            const text = ;
             if(!dot || !text) return;
             
             if(stable) {
@@ -2507,7 +2587,7 @@
             previousFrame = null;
             stableFrameCount = 0;
             isStable = false;
-            console.log('📷 Stabilizer stopped');
+            log('📷 Stabilizer stopped');
         }
         
         function updatePhotoGrids() { 
@@ -2524,10 +2604,10 @@
             renderGrid(data.mainPhotos,'main-photos-grid','main'); 
             renderGrid(data.tagPhotos,'tag-photos-grid','tag'); 
             renderGrid(data.defectPhotos,'defect-photos-grid','defect'); 
-            document.getElementById('main-count').textContent = data.mainPhotos.length; 
-            document.getElementById('tag-count').textContent = data.tagPhotos.length; 
-            document.getElementById('defect-count').textContent = data.defectPhotos.length; 
-            document.getElementById('photo-count').textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length; 
+            .textContent = data.mainPhotos.length; 
+            .textContent = data.tagPhotos.length; 
+            .textContent = data.defectPhotos.length; 
+            .textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length; 
         }
         function deletePhoto(mode,index) { if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} else if(mode==='tag'){URL.revokeObjectURL(data.tagPhotos[index].url);data.tagPhotos.splice(index,1);} else{URL.revokeObjectURL(data.defectPhotos[index].url);data.defectPhotos.splice(index,1);} updatePhotoGrids(); updateValidation(); }
         
@@ -2539,18 +2619,18 @@
             if(photos.length === 0) return;
             
             const photo = photos[index];
-            document.getElementById('preview-image').src = photo.url;
+            .src = photo.url;
             const is4K = photo.width >= 3800;
             const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
-            document.getElementById('preview-type').textContent = mode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
-            document.getElementById('preview-type').style.background = mode === 'main' ? '#3b82f6' : mode === 'tag' ? '#f59e0b' : '#ef4444';
+            .textContent = mode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
+            .style.background = mode === 'main' ? '#3b82f6' : mode === 'tag' ? '#f59e0b' : '#ef4444';
             updatePreviewNav();
-            document.getElementById('preview-modal').classList.add('active');
+            .classList.add('active');
             document.body.style.overflow = 'hidden';
         }
         
         function closePreview() {
-            document.getElementById('preview-modal').classList.remove('active');
+            .classList.remove('active');
             document.body.style.overflow = '';
             previewMode = null;
             previewIndex = 0;
@@ -2562,18 +2642,18 @@
             if(previewIndex < 0) previewIndex = 0;
             if(previewIndex >= photos.length) previewIndex = photos.length - 1;
             const photo = photos[previewIndex];
-            document.getElementById('preview-image').src = photo.url;
+            .src = photo.url;
             const is4K = photo.width >= 3800;
             const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
-            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
+            .textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
             updatePreviewNav();
         }
         
         function updatePreviewNav() {
             const photos = previewMode === 'main' ? data.mainPhotos : previewMode === 'tag' ? data.tagPhotos : data.defectPhotos;
-            document.getElementById('preview-prev').disabled = previewIndex <= 0;
-            document.getElementById('preview-next').disabled = previewIndex >= photos.length - 1;
-            document.getElementById('preview-counter').textContent = `${previewIndex + 1} / ${photos.length}`;
+            .disabled = previewIndex <= 0;
+            .disabled = previewIndex >= photos.length - 1;
+            .textContent = `${previewIndex + 1} / ${photos.length}`;
         }
         
         function deleteFromPreview() {
@@ -2586,16 +2666,16 @@
             }
             if(previewIndex >= photos.length) previewIndex = photos.length - 1;
             const photo = photos[previewIndex];
-            document.getElementById('preview-image').src = photo.url;
+            .src = photo.url;
             const is4K = photo.width >= 3800;
             const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
-            document.getElementById('preview-type').textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
+            .textContent = previewMode.toUpperCase() + (resLabel ? ` • ${resLabel}` : '');
             updatePreviewNav();
         }
         
         // Keyboard navigation for preview
         document.addEventListener('keydown', (e) => {
-            if(document.getElementById('preview-modal').classList.contains('active')) {
+            if(.classList.contains('active')) {
                 if(e.key === 'Escape') closePreview();
                 if(e.key === 'ArrowLeft') navigatePreview(-1);
                 if(e.key === 'ArrowRight') navigatePreview(1);
@@ -2606,22 +2686,22 @@
         function setSuperCategory(cat, btn) { 
             data.superCategory = cat; 
             data.category = ''; 
-            document.querySelectorAll('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
+            $$('.super-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
             btn.classList.remove('btn-secondary'); 
             
             // Toggle Construction sections based on category type
             const isBottoms = (cat === 'bottoms');
-            document.getElementById('tops-construction').classList.toggle('hidden', isBottoms);
-            document.getElementById('bottoms-construction').classList.toggle('hidden', !isBottoms);
+            .classList.toggle('hidden', isBottoms);
+            .classList.toggle('hidden', !isBottoms);
             
             // Clear construction data when switching
             if(isBottoms) {
                 data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = '';
-                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+                $$('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
             } else {
                 data.legStyle = ''; data.rise = '';
-                document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+                $$('.leg-btn, .rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
             }
             
             renderSubCategories(cat); 
@@ -2629,7 +2709,7 @@
         }
         function renderSubCategories(superCat) { 
             const config = categoryConfig[superCat]; 
-            const container = document.getElementById('sub-categories'); 
+            const container = ; 
             // Only show default style on hero if no category is selected
             const heroClass = data.category ? 'cat-hero cat-btn' : 'cat-hero cat-btn cat-default';
             container.innerHTML = `<button onclick="setCategory('${config.heroes[0]}', this)" class="${heroClass}"><span style="font-size:20px;">${catEmojis[config.heroes[0]]||'👕'}</span> ${config.heroes[0].toUpperCase()}</button><div class="btn-grid btn-grid-2" style="margin-bottom:8px;">${config.heroes.slice(1).map(c=>`<button onclick="setCategory('${c}', this)" class="cat-secondary cat-btn"><span>${catEmojis[c]||'👕'}</span> ${c}</button>`).join('')}</div><div class="btn-grid btn-grid-4">${config.others.map(c=>`<button onclick="setCategory('${c}', this)" class="cat-other cat-btn">${c}</button>`).join('')}</div>`; 
@@ -2637,20 +2717,20 @@
         function setCategory(cat, btn) { 
             data.category = cat; 
             // Remove selected AND default from ALL category buttons
-            document.querySelectorAll('.cat-btn').forEach(b => { 
+            $$('.cat-btn').forEach(b => { 
                 b.classList.remove('selected'); 
                 b.classList.remove('cat-default'); 
             }); 
             // Add selected to clicked button
             btn.classList.add('selected'); 
-            document.getElementById('category-label').textContent = '— ' + cat.toUpperCase(); 
+            .textContent = '— ' + cat.toUpperCase(); 
             // Show elastic check for Sweatpants
-            const elasticSection = document.getElementById('elastic-section');
+            const elasticSection = ;
             if(elasticSection) elasticSection.classList.toggle('hidden', cat !== 'Sweatpants');
             // Update measurement hints based on category
             updateMeasurementHints(cat);
             // Update tag location help if panel is open
-            if(!document.getElementById('tag-location-panel').classList.contains('hidden')) {
+            if(!.classList.contains('hidden')) {
                 updateTagLocationHelp();
             }
             renderFabricCards(); 
@@ -2660,41 +2740,41 @@
         
         function updateMeasurementHints(cat) {
             // Hide all measurement hints first
-            document.getElementById('measure-hint-tops').classList.add('hidden');
-            document.getElementById('measure-hint-button-shirt').classList.add('hidden');
-            document.getElementById('measure-hint-bottoms').classList.add('hidden');
-            document.getElementById('measure-hint-outer').classList.add('hidden');
+            .classList.add('hidden');
+            .classList.add('hidden');
+            .classList.add('hidden');
+            .classList.add('hidden');
             
             // Show appropriate hint based on category
             if(cat === 'Button Shirt') {
-                document.getElementById('measure-hint-button-shirt').classList.remove('hidden');
+                .classList.remove('hidden');
             } else if(['Jeans','Pants','Shorts','Sweatpants'].includes(cat)) {
-                document.getElementById('measure-hint-bottoms').classList.remove('hidden');
+                .classList.remove('hidden');
             } else if(['Jacket','Coat','Vest'].includes(cat)) {
-                document.getElementById('measure-hint-outer').classList.remove('hidden');
+                .classList.remove('hidden');
             } else {
-                document.getElementById('measure-hint-tops').classList.remove('hidden');
+                .classList.remove('hidden');
             }
         }
         
         function setTagStatus(status, btn) { 
             data.tagStatus = status; 
-            document.querySelectorAll('.tag-btn').forEach(b => { 
+            $$('.tag-btn').forEach(b => { 
                 b.classList.remove('selected','btn-hero','btn-default'); 
                 b.classList.add('btn-secondary'); 
             }); 
             btn.classList.add('selected','btn-hero'); 
             btn.classList.remove('btn-secondary','btn-default'); 
-            document.getElementById('tag-details').classList.toggle('hidden', status !== 'has'); 
-            document.getElementById('material-tag-warning').classList.toggle('hidden', status === 'has'); 
+            .classList.toggle('hidden', status !== 'has'); 
+            .classList.toggle('hidden', status === 'has'); 
             
             // TAG CUT MODE: When tag is missing/cut, traits become mandatory, selections disabled
             tagCutMode = (status === 'cut' || status === 'missing');
             
             // Fabric tag cut section
-            const fabricTagCutSection = document.getElementById('fabric-tag-cut-section');
-            const fabricHelpBtn = document.getElementById('fabric-help-btn');
-            const fabricHelpPanel = document.getElementById('fabric-help-panel');
+            const fabricTagCutSection = ;
+            const fabricHelpBtn = ;
+            const fabricHelpPanel = ;
             
             if(fabricTagCutSection) {
                 fabricTagCutSection.classList.toggle('hidden', !tagCutMode);
@@ -2707,9 +2787,9 @@
             }
             
             // Material tag cut section
-            const materialTagCutSection = document.getElementById('material-tag-cut-section');
-            const materialHelpBtn = document.getElementById('material-help-btn');
-            const materialHelpPanel = document.getElementById('material-help-panel');
+            const materialTagCutSection = ;
+            const materialHelpBtn = ;
+            const materialHelpPanel = ;
             
             if(materialTagCutSection) {
                 materialTagCutSection.classList.toggle('hidden', !tagCutMode);
@@ -2726,104 +2806,90 @@
             renderMaterialCards();
             updateValidation(); 
         }
-        function setSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('tag-size-input').value=''; }
-        function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function onSizeInput(el) { data.tagSize = el.value.trim(); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function setOrigin(origin, btn) { data.origin = origin; document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); document.getElementById('country-section').classList.toggle('hidden', origin !== 'import'); if(origin==='usa')data.country='USA'; }
+        function setSize(size, btn) { data.tagSize = size; selectBtn('.size-btn', btn); $('tag-size-input').value=''; }
+        function clearSizeBtns() { $$('.size-btn').forEach(b => b.classList.remove('selected')); }
+        function onSizeInput(el) { data.tagSize = el.value.trim(); $$('.size-btn').forEach(b => b.classList.remove('selected')); }
+        function setOrigin(origin, btn) { data.origin = origin; $$('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); .classList.toggle('hidden', origin !== 'import'); if(origin==='usa')data.country='USA'; }
         function setCountry(country, btn) { 
-            document.querySelectorAll('.country-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
+            $$('.country-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); 
             if(country === 'Other') {
-                document.getElementById('country-other-input').classList.remove('hidden');
-                document.getElementById('country-other-input').focus();
+                .classList.remove('hidden');
+                .focus();
             } else {
-                document.getElementById('country-other-input').classList.add('hidden');
-                document.getElementById('country-other-input').value = '';
+                .classList.add('hidden');
+                .value = '';
                 data.country = country;
             }
         }
-        function onCountryOtherInput() { data.country = document.getElementById('country-other-input').value.trim(); }
-        function setGender(gender, btn) { data.gender = gender; document.querySelectorAll('.gender-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function onCountryOtherInput() { data.country = $('country-other-input').value.trim(); }
+        function setGender(gender, btn) { data.gender = gender; selectBtn('.gender-btn', btn); }
         function toggleColor(color, btn) { const idx = data.colors.indexOf(color); if(idx>-1){data.colors.splice(idx,1);btn.classList.remove('selected');} else{data.colors.push(color);btn.classList.add('selected');} updateValidation(); }
-        function setFade(fade, btn) { data.fade = fade; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
-        function setPattern(pattern, btn) { 
-            data.pattern = pattern; 
-            document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
-            // Show/hide print type and graphic category sections for Graphic
-            const showGraphicOptions = (pattern === 'Graphic');
-            document.getElementById('print-type-section').classList.toggle('hidden', !showGraphicOptions);
-            document.getElementById('graphic-category-section').classList.toggle('hidden', !showGraphicOptions);
-            // Clear print type and graphic category if not Graphic
-            if(!showGraphicOptions) { 
-                data.printType = ''; data.graphicCategory = ''; 
-                document.querySelectorAll('.print-btn, .graphic-cat-btn').forEach(b => b.classList.remove('selected','btn-hero')); 
-            }
-            updateValidation(); 
-        }
+        function setFade(fade, btn) { data.fade = fade; selectBtn('.fade-btn', btn); updateValidation(); }
+        // setPattern removed - use selectPattern() instead
         function toggleOtherPatterns() { 
-            const el = document.getElementById('pattern-others'); 
+            const el = $('pattern-others'); 
             el.classList.toggle('hidden'); 
-            document.getElementById('other-patterns-toggle').textContent = el.classList.contains('hidden') ? '+ More patterns' : '− Hide patterns'; 
+            $('other-patterns-toggle').textContent = el.classList.contains('hidden') ? '+ More patterns' : '− Hide patterns'; 
         }
-        function setPrintType(type, btn) { data.printType = type; document.querySelectorAll('.print-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
-        function setGraphicCategory(cat, btn) { data.graphicCategory = cat; document.querySelectorAll('.graphic-cat-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setPrintType(type, btn) { data.printType = type; selectBtn('.print-btn', btn); }
+        function setGraphicCategory(cat, btn) { data.graphicCategory = cat; selectBtn('.graphic-cat-btn', btn); }
         function setSleeve(length, btn) { 
             data.sleeveLength = length; 
-            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
-            // Hide sleeve style when None
-            document.getElementById('sleeve-style-section').classList.toggle('hidden', length==='None'); 
-            // Show cutoff section for T-Shirts when sleeveless
+            selectBtn('.sleeve-btn', btn);
+            toggle('sleeve-style-section', length !== 'None');
             const isTShirt = ['T-Shirt','Sweatshirt','Hoodie'].includes(data.category);
-            document.getElementById('cutoff-section').classList.toggle('hidden', !(length==='None' && isTShirt));
-            // Clear cutoff if not sleeveless
-            if(length !== 'None') { data.cutoffType = ''; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected','btn-hero')); }
+            toggle('cutoff-section', length === 'None' && isTShirt);
+            if(length !== 'None') { data.cutoffType = ''; $$('.cutoff-btn').forEach(b => b.classList.remove('selected','btn-hero')); }
             updateValidation(); 
         }
-        function setCutoff(type, btn) { data.cutoffType = type; document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setCutoff(type, btn) { data.cutoffType = type; selectBtn('.cutoff-btn', btn); }
         function setSleeveStyle(style, btn) { 
             data.sleeveStyle = style; 
-            document.querySelectorAll('.style-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
-            // Show/hide measurement notice for Raglan/Dolman
-            const notice = document.getElementById('sleeve-measurement-notice');
-            if(notice) notice.classList.toggle('hidden', style === 'Standard');
+            selectBtn('.style-btn', btn);
+            toggle('sleeve-measurement-notice', style !== 'Standard');
         }
-        function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
+        function setStitch(stitch, btn) { data.stitch = stitch; selectBtn('.stitch-btn', btn); }
         
         // BOTTOMS: Leg Style Functions
-        function setLegStyle(style, btn) { 
-            data.legStyle = style; 
-            document.querySelectorAll('.leg-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
-            updateValidation(); 
-        }
-        function setRise(rise, btn) { 
-            data.rise = rise; 
-            document.querySelectorAll('.rise-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
-        }
+        function setLegStyle(style, btn) { data.legStyle = style; selectBtn('.leg-btn', btn); updateValidation(); }
+        function setRise(rise, btn) { data.rise = rise; selectBtn('.rise-btn', btn); }
         function toggleLegStyleHelp() {
-            document.getElementById('leg-style-help').classList.toggle('hidden');
+            .classList.toggle('hidden');
         }
         
-        function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
-        function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
-        function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
-        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.remove('btn-default','btn-secondary'); document.getElementById('btn-clean').classList.add('selected','btn-hero'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
-        function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected','btn-hero','btn-default'); document.getElementById('btn-clean').classList.add('btn-secondary'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null; document.getElementById('btn-clean').classList.remove('btn-secondary'); document.getElementById('btn-clean').classList.add('btn-default');} updateValidation(); }
+        function setThickness(thickness, btn) { data.thickness = thickness; selectBtn('.thickness-btn', btn); updateValidation(); }
+        function setLayers(layers, btn) { data.layers = layers; selectBtn('.layers-btn', btn); updateValidation(); }
+        function setWash(wash, btn) { data.wash = wash; selectBtn('.wash-btn', btn); }
+        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; .classList.remove('btn-default','btn-secondary'); .classList.add('selected','btn-hero'); $$('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
+        function toggleDefect(type, btn) {
+            const cleanBtn = $('btn-clean');
+            cleanBtn.classList.remove('selected', 'btn-hero', 'btn-default');
+            cleanBtn.classList.add('btn-secondary');
+            data.hasDefects = true;
+            
+            const idx = data.defectTypes.indexOf(type);
+            if (idx > -1) {
+                data.defectTypes.splice(idx, 1);
+                btn.classList.remove('selected');
+            } else {
+                data.defectTypes.push(type);
+                btn.classList.add('selected');
+            }
+            
+            if (data.defectTypes.length === 0) {
+                data.hasDefects = null;
+                cleanBtn.classList.remove('btn-secondary');
+                cleanBtn.classList.add('btn-default');
+            }
+            updateValidation();
+        }
         
         // FLAG AS UNUSUAL
         function toggleFlagUnusual() { 
             data.flagged = !data.flagged; 
-            const btn = document.getElementById('flag-btn');
-            const flagStatus = document.getElementById('flag-status');
+            const btn = ;
+            const flagStatus = ;
             if(data.flagged) {
                 btn.classList.add('flagged');
                 btn.querySelector('span:first-child').textContent = '🚩';
@@ -2838,23 +2904,15 @@
         }
         
         // ELASTIC CHECK (for sweatpants)
-        function setElastic(elastic, btn) {
-            data.elasticCheck = elastic;
-            document.querySelectorAll('.elastic-btn').forEach(b => {
-                b.classList.remove('selected','btn-hero');
-                b.classList.add('btn-secondary');
-            });
-            btn.classList.add('selected','btn-hero');
-            btn.classList.remove('btn-secondary');
-        }
-        function updateWeight() { data.weightLb = parseInt(document.getElementById('weight-lb').value); data.weightOz = parseInt(document.getElementById('weight-oz').value); updateValidation(); }
+        function setElastic(elastic, btn) { data.elasticCheck = elastic; selectBtn('.elastic-btn', btn); }
+        function updateWeight() { data.weightLb = parseInt($('weight-lb').value); data.weightOz = parseInt($('weight-oz').value); updateValidation(); }
         
         async function activateSkuScan() {
-            console.log('📷 SKU Scan button clicked');
-            console.log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8) || 'null'}`);
+            log('📷 SKU Scan button clicked');
+            log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8) || 'null'}`);
             
             // Show status
-            const statusEl = document.getElementById('sku-camera-status');
+            const statusEl = ;
             statusEl.style.display = 'block';
             statusEl.textContent = '📷 Switching to C922X...';
             statusEl.style.color = '#f59e0b';
@@ -2879,17 +2937,17 @@
             }
             
             // Focus input for barcode scanner
-            const skuInput = document.getElementById('sku-input');
+            const skuInput = ;
             skuInput.value = '';
             skuInput.focus();
         }
         
         function onSkuInput() {
-            const skuInput = document.getElementById('sku-input');
+            const skuInput = ;
             data.sku = skuInput.value.trim();
             
             // Update SKU badge in progress bar
-            const skuBadge = document.getElementById('sku-badge');
+            const skuBadge = ;
             if(data.sku) {
                 skuBadge.textContent = 'SKU: ' + data.sku;
                 skuBadge.classList.add('visible');
@@ -2904,17 +2962,17 @@
             // Barcode scanners typically send Enter after scanning
             if(event.key === 'Enter') {
                 event.preventDefault();
-                const skuInput = document.getElementById('sku-input');
+                const skuInput = ;
                 data.sku = skuInput.value.trim();
                 
                 if(data.sku) {
                     // Show success feedback
-                    document.getElementById('sku-status').innerHTML = '✅ SKU scanned: <strong>' + data.sku + '</strong>';
-                    document.getElementById('sku-status').style.color = '#16a34a';
-                    console.log('📷 SKU scanned:', data.sku);
+                    .innerHTML = '✅ SKU scanned: <strong>' + data.sku + '</strong>';
+                    .style.color = '#16a34a';
+                    log('📷 SKU scanned:', data.sku);
                     
                     // Update badge
-                    const skuBadge = document.getElementById('sku-badge');
+                    const skuBadge = ;
                     skuBadge.textContent = 'SKU: ' + data.sku;
                     skuBadge.classList.add('visible');
                     
@@ -2929,31 +2987,31 @@
             }
         }
         
-        // V99.28: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
+        // V99.29: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
         let quaggaRunning = false;
         
         async function startBarcodeScanning() {
-            const statusEl = document.getElementById('sku-camera-status');
+            const statusEl = ;
             statusEl.style.display = 'block';
             
             // Check if Quagga loaded
             if(typeof Quagga === 'undefined') {
                 statusEl.innerHTML = '⚠️ Barcode library failed to load<br><small style="font-size:9px;">Type SKU manually or use USB scanner</small>';
                 statusEl.style.color = '#f59e0b';
-                console.log('❌ QuaggaJS not loaded');
+                log('❌ QuaggaJS not loaded');
                 return;
             }
             
             stopBarcodeScanning(); // Clear any existing
             
-            const video = document.getElementById('camera-video');
+            const video = ;
             if(!video.srcObject) {
                 statusEl.textContent = '⚠️ Camera not active';
                 statusEl.style.color = '#f59e0b';
                 return;
             }
             
-            console.log('🔍 Starting QuaggaJS barcode scanning...');
+            log('🔍 Starting QuaggaJS barcode scanning...');
             statusEl.textContent = '🔍 Scanning for barcode...';
             statusEl.style.color = '#3b82f6';
             
@@ -2993,10 +3051,10 @@
                 }, function(result) {
                     if(result && result.codeResult) {
                         const barcodeValue = result.codeResult.code;
-                        console.log('✅ Barcode detected:', barcodeValue, result.codeResult.format);
+                        log('✅ Barcode detected:', barcodeValue, result.codeResult.format);
                         
                         // Fill in the SKU
-                        const skuInput = document.getElementById('sku-input');
+                        const skuInput = ;
                         skuInput.value = barcodeValue;
                         data.sku = barcodeValue;
                         
@@ -3004,11 +3062,11 @@
                         statusEl.textContent = '✅ Scanned: ' + barcodeValue;
                         statusEl.style.color = '#16a34a';
                         
-                        document.getElementById('sku-status').innerHTML = '✅ SKU scanned: <strong>' + barcodeValue + '</strong>';
-                        document.getElementById('sku-status').style.color = '#16a34a';
+                        .innerHTML = '✅ SKU scanned: <strong>' + barcodeValue + '</strong>';
+                        .style.color = '#16a34a';
                         
                         // Update badge
-                        const skuBadge = document.getElementById('sku-badge');
+                        const skuBadge = ;
                         skuBadge.textContent = 'SKU: ' + barcodeValue;
                         skuBadge.classList.add('visible');
                         
@@ -3044,7 +3102,7 @@
             if(barcodeScanInterval) {
                 clearInterval(barcodeScanInterval);
                 barcodeScanInterval = null;
-                console.log('🛑 Barcode scanning stopped');
+                log('🛑 Barcode scanning stopped');
             }
         }
         
@@ -3064,9 +3122,9 @@
                 };
                 mediaRecorder.start();
                 recordingStart = Date.now();
-                document.getElementById('record-btn').innerHTML = '<span style="font-size:24px;">⏹️</span><span>RECORDING...</span>';
-                document.getElementById('record-btn').style.background = '#dc2626';
-                document.getElementById('record-btn').classList.add('recording');
+                .innerHTML = '<span style="font-size:24px;">⏹️</span><span>RECORDING...</span>';
+                .style.background = '#dc2626';
+                .classList.add('recording');
                 recordingInterval = setInterval(updateRecordingTime, 1000);
             } catch(e) { showToast('error', 'Microphone Error', 'Microphone access denied'); }
         }
@@ -3076,28 +3134,28 @@
                 clearInterval(recordingInterval);
                 const duration = Math.floor((Date.now() - recordingStart) / 1000);
                 data.audioDuration = duration;
-                document.getElementById('recording-duration').textContent = formatTime(duration);
-                document.getElementById('record-section').classList.add('hidden');
-                document.getElementById('post-record-section').classList.remove('hidden');
+                .textContent = formatTime(duration);
+                .classList.add('hidden');
+                .classList.remove('hidden');
             }
         }
         function updateRecordingTime() {
             const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
-            document.getElementById('record-btn').querySelector('span:last-child').textContent = `RECORDING ${formatTime(elapsed)}`;
+            .querySelector('span:last-child').textContent = `RECORDING ${formatTime(elapsed)}`;
         }
         function reRecord() {
             data.audioMeasure = null; data.audioDuration = 0;
-            document.getElementById('record-section').classList.remove('hidden');
-            document.getElementById('post-record-section').classList.add('hidden');
-            document.getElementById('record-btn').innerHTML = '<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>';
-            document.getElementById('record-btn').style.background = '#ef4444';
-            document.getElementById('record-btn').classList.remove('recording');
+            .classList.remove('hidden');
+            .classList.add('hidden');
+            .innerHTML = '<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>';
+            .style.background = '#ef4444';
+            .classList.remove('recording');
             updateValidation();
         }
         function formatTime(s) { return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
         
         function renderFabricCards() { 
-            const grid = document.getElementById('fabric-cards-grid'); 
+            const grid = ; 
             const fabrics = fabricDB[data.category] || fabricDB['default']; 
             grid.innerHTML = ''; 
             fabrics.forEach(fab=>{ 
@@ -3112,7 +3170,7 @@
                 card.innerHTML = `<button class="card-help" onclick="event.stopPropagation(); showFabricHelp('${fab.name}', '${fab.desc.replace(/'/g, "\\'")}');">?</button><div class="card-name">${fab.name}</div><div class="card-desc">${fab.desc}</div>`; 
                 if(!dimmed && !disabled) card.onclick = ()=>{ 
                     data.fabricType = fab.name; 
-                    document.getElementById('wash-section').classList.toggle('hidden', fab.name!=='Denim'); 
+                    .classList.toggle('hidden', fab.name!=='Denim'); 
                     renderFabricCards(); 
                     updateValidation(); 
                 }; 
@@ -3123,8 +3181,8 @@
             openRefModal(name, desc, 'fabric');
         }
         function openRefModal(name, desc, type) {
-            document.getElementById('ref-modal-title').textContent = name;
-            document.getElementById('ref-modal-desc').textContent = desc;
+            .textContent = name;
+            .textContent = desc;
             
             // Build Google image search URL
             let query = `${name} fabric texture close up`;
@@ -3167,13 +3225,13 @@
             if (name === 'Herringbone') query = 'herringbone pattern tweed suit';
             if (name === 'Abstract') query = 'abstract pattern 80s splatter';
             
-            document.getElementById('ref-modal-link').href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-            document.getElementById('ref-modal-overlay').classList.add('visible');
+            .href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+            .classList.add('visible');
         }
         function closeRefModal() {
-            document.getElementById('ref-modal-overlay').classList.remove('visible');
+            .classList.remove('visible');
         }
-        function toggleFabricHelp() { document.getElementById('fabric-help-panel').classList.toggle('hidden'); }
+        function toggleFabricHelp() { .classList.toggle('hidden'); }
         function toggleFabricFilter(type, value, btn) { 
             if(fabricFilters[type]===value){
                 fabricFilters[type]=null;
@@ -3192,8 +3250,8 @@
         }
         
         function updateFabricAdvice() {
-            const helper = document.getElementById('fabric-helper');
-            const helperTagcut = document.getElementById('fabric-helper-tagcut');
+            const helper = ;
+            const helperTagcut = ;
             const advice = getFabricAdvice();
             
             if(helper) {
@@ -3205,7 +3263,7 @@
             }
         }
         
-        // V99.28: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.29: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3263,7 +3321,7 @@
         }
         
         function renderMaterialCards() { 
-            const grid = document.getElementById('material-cards-grid'); 
+            const grid = ; 
             const materials = materialDB[data.category] || materialDB['default']; 
             grid.innerHTML = ''; 
             materials.forEach(mat=>{ 
@@ -3277,8 +3335,8 @@
                 card.innerHTML = `<button class="card-help" onclick="event.stopPropagation(); showMaterialHelp('${mat.name}', '${mat.desc.replace(/'/g, "\\'")}');">?</button><div class="card-name">${mat.name}</div><div class="card-desc">${mat.desc}</div>`; 
                 if(!dimmed && !disabled) card.onclick = ()=>{ 
                     data.material = mat.name; 
-                    document.getElementById('material-other-select').value=''; 
-                    document.getElementById('material-custom-input').classList.add('hidden'); 
+                    .value=''; 
+                    .classList.add('hidden'); 
                     renderMaterialCards(); 
                     updateValidation(); 
                 }; 
@@ -3289,32 +3347,32 @@
             openRefModal(name, desc, 'material');
         }
         function onMaterialOtherChange() {
-            const val = document.getElementById('material-other-select').value;
+            const val = .value;
             if(!val) return;
             if(val === 'Custom') {
-                document.getElementById('material-custom-input').classList.remove('hidden');
-                document.getElementById('material-custom-input').focus();
+                .classList.remove('hidden');
+                .focus();
             } else {
-                document.getElementById('material-custom-input').classList.add('hidden');
+                .classList.add('hidden');
                 data.material = val;
                 // Deselect cards
-                document.querySelectorAll('#material-cards-grid .card').forEach(c => c.classList.remove('selected'));
+                $$('#material-cards-grid .card').forEach(c => c.classList.remove('selected'));
                 updateValidation();
             }
         }
         function onMaterialCustomInput() {
-            const val = document.getElementById('material-custom-input').value.trim();
+            const val = .value.trim();
             if(val) {
                 data.material = val;
-                document.querySelectorAll('#material-cards-grid .card').forEach(c => c.classList.remove('selected'));
+                $$('#material-cards-grid .card').forEach(c => c.classList.remove('selected'));
                 updateValidation();
             }
         }
         
-        // V99.28: Pattern Cards with ? help buttons
+        // V99.29: Pattern Cards with ? help buttons
         function renderPatternCards() {
-            const mainGrid = document.getElementById('pattern-cards-grid');
-            const othersGrid = document.getElementById('pattern-cards-others');
+            const mainGrid = ;
+            const othersGrid = ;
             
             // Main patterns (priority 1-2)
             const mainPatterns = patternDB.filter(p => p.priority <= 2);
@@ -3346,21 +3404,21 @@
             
             // Show/hide print type and graphic category sections for Graphic
             const showGraphicOptions = (name === 'Graphic');
-            document.getElementById('print-type-section').classList.toggle('hidden', !showGraphicOptions);
-            document.getElementById('graphic-category-section').classList.toggle('hidden', !showGraphicOptions);
+            .classList.toggle('hidden', !showGraphicOptions);
+            .classList.toggle('hidden', !showGraphicOptions);
             // Clear print type and graphic category if not Graphic
             if(!showGraphicOptions) { 
                 data.printType = ''; 
                 data.graphicCategory = ''; 
-                document.querySelectorAll('.print-btn, .graphic-cat-btn').forEach(b => b.classList.remove('selected','btn-hero')); 
+                $$('.print-btn, .graphic-cat-btn').forEach(b => b.classList.remove('selected','btn-hero')); 
             }
             
             updateValidation();
         }
         
         function showPatternHelp(name, desc, examples) {
-            document.getElementById('ref-modal-title').textContent = name;
-            document.getElementById('ref-modal-desc').textContent = desc + '\n\nExamples: ' + examples;
+            .textContent = name;
+            .textContent = desc + '\n\nExamples: ' + examples;
             
             // Build Google image search URL
             let query = name + ' pattern clothing';
@@ -3382,35 +3440,35 @@
             if (name === 'Herringbone') query = 'herringbone pattern tweed suit';
             if (name === 'Abstract') query = 'abstract pattern 80s splatter';
             
-            document.getElementById('ref-modal-link').href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
-            document.getElementById('ref-modal-overlay').classList.add('visible');
+            .href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`;
+            .classList.add('visible');
         }
         
         function onFabricOtherChange() {
-            const val = document.getElementById('fabric-other-select').value;
+            const val = .value;
             if(!val) return;
             if(val === 'Custom') {
-                document.getElementById('fabric-custom-input').classList.remove('hidden');
-                document.getElementById('fabric-custom-input').focus();
+                .classList.remove('hidden');
+                .focus();
             } else {
-                document.getElementById('fabric-custom-input').classList.add('hidden');
+                .classList.add('hidden');
                 data.fabricType = val;
                 // Deselect cards
-                document.querySelectorAll('#fabric-cards-grid .card').forEach(c => c.classList.remove('selected'));
-                document.getElementById('wash-section').classList.add('hidden');
+                $$('#fabric-cards-grid .card').forEach(c => c.classList.remove('selected'));
+                .classList.add('hidden');
                 updateValidation();
             }
         }
         function onFabricCustomInput() {
-            const val = document.getElementById('fabric-custom-input').value.trim();
+            const val = .value.trim();
             if(val) {
                 data.fabricType = val;
-                document.querySelectorAll('#fabric-cards-grid .card').forEach(c => c.classList.remove('selected'));
-                document.getElementById('wash-section').classList.add('hidden');
+                $$('#fabric-cards-grid .card').forEach(c => c.classList.remove('selected'));
+                .classList.add('hidden');
                 updateValidation();
             }
         }
-        function toggleMaterialHelp() { document.getElementById('material-help-panel').classList.toggle('hidden'); }
+        function toggleMaterialHelp() { .classList.toggle('hidden'); }
         function toggleMaterialFilter(type, value, btn) { 
             if(materialFilters[type]===value){
                 materialFilters[type]=null;
@@ -3428,8 +3486,8 @@
         }
         
         function updateMaterialAdvice() {
-            const helper = document.getElementById('material-helper');
-            const helperTagcut = document.getElementById('material-helper-tagcut');
+            const helper = ;
+            const helperTagcut = ;
             const advice = getMaterialAdvice();
             
             if(helper) {
@@ -3440,7 +3498,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.28: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.29: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3494,9 +3552,9 @@
             }
         }
         
-        // V99.28: Tag Location Helper Functions
+        // V99.29: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
-            const panel = document.getElementById('tag-location-panel');
+            const panel = ;
             panel.classList.toggle('hidden');
             if(!panel.classList.contains('hidden')) {
                 updateTagLocationHelp();
@@ -3506,7 +3564,7 @@
         function updateTagLocationHelp() {
             const cat = data.category || 'T-Shirt';
             const locations = tagLocationDB[cat] || tagLocationDB['default'];
-            const content = document.getElementById('tag-location-content');
+            const content = ;
             
             let html = `<div style="font-weight:700;color:#92400e;margin-bottom:8px;font-size:13px;">🔍 Where to find tags on: ${cat}</div>`;
             
@@ -3539,9 +3597,9 @@
             content.innerHTML = html;
         }
         
-        // V99.28: Pattern Helper Functions
+        // V99.29: Pattern Helper Functions
         function togglePatternHelp() { 
-            document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
+            .classList.toggle('hidden'); 
         }
         
         function togglePatternFilter(type, value, btn) { 
@@ -3560,7 +3618,7 @@
         }
         
         function updatePatternAdvice() {
-            const helper = document.getElementById('pattern-helper');
+            const helper = ;
             const advice = getPatternAdvice();
             
             if(helper) {
@@ -3569,7 +3627,7 @@
             }
         }
         
-        // V99.28: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.29: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -3629,7 +3687,7 @@
             Object.entries(checks).forEach(([key,ok])=>{ const el = document.getElementById(`check-${key}`); if(el){el.innerHTML=ok?'✓':'○';el.classList.toggle('complete',ok);} }); 
             const allRequired = checks.category&&checks.tag&&checks.color&&checks.fade&&checks.pattern&&checks['fabric-type']&&checks.material&&checks.construction&&checks.feel&&checks.condition&&checks.weight&&checks.audio&&checks.sku; 
             const hasPhotos = data.mainPhotos.length>0; 
-            document.getElementById('submit-btn').disabled = !(allRequired&&hasPhotos);
+            .disabled = !(allRequired&&hasPhotos);
             if(currentStep===4) updateReviewCards();
         }
         
@@ -3685,7 +3743,7 @@
             xhr.open('POST', N8N_WEBHOOK_URL, true);
             xhr.onload = () => { 
                 if(xhr.status===200) { 
-                    console.log('Submitted to n8n'); 
+                    log('Submitted to n8n'); 
                     showToast('success', 'Item Submitted!', `SKU ${data.sku} saved successfully`);
                 } else {
                     showToast('warning', 'Submission Issue', 'Item saved locally, server may have issues');
@@ -3697,13 +3755,146 @@
             };
             xhr.send(formData);
             
-            recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
+            recordItemTime(); 
+            stats.today++; stats.week++; stats.total++; 
+            saveStats(); 
+            updateStatsDisplay(); 
+            resetForm(); 
         }
-        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',material:'',materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.28')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.28',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
-        function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
+        function resetForm() {
+            // Clean up photo memory
+            data.mainPhotos.forEach(p => URL.revokeObjectURL(p.url));
+            data.tagPhotos.forEach(p => URL.revokeObjectURL(p.url));
+            data.defectPhotos.forEach(p => URL.revokeObjectURL(p.url));
+            
+            // Reset data to defaults (preserve photographer)
+            const currentPhotographer = data.photographer;
+            data = { ...defaultData, photographer: currentPhotographer };
+            tagCutMode = false;
+            
+            // Reset all button selections
+            $$('.selected').forEach(b => b.classList.remove('selected'));
+            $$('.btn-hero').forEach(b => {
+                if (!b.classList.contains('super-btn')) b.classList.remove('btn-hero');
+            });
+            $$('.size-btn, .country-btn, .gender-btn').forEach(b => {
+                b.classList.remove('btn-hero');
+                b.classList.add('btn-secondary');
+            });
+            $$('.super-btn').forEach((b, i) => {
+                if (i === 0) {
+                    b.classList.add('selected', 'btn-hero');
+                    b.classList.remove('btn-secondary');
+                } else {
+                    b.classList.remove('selected', 'btn-hero');
+                    b.classList.add('btn-secondary');
+                }
+            });
+            $$('.elastic-btn, .leg-btn, .rise-btn').forEach(b => {
+                b.classList.remove('selected', 'btn-hero');
+                b.classList.add('btn-secondary');
+            });
+            $$('.filter-btn').forEach(b => b.classList.remove('active'));
+            
+            // Reset form inputs
+            $('sku-input').value = '';
+            $('weight-lb').value = '0';
+            $('weight-oz').value = '0';
+            $('tag-size-input').value = '';
+            $('country-other-input').value = '';
+            $('material-other-select').value = '';
+            $('material-custom-input').value = '';
+            $('fabric-other-select').value = '';
+            $('fabric-custom-input').value = '';
+            
+            // Hide all conditional sections
+            const sectionsToHide = [
+                'tag-details', 'country-section', 'country-other-input', 'wash-section',
+                'print-type-section', 'graphic-category-section', 'pattern-others',
+                'cutoff-section', 'elastic-section', 'sleeve-measurement-notice',
+                'material-custom-input', 'fabric-custom-input', 'post-record-section',
+                'flag-status', 'bottoms-construction', 'leg-style-help',
+                'measure-hint-button-shirt', 'measure-hint-bottoms', 'measure-hint-outer',
+                'fabric-helper', 'material-helper', 'pattern-helper', 'pattern-help-panel',
+                'tag-location-panel', 'fabric-tag-cut-section', 'material-tag-cut-section'
+            ];
+            sectionsToHide.forEach(id => hide($(id)));
+            
+            // Show default sections
+            show($('record-section'));
+            show($('tops-construction'));
+            show($('measure-hint-tops'));
+            show($('fabric-help-btn'));
+            show($('material-help-btn'));
+            
+            // Reset text content
+            $('other-patterns-toggle').textContent = '+ More patterns';
+            $('category-label').textContent = '';
+            $('sku-badge').classList.remove('visible');
+            $('sku-badge').textContent = '';
+            $('sku-status').textContent = '';
+            $('sku-camera-status').style.display = 'none';
+            
+            // Reset recording button
+            $('record-btn').innerHTML = '<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>';
+            $('record-btn').style.background = 'var(--color-error)';
+            
+            // Reset flag button
+            $('flag-btn').classList.remove('flagged');
+            $('flag-btn').querySelector('span:first-child').textContent = '🤔';
+            $('flag-btn').querySelector('span:last-of-type').textContent = 'FLAG AS UNUSUAL';
+            
+            // Reset filters
+            fabricFilters = { stretch: null, surface: null, interior: null };
+            materialFilters = { temp: null, shine: null };
+            patternFilters = { lines: null, shapes: null, method: null };
+            
+            // Re-render components
+            renderSubCategories('tops');
+            renderFabricCards();
+            renderMaterialCards();
+            renderPatternCards();
+            updatePhotoGrids();
+            updateValidation();
+            goToStep(1);
+            setPhotoMode('main');
+            resetZoom();
+        }
+        
+        function loadStats() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('vl_stats_v99.29') || '{}');
+                if (saved.date !== new Date().toDateString()) saved.today = 0;
+                stats = {
+                    today: saved.today || 0,
+                    week: saved.week || 0,
+                    total: saved.total || 0
+                };
+                itemTimes = saved.itemTimes || [];
+                updateStatsDisplay();
+                if (itemTimes.length > 0) {
+                    const avg = Math.floor(itemTimes.reduce((a, b) => a + b, 0) / itemTimes.length);
+                    $('timer-avg').textContent = `${Math.floor(avg / 60)}:${(avg % 60).toString().padStart(2, '0')}`;
+                }
+            } catch (e) { /* ignore */ }
+        }
+        
+        function saveStats() {
+            try {
+                localStorage.setItem('vl_stats_v99.29', JSON.stringify({
+                    ...stats,
+                    date: new Date().toDateString(),
+                    itemTimes: itemTimes.slice(-50)
+                }));
+            } catch (e) { /* ignore */ }
+        }
+        
+        function updateStatsDisplay() {
+            $('stat-today').textContent = stats.today;
+            $('stat-week').textContent = stats.week;
+            $('stat-total').textContent = stats.total;
+        }
     </script>
 </body>
 </html>
