@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.42 - Desktop Station</title>
+    <title>VintageLister v99.43 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -462,7 +462,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.42 Desktop Station</div>
+        <div class="pin-version">v99.43 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -500,7 +500,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.42</span>
+                    <span class="version-badge">v99.43</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1194,6 +1194,8 @@
                         <div style="font-size:11px;margin-top:6px;color:#555;">Logitech Brio 4K recommended</div>
                     </div>
                     <video id="camera-video" autoplay playsinline style="display:none;"></video>
+                    <!-- IP Webcam stream for phone mode -->
+                    <img id="phone-stream" style="display:none;width:100%;height:100%;object-fit:contain;" alt="Phone camera stream">
                     <div class="camera-overlay" id="camera-overlay">
                         <!-- Stabilizer Indicator -->
                         <div class="stabilizer-indicator" id="stabilizer-indicator">
@@ -1212,12 +1214,12 @@
             </div>
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio</small></button>
-                <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-phone" onclick="setPhotoMode('phone')" style="background:#7c3aed;border-color:#7c3aed;">📱 Phone<br><small style="font-size:9px;opacity:0.7;">S20 Zoom</small></button>
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
                 </div>
-                <button class="mode-btn" id="mode-defect" onclick="setPhotoMode('defect')">⚠️ Defects<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
                 <button class="mode-btn mode-btn-sku" id="mode-sku" onclick="setPhotoMode('sku')">📷 SKU<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
             </div>
         </div>
@@ -1273,6 +1275,227 @@
         const DEFECT_CROP_SIZE = 0.50; // 50% of width for each crop (~1080px from 2160 rotated)
         const DEFECT_COLORS = { stain: '#eab308', hole: '#3b82f6', repair: '#f97316' };
         const DEFECT_ICONS = { stain: '💧', hole: '🕳️', repair: '🧵' };
+        
+        // ============ IP WEBCAM (PHONE) INTEGRATION ============
+        const IP_WEBCAM_URL = 'http://localhost:8080'; // ADB forwarded
+        let phoneStreamActive = false;
+        
+        async function startPhoneStream() {
+            const phoneStream = document.getElementById('phone-stream');
+            const video = document.getElementById('camera-video');
+            const placeholder = document.getElementById('camera-placeholder');
+            
+            // Hide webcam video, show phone stream
+            video.style.display = 'none';
+            placeholder.style.display = 'none';
+            phoneStream.style.display = 'block';
+            
+            // Set MJPEG stream URL
+            phoneStream.src = IP_WEBCAM_URL + '/video';
+            phoneStreamActive = true;
+            
+            // Update UI
+            document.getElementById('camera-status').textContent = 'PHONE LIVE';
+            document.getElementById('camera-status').classList.add('live');
+            document.getElementById('camera-indicator').textContent = '📱 S20 Phone';
+            document.getElementById('camera-indicator').style.background = '#7c3aed';
+            document.getElementById('camera-resolution').textContent = 'IP Webcam';
+            document.getElementById('camera-resolution').style.color = '#7c3aed';
+            
+            // Enable defect marking for phone mode
+            enableDefectMarking();
+            
+            console.log('📱 Phone stream started:', IP_WEBCAM_URL);
+            showToast('success', 'Phone Connected', 'S20 camera stream active via USB', 2000);
+        }
+        
+        function stopPhoneStream() {
+            const phoneStream = document.getElementById('phone-stream');
+            phoneStream.src = '';
+            phoneStream.style.display = 'none';
+            phoneStreamActive = false;
+            console.log('📱 Phone stream stopped');
+        }
+        
+        async function captureFromPhone() {
+            console.log('📱 Capturing full-res photo from phone...');
+            showToast('info', 'Capturing...', 'Getting full resolution from S20', 1500);
+            
+            try {
+                // Fetch full resolution photo with autofocus
+                const response = await fetch(IP_WEBCAM_URL + '/photoaf.jpg');
+                if(!response.ok) throw new Error('Failed to capture photo');
+                
+                const blob = await response.blob();
+                console.log(`📱 Photo captured: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+                
+                // Create image to get dimensions
+                const img = new Image();
+                img.src = URL.createObjectURL(blob);
+                
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+                
+                console.log(`📱 Photo dimensions: ${img.width}x${img.height}`);
+                
+                // Process the phone photo - may need rotation depending on phone orientation
+                await processPhonePhoto(img, blob);
+                
+            } catch(err) {
+                console.error('📱 Phone capture failed:', err);
+                showToast('error', 'Capture Failed', 'Check IP Webcam is running on phone', 3000);
+            }
+        }
+        
+        async function processPhonePhoto(img, originalBlob) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Check if image needs rotation (landscape phone = needs 90° rotation for portrait)
+            const needsRotation = img.width > img.height;
+            
+            if(needsRotation) {
+                // Rotate 90° CCW for portrait
+                canvas.width = img.height;
+                canvas.height = img.width;
+                ctx.translate(0, canvas.height);
+                ctx.rotate(-Math.PI / 2);
+                ctx.drawImage(img, 0, 0);
+                console.log(`📱 Rotated ${img.width}x${img.height} → ${canvas.width}x${canvas.height}`);
+            } else {
+                // Already portrait
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            }
+            
+            // Save main photo
+            canvas.toBlob(mainBlob => {
+                const mainPhoto = {
+                    blob: mainBlob,
+                    url: URL.createObjectURL(mainBlob),
+                    width: canvas.width,
+                    height: canvas.height,
+                    source: 'phone'
+                };
+                data.mainPhotos.push(mainPhoto);
+                
+                const sizeMB = (mainBlob.size / 1024 / 1024).toFixed(2);
+                console.log(`📱 MAIN (phone): ${canvas.width}×${canvas.height} | ${sizeMB}MB`);
+                
+                // If we have defect markers, create crops and annotated version
+                if(defectMarkers.length > 0) {
+                    createDefectCropsFromPhone(canvas);
+                    createAnnotatedPhotoFromPhone(canvas);
+                    showToast('success', 'Phone Capture!', `Full res + ${defectMarkers.length} defect crops`, 2500);
+                } else {
+                    showToast('success', 'Phone Photo', `${canvas.width}×${canvas.height} full quality`, 2000);
+                }
+                
+                updatePhotoGrids();
+                updateValidation();
+            }, 'image/jpeg', 0.95);
+        }
+        
+        function createDefectCropsFromPhone(mainCanvas) {
+            const mainW = mainCanvas.width;
+            const mainH = mainCanvas.height;
+            const cropSize = Math.round(Math.min(mainW, mainH) * DEFECT_CROP_SIZE);
+            
+            defectMarkers.forEach((marker, idx) => {
+                const centerX = Math.round((marker.x / 100) * mainW);
+                const centerY = Math.round((marker.y / 100) * mainH);
+                
+                let cropX = centerX - Math.round(cropSize / 2);
+                let cropY = centerY - Math.round(cropSize / 2);
+                
+                cropX = Math.max(0, Math.min(cropX, mainW - cropSize));
+                cropY = Math.max(0, Math.min(cropY, mainH - cropSize));
+                
+                const cropCanvas = document.createElement('canvas');
+                const cropCtx = cropCanvas.getContext('2d');
+                cropCanvas.width = cropSize;
+                cropCanvas.height = cropSize;
+                
+                cropCtx.drawImage(mainCanvas, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
+                
+                // Add defect type indicator
+                cropCtx.fillStyle = DEFECT_COLORS[marker.type];
+                cropCtx.beginPath();
+                cropCtx.arc(cropSize - 40, 40, 28, 0, Math.PI * 2);
+                cropCtx.fill();
+                cropCtx.fillStyle = 'white';
+                cropCtx.font = 'bold 20px Arial';
+                cropCtx.textAlign = 'center';
+                cropCtx.textBaseline = 'middle';
+                cropCtx.fillText(idx + 1, cropSize - 40, 40);
+                
+                cropCanvas.toBlob(blob => {
+                    const defectPhoto = {
+                        blob,
+                        url: URL.createObjectURL(blob),
+                        width: cropSize,
+                        height: cropSize,
+                        defectType: marker.type,
+                        markerIndex: idx + 1,
+                        source: 'phone'
+                    };
+                    data.defectPhotos.push(defectPhoto);
+                    console.log(`📱 DEFECT CROP ${idx + 1} (${marker.type}): ${cropSize}×${cropSize}`);
+                    updatePhotoGrids();
+                }, 'image/jpeg', 0.95);
+            });
+        }
+        
+        function createAnnotatedPhotoFromPhone(mainCanvas) {
+            const annotatedCanvas = document.createElement('canvas');
+            const ctx = annotatedCanvas.getContext('2d');
+            annotatedCanvas.width = mainCanvas.width;
+            annotatedCanvas.height = mainCanvas.height;
+            
+            ctx.drawImage(mainCanvas, 0, 0);
+            
+            // Draw markers
+            defectMarkers.forEach((marker, idx) => {
+                const x = (marker.x / 100) * annotatedCanvas.width;
+                const y = (marker.y / 100) * annotatedCanvas.height;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 35, 0, Math.PI * 2);
+                ctx.fillStyle = DEFECT_COLORS[marker.type];
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(idx + 1, x, y);
+            });
+            
+            annotatedCanvas.toBlob(blob => {
+                const annotatedPhoto = {
+                    blob,
+                    url: URL.createObjectURL(blob),
+                    width: annotatedCanvas.width,
+                    height: annotatedCanvas.height,
+                    isAnnotated: true,
+                    source: 'phone'
+                };
+                data.mainPhotos.push(annotatedPhoto);
+                console.log(`📱 ANNOTATED: ${annotatedCanvas.width}×${annotatedCanvas.height} with ${defectMarkers.length} markers`);
+                
+                // Clear markers after capture
+                clearDefectMarkers();
+                
+                updatePhotoGrids();
+            }, 'image/jpeg', 0.95);
+        }
+        
         
         // ============ TOAST NOTIFICATION SYSTEM ============
         function showToast(type, title, message, duration = 4000) {
@@ -1453,7 +1676,7 @@
         };
         const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
-        // V99.42: fabricDB with full traits (stretch, surface, interior)
+        // V99.43: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS
@@ -1712,7 +1935,7 @@
             ]
         };
 
-        // V99.42: patternDB with traits for dynamic pattern identification
+        // V99.43: patternDB with traits for dynamic pattern identification
         // lines: none, stripes, grid (crossing lines)
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
@@ -1737,7 +1960,7 @@
             { name:"Other", priority:4, traits:{lines:"any",shapes:"any",method:"any"}, desc:"Pattern doesn't fit above options.", examples:"Unique, custom, rare patterns" }
         ];
 
-        // V99.42: Tag Location Database - Where to find tags by category
+        // V99.43: Tag Location Database - Where to find tags by category
         const tagLocationDB = {
             // TOPS
             "T-Shirt": {
@@ -2011,7 +2234,7 @@
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // V99.42: Aggressive max resolution switch for BRIO
+        // V99.43: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -2503,6 +2726,11 @@
                 stopBarcodeScanning();
             }
             
+            // Stop phone stream if leaving phone mode
+            if(photoMode === 'phone' && mode !== 'phone') {
+                stopPhoneStream();
+            }
+            
             const previousMode = photoMode;
             photoMode = mode; 
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); 
@@ -2514,6 +2742,12 @@
                 video.classList.add('portrait-mode');
                 console.log('📷 Portrait mode ON (rotated 90°)');
                 enableDefectMarking();
+            } else if(mode === 'phone') {
+                // Phone mode - show phone stream, enable defect marking
+                video.classList.remove('portrait-mode');
+                video.style.transform = '';
+                startPhoneStream();
+                // defect marking enabled in startPhoneStream
             } else {
                 video.classList.remove('portrait-mode');
                 video.style.transform = ''; // Clear transform
@@ -2526,6 +2760,10 @@
             
             // Auto-switch cameras based on mode
             if(mode === 'main') {
+                // Show webcam video, hide phone stream
+                document.getElementById('phone-stream').style.display = 'none';
+                video.style.display = 'block';
+                
                 if(mainCameraId) {
                     console.log(`📷 Main mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, main=${mainCameraId?.slice(0,8)})`);
                     if(activeCameraId !== mainCameraId) {
@@ -2546,7 +2784,13 @@
                 } else {
                     console.warn('⚠️ mainCameraId not set');
                 }
+            } else if(mode === 'phone') {
+                // Phone mode handled above in startPhoneStream
             } else if(mode === 'tag' || mode === 'defect' || mode === 'sku') {
+                // Show webcam video, hide phone stream
+                document.getElementById('phone-stream').style.display = 'none';
+                video.style.display = 'block';
+                
                 if(secondaryCameraId) {
                     console.log(`📷 ${mode} mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, secondary=${secondaryCameraId?.slice(0,8)})`);
                     if(activeCameraId !== secondaryCameraId) {
@@ -2626,6 +2870,15 @@
             }
         }
         function capturePhoto() { 
+            // PHONE MODE: Capture from IP Webcam
+            if(photoMode === 'phone') {
+                captureFromPhone();
+                // Flash effect
+                document.getElementById('flash-overlay').classList.add('flash'); 
+                setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100);
+                return;
+            }
+            
             const video = document.getElementById('camera-video'); 
             if(!video.srcObject) return; 
             
@@ -3413,7 +3666,7 @@
             }
         }
         
-        // V99.42: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
+        // V99.43: Camera-based Barcode Scanning using QuaggaJS (works in all browsers)
         let quaggaRunning = false;
         
         async function startBarcodeScanning() {
@@ -3691,7 +3944,7 @@
             }
         }
         
-        // V99.42: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
+        // V99.43: TRULY DYNAMIC fabric advice based on actual fabricDB filtering
         function getFabricAdvice() {
             const cat = data.category || 'T-Shirt';
             const f = fabricFilters;
@@ -3811,7 +4064,7 @@
             }
         }
         
-        // V99.42: Pattern Cards with ? help buttons
+        // V99.43: Pattern Cards with ? help buttons
         function renderPatternCards() {
             const mainGrid = document.getElementById('pattern-cards-grid');
             const othersGrid = document.getElementById('pattern-cards-others');
@@ -3942,7 +4195,7 @@
                 helperTagcut.innerHTML = advice || '<span style="color:#6b7280;">Select traits above to see material matches</span>';
             }
         }
-        // V99.42: TRULY DYNAMIC material advice based on actual materialDB filtering
+        // V99.43: TRULY DYNAMIC material advice based on actual materialDB filtering
         function getMaterialAdvice() {
             const cat = data.category || 'T-Shirt';
             const m = materialFilters;
@@ -3996,7 +4249,7 @@
             }
         }
         
-        // V99.42: Tag Location Helper Functions
+        // V99.43: Tag Location Helper Functions
         function toggleTagLocationHelp() { 
             const panel = document.getElementById('tag-location-panel');
             panel.classList.toggle('hidden');
@@ -4041,7 +4294,7 @@
             content.innerHTML = html;
         }
         
-        // V99.42: Pattern Helper Functions
+        // V99.43: Pattern Helper Functions
         function togglePatternHelp() { 
             document.getElementById('pattern-help-panel').classList.toggle('hidden'); 
         }
@@ -4071,7 +4324,7 @@
             }
         }
         
-        // V99.42: TRULY DYNAMIC pattern advice based on patternDB filtering
+        // V99.43: TRULY DYNAMIC pattern advice based on patternDB filtering
         function getPatternAdvice() {
             const p = patternFilters;
             const activeFilters = Object.values(p).filter(Boolean).length;
@@ -4203,8 +4456,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.42')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.42',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.43')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.43',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
