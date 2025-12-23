@@ -1392,22 +1392,29 @@
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Check if image needs rotation (landscape phone = needs 90° rotation for portrait)
-            const needsRotation = img.width > img.height;
+            console.log(`📱 Processing photo: ${img.width}x${img.height}`);
             
-            if(needsRotation) {
-                // Rotate 90° CCW for portrait
+            // Check if image needs rotation (landscape phone = needs 90° rotation for portrait)
+            const isLandscape = img.width > img.height;
+            
+            if(isLandscape) {
+                // Rotate 90° CLOCKWISE for portrait (phone mounted with USB up)
                 canvas.width = img.height;
                 canvas.height = img.width;
-                ctx.translate(0, canvas.height);
-                ctx.rotate(-Math.PI / 2);
+                ctx.translate(canvas.width, 0);
+                ctx.rotate(Math.PI / 2); // 90° CW
                 ctx.drawImage(img, 0, 0);
-                console.log(`📱 Rotated ${img.width}x${img.height} → ${canvas.width}x${canvas.height}`);
+                console.log(`📱 Rotated 90° CW: ${img.width}x${img.height} → ${canvas.width}x${canvas.height}`);
             } else {
-                // Already portrait
+                // Already portrait - check if needs 180° flip
+                // IP Webcam sometimes sends portrait photos upside down
                 canvas.width = img.width;
                 canvas.height = img.height;
+                // Rotate 180° to fix upside down
+                ctx.translate(canvas.width, canvas.height);
+                ctx.rotate(Math.PI); // 180°
                 ctx.drawImage(img, 0, 0);
+                console.log(`📱 Rotated 180°: ${canvas.width}x${canvas.height}`);
             }
             
             // Save main photo
@@ -1441,7 +1448,7 @@
         function createDefectCropsFromPhone(mainCanvas) {
             const mainW = mainCanvas.width;
             const mainH = mainCanvas.height;
-            const cropSize = Math.round(Math.min(mainW, mainH) * DEFECT_CROP_SIZE);
+            const cropSize = Math.round(mainW * DEFECT_CROP_SIZE); // 50% of width for better quality
             
             defectMarkers.forEach((marker, idx) => {
                 const centerX = Math.round((marker.x / 100) * mainW);
