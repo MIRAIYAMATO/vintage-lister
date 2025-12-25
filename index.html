@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.46 - Desktop Station</title>
+    <title>VintageLister v99.48 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -462,7 +462,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.46 Desktop Station</div>
+        <div class="pin-version">v99.48 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -2710,7 +2710,7 @@
             rotatedCtx.imageSmoothingEnabled = true;
             rotatedCtx.imageSmoothingQuality = 'high';
             
-            // Rotate 90° CCW: landscape (1920x1080) → portrait (1080x1920)
+            // Rotate 90° CCW: landscape (4096x2160) → portrait (2160x4096)
             rotatedCanvas.width = sourceH;  // Height becomes width
             rotatedCanvas.height = sourceW; // Width becomes height
             
@@ -2718,33 +2718,10 @@
             rotatedCtx.rotate(-Math.PI / 2);
             rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
             
-            const portraitW = rotatedCanvas.width;
-            const portraitH = rotatedCanvas.height;
+            // Step 2: Use full rotated image (no cropping)
+            const mainCanvas = rotatedCanvas;
             
-            // Step 2: Crop to 3:4 ratio (phone-like)
-            const targetRatio = 3/4;
-            const currentRatio = portraitW / portraitH;
-            let cropW, cropH, cropX = 0, cropY = 0;
-            
-            if(currentRatio > targetRatio) {
-                // Too wide, crop sides
-                cropH = portraitH;
-                cropW = Math.round(portraitH * targetRatio);
-                cropX = Math.round((portraitW - cropW) / 2);
-            } else {
-                // Too tall, crop top/bottom
-                cropW = portraitW;
-                cropH = Math.round(portraitW / targetRatio);
-                cropY = Math.round((portraitH - cropH) / 2);
-            }
-            
-            const mainCanvas = document.createElement('canvas');
-            const mainCtx = mainCanvas.getContext('2d');
-            mainCanvas.width = cropW;
-            mainCanvas.height = cropH;
-            mainCtx.drawImage(rotatedCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-            
-            console.log(`📸 MAIN Portrait 3:4: ${sourceW}x${sourceH} → rotated → cropped to ${mainCanvas.width}x${mainCanvas.height}`);
+            console.log(`📸 MAIN Portrait Full Res: ${sourceW}x${sourceH} → rotated to ${mainCanvas.width}x${mainCanvas.height}`);
             
             // Step 3: Save main photo
             mainCanvas.toBlob(mainBlob => {
@@ -2761,7 +2738,7 @@
                 
                 // Step 4: If we have defect markers, create crops and annotated version
                 if(defectMarkers.length > 0) {
-                    createDefectCrops(mainCanvas, cropX, cropY, portraitW, portraitH);
+                    createDefectCrops(mainCanvas);
                     createAnnotatedPhoto(mainCanvas);
                     showToast('success', 'Photos Captured!', `Main + ${defectMarkers.length} defect crops`, 2000);
                 } else {
@@ -2773,7 +2750,7 @@
             }, 'image/jpeg', 0.95);
         }
         
-        function createDefectCrops(mainCanvas, offsetX, offsetY, fullPortraitW, fullPortraitH) {
+        function createDefectCrops(mainCanvas) {
             const mainW = mainCanvas.width;
             const mainH = mainCanvas.height;
             // Use MAX dimension so portrait photos get larger crops
@@ -2781,7 +2758,6 @@
             
             defectMarkers.forEach((marker, idx) => {
                 // Convert marker percentage to pixel position on main canvas
-                // Markers are positioned on the preview which maps to the cropped main image
                 const centerX = Math.round((marker.x / 100) * mainW);
                 const centerY = Math.round((marker.y / 100) * mainH);
                 
@@ -2973,7 +2949,7 @@
         
         function updatePhotoGrids() { 
             const renderGrid = (photos, gridId, mode) => { 
-                // Main = portrait (3:4), Tag/Defect = square (1:1)
+                // Main = portrait (full res), Tag/Defect = square (1:1)
                 const thumbClass = mode === 'main' ? 'photo-thumb' : 'photo-thumb square';
                 document.getElementById(gridId).innerHTML = photos.map((p,i) => 
                     `<div class="${thumbClass}" ondblclick="openPreview('${mode}',${i})" title="Double-click to preview">
@@ -4215,8 +4191,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.46')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.46',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.48')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.48',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
