@@ -1404,7 +1404,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.65";
+        const VERSION = "v99.67";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1548,15 +1548,76 @@
                 return; // Let the marker's own click handler deal with it
             }
             
-            // Get the defect markers layer rect
+            // Get the video element to check actual image bounds
+            const video = document.getElementById('camera-video');
+            const videoRect = video.getBoundingClientRect();
+            
+            // For portrait mode, the video is rotated 90°
+            // We need to check if click is within the VISIBLE video area
             const layer = document.getElementById('defect-markers-layer');
-            const rect = layer.getBoundingClientRect();
+            const layerRect = layer.getBoundingClientRect();
             
-            // Calculate percentage position
-            const x = ((event.clientX - rect.left) / rect.width) * 100;
-            const y = ((event.clientY - rect.top) / rect.height) * 100;
+            // Calculate the actual displayed image area (accounting for letterboxing/black bars)
+            let imageLeft, imageTop, imageWidth, imageHeight;
             
-            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
+            if(photoMode === 'main' && video.classList.contains('portrait-mode')) {
+                // Portrait mode - video is rotated, so width/height are swapped visually
+                const videoAspect = video.videoWidth / video.videoHeight; // e.g., 4096/2160 ≈ 1.9
+                const containerAspect = layerRect.width / layerRect.height;
+                
+                // After 90° rotation, the aspect becomes height/width
+                const rotatedAspect = video.videoHeight / video.videoWidth; // e.g., 2160/4096 ≈ 0.53
+                
+                if(rotatedAspect < containerAspect) {
+                    // Image is taller than container - fit to height, black bars on sides
+                    imageHeight = layerRect.height;
+                    imageWidth = imageHeight * rotatedAspect;
+                    imageLeft = (layerRect.width - imageWidth) / 2;
+                    imageTop = 0;
+                } else {
+                    // Image is wider than container - fit to width
+                    imageWidth = layerRect.width;
+                    imageHeight = imageWidth / rotatedAspect;
+                    imageLeft = 0;
+                    imageTop = (layerRect.height - imageHeight) / 2;
+                }
+            } else {
+                // Landscape mode - simpler calculation
+                const videoAspect = video.videoWidth / video.videoHeight;
+                const containerAspect = layerRect.width / layerRect.height;
+                
+                if(videoAspect > containerAspect) {
+                    // Video is wider - fit to width
+                    imageWidth = layerRect.width;
+                    imageHeight = imageWidth / videoAspect;
+                    imageLeft = 0;
+                    imageTop = (layerRect.height - imageHeight) / 2;
+                } else {
+                    // Video is taller - fit to height
+                    imageHeight = layerRect.height;
+                    imageWidth = imageHeight * videoAspect;
+                    imageLeft = (layerRect.width - imageWidth) / 2;
+                    imageTop = 0;
+                }
+            }
+            
+            // Get click position relative to layer
+            const clickX = event.clientX - layerRect.left;
+            const clickY = event.clientY - layerRect.top;
+            
+            // Check if click is within the actual image bounds
+            if(clickX < imageLeft || clickX > imageLeft + imageWidth ||
+               clickY < imageTop || clickY > imageTop + imageHeight) {
+                console.log('🎯 Click outside image bounds - ignoring');
+                showToast('warning', 'Click on the image to mark defects');
+                return;
+            }
+            
+            // Calculate percentage position WITHIN the image area (not the full layer)
+            const x = ((clickX - imageLeft) / imageWidth) * 100;
+            const y = ((clickY - imageTop) / imageHeight) * 100;
+            
+            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% (within image)`);
             
             // Store pending marker position
             pendingMarker = { x, y };
@@ -1620,29 +1681,97 @@
             }
         }
         
+        // Calculate the actual displayed image bounds within the layer
+        function getImageBounds() {
+            const video = document.getElementById('camera-video');
+            const layer = document.getElementById('defect-markers-layer');
+            if(!video || !layer) return null;
+            
+            const layerRect = layer.getBoundingClientRect();
+            let imageLeft, imageTop, imageWidth, imageHeight;
+            
+            if(photoMode === 'main' && video.classList.contains('portrait-mode')) {
+                // Portrait mode - video is rotated, aspect is inverted
+                const rotatedAspect = video.videoHeight / video.videoWidth;
+                
+                if(rotatedAspect < layerRect.width / layerRect.height) {
+                    // Fit to height
+                    imageHeight = layerRect.height;
+                    imageWidth = imageHeight * rotatedAspect;
+                    imageLeft = (layerRect.width - imageWidth) / 2;
+                    imageTop = 0;
+                } else {
+                    // Fit to width
+                    imageWidth = layerRect.width;
+                    imageHeight = imageWidth / rotatedAspect;
+                    imageLeft = 0;
+                    imageTop = (layerRect.height - imageHeight) / 2;
+                }
+            } else {
+                // Landscape mode
+                const videoAspect = video.videoWidth / video.videoHeight;
+                
+                if(videoAspect > layerRect.width / layerRect.height) {
+                    imageWidth = layerRect.width;
+                    imageHeight = imageWidth / videoAspect;
+                    imageLeft = 0;
+                    imageTop = (layerRect.height - imageHeight) / 2;
+                } else {
+                    imageHeight = layerRect.height;
+                    imageWidth = imageHeight * videoAspect;
+                    imageLeft = (layerRect.width - imageWidth) / 2;
+                    imageTop = 0;
+                }
+            }
+            
+            return {
+                left: imageLeft,
+                top: imageTop,
+                width: imageWidth,
+                height: imageHeight,
+                layerWidth: layerRect.width,
+                layerHeight: layerRect.height
+            };
+        }
+        
         function renderDefectMarkers() {
             console.log('🎯 renderDefectMarkers called, count:', defectMarkers.length, 'mode:', photoMode);
             
-            // Get the defect markers layer
             const layer = document.getElementById('defect-markers-layer');
-            
             if(!layer) return;
             
-            // Remove existing markers (keep the layer itself)
+            // Remove existing markers
             layer.querySelectorAll('.defect-marker').forEach(m => m.remove());
+            
+            // Get image bounds for proper positioning
+            const bounds = getImageBounds();
             
             // Add markers
             defectMarkers.forEach((marker, idx) => {
                 const el = document.createElement('div');
                 el.className = `defect-marker ${marker.type}`;
-                el.style.left = marker.x + '%';
-                el.style.top = marker.y + '%';
+                
+                if(bounds) {
+                    // Position within image area, not full layer
+                    const pixelX = bounds.left + (marker.x / 100) * bounds.width;
+                    const pixelY = bounds.top + (marker.y / 100) * bounds.height;
+                    // Convert to percentage of layer
+                    const layerX = (pixelX / bounds.layerWidth) * 100;
+                    const layerY = (pixelY / bounds.layerHeight) * 100;
+                    el.style.left = layerX + '%';
+                    el.style.top = layerY + '%';
+                } else {
+                    // Fallback to direct percentage
+                    el.style.left = marker.x + '%';
+                    el.style.top = marker.y + '%';
+                }
+                
                 el.innerHTML = `
                     ${idx + 1}
                     <div class="defect-marker-delete" onclick="event.stopPropagation(); removeDefectMarker(${marker.id})">✕</div>
                 `;
                 el.onclick = (e) => e.stopPropagation();
-                el.style.pointerEvents = 'auto'; // Enable clicks on markers
+                el.style.pointerEvents = 'auto';
                 layer.appendChild(el);
                 console.log(`🎯 Rendered marker ${idx + 1} at ${marker.x.toFixed(1)}%, ${marker.y.toFixed(1)}%`);
             });
@@ -2339,8 +2468,8 @@
             // Reset stabilizer
             updateSkuGateStabilizer(false);
             
-            // Try to get C922X camera
-            const cameraId = secondaryCameraId || primaryCameraId;
+            // Use BRIO (main camera) for better barcode scanning quality
+            const cameraId = mainCameraId || secondaryCameraId;
             
             if(!cameraId) {
                 document.getElementById('sku-gate-camera').innerHTML = `
@@ -2366,6 +2495,10 @@
                 // Start stabilizer tracking and barcode scanning when video is ready
                 video.onloadedmetadata = () => {
                     startSkuGateStabilizer(video);
+                };
+                
+                // Wait for video to actually play before starting barcode scanning
+                video.onplaying = () => {
                     startSkuGateBarcodeScanning(video);
                 };
                 
@@ -2398,6 +2531,14 @@
                     const scanFrame = async () => {
                         if(!scanning || !skuGateStream) return;
                         
+                        // Make sure video is actually playing
+                        if(video.readyState < 2 || video.paused) {
+                            if(scanning && skuGateStream) {
+                                skuGateScanInterval = setTimeout(scanFrame, 200);
+                            }
+                            return;
+                        }
+                        
                         try {
                             const barcodes = await barcodeDetector.detect(video);
                             
@@ -2420,11 +2561,12 @@
                                 return;
                             }
                         } catch(e) {
-                            // Frame not ready or no barcode
+                            // Frame not ready or no barcode - ignore
                         }
                         
+                        // Scan every 200ms to prevent flashing (not every frame)
                         if(scanning && skuGateStream) {
-                            skuGateScanInterval = requestAnimationFrame(scanFrame);
+                            skuGateScanInterval = setTimeout(scanFrame, 200);
                         }
                     };
                     
@@ -2433,12 +2575,8 @@
                         reset: () => { scanning = false; }
                     };
                     
-                    // Wait for video to be ready
-                    if(video.readyState >= 2) {
-                        scanFrame();
-                    } else {
-                        video.onloadeddata = () => scanFrame();
-                    }
+                    // Start scanning after a brief delay
+                    setTimeout(scanFrame, 500);
                     
                     console.log('📷 Native barcode scanning started');
                     return;
@@ -3057,6 +3195,10 @@
         window.addEventListener('resize', () => {
             if(document.getElementById('camera-video')?.classList.contains('portrait-mode')) {
                 updatePortraitTransform();
+            }
+            // Re-render markers when window resizes (image bounds change)
+            if(defectMarkers.length > 0) {
+                renderDefectMarkers();
             }
         });
         
