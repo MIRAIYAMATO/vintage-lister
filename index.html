@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.54 - Desktop Station</title>
+    <title>VintageLister v99.55 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -293,9 +293,9 @@
         .mode-btn:hover { border-color: var(--color-primary); }
         .mode-btn:active { transform: scale(0.97); }
         .mode-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
-        .mode-btn.mode-btn-sku { background: var(--color-dark); border-color: var(--color-success); }
-        .mode-btn.mode-btn-sku:hover { border-color: var(--color-success-dark); }
-        .mode-btn.mode-btn-sku.active { background: var(--color-success); border-color: var(--color-success); color: white; }
+        
+        
+        
         .mode-btn small { display: block; }
         
         /* Defect Markers on Camera Preview */
@@ -328,6 +328,19 @@
         .defect-mode-banner { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; font-weight: 600; z-index: 10; display: none; }
         .defect-mode-banner.visible { display: flex; align-items: center; gap: 8px; }
         .defect-mode-banner .marker-count { background: #3b82f6; padding: 2px 8px; border-radius: 10px; }
+        
+        /* Defect Close-up Link Panel & Feature Type Panel */
+        .closeup-link-panel { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(220,38,38,0.95); color: white; padding: 10px 16px; border-radius: 12px; font-size: 11px; z-index: 10; display: none; flex-direction: column; gap: 8px; min-width: 200px; }
+        .closeup-link-panel.visible { display: flex; }
+        .closeup-link-panel .link-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+        .closeup-link-panel .link-btn { padding: 4px 10px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .closeup-link-panel .link-btn:hover { background: rgba(255,255,255,0.3); }
+        .closeup-link-panel .link-btn.active { background: white; color: #dc2626; }
+        .closeup-link-panel .link-btn-none { padding: 4px 10px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.7); font-size: 10px; cursor: pointer; margin-top: 4px; }
+        .closeup-link-panel .link-btn-none:hover { background: rgba(255,255,255,0.2); }
+        .feature-type-btn { padding: 4px 8px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .feature-type-btn:hover { background: rgba(255,255,255,0.3); }
+        .feature-type-btn.active { background: white; color: #7c3aed; }
         
         /* Photos panel */
         .photos-header { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -370,6 +383,17 @@
         .sku-gate-hint { font-size: 12px; color: var(--color-text-muted); }
         .sku-gate-hint kbd { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
         .sku-gate-status { margin-top: 16px; font-size: 13px; color: var(--color-success); font-weight: 600; min-height: 20px; }
+        
+        /* SKU Gate Camera Preview */
+        .sku-gate-camera-container { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+        #sku-gate-video { width: 100%; height: 100%; object-fit: cover; }
+        .sku-gate-scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .scan-target { width: 70%; height: 40%; border: 3px dashed rgba(255,255,255,0.7); border-radius: 8px; position: relative; }
+        .scan-target::before { content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: #22c55e; border-radius: 2px; animation: scan-line 1.5s ease-in-out infinite; }
+        @keyframes scan-line { 0%, 100% { top: -8px; } 50% { top: calc(100% + 4px); } }
+        .sku-gate-camera-hint { font-size: 13px; color: var(--color-text-muted); margin-bottom: 12px; }
+        .sku-gate-cancel-btn { padding: 10px 24px; background: #f1f5f9; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; transition: var(--transition-fast); }
+        .sku-gate-cancel-btn:hover { background: #e2e8f0; color: var(--color-text); }
         
         /* Locked SKU Badge in Header */
         .sku-locked { display: inline-flex; align-items: center; gap: 6px; background: var(--color-success); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: monospace; }
@@ -487,23 +511,43 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.54 Desktop Station</div>
+        <div class="pin-version">v99.55 Desktop Station</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
     <div class="sku-gate" id="sku-gate">
         <div class="sku-gate-card">
-            <div class="sku-gate-icon">🏷️</div>
-            <div class="sku-gate-title">Scan SKU to Start</div>
-            <div class="sku-gate-subtitle">Every item begins with a SKU scan</div>
-            <div class="sku-gate-input-row">
-                <input type="text" id="sku-gate-input" class="sku-gate-input" placeholder="SKU" 
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                    oninput="onSkuGateInput()" onkeydown="handleSkuGateKeydown(event)">
-                <button class="sku-gate-scan-btn" onclick="activateSkuGateScan()" title="Scan with camera">📷</button>
+            <!-- Default Entry View -->
+            <div id="sku-gate-entry">
+                <div class="sku-gate-icon">🏷️</div>
+                <div class="sku-gate-title">Scan SKU to Start</div>
+                <div class="sku-gate-subtitle">Every item begins with a SKU scan</div>
+                <div class="sku-gate-input-row">
+                    <input type="text" id="sku-gate-input" class="sku-gate-input" placeholder="SKU" 
+                        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                        oninput="onSkuGateInput()" onkeydown="handleSkuGateKeydown(event)">
+                    <button class="sku-gate-scan-btn" onclick="activateSkuGateScan()" title="Scan with camera">📷</button>
+                </div>
+                <div class="sku-gate-hint">Type manually or scan barcode with <kbd>📷</kbd> camera</div>
+                <div class="sku-gate-status" id="sku-gate-status"></div>
             </div>
-            <div class="sku-gate-hint">Type manually or scan barcode with <kbd>📷</kbd> camera</div>
-            <div class="sku-gate-status" id="sku-gate-status"></div>
+            
+            <!-- Camera Preview View (shown when scanning) -->
+            <div id="sku-gate-camera" class="hidden">
+                <div class="sku-gate-title" style="margin-bottom:12px;">📷 Scanning...</div>
+                <div class="sku-gate-camera-container">
+                    <video id="sku-gate-video" autoplay playsinline muted></video>
+                    <div class="sku-gate-scan-overlay">
+                        <div class="scan-target"></div>
+                    </div>
+                </div>
+                <div class="sku-gate-camera-hint">Center barcode in the frame</div>
+                <input type="text" id="sku-gate-scan-input" class="sku-gate-input" placeholder="Waiting for scan..." 
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                    oninput="onSkuGateScanInput()" onkeydown="handleSkuGateScanKeydown(event)"
+                    style="margin-bottom:12px; font-size:18px; height:50px;">
+                <button onclick="cancelSkuGateScan()" class="sku-gate-cancel-btn">✕ Cancel</button>
+            </div>
         </div>
     </div>
     
@@ -543,7 +587,7 @@
                 <div style="display:flex;align-items:center;gap:8px;">
                     <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos">📁 No Folder</button>
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.54</span>
+                    <span class="version-badge">v99.55</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1259,6 +1303,28 @@
                         <span>🎯 Click to mark defects</span>
                         <span class="marker-count" id="marker-count">0</span>
                     </div>
+                    
+                    <!-- Defect Close-up Link Panel -->
+                    <div class="closeup-link-panel" id="defect-link-panel">
+                        <span style="font-weight:600;">Link to defect:</span>
+                        <div class="link-buttons" id="defect-link-buttons"></div>
+                        <button onclick="selectedDefectLink=null;updateDefectLinkPanel()" class="link-btn-none">None</button>
+                    </div>
+                    
+                    <!-- Feature Type Panel -->
+                    <div class="closeup-link-panel" id="feature-type-panel" style="background:rgba(124,58,237,0.95);">
+                        <span style="font-weight:600;">Feature type:</span>
+                        <div class="link-buttons" id="feature-type-buttons">
+                            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
+                            <button onclick="selectFeatureType('Button')" class="feature-type-btn">Button</button>
+                            <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
+                            <button onclick="selectFeatureType('Stitch')" class="feature-type-btn">Stitch</button>
+                            <button onclick="selectFeatureType('Hardware')" class="feature-type-btn">Hardware</button>
+                            <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
+                            <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
+                        </div>
+                        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="link-btn-none">None</button>
+                    </div>
                 </div>
             </div>
             <div class="camera-footer">
@@ -1268,8 +1334,8 @@
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
                 </div>
                 <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
-                <button class="mode-btn" id="mode-detail" onclick="setPhotoMode('detail')" style="background:#7c3aed;border-color:#7c3aed;">🔍 Detail<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
-                <button class="mode-btn mode-btn-sku" id="mode-sku" onclick="setPhotoMode('sku')">📷 SKU<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-defect-closeup" onclick="setPhotoMode('defect-closeup')" style="background:#dc2626;border-color:#dc2626;">🔴 Defect<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-features" onclick="setPhotoMode('features')" style="background:#7c3aed;border-color:#7c3aed;">✨ Features<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
             </div>
         </div>
         
@@ -1290,8 +1356,12 @@
                 <div class="photo-grid" id="defect-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('main')" title="Defects marked on main photos">+</div></div>
             </div>
             <div class="photo-section">
-                <div class="photo-section-title" style="color:#7c3aed;"><span>🔍 Detail Close-ups</span><span id="detail-count" style="background:#7c3aed;">0</span></div>
-                <div class="photo-grid" id="detail-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('detail')" title="Close-up defect photos with C922X" style="border-color:#7c3aed;">+</div></div>
+                <div class="photo-section-title" style="color:#dc2626;"><span>🔴 Defect Close-ups</span><span id="defect-closeup-count" style="background:#dc2626;">0</span></div>
+                <div class="photo-grid" id="defect-closeup-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('defect-closeup')" title="Close-up photos of defects with C922X" style="border-color:#dc2626;">+</div></div>
+            </div>
+            <div class="photo-section">
+                <div class="photo-section-title" style="color:#7c3aed;"><span>✨ Feature Close-ups</span><span id="features-count" style="background:#7c3aed;">0</span></div>
+                <div class="photo-grid" id="features-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('features')" title="Special features: zippers, buttons, codes, copyright" style="border-color:#7c3aed;">+</div></div>
             </div>
             <div class="stats-section">
                 <div style="font-size:10px;color:var(--color-text-muted);font-weight:700;margin-bottom:8px;">Today's Stats</div>
@@ -1306,8 +1376,10 @@
     <script>
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], detailPhotos:[], flagged:false, elasticCheck:'' };
+        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
+        let selectedDefectLink = null; // Index of defect marker to link close-up to
+        let selectedFeatureType = null; // Type of feature being photographed
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
         
@@ -1569,6 +1641,59 @@
             defectMarkingEnabled = false;
             document.getElementById('defect-markers-layer')?.classList.remove('active');
             document.getElementById('defect-mode-banner')?.classList.remove('visible');
+        }
+        
+        // Defect Close-up Link Panel
+        function updateDefectLinkPanel() {
+            const panel = document.getElementById('defect-link-panel');
+            const buttonsContainer = document.getElementById('defect-link-buttons');
+            
+            if(photoMode === 'defect-closeup') {
+                panel.classList.add('visible');
+                
+                // Create buttons for each defect marker
+                if(defectMarkers.length === 0) {
+                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked yet</span>';
+                } else {
+                    buttonsContainer.innerHTML = defectMarkers.map((m, i) => 
+                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}</button>`
+                    ).join('');
+                }
+            } else {
+                panel.classList.remove('visible');
+            }
+        }
+        
+        function selectDefectLink(index) {
+            selectedDefectLink = index;
+            updateDefectLinkPanel();
+            showToast('info', `Linked to Defect #${index + 1}`, 'Next photo will be linked', 1500);
+        }
+        
+        // Feature Type Panel
+        function updateFeatureTypePanel() {
+            const panel = document.getElementById('feature-type-panel');
+            
+            if(photoMode === 'features') {
+                panel.classList.add('visible');
+                
+                // Update active state on buttons
+                document.querySelectorAll('.feature-type-btn').forEach(btn => {
+                    if(btn.textContent === selectedFeatureType) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            } else {
+                panel.classList.remove('visible');
+            }
+        }
+        
+        function selectFeatureType(type) {
+            selectedFeatureType = type;
+            updateFeatureTypePanel();
+            showToast('info', `Feature: ${type}`, 'Next photo will be tagged', 1500);
         }
         
         function clearDefectMarkers() {
@@ -2070,13 +2195,32 @@
         function showSkuGate() {
             document.getElementById('sku-gate').classList.remove('hidden');
             document.getElementById('sku-gate-input').value = '';
-            document.getElementById('sku-gate-input').focus();
+            document.getElementById('sku-gate-input').classList.remove('valid');
             document.getElementById('sku-gate-status').textContent = '';
             skuLocked = false;
+            
+            // Reset to entry view (hide camera view)
+            document.getElementById('sku-gate-entry').classList.remove('hidden');
+            document.getElementById('sku-gate-camera').classList.add('hidden');
+            
+            // Stop any running camera stream
+            if(skuGateStream) {
+                skuGateStream.getTracks().forEach(t => t.stop());
+                skuGateStream = null;
+            }
+            
+            // Focus input after a brief delay
+            setTimeout(() => document.getElementById('sku-gate-input').focus(), 100);
         }
         
         function hideSkuGate() {
             document.getElementById('sku-gate').classList.add('hidden');
+            
+            // Stop camera stream if running
+            if(skuGateStream) {
+                skuGateStream.getTracks().forEach(t => t.stop());
+                skuGateStream = null;
+            }
         }
         
         function onSkuGateInput() {
@@ -2103,29 +2247,98 @@
             }
         }
         
-        function activateSkuGateScan() {
-            // Switch to SKU camera and start scanning
-            document.getElementById('sku-gate-status').textContent = '📷 Scanning with C922X...';
-            document.getElementById('sku-gate-status').style.color = '#f59e0b';
+        let skuGateStream = null;
+        
+        async function activateSkuGateScan() {
+            // Show camera preview, hide entry form
+            document.getElementById('sku-gate-entry').classList.add('hidden');
+            document.getElementById('sku-gate-camera').classList.remove('hidden');
             
-            // If we have a secondary camera, use it
-            if(secondaryCameraId) {
-                setPhotoMode('sku').then(() => {
-                    // Focus back on the gate input to receive barcode
-                    setTimeout(() => {
-                        document.getElementById('sku-gate-input').focus();
-                        document.getElementById('sku-gate-status').textContent = '📷 Point camera at barcode...';
-                    }, 500);
+            // Clear and focus scan input
+            document.getElementById('sku-gate-scan-input').value = '';
+            document.getElementById('sku-gate-scan-input').classList.remove('valid');
+            
+            // Try to get C922X camera
+            const cameraId = secondaryCameraId || primaryCameraId;
+            
+            if(!cameraId) {
+                document.getElementById('sku-gate-camera').innerHTML = `
+                    <div style="padding:40px;text-align:center;">
+                        <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                        <div style="font-size:16px;font-weight:600;color:#ef4444;margin-bottom:8px;">No Camera Detected</div>
+                        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Please type the SKU manually</div>
+                        <button onclick="cancelSkuGateScan()" class="sku-gate-cancel-btn">← Back to Manual Entry</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                // Start video stream
+                skuGateStream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: cameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
-            } else {
-                document.getElementById('sku-gate-status').textContent = '⚠️ No camera detected - type SKU manually';
+                
+                const video = document.getElementById('sku-gate-video');
+                video.srcObject = skuGateStream;
+                
+                // Focus scan input to receive barcode scanner input
+                setTimeout(() => document.getElementById('sku-gate-scan-input').focus(), 100);
+                
+            } catch(err) {
+                console.error('SKU Gate camera error:', err);
+                cancelSkuGateScan();
+                document.getElementById('sku-gate-status').textContent = '⚠️ Camera error - type SKU manually';
                 document.getElementById('sku-gate-status').style.color = '#ef4444';
             }
+        }
+        
+        function onSkuGateScanInput() {
+            const input = document.getElementById('sku-gate-scan-input');
+            const value = input.value.trim();
+            
+            if(value.length >= 3) {
+                input.classList.add('valid');
+            } else {
+                input.classList.remove('valid');
+            }
+        }
+        
+        function handleSkuGateScanKeydown(e) {
+            if(e.key === 'Enter') {
+                e.preventDefault();
+                const value = document.getElementById('sku-gate-scan-input').value.trim();
+                if(value.length >= 1) {
+                    lockSku(value);
+                }
+            }
+        }
+        
+        function cancelSkuGateScan() {
+            // Stop video stream
+            if(skuGateStream) {
+                skuGateStream.getTracks().forEach(t => t.stop());
+                skuGateStream = null;
+            }
+            
+            // Hide camera, show entry form
+            document.getElementById('sku-gate-camera').classList.add('hidden');
+            document.getElementById('sku-gate-entry').classList.remove('hidden');
+            document.getElementById('sku-gate-status').textContent = '';
+            
+            // Focus input
+            document.getElementById('sku-gate-input').focus();
         }
         
         function lockSku(value) {
             data.sku = value;
             skuLocked = true;
+            
+            // Stop SKU gate camera if running
+            if(skuGateStream) {
+                skuGateStream.getTracks().forEach(t => t.stop());
+                skuGateStream = null;
+            }
             
             // Hide SKU gate
             hideSkuGate();
@@ -2760,11 +2973,6 @@
             console.log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8) || 'null'}`);
             console.log(`   activeCameraId: ${activeCameraId?.slice(0,8) || 'null'}`);
             
-            // Stop barcode scanning if leaving SKU mode
-            if(photoMode === 'sku' && mode !== 'sku') {
-                stopBarcodeScanning();
-            }
-            
             const previousMode = photoMode;
             photoMode = mode; 
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); 
@@ -2810,7 +3018,7 @@
                 } else {
                     console.warn('⚠️ mainCameraId not set');
                 }
-            } else if(mode === 'tag' || mode === 'defect' || mode === 'detail' || mode === 'sku') {
+            } else if(mode === 'tag' || mode === 'defect' || mode === 'defect-closeup' || mode === 'features') {
                 video.style.display = 'block';
                 
                 if(secondaryCameraId) {
@@ -2834,42 +3042,9 @@
             // Always update camera indicator after mode change
             updateCameraIndicator();
             
-            // If SKU mode, focus the SKU input AND start camera barcode scanning IMMEDIATELY
-            if(mode === 'sku') {
-                // Go to step 3 where SKU input is
-                goToStep(3);
-                
-                // Show scanning status immediately
-                const statusEl = document.getElementById('sku-camera-status');
-                statusEl.style.display = 'block';
-                statusEl.textContent = '📷 Switching to C922X for scan...';
-                statusEl.style.color = '#f59e0b';
-                
-                // Focus SKU input with multiple attempts to ensure it works
-                const focusSkuInput = () => {
-                    const skuInput = document.getElementById('sku-input');
-                    if(skuInput) {
-                        skuInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        skuInput.value = ''; // Clear for fresh scan
-                        skuInput.focus();
-                        skuInput.select();
-                        console.log('📷 SKU mode: Input focused, ready for scan');
-                    }
-                };
-                
-                // Try focusing multiple times to ensure it works
-                setTimeout(focusSkuInput, 100);
-                setTimeout(focusSkuInput, 300);
-                
-                // Start camera-based barcode scanning after camera switches
-                // Use shorter delay for faster scanning
-                setTimeout(() => {
-                    console.log('📷 SKU: Auto-starting barcode scan...');
-                    startBarcodeScanning();
-                }, 500);
-            }
-            
-            updateCameraIndicator();
+            // Update selection panels based on mode
+            updateDefectLinkPanel();
+            updateFeatureTypePanel();
         }
         
         function updateCameraIndicator() {
@@ -2879,14 +3054,14 @@
                 indicator.textContent = '📦 BRIO 4K (Main)';
                 indicator.style.background = '#3b82f6';
             } else if(activeCameraId === secondaryCameraId) {
-                if(photoMode === 'sku') {
-                    indicator.textContent = '📷 C922X (SKU Scan)';
-                    indicator.style.background = '#16a34a';
-                } else if(photoMode === 'detail') {
-                    indicator.textContent = '🔍 C922X (Detail Close-up)';
+                if(photoMode === 'defect-closeup') {
+                    indicator.textContent = '🔴 C922X (Defect Close-up)';
+                    indicator.style.background = '#dc2626';
+                } else if(photoMode === 'features') {
+                    indicator.textContent = '✨ C922X (Feature Close-up)';
                     indicator.style.background = '#7c3aed';
                 } else {
-                    indicator.textContent = '🏷️ C922X (Tag/Defect)';
+                    indicator.textContent = '🏷️ C922X (Tag)';
                     indicator.style.background = '#f59e0b';
                 }
             } else {
@@ -2951,16 +3126,30 @@
                         }
                         showToast('success', `Tag Photo ${data.tagPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
-                    else if(photoMode === 'detail') {
-                        data.detailPhotos.push(photo);
+                    else if(photoMode === 'defect-closeup') {
+                        // Add linked defect index if available
+                        photo.linkedDefectIndex = selectedDefectLink;
+                        data.defectCloseupPhotos.push(photo);
                         // Auto-save to folder if selected
                         if(saveDirectoryHandle) {
-                            const filename = generatePhotoFilename('detail', data.detailPhotos.length);
+                            const filename = generatePhotoFilename('defect-closeup', data.defectCloseupPhotos.length);
                             savePhotoToFolder(blob, filename);
                         }
-                        showToast('success', `🔍 Detail Close-up ${data.detailPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
+                        const linkText = selectedDefectLink !== null ? ` → Defect #${selectedDefectLink + 1}` : '';
+                        showToast('success', `🔴 Defect Close-up ${data.defectCloseupPhotos.length}${linkText}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
-                    else if(photoMode === 'sku') { /* SKU mode doesn't save photos */ }
+                    else if(photoMode === 'features') {
+                        // Add feature type if selected
+                        photo.featureType = selectedFeatureType || null;
+                        data.featuresPhotos.push(photo);
+                        // Auto-save to folder if selected
+                        if(saveDirectoryHandle) {
+                            const filename = generatePhotoFilename('feature', data.featuresPhotos.length);
+                            savePhotoToFolder(blob, filename);
+                        }
+                        const typeText = selectedFeatureType ? ` (${selectedFeatureType})` : '';
+                        showToast('success', `✨ Feature Close-up ${data.featuresPhotos.length}${typeText}`, `${canvas.width}×${canvas.height}`, 1500);
+                    }
                     else {
                         data.defectPhotos.push(photo);
                         // Auto-save to folder if selected
@@ -3246,30 +3435,45 @@
         
         function updatePhotoGrids() { 
             const renderGrid = (photos, gridId, mode) => { 
-                // Main = portrait (full res), Tag/Defect/Detail = square (1:1)
+                // Main = portrait (full res), Tag/Defect/etc = square (1:1)
                 const thumbClass = mode === 'main' ? 'photo-thumb' : 'photo-thumb square';
-                const thumbStyle = mode === 'detail' ? 'border-color:#7c3aed;' : '';
-                document.getElementById(gridId).innerHTML = photos.map((p,i) => 
-                    `<div class="${thumbClass}" style="${thumbStyle}" ondblclick="openPreview('${mode}',${i})" title="Double-click to preview">
-                        <img src="${p.url}">
+                let thumbStyle = '';
+                if(mode === 'defect-closeup') thumbStyle = 'border-color:#dc2626;';
+                else if(mode === 'features') thumbStyle = 'border-color:#7c3aed;';
+                
+                document.getElementById(gridId).innerHTML = photos.map((p,i) => {
+                    let badge = '';
+                    // Show linked defect number for defect close-ups
+                    if(mode === 'defect-closeup' && p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:white;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;">#${p.linkedDefectIndex + 1}</span>`;
+                    }
+                    // Show feature type for feature close-ups
+                    if(mode === 'features' && p.featureType) {
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:#7c3aed;color:white;font-size:8px;padding:1px 3px;border-radius:3px;font-weight:600;">${p.featureType}</span>`;
+                    }
+                    return `<div class="${thumbClass}" style="${thumbStyle}" ondblclick="openPreview('${mode}',${i})" title="Double-click to preview">
+                        <img src="${p.url}">${badge}
                         <button class="photo-thumb-delete" onclick="event.stopPropagation();deletePhoto('${mode}',${i})">×</button>
-                    </div>`
-                ).join('') + `<div class="${thumbClass} photo-thumb-empty" style="${thumbStyle}" onclick="setPhotoMode('${mode}')">+</div>`; 
+                    </div>`;
+                }).join('') + `<div class="${thumbClass} photo-thumb-empty" style="${thumbStyle}" onclick="setPhotoMode('${mode}')">+</div>`; 
             }; 
             renderGrid(data.mainPhotos,'main-photos-grid','main'); 
             renderGrid(data.tagPhotos,'tag-photos-grid','tag'); 
             renderGrid(data.defectPhotos,'defect-photos-grid','defect'); 
-            renderGrid(data.detailPhotos,'detail-photos-grid','detail'); 
+            renderGrid(data.defectCloseupPhotos,'defect-closeup-photos-grid','defect-closeup'); 
+            renderGrid(data.featuresPhotos,'features-photos-grid','features'); 
             document.getElementById('main-count').textContent = data.mainPhotos.length; 
             document.getElementById('tag-count').textContent = data.tagPhotos.length; 
             document.getElementById('defect-count').textContent = data.defectPhotos.length; 
-            document.getElementById('detail-count').textContent = data.detailPhotos.length; 
-            document.getElementById('photo-count').textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length+data.detailPhotos.length; 
+            document.getElementById('defect-closeup-count').textContent = data.defectCloseupPhotos.length; 
+            document.getElementById('features-count').textContent = data.featuresPhotos.length; 
+            document.getElementById('photo-count').textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length+data.defectCloseupPhotos.length+data.featuresPhotos.length; 
         }
         function deletePhoto(mode,index) { 
             if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} 
             else if(mode==='tag'){URL.revokeObjectURL(data.tagPhotos[index].url);data.tagPhotos.splice(index,1);} 
-            else if(mode==='detail'){URL.revokeObjectURL(data.detailPhotos[index].url);data.detailPhotos.splice(index,1);} 
+            else if(mode==='defect-closeup'){URL.revokeObjectURL(data.defectCloseupPhotos[index].url);data.defectCloseupPhotos.splice(index,1);} 
+            else if(mode==='features'){URL.revokeObjectURL(data.featuresPhotos[index].url);data.featuresPhotos.splice(index,1);} 
             else{URL.revokeObjectURL(data.defectPhotos[index].url);data.defectPhotos.splice(index,1);} 
             updatePhotoGrids(); updateValidation(); 
         }
@@ -3278,16 +3482,23 @@
         function openPreview(mode, index) {
             previewMode = mode;
             previewIndex = index;
-            const photos = mode === 'main' ? data.mainPhotos : mode === 'tag' ? data.tagPhotos : mode === 'detail' ? data.detailPhotos : data.defectPhotos;
+            const photos = mode === 'main' ? data.mainPhotos : mode === 'tag' ? data.tagPhotos : mode === 'defect-closeup' ? data.defectCloseupPhotos : mode === 'features' ? data.featuresPhotos : data.defectPhotos;
             if(photos.length === 0) return;
             
             const photo = photos[index];
             document.getElementById('preview-image').src = photo.url;
             const is4K = photo.width >= 3800;
             const resLabel = photo.width ? `${photo.width}×${photo.height}${is4K ? ' 4K' : ''}` : '';
-            const modeLabel = mode === 'detail' ? '🔍 DETAIL' : mode.toUpperCase();
+            let modeLabel = mode.toUpperCase();
+            if(mode === 'defect-closeup') modeLabel = '🔴 DEFECT CLOSE-UP';
+            else if(mode === 'features') modeLabel = '✨ FEATURE';
             document.getElementById('preview-type').textContent = modeLabel + (resLabel ? ` • ${resLabel}` : '');
-            document.getElementById('preview-type').style.background = mode === 'main' ? '#3b82f6' : mode === 'tag' ? '#f59e0b' : mode === 'detail' ? '#7c3aed' : '#ef4444';
+            let bgColor = '#3b82f6'; // main default
+            if(mode === 'tag') bgColor = '#f59e0b';
+            else if(mode === 'defect-closeup') bgColor = '#dc2626';
+            else if(mode === 'features') bgColor = '#7c3aed';
+            else if(mode === 'defect') bgColor = '#ef4444';
+            document.getElementById('preview-type').style.background = bgColor;
             updatePreviewNav();
             document.getElementById('preview-modal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -3301,7 +3512,7 @@
         }
         
         function navigatePreview(dir) {
-            const photos = previewMode === 'main' ? data.mainPhotos : previewMode === 'tag' ? data.tagPhotos : data.defectPhotos;
+            const photos = previewMode === 'main' ? data.mainPhotos : previewMode === 'tag' ? data.tagPhotos : previewMode === 'defect-closeup' ? data.defectCloseupPhotos : previewMode === 'features' ? data.featuresPhotos : data.defectPhotos;
             previewIndex += dir;
             if(previewIndex < 0) previewIndex = 0;
             if(previewIndex >= photos.length) previewIndex = photos.length - 1;
@@ -4636,7 +4847,18 @@
             data.mainPhotos.forEach((p,i) => formData.append(`mainPhoto${i}`, p.blob, `main${i}.jpg`));
             data.tagPhotos.forEach((p,i) => formData.append(`tagPhoto${i}`, p.blob, `tag${i}.jpg`));
             data.defectPhotos.forEach((p,i) => formData.append(`defectPhoto${i}`, p.blob, `defect${i}.jpg`));
-            data.detailPhotos.forEach((p,i) => formData.append(`detailPhoto${i}`, p.blob, `detail${i}.jpg`));
+            data.defectCloseupPhotos.forEach((p,i) => {
+                formData.append(`defectCloseupPhoto${i}`, p.blob, `defect-closeup${i}.jpg`);
+                if(p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
+                    formData.append(`defectCloseupPhoto${i}_linkedTo`, p.linkedDefectIndex);
+                }
+            });
+            data.featuresPhotos.forEach((p,i) => {
+                formData.append(`featurePhoto${i}`, p.blob, `feature${i}.jpg`);
+                if(p.featureType) {
+                    formData.append(`featurePhoto${i}_type`, p.featureType);
+                }
+            });
             
             const xhr = new XMLHttpRequest();
             xhr.open('POST', N8N_WEBHOOK_URL, true);
@@ -4656,10 +4878,10 @@
             
             recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
         }
-        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.detailPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],detailPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; skuLocked=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-locked-badge').classList.add('hidden'); document.getElementById('sku-locked-value').textContent=''; document.getElementById('sku-locked-display').classList.add('hidden'); document.getElementById('sku-manual-input').classList.add('hidden'); document.getElementById('check-sku').innerHTML='○'; document.getElementById('check-sku').classList.remove('complete'); document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); showSkuGate(); }
+        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],defectCloseupPhotos:[],featuresPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; skuLocked=false; selectedDefectLink=null; selectedFeatureType=null; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-locked-badge').classList.add('hidden'); document.getElementById('sku-locked-value').textContent=''; document.getElementById('sku-locked-display').classList.add('hidden'); document.getElementById('sku-manual-input').classList.add('hidden'); document.getElementById('check-sku').innerHTML='○'; document.getElementById('check-sku').classList.remove('complete'); document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); showSkuGate(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.54')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.54',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.55')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.55',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
