@@ -363,6 +363,15 @@
         .reset-btn { padding: 6px 12px; background: var(--color-error); color: white; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; transition: var(--transition-fast); }
         .reset-btn:hover { background: var(--color-error-dark); }
         .reset-btn:active { transform: scale(0.97); }
+        
+        /* Reset Dropdown Menu */
+        .reset-dropdown { position: relative; display: inline-block; }
+        .reset-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); min-width: 180px; z-index: 1000; display: none; overflow: hidden; }
+        .reset-menu.visible { display: block; }
+        .reset-menu button { display: block; width: 100%; padding: 12px 16px; background: white; border: none; text-align: left; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--color-text); }
+        .reset-menu button:hover { background: #f1f5f9; }
+        .reset-menu button:first-child { color: var(--color-primary); }
+        .reset-menu button:last-child { color: var(--color-error); }
         .fullres-btn { background: var(--color-success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; border: none; cursor: pointer; transition: var(--transition-fast); }
         .fullres-btn:hover { background: var(--color-success-dark); }
         .fullres-btn:active { transform: scale(0.97); }
@@ -604,7 +613,13 @@
                     <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos">📁 No Folder</button>
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
                     <span class="version-badge" id="header-version">...</span>
-                    <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
+                    <div class="reset-dropdown" id="reset-dropdown">
+                        <button class="reset-btn" onclick="toggleResetMenu()" title="Reset options" style="margin-left:4px;">↻</button>
+                        <div class="reset-menu" id="reset-menu">
+                            <button onclick="resetForm(true); hideResetMenu();">🔄 Reset (Keep SKU)</button>
+                            <button onclick="resetForm(false); hideResetMenu();" style="border-top:1px solid #e2e8f0;">🗑️ Full Reset (New SKU)</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -1372,11 +1387,11 @@
                 <div class="photo-grid" id="defect-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('main')" title="Defects marked on main photos">+</div></div>
             </div>
             <div class="photo-section">
-                <div class="photo-section-title" style="color:#dc2626;"><span>🔴 Defect Close-ups</span><span id="defect-closeup-count" style="background:#dc2626;">0</span></div>
+                <div class="photo-section-title" style="color:#dc2626;"><span>🔴 Defect Close-ups</span><span id="defect-closeup-count" style="background:#dc2626;color:white;">0</span></div>
                 <div class="photo-grid" id="defect-closeup-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('defect-closeup')" title="Close-up photos of defects with C922X" style="border-color:#dc2626;">+</div></div>
             </div>
             <div class="photo-section">
-                <div class="photo-section-title" style="color:#7c3aed;"><span>✨ Feature Close-ups</span><span id="features-count" style="background:#7c3aed;">0</span></div>
+                <div class="photo-section-title" style="color:#7c3aed;"><span>✨ Feature Close-ups</span><span id="features-count" style="background:#7c3aed;color:white;">0</span></div>
                 <div class="photo-grid" id="features-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('features')" title="Special features: zippers, buttons, codes, copyright" style="border-color:#7c3aed;">+</div></div>
             </div>
             <div class="stats-section">
@@ -1393,7 +1408,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.57";
+        const VERSION = "v99.60";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2228,6 +2243,31 @@
         function checkAuth() { try { if(localStorage.getItem('vl_auth')===APP_PIN){ document.getElementById('pin-screen').classList.add('hidden'); data.photographer=localStorage.getItem('vl_photographer')||'P02'; document.getElementById('photographer-badge').textContent=data.photographer; startTimer(); } } catch(e){} }
         function checkPin() { if(document.getElementById('pin-input').value===APP_PIN){ try{ localStorage.setItem('vl_auth',APP_PIN); data.photographer=document.getElementById('photographer-select').value; localStorage.setItem('vl_photographer',data.photographer); document.getElementById('photographer-badge').textContent=data.photographer; }catch(e){} document.getElementById('pin-screen').classList.add('hidden'); startTimer(); } else { document.getElementById('pin-input').value=''; document.getElementById('pin-input').classList.add('shake'); setTimeout(()=>document.getElementById('pin-input').classList.remove('shake'),300); } }
         function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
+        
+        // Reset Menu Functions
+        function toggleResetMenu() {
+            const menu = document.getElementById('reset-menu');
+            menu.classList.toggle('visible');
+            
+            // Close menu when clicking outside
+            if(menu.classList.contains('visible')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeResetMenuOnClickOutside);
+                }, 10);
+            }
+        }
+        
+        function hideResetMenu() {
+            document.getElementById('reset-menu').classList.remove('visible');
+            document.removeEventListener('click', closeResetMenuOnClickOutside);
+        }
+        
+        function closeResetMenuOnClickOutside(e) {
+            const dropdown = document.getElementById('reset-dropdown');
+            if(!dropdown.contains(e.target)) {
+                hideResetMenu();
+            }
+        }
         
         // === SKU GATE FUNCTIONS ===
         let skuLocked = false;
@@ -3207,14 +3247,22 @@
                             await switchCameraMaxRes(mainCameraId);
                             console.log('📷 Switch to BRIO complete');
                             // Ensure full resolution after switch
-                            setTimeout(() => forceMaxResolution(), 500);
+                            setTimeout(() => {
+                                forceMaxResolution();
+                                // Re-enable defect marking after camera switch
+                                enableDefectMarking();
+                            }, 500);
                         } catch(e) {
                             console.error('📷 Switch to BRIO failed:', e);
                         }
                     } else {
                         console.log('📷 Already on MAIN camera');
                         // Apply portrait transform
-                        setTimeout(() => updatePortraitTransform(), 50);
+                        setTimeout(() => {
+                            updatePortraitTransform();
+                            // Re-enable defect marking
+                            enableDefectMarking();
+                        }, 50);
                     }
                 } else {
                     console.warn('⚠️ mainCameraId not set');
@@ -5079,7 +5127,186 @@
             
             recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
         }
-        function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],defectCloseupPhotos:[],featuresPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; skuLocked=false; selectedDefectLink=null; selectedFeatureType=null; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-locked-badge').classList.add('hidden'); document.getElementById('sku-locked-value').textContent=''; document.getElementById('sku-locked-display').classList.add('hidden'); document.getElementById('sku-manual-input').classList.add('hidden'); document.getElementById('check-sku').innerHTML='○'; document.getElementById('check-sku').classList.remove('complete'); document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); showSkuGate(); }
+        function resetForm(keepSku = false) { 
+            // Store SKU if we want to keep it
+            const preservedSku = keepSku ? data.sku : '';
+            const wasSkuLocked = keepSku ? skuLocked : false;
+            
+            console.log(`🔄 resetForm called - keepSku: ${keepSku}, preservedSku: ${preservedSku}`);
+            
+            // Revoke all photo URLs
+            data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            
+            // Reset data object
+            data = {
+                superCategory:'tops',
+                category:'',
+                tagStatus:'',
+                tagSize:'',
+                origin:'',
+                country:'',
+                gender:'',
+                colors:[],
+                fade:'',
+                pattern:'',
+                patternTraits:{lines:'',shapes:'',method:''},
+                printType:'',
+                graphicCategory:'',
+                fabricType:'',
+                fabricTraits:{stretch:'',surface:'',interior:''},
+                wash:'',
+                materials:[],
+                materialTraits:{temp:'',shine:''},
+                sleeveLength:'',
+                sleeveStyle:'',
+                cutoffType:'',
+                stitch:'',
+                legStyle:'',
+                rise:'',
+                thickness:'',
+                layers:'',
+                hasDefects:null,
+                defectTypes:[],
+                weightLb:0,
+                weightOz:0,
+                sku: preservedSku,
+                photographer:data.photographer,
+                audioMeasure:null,
+                audioDuration:0,
+                mainPhotos:[],
+                tagPhotos:[],
+                defectPhotos:[],
+                defectCloseupPhotos:[],
+                featuresPhotos:[],
+                flagged:false,
+                elasticCheck:''
+            }; 
+            
+            // Reset state variables
+            tagCutMode = false; 
+            skuLocked = wasSkuLocked; 
+            selectedDefectLink = null; 
+            selectedFeatureType = null;
+            fabricFilters = {stretch:null, surface:null, interior:null}; 
+            materialFilters = {temp:null, shine:null}; 
+            patternFilters = {lines:null, shapes:null, method:null};
+            
+            // === RESET ALL BUTTON SELECTIONS ===
+            document.querySelectorAll('.selected').forEach(b => b.classList.remove('selected')); 
+            document.querySelectorAll('.btn-hero').forEach(b => {
+                if(!b.classList.contains('super-btn')) {
+                    b.classList.remove('btn-hero');
+                    b.classList.add('btn-secondary');
+                }
+            });
+            
+            // Reset super category buttons (Tops selected by default)
+            document.querySelectorAll('.super-btn').forEach((b,i) => {
+                if(i === 0) {
+                    b.classList.add('selected', 'btn-hero');
+                    b.classList.remove('btn-secondary');
+                } else {
+                    b.classList.remove('selected', 'btn-hero');
+                    b.classList.add('btn-secondary');
+                }
+            });
+            
+            // Reset all other button types
+            document.querySelectorAll('.cat-btn, .size-btn, .country-btn, .gender-btn, .tag-status-btn, .fade-btn, .pattern-btn, .defect-btn, .elastic-btn, .leg-btn, .rise-btn, .sleeve-btn, .stitch-btn').forEach(b => {
+                b.classList.remove('selected', 'btn-hero');
+                b.classList.add('btn-secondary');
+            });
+            
+            // Reset color buttons
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+            
+            // Reset filter buttons
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            
+            // === RESET INPUT FIELDS ===
+            document.getElementById('sku-input').value = preservedSku;
+            document.getElementById('weight-lb').value = '0';
+            document.getElementById('weight-oz').value = '0';
+            document.getElementById('tag-size-input').value = '';
+            document.getElementById('country-other-input').value = '';
+            document.getElementById('material-other-select').value = '';
+            document.getElementById('material-custom-input').value = '';
+            document.getElementById('fabric-other-select').value = '';
+            document.getElementById('fabric-custom-input').value = '';
+            
+            // === HIDE SECTIONS ===
+            ['tag-details', 'country-section', 'country-other-input', 'wash-section', 'print-type-section', 
+             'graphic-category-section', 'pattern-others', 'cutoff-section', 'elastic-section', 
+             'sleeve-measurement-notice', 'material-custom-input', 'fabric-custom-input', 'fabric-helper', 
+             'material-helper', 'pattern-helper', 'pattern-help-panel', 'tag-location-panel', 
+             'fabric-tag-cut-section', 'material-tag-cut-section', 'leg-style-help', 'flag-status',
+             'bottoms-construction', 'measure-hint-button-shirt', 'measure-hint-bottoms', 'measure-hint-outer'
+            ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+            
+            // === SHOW SECTIONS ===
+            ['tops-construction', 'measure-hint-tops', 'fabric-help-btn', 'material-help-btn', 'record-section'
+            ].forEach(id => document.getElementById(id)?.classList.remove('hidden'));
+            
+            document.getElementById('post-record-section').classList.add('hidden');
+            
+            // === RESET UI ELEMENTS ===
+            document.getElementById('other-patterns-toggle').textContent = '+ More patterns';
+            document.getElementById('category-label').textContent = '';
+            updateMeasurementHintsForSleeveStyle('Standard', '');
+            
+            // Reset audio recording
+            document.getElementById('record-btn').innerHTML = '<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>';
+            document.getElementById('record-btn').style.background = '#ef4444';
+            
+            // Reset flag button
+            document.getElementById('flag-btn').classList.remove('flagged');
+            document.getElementById('flag-btn').querySelector('span:first-child').textContent = '🤔';
+            document.getElementById('flag-btn').querySelector('span:last-of-type').textContent = 'FLAG AS UNUSUAL';
+            
+            // === HANDLE SKU STATE ===
+            if(keepSku && preservedSku) {
+                document.getElementById('sku-locked-badge').classList.remove('hidden');
+                document.getElementById('sku-locked-value').textContent = preservedSku;
+                document.getElementById('sku-locked-display').classList.remove('hidden');
+                document.getElementById('sku-locked-display').style.display = 'flex';
+                document.getElementById('sku-display-value').textContent = preservedSku;
+                document.getElementById('sku-manual-input').classList.add('hidden');
+                document.getElementById('check-sku').innerHTML = '✓';
+                document.getElementById('check-sku').classList.add('complete');
+            } else {
+                document.getElementById('sku-locked-badge').classList.add('hidden');
+                document.getElementById('sku-locked-value').textContent = '';
+                document.getElementById('sku-locked-display').classList.add('hidden');
+                document.getElementById('sku-manual-input').classList.add('hidden');
+                document.getElementById('check-sku').innerHTML = '○';
+                document.getElementById('check-sku').classList.remove('complete');
+            }
+            document.getElementById('sku-status').textContent = '';
+            document.getElementById('sku-camera-status').style.display = 'none';
+            
+            // === RENDER/UPDATE ===
+            renderSubCategories('tops'); 
+            clearDefectMarkers(); 
+            renderFabricCards(); 
+            renderMaterialCards(); 
+            renderPatternCards(); 
+            updatePhotoGrids(); 
+            updateValidation(); 
+            
+            // === NAVIGATION ===
+            goToStep(1); 
+            setPhotoMode('main'); 
+            resetZoom(); 
+            
+            // Show SKU gate only if not keeping SKU
+            if(!keepSku || !preservedSku) {
+                showSkuGate();
+            }
+        }
         
         function loadStats() { try{ const saved = JSON.parse(localStorage.getItem(`vl_stats_${VERSION}`)||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
         function saveStats() { try{localStorage.setItem(`vl_stats_${VERSION}`,JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
