@@ -568,6 +568,7 @@
                     </div>
                 </div>
                 <div class="sku-gate-camera-hint">Center barcode in the frame</div>
+                <div id="scanner-status" style="font-size:10px;color:#22c55e;margin-bottom:8px;"></div>
                 <input type="text" id="sku-gate-scan-input" class="sku-gate-input" placeholder="Waiting for scan..." 
                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                     oninput="onSkuGateScanInput()" onkeydown="handleSkuGateScanKeydown(event)"
@@ -830,6 +831,9 @@
                         <!-- Other Fabric Types dropdown (eBay fabric types from PDF) -->
                         <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select" style="margin-top:8px; font-size:12px;">
                             <option value="" selected>Other fabric types...</option>
+                            <option value="Wool">Wool (warm, textured)</option>
+                            <option value="Canvas">Canvas (heavy cotton)</option>
+                            <option value="Quilted">Quilted (puffy sections)</option>
                             <option value="Velvet">Velvet (plush, soft)</option>
                             <option value="Shearling">Shearling (wool/fur lined)</option>
                             <option value="Felt">Felt (pressed wool)</option>
@@ -1302,15 +1306,6 @@
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 BRIO 4K</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
                 <button class="fullres-btn" onclick="forceMaxResolution()" title="Click to force maximum resolution">FULL RES</button>
-                <!-- Zoom Control -->
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="color:#888;font-size:10px;">🔍</span>
-                    <input type="range" id="zoom-slider" min="100" max="300" value="100" 
-                           style="width:80px;height:4px;cursor:pointer;" 
-                           oninput="setZoom(this.value)" title="Digital Zoom">
-                    <span id="zoom-level" style="color:#888;font-size:10px;min-width:35px;">1.0x</span>
-                    <button onclick="resetZoom()" style="background:#374151;color:white;padding:2px 6px;border-radius:3px;font-size:9px;border:none;cursor:pointer;" title="Reset zoom">Reset</button>
-                </div>
                 <div id="camera-status" class="camera-status">No camera</div>
             </div>
             <div class="camera-view">
@@ -1409,7 +1404,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.61";
+        const VERSION = "v99.65";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1750,10 +1745,10 @@
         // V99.45: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
-            // TOPS
+            // TOPS - Per eBay PDF fabric types
             "T-Shirt": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tee. Stretchy, smooth both sides." },
-                { name:"Jersey", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Same as Knit. eBay uses this term." },
+                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tee fabric. Stretchy, smooth both sides." },
+                { name:"Jersey", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Athletic tee. Soccer, Nike Dri-Fit style." },
                 { name:"Rayon", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Silky, drapey. 80s/90s soft tees." },
                 { name:"Woven", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Rigid like dress shirt. Rare for tees." },
                 { name:"Mesh", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"See-through with tiny holes. Athletic." }
@@ -1844,38 +1839,31 @@
                 { name:"French Terry", priority:2, traits:{stretch:"high",surface:"smooth",interior:"loops"}, desc:"Tiny loops inside. Lighter." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Smooth both sides. Jogger style." }
             ],
-            // OUTER
+            // OUTER - Per eBay PDF fabric types (NO materials like Nylon)
             "Jacket": [
-                { name:"Nylon", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, crinkly. Windbreaker, coach jacket, MA-1 bomber." },
-                { name:"Satin", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, silky. Starter jackets, varsity sleeves, bomber." },
+                { name:"Denim", priority:1, default:true, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material. Trucker style." },
+                { name:"Canvas", priority:1, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy cotton. Work jacket, Carhartt, chore coat." },
                 { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Animal hide. Motorcycle, A-2/G-1 flight, cafe racer." },
-                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material. Trucker style." },
-                { name:"Canvas", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy cotton. Work jacket, Carhartt, chore coat." },
-                { name:"Wool", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Varsity body, peacoat style. Warm, textured." },
+                { name:"Satin", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, silky. Starter jackets, varsity sleeves, bomber." },
                 { name:"Twill", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Harrington, Dickies style. Diagonal weave." },
                 { name:"Corduroy", priority:2, traits:{stretch:"none",surface:"ridged",interior:"smooth"}, desc:"Vertical ridges. 70s style." },
                 { name:"Fleece", priority:3, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia, North Face style." },
                 { name:"Softshell", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy outdoor tech jacket." }
             ],
             "Coat": [
-                { name:"Wool", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Classic overcoat, peacoat. Warm, dressy." },
-                { name:"Tweed", priority:1, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Professor/country style." },
-                { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Trench, duster, car coat. Heavy hide." },
-                { name:"Nylon", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Parka shell, rain mac, tech coat." },
-                { name:"Cotton", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Trench coat, duster. Canvas-like." },
+                { name:"Tweed", priority:1, default:true, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Professor/country style." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Classic overcoat, peacoat. Dress coat." },
                 { name:"Velvet", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Soft, plush. Luxe vintage look." },
-                { name:"Shearling", priority:3, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Wool/fur lined inside. Rancher style." },
+                { name:"Shearling", priority:2, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Wool/fur lined inside. Rancher style." },
                 { name:"Felt", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Pressed wool. Stiff, structured." },
                 { name:"Taffeta", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Crisp, shiny. Formal evening coat." }
             ],
             "Vest": [
-                { name:"Nylon", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Shiny, crinkly, quilted." },
-                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean vest, cut-off sleeves." },
-                { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Motorcycle vest, biker style." },
-                { name:"Fleece", priority:2, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia style." },
-                { name:"Wool", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Suit vest, dressy." },
-                { name:"Knit", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Sweater vest." },
-                { name:"Canvas", priority:3, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Work vest, utility style." }
+                { name:"Quilted", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Puffy, insulated sections." },
+                { name:"Fleece", priority:1, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia style." },
+                { name:"Denim", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean vest, cut-off sleeves." },
+                { name:"Leather", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Motorcycle vest, biker style." },
+                { name:"Knit", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Sweater vest." }
             ],
             "default": [
                 { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy, like t-shirt material." },
@@ -2394,67 +2382,144 @@
         
         async function startSkuGateBarcodeScanning(video) {
             console.log('📷 Starting barcode scanning...');
+            const statusEl = document.getElementById('scanner-status');
             
-            // Check if ZXing library is available
+            // Try native BarcodeDetector API first (FAST - hardware accelerated)
+            if('BarcodeDetector' in window) {
+                console.log('📷 Using native BarcodeDetector API (fast!)');
+                if(statusEl) statusEl.innerHTML = '⚡ Fast Scanner Active';
+                try {
+                    const barcodeDetector = new BarcodeDetector({
+                        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code', 'codabar']
+                    });
+                    
+                    let scanning = true;
+                    
+                    const scanFrame = async () => {
+                        if(!scanning || !skuGateStream) return;
+                        
+                        try {
+                            const barcodes = await barcodeDetector.detect(video);
+                            
+                            if(barcodes.length > 0) {
+                                const result = barcodes[0].rawValue;
+                                console.log('📷 Barcode detected (native):', result);
+                                scanning = false;
+                                
+                                const input = document.getElementById('sku-gate-scan-input');
+                                input.value = result;
+                                input.classList.add('valid');
+                                
+                                if(navigator.vibrate) navigator.vibrate(100);
+                                
+                                setTimeout(() => {
+                                    if(input.value === result) {
+                                        lockSku(result);
+                                    }
+                                }, 300);
+                                return;
+                            }
+                        } catch(e) {
+                            // Frame not ready or no barcode
+                        }
+                        
+                        if(scanning && skuGateStream) {
+                            skuGateScanInterval = requestAnimationFrame(scanFrame);
+                        }
+                    };
+                    
+                    skuGateBarcodeReader = { 
+                        _stopScanning: () => { scanning = false; },
+                        reset: () => { scanning = false; }
+                    };
+                    
+                    // Wait for video to be ready
+                    if(video.readyState >= 2) {
+                        scanFrame();
+                    } else {
+                        video.onloadeddata = () => scanFrame();
+                    }
+                    
+                    console.log('📷 Native barcode scanning started');
+                    return;
+                    
+                } catch(err) {
+                    console.warn('BarcodeDetector failed, falling back to ZXing:', err);
+                }
+            }
+            
+            // Fallback to ZXing (slower, but works everywhere)
             if(typeof ZXing === 'undefined') {
-                console.warn('⚠️ ZXing library not loaded - using fallback');
+                console.warn('⚠️ No barcode library available - use USB scanner');
+                if(statusEl) statusEl.innerHTML = '🔌 Use USB Scanner';
+                document.getElementById('sku-gate-scan-input').placeholder = 'Use USB scanner...';
                 return;
             }
             
+            console.log('📷 Using ZXing fallback (slower)');
+            if(statusEl) statusEl.innerHTML = '📷 Camera Scanner Active';
             try {
-                const codeReader = new ZXing.BrowserMultiFormatReader();
+                const codeReader = new ZXing.BrowserBarcodeReader();
                 skuGateBarcodeReader = codeReader;
                 
-                // Continuously decode from video
-                const decodeFromVideo = async () => {
-                    if(!skuGateStream) return; // Stop if stream was closed
+                let scanning = true;
+                
+                const scanLoop = async () => {
+                    if(!scanning || !skuGateStream) return;
                     
                     try {
-                        const result = await codeReader.decodeFromVideoElement(video);
-                        if(result && result.text) {
-                            console.log('📷 Barcode detected:', result.text);
+                        const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'sku-gate-video');
+                        
+                        if(result && result.text && scanning) {
+                            console.log('📷 Barcode detected (ZXing):', result.text);
+                            scanning = false;
                             
-                            // Show scanned value in input
                             const input = document.getElementById('sku-gate-scan-input');
                             input.value = result.text;
                             input.classList.add('valid');
                             
-                            // Vibrate for feedback
                             if(navigator.vibrate) navigator.vibrate(100);
                             
-                            // Auto-lock after short delay
                             setTimeout(() => {
                                 if(input.value === result.text) {
                                     lockSku(result.text);
                                 }
-                            }, 500);
+                            }, 300);
                         }
                     } catch(e) {
-                        // No barcode found in this frame - keep scanning
-                    }
-                    
-                    // Continue scanning
-                    if(skuGateStream) {
-                        skuGateScanInterval = setTimeout(decodeFromVideo, 200);
+                        if(scanning && skuGateStream) {
+                            skuGateScanInterval = setTimeout(scanLoop, 100);
+                        }
                     }
                 };
                 
-                // Start scanning loop
-                decodeFromVideo();
+                skuGateBarcodeReader._stopScanning = () => { scanning = false; };
+                scanLoop();
                 
             } catch(err) {
-                console.error('Barcode reader error:', err);
+                console.error('ZXing init error:', err);
+                if(statusEl) statusEl.innerHTML = '🔌 Use USB Scanner';
+                document.getElementById('sku-gate-scan-input').placeholder = 'Use USB scanner...';
             }
         }
         
         function stopSkuGateBarcodeScanning() {
+            if(skuGateBarcodeReader) {
+                try { 
+                    if(skuGateBarcodeReader._stopScanning) {
+                        skuGateBarcodeReader._stopScanning();
+                    }
+                    if(skuGateBarcodeReader.reset) {
+                        skuGateBarcodeReader.reset();
+                    }
+                    console.log('📷 Barcode scanning stopped');
+                } catch(e) {}
+                skuGateBarcodeReader = null;
+            }
             if(skuGateScanInterval) {
+                cancelAnimationFrame(skuGateScanInterval);
                 clearTimeout(skuGateScanInterval);
                 skuGateScanInterval = null;
-            }
-            if(skuGateBarcodeReader) {
-                try { skuGateBarcodeReader.reset(); } catch(e) {}
-                skuGateBarcodeReader = null;
             }
         }
         
@@ -2998,28 +3063,9 @@
         // ============ ZOOM FUNCTIONS ============
         let currentZoom = 1.0;
         
-        function setZoom(value) {
-            currentZoom = value / 100;
-            updatePortraitTransform();
-            document.getElementById('zoom-level').textContent = `${currentZoom.toFixed(1)}x`;
-            
-            // Update zoom level indicator color
-            const zoomLevel = document.getElementById('zoom-level');
-            if(currentZoom > 2) {
-                zoomLevel.style.color = '#f59e0b'; // Orange for high zoom
-            } else if(currentZoom > 1) {
-                zoomLevel.style.color = '#3b82f6'; // Blue for moderate zoom
-            } else {
-                zoomLevel.style.color = '#888'; // Gray for no zoom
-            }
-        }
-        
         function resetZoom() {
             currentZoom = 1.0;
-            document.getElementById('zoom-slider').value = 100;
             updatePortraitTransform();
-            document.getElementById('zoom-level').textContent = '1.0x';
-            document.getElementById('zoom-level').style.color = '#888';
         }
         
         async function switchCamera(deviceId) { 
