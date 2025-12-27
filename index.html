@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.49 - Desktop Station</title>
+    <title>VintageLister v99.52 - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -110,6 +110,9 @@
         .timer-label { font-size: 10px; opacity: 0.7; }
         .photographer-badge { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
         .version-badge { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: monospace; }
+        .folder-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .folder-btn:hover { background: rgba(255,255,255,0.25); }
+        .folder-btn.active { background: rgba(34,197,94,0.3); border-color: #22c55e; }
         
         /* PROGRESS BAR */
         .progress-bar { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px 16px; background: var(--color-background); border-bottom: 1px solid var(--color-border); flex-wrap: wrap; }
@@ -222,8 +225,8 @@
         .help-btn:active { transform: scale(0.98); }
         .help-panel { background: #fffbeb; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px; margin-top: 10px; }
         .help-panel.hidden { display: none; }
-        .filter-row { display: flex; gap: 6px; margin-bottom: 8px; }
-        .filter-btn { flex: 1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; transition: var(--transition-fast); }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .filter-btn { padding: 8px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: white; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); cursor: pointer; transition: var(--transition-fast); min-width: fit-content; }
         .filter-btn:hover { background: var(--color-background); border-color: var(--color-border-dark); }
         .filter-btn:active { transform: scale(0.97); }
         .filter-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
@@ -462,7 +465,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.49 Desktop Station</div>
+        <div class="pin-version">v99.52 Desktop Station</div>
     </div>
     
     <div class="flash-overlay" id="flash-overlay"></div>
@@ -499,8 +502,9 @@
                     <div>Last: <strong id="timer-last">--</strong></div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
+                    <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos">📁 No Folder</button>
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.49</span>
+                    <span class="version-badge">v99.52</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -654,11 +658,11 @@
                             </div>
                             <div class="sub-label" style="color:#92400e;">What shapes do you see?</div>
                             <div class="filter-row" style="margin-bottom:8px;">
-                                <button onclick="togglePatternFilter('shapes','none',this)" class="filter-btn pattern-filter">None/Color only</button>
-                                <button onclick="togglePatternFilter('shapes','dots',this)" class="filter-btn pattern-filter">Dots/Circles</button>
-                                <button onclick="togglePatternFilter('shapes','curved',this)" class="filter-btn pattern-filter">Curved/Flowers</button>
+                                <button onclick="togglePatternFilter('shapes','none',this)" class="filter-btn pattern-filter">None/Solid</button>
+                                <button onclick="togglePatternFilter('shapes','dots',this)" class="filter-btn pattern-filter">Dots</button>
+                                <button onclick="togglePatternFilter('shapes','curved',this)" class="filter-btn pattern-filter">Curved</button>
                                 <button onclick="togglePatternFilter('shapes','geometric',this)" class="filter-btn pattern-filter">Geometric</button>
-                                <button onclick="togglePatternFilter('shapes','blobs',this)" class="filter-btn pattern-filter">Irregular/Random</button>
+                                <button onclick="togglePatternFilter('shapes','blobs',this)" class="filter-btn pattern-filter">Irregular</button>
                             </div>
                             <div class="sub-label" style="color:#92400e;">How is it made?</div>
                             <div class="filter-row" style="margin-bottom:8px;">
@@ -1254,6 +1258,75 @@
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
+        
+        // ============ LOCAL FOLDER SAVE (File System Access API) ============
+        let saveDirectoryHandle = null;
+        
+        async function selectSaveFolder() {
+            try {
+                // Check if File System Access API is supported
+                if(!('showDirectoryPicker' in window)) {
+                    showToast('error', 'Not Supported', 'Use Chrome or Edge for folder saving');
+                    return;
+                }
+                
+                saveDirectoryHandle = await window.showDirectoryPicker({
+                    mode: 'readwrite',
+                    startIn: 'desktop'
+                });
+                
+                // Update header button to show selected folder
+                const btn = document.getElementById('folder-btn');
+                btn.textContent = `📁 ${saveDirectoryHandle.name}`;
+                btn.style.background = '#166534';
+                btn.style.borderColor = '#22c55e';
+                
+                showToast('success', 'Folder Selected', `Photos will auto-save to "${saveDirectoryHandle.name}"`);
+                console.log('📁 Save folder selected:', saveDirectoryHandle.name);
+                
+            } catch(err) {
+                if(err.name !== 'AbortError') {
+                    console.error('Folder selection error:', err);
+                    showToast('error', 'Folder Error', err.message);
+                }
+            }
+        }
+        
+        async function savePhotoToFolder(blob, filename) {
+            if(!saveDirectoryHandle) return false;
+            
+            try {
+                // Create SKU subfolder if SKU exists
+                let targetDir = saveDirectoryHandle;
+                if(data.sku) {
+                    try {
+                        targetDir = await saveDirectoryHandle.getDirectoryHandle(data.sku, { create: true });
+                    } catch(e) {
+                        console.warn('Could not create SKU folder, saving to root');
+                    }
+                }
+                
+                // Create file
+                const fileHandle = await targetDir.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                
+                console.log(`💾 Saved: ${data.sku ? data.sku + '/' : ''}${filename}`);
+                return true;
+                
+            } catch(err) {
+                console.error('Save error:', err);
+                // Don't show toast for every save error, just log it
+                return false;
+            }
+        }
+        
+        function generatePhotoFilename(type, index) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            const sku = data.sku || 'NOSKU';
+            return `${sku}_${type}_${index}_${timestamp}.jpg`;
+        }
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
@@ -1558,26 +1631,36 @@
             ],
             // OUTER
             "Jacket": [
-                { name:"Canvas", priority:1, default:true, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy cotton. Work jacket, Carhartt." },
-                { name:"Nylon", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, crinkly. Windbreaker, coach jacket." },
-                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material." },
-                { name:"Twill", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Harrington, Dickies style." },
-                { name:"Corduroy", priority:2, traits:{stretch:"none",surface:"ridged",interior:"smooth"}, desc:"Vertical ridges." },
+                { name:"Nylon", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, crinkly. Windbreaker, coach jacket, MA-1 bomber." },
+                { name:"Satin", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, silky. Starter jackets, varsity sleeves, bomber." },
+                { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Animal hide. Motorcycle, A-2/G-1 flight, cafe racer." },
+                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material. Trucker style." },
+                { name:"Canvas", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy cotton. Work jacket, Carhartt, chore coat." },
+                { name:"Wool", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Varsity body, peacoat style. Warm, textured." },
+                { name:"Twill", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Harrington, Dickies style. Diagonal weave." },
+                { name:"Corduroy", priority:2, traits:{stretch:"none",surface:"ridged",interior:"smooth"}, desc:"Vertical ridges. 70s style." },
+                { name:"Fleece", priority:3, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia, North Face style." },
                 { name:"Softshell", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy outdoor tech jacket." }
             ],
             "Coat": [
-                { name:"Tweed", priority:1, default:true, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Classic." },
-                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Wool dress coat. Smooth." },
-                { name:"Velvet", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Soft, plush. Luxe look." },
-                { name:"Shearling", priority:3, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Wool/fur lined inside." },
-                { name:"Felt", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Pressed wool. Stiff." },
-                { name:"Taffeta", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Crisp, shiny. Formal." }
+                { name:"Wool", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Classic overcoat, peacoat. Warm, dressy." },
+                { name:"Tweed", priority:1, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Professor/country style." },
+                { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Trench, duster, car coat. Heavy hide." },
+                { name:"Nylon", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Parka shell, rain mac, tech coat." },
+                { name:"Cotton", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Trench coat, duster. Canvas-like." },
+                { name:"Velvet", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Soft, plush. Luxe vintage look." },
+                { name:"Shearling", priority:3, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Wool/fur lined inside. Rancher style." },
+                { name:"Felt", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Pressed wool. Stiff, structured." },
+                { name:"Taffeta", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Crisp, shiny. Formal evening coat." }
             ],
             "Vest": [
-                { name:"Nylon", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Shiny, crinkly." },
+                { name:"Nylon", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Shiny, crinkly, quilted." },
+                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean vest, cut-off sleeves." },
+                { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Motorcycle vest, biker style." },
                 { name:"Fleece", priority:2, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia style." },
-                { name:"Denim", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean vest material." },
-                { name:"Knit", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Sweater vest." }
+                { name:"Wool", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Suit vest, dressy." },
+                { name:"Knit", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Sweater vest." },
+                { name:"Canvas", priority:3, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Work vest, utility style." }
             ],
             "default": [
                 { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy, like t-shirt material." },
@@ -2692,11 +2775,21 @@
                     }; 
                     if(photoMode === 'tag') {
                         data.tagPhotos.push(photo);
+                        // Auto-save to folder if selected
+                        if(saveDirectoryHandle) {
+                            const filename = generatePhotoFilename('tag', data.tagPhotos.length);
+                            savePhotoToFolder(blob, filename);
+                        }
                         showToast('success', `Tag Photo ${data.tagPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
                     else if(photoMode === 'sku') { /* SKU mode doesn't save photos */ }
                     else {
                         data.defectPhotos.push(photo);
+                        // Auto-save to folder if selected
+                        if(saveDirectoryHandle) {
+                            const filename = generatePhotoFilename('defect', data.defectPhotos.length);
+                            savePhotoToFolder(blob, filename);
+                        }
                         showToast('success', `Defect Photo ${data.defectPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
                     
@@ -2738,6 +2831,12 @@
                     height: mainCanvas.height 
                 };
                 data.mainPhotos.push(mainPhoto);
+                
+                // Auto-save to folder if selected
+                if(saveDirectoryHandle) {
+                    const filename = generatePhotoFilename('main', data.mainPhotos.length);
+                    savePhotoToFolder(mainBlob, filename);
+                }
                 
                 const sizeMB = (mainBlob.size / 1024 / 1024).toFixed(2);
                 console.log(`📸 MAIN: ${mainCanvas.width}×${mainCanvas.height} | ${sizeMB}MB`);
@@ -2804,6 +2903,13 @@
                         markerIndex: idx + 1
                     };
                     data.defectPhotos.push(defectPhoto);
+                    
+                    // Auto-save to folder if selected
+                    if(saveDirectoryHandle) {
+                        const filename = generatePhotoFilename(`defect_${marker.type}`, idx + 1);
+                        savePhotoToFolder(blob, filename);
+                    }
+                    
                     console.log(`📸 DEFECT CROP ${idx + 1} (${marker.type}): ${cropSize}×${cropSize}`);
                     updatePhotoGrids();
                 }, 'image/jpeg', 0.95);
@@ -2853,6 +2959,13 @@
                 };
                 // Store in main photos array (will be second photo)
                 data.mainPhotos.push(annotatedPhoto);
+                
+                // Auto-save to folder if selected
+                if(saveDirectoryHandle) {
+                    const filename = generatePhotoFilename('main_annotated', data.mainPhotos.length);
+                    savePhotoToFolder(blob, filename);
+                }
+                
                 console.log(`📸 ANNOTATED: ${annotatedCanvas.width}×${annotatedCanvas.height} with ${defectMarkers.length} markers`);
                 
                 // Clear markers after successful capture
@@ -3058,17 +3171,70 @@
             document.getElementById('tops-construction').classList.toggle('hidden', isBottoms);
             document.getElementById('bottoms-construction').classList.toggle('hidden', !isBottoms);
             
-            // Clear construction data when switching
+            // Clear construction data when switching and restore defaults
             if(isBottoms) {
                 data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = '';
-                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { 
+                    b.classList.remove('selected','btn-hero','btn-default'); 
+                    b.classList.add('btn-secondary'); 
+                });
+                // Restore bottoms defaults
+                restoreBottomsDefaults();
             } else {
                 data.legStyle = ''; data.rise = '';
-                document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); });
+                document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { 
+                    b.classList.remove('selected','btn-hero','btn-default'); 
+                    b.classList.add('btn-secondary'); 
+                });
+                // Restore tops defaults
+                restoreTopsDefaults();
             }
             
             renderSubCategories(cat); 
             updateValidation(); 
+        }
+        
+        // Restore default styling for tops construction fields
+        function restoreTopsDefaults() {
+            // Sleeve: Short is default for T-Shirt (first category shown)
+            document.querySelectorAll('.sleeve-btn').forEach(b => {
+                if(b.textContent.trim() === 'Short') {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
+            // Sleeve Style: Standard
+            document.querySelectorAll('.style-btn').forEach(b => {
+                if(b.textContent.trim() === 'Standard') {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
+            // Stitch: Double
+            document.querySelectorAll('.stitch-btn').forEach(b => {
+                if(b.textContent.includes('Double')) {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
+        }
+        
+        // Restore default styling for bottoms construction fields
+        function restoreBottomsDefaults() {
+            // Leg Style: Straight
+            document.querySelectorAll('.leg-btn').forEach(b => {
+                if(b.textContent.trim() === 'Straight') {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
+            // Rise: Mid Rise
+            document.querySelectorAll('.rise-btn').forEach(b => {
+                if(b.textContent.includes('Mid')) {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
         }
         function renderSubCategories(superCat) { 
             const config = categoryConfig[superCat]; 
@@ -3096,9 +3262,115 @@
             if(!document.getElementById('tag-location-panel').classList.contains('hidden')) {
                 updateTagLocationHelp();
             }
+            // Update sleeve defaults based on category
+            updateSleeveDefaults(cat);
+            // Update stitch defaults based on category
+            updateStitchDefaults(cat);
+            // Update leg style defaults based on category (for bottoms)
+            updateLegStyleDefaults(cat);
             renderFabricCards(); 
             renderMaterialCards(); 
             updateValidation(); 
+        }
+        
+        // QA FIX: Dynamic sleeve defaults based on category
+        function updateSleeveDefaults(cat) {
+            // Reset all sleeve buttons to secondary (remove any defaults)
+            document.querySelectorAll('.sleeve-btn').forEach(b => {
+                b.classList.remove('btn-default');
+                if(!b.classList.contains('selected')) {
+                    b.classList.add('btn-secondary');
+                }
+            });
+            
+            // Determine correct default based on category
+            let defaultSleeve = 'Short'; // fallback
+            
+            // Long sleeves default
+            const longSleeveCategories = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Button Shirt', 'Blouse', 'Tunic', 'Jacket', 'Coat'];
+            // Short sleeves default
+            const shortSleeveCategories = ['T-Shirt', 'Polo', 'Jersey'];
+            // None (sleeveless) default
+            const noSleeveCategories = ['Tank Top', 'Vest'];
+            
+            if(longSleeveCategories.includes(cat)) {
+                defaultSleeve = 'Long';
+            } else if(shortSleeveCategories.includes(cat)) {
+                defaultSleeve = 'Short';
+            } else if(noSleeveCategories.includes(cat)) {
+                defaultSleeve = 'None';
+            }
+            
+            // Apply default styling to correct button (only if nothing selected yet)
+            if(!data.sleeveLength) {
+                document.querySelectorAll('.sleeve-btn').forEach(b => {
+                    if(b.textContent.trim() === defaultSleeve || 
+                       (defaultSleeve === 'None' && b.textContent.trim() === 'None')) {
+                        b.classList.remove('btn-secondary');
+                        b.classList.add('btn-default');
+                    }
+                });
+            }
+        }
+        
+        // QA FIX: Dynamic stitch defaults based on category
+        function updateStitchDefaults(cat) {
+            // Reset stitch buttons
+            document.querySelectorAll('.stitch-btn').forEach(b => {
+                b.classList.remove('btn-default');
+                if(!b.classList.contains('selected')) {
+                    b.classList.add('btn-secondary');
+                }
+            });
+            
+            // T-Shirts: Single stitch is the vintage indicator (pre-1990s)
+            // But Double stitch is more common overall
+            // Keep Double as default for most, but could be Single for T-Shirt if vintage-focused
+            let defaultStitch = 'Double';
+            
+            // Apply default (only if nothing selected yet)
+            if(!data.stitch) {
+                document.querySelectorAll('.stitch-btn').forEach(b => {
+                    if(b.textContent.includes(defaultStitch)) {
+                        b.classList.remove('btn-secondary');
+                        b.classList.add('btn-default');
+                    }
+                });
+            }
+        }
+        
+        // QA FIX: Dynamic leg style defaults based on bottoms category
+        function updateLegStyleDefaults(cat) {
+            // Only apply to bottoms categories
+            const bottomsCategories = ['Jeans', 'Pants', 'Shorts', 'Sweatpants'];
+            if(!bottomsCategories.includes(cat)) return;
+            
+            // Reset all leg buttons to secondary (remove any defaults)
+            document.querySelectorAll('.leg-btn').forEach(b => {
+                b.classList.remove('btn-default');
+                if(!b.classList.contains('selected')) {
+                    b.classList.add('btn-secondary');
+                }
+            });
+            
+            // Determine correct default based on category
+            let defaultLeg = 'Straight'; // fallback for Jeans, Pants
+            
+            if(cat === 'Sweatpants') {
+                defaultLeg = 'Straight'; // or could be 'Jogger' for modern sweats
+            } else if(cat === 'Shorts') {
+                defaultLeg = 'Relaxed'; // most shorts are relaxed fit
+            }
+            
+            // Apply default styling to correct button (only if nothing selected yet)
+            if(!data.legStyle) {
+                document.querySelectorAll('.leg-btn').forEach(b => {
+                    if(b.textContent.trim() === defaultLeg) {
+                        b.classList.remove('btn-secondary');
+                        b.classList.add('btn-default');
+                    }
+                });
+            }
         }
         
         function updateMeasurementHints(cat) {
@@ -4197,8 +4469,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-badge').classList.remove('visible'); document.getElementById('sku-badge').textContent=''; document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.49')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.49',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.52')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem('vl_stats_v99.52',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
