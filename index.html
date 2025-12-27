@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v99.55 - Desktop Station</title>
+    <title>VintageLister - Desktop Station</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { 
@@ -370,7 +370,8 @@
         /* SKU Gate Overlay */
         .sku-gate { position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); z-index: 950; display: flex; align-items: center; justify-content: center; }
         .sku-gate.hidden { display: none; }
-        .sku-gate-card { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 440px; text-align: center; box-shadow: 0 25px 80px rgba(0,0,0,0.4); overflow: hidden; box-sizing: border-box; }
+        .sku-gate-card { background: white; border-radius: 20px; padding: 40px; width: 90%; max-width: 440px; text-align: center; box-shadow: 0 25px 80px rgba(0,0,0,0.4); overflow: hidden; box-sizing: border-box; position: relative; }
+        .sku-gate-version { position: absolute; top: 12px; right: 12px; background: var(--color-primary); color: white; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; }
         .sku-gate-icon { font-size: 48px; margin-bottom: 16px; }
         .sku-gate-title { font-size: 24px; font-weight: 800; color: var(--color-text); margin-bottom: 8px; }
         .sku-gate-subtitle { font-size: 14px; color: var(--color-text-muted); margin-bottom: 24px; }
@@ -518,12 +519,15 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version">v99.55 Desktop Station</div>
+        <div class="pin-version" id="pin-version">Loading...</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
     <div class="sku-gate" id="sku-gate">
         <div class="sku-gate-card">
+            <!-- Version Badge -->
+            <div class="sku-gate-version" id="sku-gate-version"></div>
+            
             <!-- Default Entry View -->
             <div id="sku-gate-entry">
                 <div class="sku-gate-icon">🏷️</div>
@@ -599,7 +603,7 @@
                 <div style="display:flex;align-items:center;gap:8px;">
                     <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos">📁 No Folder</button>
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
-                    <span class="version-badge">v99.55</span>
+                    <span class="version-badge" id="header-version">...</span>
                     <button class="reset-btn" onclick="resetForm()" style="margin-left:4px;">↻</button>
                 </div>
             </div>
@@ -1385,7 +1389,13 @@
             </div>
         </div>
     </div>
+    <!-- Barcode Scanning Library -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
+        // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
+        const VERSION = "v99.57";
+        // ===============================================================
+        
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
         let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
@@ -2191,7 +2201,25 @@
             console.log('\n💡 If 4K is not showing, try: Camera settings app → set to 4K');
         };
         
+        // Set version displays everywhere
+        function setVersionDisplays() {
+            document.title = `VintageLister ${VERSION} - Desktop Station`;
+            
+            // Pin screen version
+            const pinVersion = document.getElementById('pin-version');
+            if(pinVersion) pinVersion.textContent = `${VERSION} Desktop Station`;
+            
+            // Header version badge
+            const headerVersion = document.getElementById('header-version');
+            if(headerVersion) headerVersion.textContent = VERSION;
+            
+            // SKU gate version
+            const skuGateVersion = document.getElementById('sku-gate-version');
+            if(skuGateVersion) skuGateVersion.textContent = VERSION;
+        }
+        
         document.addEventListener('DOMContentLoaded', () => { 
+            setVersionDisplays();
             checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
             document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
             document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
@@ -2215,7 +2243,8 @@
             document.getElementById('sku-gate-entry').classList.remove('hidden');
             document.getElementById('sku-gate-camera').classList.add('hidden');
             
-            // Stop stabilizer and camera stream
+            // Stop barcode scanning, stabilizer and camera stream
+            stopSkuGateBarcodeScanning();
             stopSkuGateStabilizer();
             if(skuGateStream) {
                 skuGateStream.getTracks().forEach(t => t.stop());
@@ -2229,7 +2258,8 @@
         function hideSkuGate() {
             document.getElementById('sku-gate').classList.add('hidden');
             
-            // Stop stabilizer and camera stream
+            // Stop barcode scanning, stabilizer and camera stream
+            stopSkuGateBarcodeScanning();
             stopSkuGateStabilizer();
             if(skuGateStream) {
                 skuGateStream.getTracks().forEach(t => t.stop());
@@ -2264,6 +2294,8 @@
         let skuGateStream = null;
         let skuGateStabilizer = null;
         let skuGateIsStable = false;
+        let skuGateBarcodeReader = null;
+        let skuGateScanInterval = null;
         
         async function activateSkuGateScan() {
             // Show camera preview, hide entry form
@@ -2273,6 +2305,7 @@
             // Clear and focus scan input
             document.getElementById('sku-gate-scan-input').value = '';
             document.getElementById('sku-gate-scan-input').classList.remove('valid');
+            document.getElementById('sku-gate-scan-input').placeholder = 'Scanning...';
             
             // Reset stabilizer
             updateSkuGateStabilizer(false);
@@ -2301,12 +2334,13 @@
                 const video = document.getElementById('sku-gate-video');
                 video.srcObject = skuGateStream;
                 
-                // Start stabilizer tracking
+                // Start stabilizer tracking and barcode scanning when video is ready
                 video.onloadedmetadata = () => {
                     startSkuGateStabilizer(video);
+                    startSkuGateBarcodeScanning(video);
                 };
                 
-                // Focus scan input to receive barcode scanner input
+                // Focus scan input to also receive USB barcode scanner input
                 setTimeout(() => document.getElementById('sku-gate-scan-input').focus(), 100);
                 
             } catch(err) {
@@ -2314,6 +2348,72 @@
                 cancelSkuGateScan();
                 document.getElementById('sku-gate-status').textContent = '⚠️ Camera error - type SKU manually';
                 document.getElementById('sku-gate-status').style.color = '#ef4444';
+            }
+        }
+        
+        async function startSkuGateBarcodeScanning(video) {
+            console.log('📷 Starting barcode scanning...');
+            
+            // Check if ZXing library is available
+            if(typeof ZXing === 'undefined') {
+                console.warn('⚠️ ZXing library not loaded - using fallback');
+                return;
+            }
+            
+            try {
+                const codeReader = new ZXing.BrowserMultiFormatReader();
+                skuGateBarcodeReader = codeReader;
+                
+                // Continuously decode from video
+                const decodeFromVideo = async () => {
+                    if(!skuGateStream) return; // Stop if stream was closed
+                    
+                    try {
+                        const result = await codeReader.decodeFromVideoElement(video);
+                        if(result && result.text) {
+                            console.log('📷 Barcode detected:', result.text);
+                            
+                            // Show scanned value in input
+                            const input = document.getElementById('sku-gate-scan-input');
+                            input.value = result.text;
+                            input.classList.add('valid');
+                            
+                            // Vibrate for feedback
+                            if(navigator.vibrate) navigator.vibrate(100);
+                            
+                            // Auto-lock after short delay
+                            setTimeout(() => {
+                                if(input.value === result.text) {
+                                    lockSku(result.text);
+                                }
+                            }, 500);
+                        }
+                    } catch(e) {
+                        // No barcode found in this frame - keep scanning
+                    }
+                    
+                    // Continue scanning
+                    if(skuGateStream) {
+                        skuGateScanInterval = setTimeout(decodeFromVideo, 200);
+                    }
+                };
+                
+                // Start scanning loop
+                decodeFromVideo();
+                
+            } catch(err) {
+                console.error('Barcode reader error:', err);
+            }
+        }
+        
+        function stopSkuGateBarcodeScanning() {
+            if(skuGateScanInterval) {
+                clearTimeout(skuGateScanInterval);
+                skuGateScanInterval = null;
+            }
+            if(skuGateBarcodeReader) {
+                try { skuGateBarcodeReader.reset(); } catch(e) {}
+                skuGateBarcodeReader = null;
             }
         }
         
@@ -2407,6 +2507,9 @@
         }
         
         function cancelSkuGateScan() {
+            // Stop barcode scanning
+            stopSkuGateBarcodeScanning();
+            
             // Stop stabilizer
             stopSkuGateStabilizer();
             
@@ -2420,6 +2523,7 @@
             document.getElementById('sku-gate-camera').classList.add('hidden');
             document.getElementById('sku-gate-entry').classList.remove('hidden');
             document.getElementById('sku-gate-status').textContent = '';
+            document.getElementById('sku-gate-scan-input').placeholder = 'Waiting for scan...';
             
             // Focus input
             document.getElementById('sku-gate-input').focus();
@@ -2429,7 +2533,8 @@
             data.sku = value;
             skuLocked = true;
             
-            // Stop SKU gate stabilizer and camera
+            // Stop SKU gate barcode scanning, stabilizer and camera
+            stopSkuGateBarcodeScanning();
             stopSkuGateStabilizer();
             if(skuGateStream) {
                 skuGateStream.getTracks().forEach(t => t.stop());
@@ -4976,8 +5081,8 @@
         }
         function resetForm() { data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); data = {superCategory:'tops',category:'',tagStatus:'',tagSize:'',origin:'',country:'',gender:'',colors:[],fade:'',pattern:'',patternTraits:{lines:'',shapes:'',method:''},printType:'',graphicCategory:'',fabricType:'',fabricTraits:{stretch:'',surface:'',interior:''},wash:'',materials:[],materialTraits:{temp:'',shine:''},sleeveLength:'',sleeveStyle:'',cutoffType:'',stitch:'',legStyle:'',rise:'',thickness:'',layers:'',hasDefects:null,defectTypes:[],weightLb:0,weightOz:0,sku:'',photographer:data.photographer,audioMeasure:null,audioDuration:0,mainPhotos:[],tagPhotos:[],defectPhotos:[],defectCloseupPhotos:[],featuresPhotos:[],flagged:false,elasticCheck:''}; tagCutMode=false; skuLocked=false; selectedDefectLink=null; selectedFeatureType=null; document.querySelectorAll('.selected').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.btn-hero').forEach(b=>{if(!b.classList.contains('super-btn'))b.classList.remove('btn-hero');}); document.querySelectorAll('.size-btn,.country-btn,.gender-btn').forEach(b=>{b.classList.remove('btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.super-btn').forEach((b,i)=>{if(i===0){b.classList.add('selected','btn-hero');b.classList.remove('btn-secondary');}else{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}}); document.getElementById('sku-input').value=''; document.getElementById('weight-lb').value='0'; document.getElementById('weight-oz').value='0'; document.getElementById('tag-details').classList.add('hidden'); document.getElementById('country-section').classList.add('hidden'); document.getElementById('country-other-input').classList.add('hidden'); document.getElementById('country-other-input').value=''; document.getElementById('wash-section').classList.add('hidden'); document.getElementById('print-type-section').classList.add('hidden'); document.getElementById('graphic-category-section').classList.add('hidden'); document.getElementById('pattern-others').classList.add('hidden'); document.getElementById('cutoff-section').classList.add('hidden'); document.getElementById('elastic-section').classList.add('hidden'); document.getElementById('sleeve-measurement-notice').classList.add('hidden'); updateMeasurementHintsForSleeveStyle('Standard', ''); document.getElementById('other-patterns-toggle').textContent='+ More patterns'; document.getElementById('tag-size-input').value=''; document.getElementById('material-other-select').value=''; document.getElementById('material-custom-input').value=''; document.getElementById('material-custom-input').classList.add('hidden'); document.getElementById('fabric-other-select').value=''; document.getElementById('fabric-custom-input').value=''; document.getElementById('fabric-custom-input').classList.add('hidden'); document.getElementById('record-section').classList.remove('hidden'); document.getElementById('post-record-section').classList.add('hidden'); document.getElementById('record-btn').innerHTML='<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>'; document.getElementById('record-btn').style.background='#ef4444'; document.getElementById('category-label').textContent=''; document.getElementById('sku-locked-badge').classList.add('hidden'); document.getElementById('sku-locked-value').textContent=''; document.getElementById('sku-locked-display').classList.add('hidden'); document.getElementById('sku-manual-input').classList.add('hidden'); document.getElementById('check-sku').innerHTML='○'; document.getElementById('check-sku').classList.remove('complete'); document.getElementById('sku-status').textContent=''; document.getElementById('sku-camera-status').style.display='none'; document.getElementById('flag-btn').classList.remove('flagged'); document.getElementById('flag-btn').querySelector('span:first-child').textContent='🤔'; document.getElementById('flag-btn').querySelector('span:last-of-type').textContent='FLAG AS UNUSUAL'; document.getElementById('flag-status').classList.add('hidden'); document.querySelectorAll('.elastic-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.querySelectorAll('.leg-btn,.rise-btn').forEach(b=>{b.classList.remove('selected','btn-hero');b.classList.add('btn-secondary');}); document.getElementById('tops-construction').classList.remove('hidden'); document.getElementById('bottoms-construction').classList.add('hidden'); document.getElementById('leg-style-help').classList.add('hidden'); document.getElementById('measure-hint-tops').classList.remove('hidden'); document.getElementById('measure-hint-button-shirt').classList.add('hidden'); document.getElementById('measure-hint-bottoms').classList.add('hidden'); document.getElementById('measure-hint-outer').classList.add('hidden'); fabricFilters={stretch:null,surface:null,interior:null}; materialFilters={temp:null,shine:null}; patternFilters={lines:null,shapes:null,method:null}; document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active')); document.getElementById('fabric-helper').classList.add('hidden'); document.getElementById('material-helper').classList.add('hidden'); document.getElementById('pattern-helper').classList.add('hidden'); document.getElementById('pattern-help-panel').classList.add('hidden'); document.getElementById('tag-location-panel').classList.add('hidden'); document.getElementById('fabric-tag-cut-section').classList.add('hidden'); document.getElementById('fabric-help-btn').classList.remove('hidden'); document.getElementById('material-tag-cut-section').classList.add('hidden'); document.getElementById('material-help-btn').classList.remove('hidden'); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updatePhotoGrids(); updateValidation(); goToStep(1); setPhotoMode('main'); resetZoom(); showSkuGate(); }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem('vl_stats_v99.55')||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
-        function saveStats() { try{localStorage.setItem('vl_stats_v99.55',JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem(`vl_stats_${VERSION}`)||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function saveStats() { try{localStorage.setItem(`vl_stats_${VERSION}`,JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
         function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
     </script>
 </body>
