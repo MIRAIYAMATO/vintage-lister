@@ -1404,7 +1404,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.67";
+        const VERSION = "v99.68";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2468,8 +2468,8 @@
             // Reset stabilizer
             updateSkuGateStabilizer(false);
             
-            // Use BRIO (main camera) for better barcode scanning quality
-            const cameraId = mainCameraId || secondaryCameraId;
+            // Use C922X (secondary camera) for barcode scanning - lower res is fine for barcodes
+            const cameraId = secondaryCameraId || mainCameraId;
             
             if(!cameraId) {
                 document.getElementById('sku-gate-camera').innerHTML = `
@@ -2484,7 +2484,7 @@
             }
             
             try {
-                // Start video stream
+                // Start video stream at 720p (good enough for barcode scanning)
                 skuGateStream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { exact: cameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
@@ -2492,14 +2492,18 @@
                 const video = document.getElementById('sku-gate-video');
                 video.srcObject = skuGateStream;
                 
-                // Start stabilizer tracking and barcode scanning when video is ready
+                // Wait for video to be fully ready before starting anything
                 video.onloadedmetadata = () => {
-                    startSkuGateStabilizer(video);
-                };
-                
-                // Wait for video to actually play before starting barcode scanning
-                video.onplaying = () => {
-                    startSkuGateBarcodeScanning(video);
+                    video.play().then(() => {
+                        console.log('📷 SKU gate video playing');
+                        startSkuGateStabilizer(video);
+                        // Delay barcode scanning to ensure video is stable
+                        setTimeout(() => {
+                            if(skuGateStream) {
+                                startSkuGateBarcodeScanning(video);
+                            }
+                        }, 500);
+                    }).catch(e => console.error('Video play error:', e));
                 };
                 
                 // Focus scan input to also receive USB barcode scanner input
@@ -2597,16 +2601,25 @@
             console.log('📷 Using ZXing fallback (slower)');
             if(statusEl) statusEl.innerHTML = '📷 Camera Scanner Active';
             try {
-                const codeReader = new ZXing.BrowserBarcodeReader();
+                const codeReader = new ZXing.BrowserMultiFormatReader();
                 skuGateBarcodeReader = codeReader;
                 
                 let scanning = true;
                 
+                // Use decodeFromVideoElement to avoid creating new streams (prevents flickering)
                 const scanLoop = async () => {
                     if(!scanning || !skuGateStream) return;
                     
+                    // Make sure video is ready
+                    if(video.readyState < 2 || video.paused) {
+                        if(scanning && skuGateStream) {
+                            skuGateScanInterval = setTimeout(scanLoop, 300);
+                        }
+                        return;
+                    }
+                    
                     try {
-                        const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'sku-gate-video');
+                        const result = await codeReader.decodeFromVideoElement(video);
                         
                         if(result && result.text && scanning) {
                             console.log('📷 Barcode detected (ZXing):', result.text);
@@ -2623,16 +2636,20 @@
                                     lockSku(result.text);
                                 }
                             }, 300);
+                            return;
                         }
                     } catch(e) {
-                        if(scanning && skuGateStream) {
-                            skuGateScanInterval = setTimeout(scanLoop, 100);
-                        }
+                        // No barcode found - continue scanning
+                    }
+                    
+                    if(scanning && skuGateStream) {
+                        skuGateScanInterval = setTimeout(scanLoop, 300);
                     }
                 };
                 
                 skuGateBarcodeReader._stopScanning = () => { scanning = false; };
-                scanLoop();
+                // Start after brief delay
+                setTimeout(scanLoop, 300);
                 
             } catch(err) {
                 console.error('ZXing init error:', err);
