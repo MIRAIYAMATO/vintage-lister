@@ -259,7 +259,7 @@
         .camera-status.live::before { content: '●'; margin-right: 6px; animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .camera-view { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #000; min-height: 0; }
-        .camera-view-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: visible; }
+        .camera-view-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .camera-view video { 
             max-height: 100%;
             max-width: 100%;
@@ -267,7 +267,11 @@
             transition: opacity 0.15s ease, transform 0.3s ease;
         }
         /* Portrait mode: rotate video 90 degrees for MAIN photos */
+        /* IMPORTANT: Remove constraints so transform can scale properly */
         .camera-view video.portrait-mode {
+            max-height: none;
+            max-width: none;
+            object-fit: fill;
             transform-origin: center center;
             /* Transform is set dynamically by JS to include proper scaling */
         }
@@ -1410,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.73";
+        const VERSION = "v99.74";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1540,8 +1544,6 @@
         // ============ DEFECT MARKER FUNCTIONS ============
         function handleDefectClick(event) {
             console.log('🎯 handleDefectClick triggered');
-            console.log('🎯 defectMarkingEnabled:', defectMarkingEnabled);
-            console.log('🎯 photoMode:', photoMode);
             
             if(!defectMarkingEnabled) {
                 console.log('🎯 Marking disabled - ignoring click');
@@ -1551,36 +1553,28 @@
             // Check if clicked on existing marker (to delete)
             if(event.target.closest('.defect-marker')) {
                 console.log('🎯 Clicked on existing marker - ignoring');
-                return; // Let the marker's own click handler deal with it
+                return;
             }
             
             const layer = document.getElementById('defect-markers-layer');
             const layerRect = layer.getBoundingClientRect();
             
-            // Get image bounds using COVER logic
-            const bounds = getImageBounds();
-            if(!bounds) {
-                console.log('🎯 Could not get image bounds');
-                return;
-            }
-            
             // Get click position relative to layer
             const clickX = event.clientX - layerRect.left;
             const clickY = event.clientY - layerRect.top;
             
-            // Check if click is within the actual image bounds
-            if(clickX < bounds.left || clickX > bounds.left + bounds.width ||
-               clickY < bounds.top || clickY > bounds.top + bounds.height) {
-                console.log('🎯 Click outside image bounds - ignoring');
-                showToast('warning', 'Click on the image to mark defects');
+            // In portrait mode, the layer IS sized to match the displayed video
+            // So we can directly calculate percentage
+            const x = (clickX / layerRect.width) * 100;
+            const y = (clickY / layerRect.height) * 100;
+            
+            // Clamp to valid range
+            if(x < 0 || x > 100 || y < 0 || y > 100) {
+                console.log('🎯 Click outside bounds - ignoring');
                 return;
             }
             
-            // Calculate percentage position WITHIN the image area (not the full layer)
-            const x = ((clickX - bounds.left) / bounds.width) * 100;
-            const y = ((clickY - bounds.top) / bounds.height) * 100;
-            
-            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% (within image)`);
+            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
             
             // Store pending marker position
             pendingMarker = { x, y };
@@ -1645,50 +1639,43 @@
         }
         
         // Calculate the actual displayed image bounds within the layer
-        // Uses COVER logic to match updatePortraitTransform
+        // Uses CONTAIN logic to match updatePortraitTransform
         function getImageBounds() {
             const video = document.getElementById('camera-video');
             const layer = document.getElementById('defect-markers-layer');
             if(!video || !layer) return null;
             
             const layerRect = layer.getBoundingClientRect();
+            
+            // In portrait mode with our setup, the layer IS the image bounds
+            // (we size the layer to match the displayed video exactly)
+            if(photoMode === 'main' && video.classList.contains('portrait-mode')) {
+                return {
+                    left: 0,
+                    top: 0,
+                    width: layerRect.width,
+                    height: layerRect.height,
+                    layerWidth: layerRect.width,
+                    layerHeight: layerRect.height
+                };
+            }
+            
+            // Landscape mode - calculate based on video aspect
+            const videoAspect = video.videoWidth / video.videoHeight;
+            const containerAspect = layerRect.width / layerRect.height;
+            
             let imageLeft, imageTop, imageWidth, imageHeight;
             
-            if(photoMode === 'main' && video.classList.contains('portrait-mode')) {
-                // Portrait mode with COVER - video fills container, may overflow
-                const rotatedW = video.videoHeight;  // After rotation
-                const rotatedH = video.videoWidth;   // After rotation
-                const rotatedAspect = rotatedW / rotatedH;  // Width/Height after rotation
-                
-                // COVER: use larger scale to fill container
-                const scaleW = layerRect.width / rotatedW;
-                const scaleH = layerRect.height / rotatedH;
-                const coverScale = Math.min(Math.max(scaleW, scaleH), 1.5);  // Match maxScale in updatePortraitTransform
-                
-                const displayedW = rotatedW * coverScale;
-                const displayedH = rotatedH * coverScale;
-                
-                // Image is centered, overflow is clipped
-                // The visible portion is the container size
-                imageWidth = Math.min(displayedW, layerRect.width);
-                imageHeight = Math.min(displayedH, layerRect.height);
-                imageLeft = displayedW > layerRect.width ? 0 : (layerRect.width - displayedW) / 2;
-                imageTop = displayedH > layerRect.height ? 0 : (layerRect.height - displayedH) / 2;
+            if(videoAspect > containerAspect) {
+                imageWidth = layerRect.width;
+                imageHeight = imageWidth / videoAspect;
+                imageLeft = 0;
+                imageTop = (layerRect.height - imageHeight) / 2;
             } else {
-                // Landscape mode - still uses CONTAIN
-                const videoAspect = video.videoWidth / video.videoHeight;
-                
-                if(videoAspect > layerRect.width / layerRect.height) {
-                    imageWidth = layerRect.width;
-                    imageHeight = imageWidth / videoAspect;
-                    imageLeft = 0;
-                    imageTop = (layerRect.height - imageHeight) / 2;
-                } else {
-                    imageHeight = layerRect.height;
-                    imageWidth = imageHeight * videoAspect;
-                    imageLeft = (layerRect.width - imageWidth) / 2;
-                    imageTop = 0;
-                }
+                imageHeight = layerRect.height;
+                imageWidth = imageHeight * videoAspect;
+                imageLeft = (layerRect.width - imageWidth) / 2;
+                imageTop = 0;
             }
             
             return {
@@ -1710,28 +1697,15 @@
             // Remove existing markers
             layer.querySelectorAll('.defect-marker').forEach(m => m.remove());
             
-            // Get image bounds for proper positioning
-            const bounds = getImageBounds();
-            
-            // Add markers
+            // In portrait mode, the layer IS sized to match the displayed video exactly
+            // So markers can just use direct percentage positioning
             defectMarkers.forEach((marker, idx) => {
                 const el = document.createElement('div');
                 el.className = `defect-marker ${marker.type}`;
                 
-                if(bounds) {
-                    // Position within image area, not full layer
-                    const pixelX = bounds.left + (marker.x / 100) * bounds.width;
-                    const pixelY = bounds.top + (marker.y / 100) * bounds.height;
-                    // Convert to percentage of layer
-                    const layerX = (pixelX / bounds.layerWidth) * 100;
-                    const layerY = (pixelY / bounds.layerHeight) * 100;
-                    el.style.left = layerX + '%';
-                    el.style.top = layerY + '%';
-                } else {
-                    // Fallback to direct percentage
-                    el.style.left = marker.x + '%';
-                    el.style.top = marker.y + '%';
-                }
+                // Direct percentage positioning (layer matches image)
+                el.style.left = marker.x + '%';
+                el.style.top = marker.y + '%';
                 
                 el.innerHTML = `
                     ${idx + 1}
@@ -3258,50 +3232,35 @@
             const rotatedW = videoH; // e.g., 2160 from 4096x2160
             const rotatedH = videoW; // e.g., 4096 from 4096x2160
             
-            // COVER method: Scale to fill the container completely (may clip overflow)
-            const scaleW = containerW / rotatedW;  // Scale needed to fill width
-            const scaleH = containerH / rotatedH;  // Scale needed to fill height
-            const fillScale = Math.max(scaleW, scaleH);  // Use larger scale to COVER container
+            // CONTAIN method: fit the entire video within container (may have black bars)
+            // This ensures defect markers align perfectly with what gets captured
+            const scaleW = containerW / rotatedW;
+            const scaleH = containerH / rotatedH;
+            const fitScale = Math.min(scaleW, scaleH);  // Use smaller scale to CONTAIN
             
-            // Optional: Limit max scale to prevent excessive zoom on very small containers
-            const maxScale = 1.5;
-            const clampedScale = Math.min(fillScale, maxScale);
-            
-            // Apply rotation + fill scale + user zoom
-            const totalScale = clampedScale * currentZoom;
+            // Apply rotation + fit scale + user zoom
+            const totalScale = fitScale * currentZoom;
             video.style.transform = `rotate(-90deg) scale(${totalScale})`;
             
-            // Update defect markers layer to match visible video area
-            updateDefectLayerBounds(containerW, containerH, rotatedW, rotatedH, clampedScale);
+            // Calculate displayed size
+            const displayedW = rotatedW * fitScale;
+            const displayedH = rotatedH * fitScale;
             
-            console.log(`📐 Portrait COVER: container ${containerW}x${containerH}, rotated ${rotatedW}x${rotatedH}, scaleW=${scaleW.toFixed(3)}, scaleH=${scaleH.toFixed(3)}, used=${clampedScale.toFixed(3)}`);
-        }
-        
-        function updateDefectLayerBounds(containerW, containerH, rotatedW, rotatedH, scale) {
+            // Update defect markers layer to match the displayed video area exactly
             const layer = document.getElementById('defect-markers-layer');
-            if(!layer) return;
+            if(layer) {
+                const offsetX = (containerW - displayedW) / 2;
+                const offsetY = (containerH - displayedH) / 2;
+                
+                layer.style.position = 'absolute';
+                layer.style.width = displayedW + 'px';
+                layer.style.height = displayedH + 'px';
+                layer.style.left = offsetX + 'px';
+                layer.style.top = offsetY + 'px';
+                layer.style.zIndex = '5';
+            }
             
-            // Calculate the actual displayed size of the rotated video
-            const displayedW = rotatedW * scale;
-            const displayedH = rotatedH * scale;
-            
-            // With COVER method, video fills container and may overflow
-            // Layer should cover the VISIBLE portion (intersection of video and container)
-            const visibleW = Math.min(displayedW, containerW);
-            const visibleH = Math.min(displayedH, containerH);
-            
-            // Calculate offsets (video is centered, overflow is clipped)
-            const offsetX = displayedW > containerW ? 0 : (containerW - displayedW) / 2;
-            const offsetY = displayedH > containerH ? 0 : (containerH - displayedH) / 2;
-            
-            // DON'T set pointer-events here - let the CSS .active class handle it
-            layer.style.position = 'absolute';
-            layer.style.width = visibleW + 'px';
-            layer.style.height = visibleH + 'px';
-            layer.style.left = offsetX + 'px';
-            layer.style.top = offsetY + 'px';
-            layer.style.zIndex = '5';
-            // pointer-events is controlled by .active class
+            console.log(`📐 Portrait CONTAIN: container ${containerW}x${containerH}, displayed ${displayedW.toFixed(0)}x${displayedH.toFixed(0)}, scale=${fitScale.toFixed(3)}`);
         }
         
         // Update on window resize
