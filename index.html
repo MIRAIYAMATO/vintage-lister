@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.74";
+        const VERSION = "v99.75";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1754,12 +1754,12 @@
             if(photoMode === 'defect-closeup') {
                 panel.classList.add('visible');
                 
-                // Create buttons for each defect marker
-                if(defectMarkers.length === 0) {
+                // Create buttons for each captured defect photo (not temporary markers)
+                if(data.defectPhotos.length === 0) {
                     buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked yet</span>';
                 } else {
-                    buttonsContainer.innerHTML = defectMarkers.map((m, i) => 
-                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}</button>`
+                    buttonsContainer.innerHTML = data.defectPhotos.map((photo, i) => 
+                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}${photo.defectType ? ' ' + photo.defectType.charAt(0).toUpperCase() : ''}</button>`
                     ).join('');
                 }
             } else {
@@ -1770,7 +1770,8 @@
         function selectDefectLink(index) {
             selectedDefectLink = index;
             updateDefectLinkPanel();
-            showToast('info', `Linked to Defect #${index + 1}`, 'Next photo will be linked', 1500);
+            const defectType = data.defectPhotos[index]?.defectType || '';
+            showToast('info', `Linked to Defect #${index + 1}${defectType ? ' (' + defectType + ')' : ''}`, 'Next photo will be linked', 1500);
         }
         
         // Feature Type Panel
