@@ -566,6 +566,12 @@
                         <div class="sku-gate-stabilizer-dot" id="sku-gate-stabilizer-dot"></div>
                         <span id="sku-gate-stabilizer-text">HOLD STEADY</span>
                     </div>
+                    <!-- Error Overlay -->
+                    <div id="sku-gate-error" class="hidden" style="position:absolute;inset:0;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;">
+                        <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
+                        <div style="font-size:16px;font-weight:600;color:#ef4444;margin-bottom:8px;">No Camera Detected</div>
+                        <div style="font-size:13px;color:#64748b;">Please type the SKU manually</div>
+                    </div>
                 </div>
                 <div class="sku-gate-camera-hint">Center barcode in the frame</div>
                 <div id="scanner-status" style="font-size:10px;color:#22c55e;margin-bottom:8px;"></div>
@@ -1404,7 +1410,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.69";
+        const VERSION = "v99.70";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2468,18 +2474,53 @@
             // Reset stabilizer
             updateSkuGateStabilizer(false);
             
-            // Use C922X (secondary camera) for barcode scanning
+            // If cameras haven't been enumerated yet, do it now
+            if(!mainCameraId && !secondaryCameraId) {
+                console.log('📷 SKU Gate: Cameras not enumerated yet, requesting permission...');
+                try {
+                    // First request permission with a temporary stream
+                    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    tempStream.getTracks().forEach(t => t.stop()); // Stop immediately
+                    
+                    // Now enumerate - we should have labels
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    console.log('📷 SKU Gate: Found', videoDevices.length, 'cameras');
+                    
+                    for(const device of videoDevices) {
+                        const label = device.label.toLowerCase();
+                        console.log('📷 SKU Gate: Camera:', device.label, device.deviceId.slice(0,8));
+                        if(label.includes('brio')) {
+                            mainCameraId = device.deviceId;
+                            console.log('📷 SKU Gate: Found BRIO:', device.deviceId.slice(0,8));
+                        } else if(label.includes('c922') || label.includes('922')) {
+                            secondaryCameraId = device.deviceId;
+                            console.log('📷 SKU Gate: Found C922X:', device.deviceId.slice(0,8));
+                        }
+                    }
+                    
+                    // Fallback: use first available camera
+                    if(!mainCameraId && !secondaryCameraId && videoDevices.length > 0) {
+                        mainCameraId = videoDevices[0].deviceId;
+                        console.log('📷 SKU Gate: Using first camera:', mainCameraId.slice(0,8));
+                    }
+                } catch(e) {
+                    console.error('📷 SKU Gate: Camera access failed:', e);
+                }
+            }
+            
+            // Use C922X (secondary camera) for barcode scanning, fallback to BRIO
             const cameraId = secondaryCameraId || mainCameraId;
+            console.log('📷 SKU Gate: Using camera:', cameraId ? cameraId.slice(0,8) : 'NONE');
+            
+            // Hide error overlay by default
+            document.getElementById('sku-gate-error').classList.add('hidden');
             
             if(!cameraId) {
-                document.getElementById('sku-gate-camera').innerHTML = `
-                    <div style="padding:40px;text-align:center;">
-                        <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                        <div style="font-size:16px;font-weight:600;color:#ef4444;margin-bottom:8px;">No Camera Detected</div>
-                        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Please type the SKU manually</div>
-                        <button onclick="cancelSkuGateScan()" class="sku-gate-cancel-btn">← Back to Manual Entry</button>
-                    </div>
-                `;
+                // Show error overlay
+                document.getElementById('sku-gate-error').classList.remove('hidden');
+                document.getElementById('sku-gate-scan-input').placeholder = 'Type SKU manually...';
+                document.getElementById('sku-gate-scan-input').focus();
                 return;
             }
             
