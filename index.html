@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.75";
+        const VERSION = "v99.77";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2298,10 +2298,37 @@
             checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
             document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
             document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
+            // Focus PIN input if PIN screen is visible
+            if(!document.getElementById('pin-screen').classList.contains('hidden')) {
+                document.getElementById('pin-input').focus();
+            }
         });
         
-        function checkAuth() { try { if(localStorage.getItem('vl_auth')===APP_PIN){ document.getElementById('pin-screen').classList.add('hidden'); data.photographer=localStorage.getItem('vl_photographer')||'P02'; document.getElementById('photographer-badge').textContent=data.photographer; startTimer(); } } catch(e){} }
-        function checkPin() { if(document.getElementById('pin-input').value===APP_PIN){ try{ localStorage.setItem('vl_auth',APP_PIN); data.photographer=document.getElementById('photographer-select').value; localStorage.setItem('vl_photographer',data.photographer); document.getElementById('photographer-badge').textContent=data.photographer; }catch(e){} document.getElementById('pin-screen').classList.add('hidden'); startTimer(); } else { document.getElementById('pin-input').value=''; document.getElementById('pin-input').classList.add('shake'); setTimeout(()=>document.getElementById('pin-input').classList.remove('shake'),300); } }
+        function checkAuth() { 
+            // PIN is always required on page load - no auto-login
+            // Just restore photographer preference if saved
+            try { 
+                const savedPhotographer = localStorage.getItem('vl_photographer');
+                if(savedPhotographer) {
+                    document.getElementById('photographer-select').value = savedPhotographer;
+                }
+            } catch(e){} 
+        }
+        function checkPin() { 
+            if(document.getElementById('pin-input').value===APP_PIN){ 
+                try{ 
+                    data.photographer=document.getElementById('photographer-select').value; 
+                    localStorage.setItem('vl_photographer',data.photographer); 
+                    document.getElementById('photographer-badge').textContent=data.photographer; 
+                }catch(e){} 
+                document.getElementById('pin-screen').classList.add('hidden'); 
+                startTimer(); 
+            } else { 
+                document.getElementById('pin-input').value=''; 
+                document.getElementById('pin-input').classList.add('shake'); 
+                setTimeout(()=>document.getElementById('pin-input').classList.remove('shake'),300); 
+            } 
+        }
         function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
         
         // Reset Menu Functions
@@ -3088,7 +3115,13 @@
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
                             console.log('📷 Portrait mode applied on load');
-                            setTimeout(() => updatePortraitTransform(), 100);
+                            setTimeout(() => {
+                                updatePortraitTransform();
+                                // Re-render existing markers after layer resize
+                                renderDefectMarkers();
+                                // Ensure defect marking is enabled
+                                enableDefectMarking();
+                            }, 100);
                         }
                         
                         setTimeout(() => startStabilizer(), 200);
@@ -3182,7 +3215,11 @@
                     // Apply portrait mode if in main photo mode
                     if(photoMode === 'main') {
                         video.classList.add('portrait-mode');
-                        setTimeout(() => updatePortraitTransform(), 100);
+                        setTimeout(() => {
+                            updatePortraitTransform();
+                            renderDefectMarkers();
+                            enableDefectMarking();
+                        }, 100);
                     } else {
                         video.classList.remove('portrait-mode');
                     }
@@ -3405,7 +3442,11 @@
                         // Apply portrait mode if in main photo mode
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
-                            setTimeout(() => updatePortraitTransform(), 100);
+                            setTimeout(() => {
+                                updatePortraitTransform();
+                                renderDefectMarkers();
+                                enableDefectMarking();
+                            }, 100);
                         } else {
                             video.classList.remove('portrait-mode');
                         }
@@ -3449,7 +3490,11 @@
                         // Apply portrait mode if in main photo mode
                         if(photoMode === 'main') {
                             video.classList.add('portrait-mode');
-                            setTimeout(() => updatePortraitTransform(), 100);
+                            setTimeout(() => {
+                                updatePortraitTransform();
+                                renderDefectMarkers();
+                                enableDefectMarking();
+                            }, 100);
                         } else {
                             video.classList.remove('portrait-mode');
                         }
