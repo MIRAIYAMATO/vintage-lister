@@ -261,8 +261,8 @@
         .five-camera-grid { display: none; position: absolute; inset: 0; background: #000; z-index: 50; }
         .five-camera-grid.active { 
             display: grid; 
-            grid-template-columns: 1fr 2fr 1fr; 
-            grid-template-rows: 1fr 1fr; 
+            grid-template-columns: 1fr 1.5fr 1fr; 
+            grid-template-rows: 1fr 2.5fr 1fr;  /* Middle row is taller for portrait cameras */
             gap: 4px; 
             padding: 4px; 
         }
@@ -270,35 +270,39 @@
         .camera-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 3px solid #333; transition: all 0.2s; }
         .camera-cell video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* PRIMARY spans both rows (tall/portrait orientation) */
+        /* NORTH - Top row, spans all columns (LANDSCAPE) */
+        .camera-cell.north { 
+            grid-column: 1 / span 3; 
+            grid-row: 1; 
+            border-color: #f59e0b; 
+        }
+        
+        /* WEST - Left column, middle row (PORTRAIT) */
+        .camera-cell.west { 
+            grid-column: 1; 
+            grid-row: 2; 
+            border-color: #22c55e; 
+        }
+        
+        /* PRIMARY - Center column, middle row (PORTRAIT) */
         .camera-cell.primary { 
             grid-column: 2; 
-            grid-row: 1 / span 2; 
+            grid-row: 2; 
             border-color: #3b82f6; 
             border-width: 4px;
         }
-        /* WEST spans both rows on the left */
-        .camera-cell.west { 
-            grid-column: 1; 
-            grid-row: 1; 
-            border-color: #22c55e; 
-        }
-        /* EAST spans both rows on the right */
+        
+        /* EAST - Right column, middle row (PORTRAIT) */
         .camera-cell.east { 
             grid-column: 3; 
-            grid-row: 1; 
+            grid-row: 2; 
             border-color: #22c55e; 
         }
-        /* NORTH - top left corner */
-        .camera-cell.north { 
-            grid-column: 1; 
-            grid-row: 2; 
-            border-color: #f59e0b; 
-        }
-        /* SOUTH - bottom right corner */
+        
+        /* SOUTH - Bottom row, spans all columns (LANDSCAPE) */
         .camera-cell.south { 
-            grid-column: 3; 
-            grid-row: 2; 
+            grid-column: 1 / span 3; 
+            grid-row: 3; 
             border-color: #f59e0b; 
         }
         
@@ -1488,55 +1492,7 @@
                     
                     <!-- 5-Camera Preview Grid -->
                     <div class="five-camera-grid" id="five-camera-grid">
-                        <!-- WEST Camera (top-left) -->
-                        <div class="camera-cell west" id="cam-cell-west">
-                            <span class="camera-cell-label west">WEST</span>
-                            <span class="camera-cell-name" id="cam-name-west">Not assigned</span>
-                            <video id="cam-video-west" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-west">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('west')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-west" onchange="assignCamera('west', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-west">--</span>
-                        </div>
-                        
-                        <!-- PRIMARY Camera (Center - spans both rows, TALL) -->
-                        <div class="camera-cell primary" id="cam-cell-primary">
-                            <span class="camera-cell-label primary">⭐ PRIMARY</span>
-                            <span class="camera-cell-name" id="cam-name-primary">Not assigned</span>
-                            <video id="cam-video-primary" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-primary">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>PRIMARY (Main)</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('primary')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-primary" onchange="assignCamera('primary', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-primary">--</span>
-                        </div>
-                        
-                        <!-- EAST Camera (top-right) -->
-                        <div class="camera-cell east" id="cam-cell-east">
-                            <span class="camera-cell-label east">EAST</span>
-                            <span class="camera-cell-name" id="cam-name-east">Not assigned</span>
-                            <video id="cam-video-east" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-east">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('east')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-east" onchange="assignCamera('east', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-east">--</span>
-                        </div>
-                        
-                        <!-- NORTH Camera (bottom-left) -->
+                        <!-- NORTH Camera - TOP ROW (Landscape) -->
                         <div class="camera-cell north" id="cam-cell-north">
                             <span class="camera-cell-label north">NORTH</span>
                             <span class="camera-cell-name" id="cam-name-north">Not assigned</span>
@@ -1552,7 +1508,55 @@
                             <span class="camera-cell-status" id="cam-status-north">--</span>
                         </div>
                         
-                        <!-- SOUTH Camera (bottom-right) -->
+                        <!-- WEST Camera - MIDDLE ROW LEFT (Portrait) -->
+                        <div class="camera-cell west" id="cam-cell-west">
+                            <span class="camera-cell-label west">WEST</span>
+                            <span class="camera-cell-name" id="cam-name-west">Not assigned</span>
+                            <video id="cam-video-west" autoplay playsinline muted></video>
+                            <div class="camera-cell-placeholder" id="cam-placeholder-west">
+                                <div class="camera-cell-placeholder-icon">📷</div>
+                                <div>Click to assign</div>
+                            </div>
+                            <button class="camera-identify-btn" onclick="identifyCamera('west')">🔦 IDENTIFY</button>
+                            <select class="camera-assign-select" id="cam-assign-west" onchange="assignCamera('west', this.value)">
+                                <option value="">Select camera...</option>
+                            </select>
+                            <span class="camera-cell-status" id="cam-status-west">--</span>
+                        </div>
+                        
+                        <!-- PRIMARY Camera - MIDDLE ROW CENTER (Portrait) -->
+                        <div class="camera-cell primary" id="cam-cell-primary">
+                            <span class="camera-cell-label primary">⭐ PRIMARY</span>
+                            <span class="camera-cell-name" id="cam-name-primary">Not assigned</span>
+                            <video id="cam-video-primary" autoplay playsinline muted></video>
+                            <div class="camera-cell-placeholder" id="cam-placeholder-primary">
+                                <div class="camera-cell-placeholder-icon">📷</div>
+                                <div>PRIMARY (Main)</div>
+                            </div>
+                            <button class="camera-identify-btn" onclick="identifyCamera('primary')">🔦 IDENTIFY</button>
+                            <select class="camera-assign-select" id="cam-assign-primary" onchange="assignCamera('primary', this.value)">
+                                <option value="">Select camera...</option>
+                            </select>
+                            <span class="camera-cell-status" id="cam-status-primary">--</span>
+                        </div>
+                        
+                        <!-- EAST Camera - MIDDLE ROW RIGHT (Portrait) -->
+                        <div class="camera-cell east" id="cam-cell-east">
+                            <span class="camera-cell-label east">EAST</span>
+                            <span class="camera-cell-name" id="cam-name-east">Not assigned</span>
+                            <video id="cam-video-east" autoplay playsinline muted></video>
+                            <div class="camera-cell-placeholder" id="cam-placeholder-east">
+                                <div class="camera-cell-placeholder-icon">📷</div>
+                                <div>Click to assign</div>
+                            </div>
+                            <button class="camera-identify-btn" onclick="identifyCamera('east')">🔦 IDENTIFY</button>
+                            <select class="camera-assign-select" id="cam-assign-east" onchange="assignCamera('east', this.value)">
+                                <option value="">Select camera...</option>
+                            </select>
+                            <span class="camera-cell-status" id="cam-status-east">--</span>
+                        </div>
+                        
+                        <!-- SOUTH Camera - BOTTOM ROW (Landscape) -->
                         <div class="camera-cell south" id="cam-cell-south">
                             <span class="camera-cell-label south">SOUTH</span>
                             <span class="camera-cell-name" id="cam-name-south">Not assigned</span>
@@ -1657,7 +1661,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.80";
+        const VERSION = "v99.81";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3622,20 +3626,76 @@
             
             if(!video) return;
             
+            // Try multiple resolutions, starting with 4K for ALL cameras
+            const resolutions = [
+                { w: 4096, h: 2160, name: '4K DCI' },
+                { w: 3840, h: 2160, name: '4K UHD' },
+                { w: 2560, h: 1440, name: '1440p' },
+                { w: 1920, h: 1080, name: '1080p' }
+            ];
+            
+            for(const res of resolutions) {
+                try {
+                    console.log(`📷 ${position.toUpperCase()}: Trying ${res.name} (${res.w}x${res.h})...`);
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: deviceId },
+                            width: { exact: res.w },
+                            height: { exact: res.h }
+                        }
+                    });
+                    
+                    cameraStreams[position] = stream;
+                    
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    if(placeholder) placeholder.style.display = 'none';
+                    
+                    const track = stream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    
+                    if(status) {
+                        status.textContent = `${settings.width}×${settings.height}`;
+                        status.classList.add('live');
+                        
+                        // Color code based on resolution
+                        if(settings.width >= 3800) {
+                            status.style.color = '#22c55e'; // Green for 4K
+                        } else if(settings.width >= 2500) {
+                            status.style.color = '#3b82f6'; // Blue for 1440p
+                        } else {
+                            status.style.color = '#f59e0b'; // Orange for 1080p
+                        }
+                    }
+                    
+                    // Update camera name from track label
+                    if(nameEl) {
+                        const label = track.label || 'Camera';
+                        nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
+                    }
+                    
+                    console.log(`✅ ${position.toUpperCase()} stream started: ${settings.width}×${settings.height}`);
+                    return; // Success!
+                    
+                } catch(err) {
+                    console.log(`❌ ${position.toUpperCase()}: ${res.name} failed`);
+                    // Continue to next resolution
+                }
+            }
+            
+            // All exact resolutions failed - try with ideal constraints
             try {
-                // Different resolution for primary vs secondary cameras
-                const isPrimary = position === 'primary';
-                const constraints = {
+                console.log(`📷 ${position.toUpperCase()}: Trying ideal constraints...`);
+                const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         deviceId: { exact: deviceId },
-                        width: { ideal: isPrimary ? 3840 : 1920 },
-                        height: { ideal: isPrimary ? 2160 : 1080 }
+                        width: { ideal: 3840 },
+                        height: { ideal: 2160 }
                     }
-                };
+                });
                 
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 cameraStreams[position] = stream;
-                
                 video.srcObject = stream;
                 video.style.display = 'block';
                 if(placeholder) placeholder.style.display = 'none';
@@ -3648,14 +3708,12 @@
                     status.classList.add('live');
                 }
                 
-                // Update camera name from track label
                 if(nameEl) {
                     const label = track.label || 'Camera';
-                    // Shorten long names
                     nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
                 }
                 
-                console.log(`📷 ${position.toUpperCase()} stream started: ${settings.width}×${settings.height}`);
+                console.log(`✅ ${position.toUpperCase()} stream (ideal): ${settings.width}×${settings.height}`);
                 
             } catch(err) {
                 console.error(`📷 ${position} stream error:`, err);
