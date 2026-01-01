@@ -270,6 +270,17 @@
         .camera-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 3px solid #333; transition: all 0.2s; }
         .camera-cell video { width: 100%; height: 100%; object-fit: cover; }
         
+        /* Middle row cameras need 90° rotation for portrait mode */
+        .camera-cell.west video,
+        .camera-cell.primary video,
+        .camera-cell.east video {
+            transform: rotate(90deg);
+            /* Scale up to fill container after rotation */
+            width: 177%;  /* Approximate to fill height after rotation */
+            height: 177%;
+            object-fit: cover;
+        }
+        
         /* NORTH - Top row, spans all columns (LANDSCAPE) */
         .camera-cell.north { 
             grid-column: 1 / span 3; 
@@ -1661,7 +1672,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.81";
+        const VERSION = "v99.82";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3363,7 +3374,9 @@
                 videoDevices.forEach((device, i) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.textContent = device.label || `Camera ${i+1}`;
+                    // Add camera number and short ID to make them distinguishable
+                    const shortId = device.deviceId.slice(0, 4);
+                    option.textContent = `Camera #${i+1} (${shortId})`;
                     select.appendChild(option);
                 });
                 
@@ -3371,14 +3384,11 @@
                 if(cameraAssignments[pos]) {
                     select.value = cameraAssignments[pos];
                     
-                    // Update name display
+                    // Update name display with short format
                     const nameEl = document.getElementById(`cam-name-${pos}`);
-                    if(nameEl) {
-                        const selectedOption = select.options[select.selectedIndex];
-                        if(selectedOption && selectedOption.value) {
-                            const label = selectedOption.text;
-                            nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
-                        }
+                    if(nameEl && select.selectedIndex > 0) {
+                        const shortId = cameraAssignments[pos].slice(0, 4);
+                        nameEl.textContent = `#${select.selectedIndex}: (${shortId})`;
                     }
                 }
             });
@@ -3489,9 +3499,16 @@
             const select = document.getElementById(`cam-assign-${position}`);
             if(nameEl && select) {
                 if(deviceId) {
-                    const selectedOption = select.options[select.selectedIndex];
-                    const label = selectedOption ? selectedOption.text : 'Camera';
-                    nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
+                    // Find camera number from dropdown
+                    let camNum = '';
+                    for(let i = 0; i < select.options.length; i++) {
+                        if(select.options[i].value === deviceId) {
+                            camNum = `#${i}: `;
+                            break;
+                        }
+                    }
+                    const shortId = deviceId.slice(0, 4);
+                    nameEl.textContent = `${camNum}(${shortId})`;
                 } else {
                     nameEl.textContent = 'Not assigned';
                 }
@@ -3526,6 +3543,7 @@
             const placeholder = document.getElementById('camera-placeholder');
             const overlay = document.getElementById('camera-overlay');
             const markersLayer = document.getElementById('defect-markers-layer');
+            const mainCameraSelect = document.getElementById('camera-select');
             
             if(multiCameraMode) {
                 // Show 5-camera grid
@@ -3533,6 +3551,9 @@
                 toggle.classList.add('active');
                 document.getElementById('multi-cam-label').textContent = '1-CAM';
                 if(idAllBtn) idAllBtn.style.display = 'flex';
+                
+                // Hide main camera dropdown (not needed in 5-cam mode)
+                if(mainCameraSelect) mainCameraSelect.style.display = 'none';
                 
                 // Hide single camera elements
                 mainVideo.style.display = 'none';
@@ -3553,6 +3574,9 @@
                 toggle.classList.remove('active');
                 document.getElementById('multi-cam-label').textContent = '5-CAM';
                 if(idAllBtn) idAllBtn.style.display = 'none';
+                
+                // Show main camera dropdown
+                if(mainCameraSelect) mainCameraSelect.style.display = 'block';
                 
                 // Stop all multi-camera streams
                 stopAllCameraStreams();
@@ -3669,10 +3693,22 @@
                         }
                     }
                     
-                    // Update camera name from track label
+                    // Update camera name from track label with short ID
                     if(nameEl) {
                         const label = track.label || 'Camera';
-                        nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
+                        const shortId = deviceId.slice(0, 4);
+                        // Find camera index
+                        const select = document.getElementById(`cam-assign-${position}`);
+                        let camNum = '';
+                        if(select) {
+                            for(let i = 0; i < select.options.length; i++) {
+                                if(select.options[i].value === deviceId) {
+                                    camNum = `#${i}: `;
+                                    break;
+                                }
+                            }
+                        }
+                        nameEl.textContent = `${camNum}(${shortId})`;
                     }
                     
                     console.log(`✅ ${position.toUpperCase()} stream started: ${settings.width}×${settings.height}`);
@@ -3709,8 +3745,18 @@
                 }
                 
                 if(nameEl) {
-                    const label = track.label || 'Camera';
-                    nameEl.textContent = label.length > 25 ? label.slice(0, 22) + '...' : label;
+                    const shortId = deviceId.slice(0, 4);
+                    const select = document.getElementById(`cam-assign-${position}`);
+                    let camNum = '';
+                    if(select) {
+                        for(let i = 0; i < select.options.length; i++) {
+                            if(select.options[i].value === deviceId) {
+                                camNum = `#${i}: `;
+                                break;
+                            }
+                        }
+                    }
+                    nameEl.textContent = `${camNum}(${shortId})`;
                 }
                 
                 console.log(`✅ ${position.toUpperCase()} stream (ideal): ${settings.width}×${settings.height}`);
