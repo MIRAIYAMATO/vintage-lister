@@ -396,6 +396,22 @@
         .cam-pos-btn.has-camera { border-color: #22c55e; }
         .cam-pos-btn.has-camera::after { content: ' ✓'; color: #22c55e; }
         
+        /* Camera Config Modal */
+        .camera-config-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .camera-config-modal.hidden { display: none; }
+        .camera-config-card { background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+        .camera-config-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 8px; border: 2px solid #e2e8f0; }
+        .camera-config-row.assigned { border-color: #22c55e; background: #f0fdf4; }
+        .camera-config-label { font-size: 11px; color: #64748b; min-width: 60px; }
+        .camera-config-name { flex: 1; font-size: 12px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .camera-config-select { padding: 6px 10px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 12px; background: white; }
+        .camera-config-flip { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #64748b; }
+        .camera-config-flip input { width: 16px; height: 16px; }
+        
+        /* Camera flip transform */
+        .camera-flipped { transform: rotate(180deg) !important; }
+        .camera-flipped.portrait-mode { transform: rotate(180deg) rotate(90deg) !important; }
+        
         /* SKU Gate Overlay */
         .sku-gate { position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); z-index: 950; display: flex; align-items: center; justify-content: center; }
         .sku-gate.hidden { display: none; }
@@ -1347,7 +1363,25 @@
                     <button id="pos-east" class="cam-pos-btn" onclick="switchCameraPosition('east')" title="East Camera (Right Angle)">
                         EAST ▶
                     </button>
+                    <button onclick="openCameraConfig()" style="background:#475569;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;" title="Configure camera assignments">⚙️ CONFIG</button>
                     <span id="position-status" style="color:#64748b;font-size:10px;margin-left:auto;">Defects: Center only</span>
+                </div>
+            </div>
+            
+            <!-- Camera Configuration Modal -->
+            <div id="camera-config-modal" class="camera-config-modal hidden">
+                <div class="camera-config-card">
+                    <h3 style="margin:0 0 16px 0;font-size:18px;">📷 Camera Configuration</h3>
+                    <p style="color:#6b7280;font-size:12px;margin-bottom:16px;">Assign each camera to a position and flip if mounted upside down.</p>
+                    
+                    <div id="camera-config-list" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                        <!-- Dynamically populated -->
+                    </div>
+                    
+                    <div style="display:flex;gap:12px;justify-content:flex-end;">
+                        <button onclick="closeCameraConfig()" style="background:#6b7280;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;">Cancel</button>
+                        <button onclick="saveCameraConfig()" style="background:#3b82f6;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;">Save & Apply</button>
+                    </div>
                 </div>
             </div>
             <div class="camera-view">
@@ -1446,7 +1480,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.96";
+        const VERSION = "v99.97";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3069,19 +3103,54 @@
                     }
                 });
                 
+                // Store detected BRIO cameras for config
+                detectedCameras = brioCameras;
+                
                 // 3-Camera Setup Detection
                 if(brioCameras.length >= 3) {
                     // We have 3+ BRIOs - enable multi-camera mode
                     multiCameraMode = true;
-                    westCameraId = brioCameras[0].id;
-                    centerCameraId = brioCameras[1].id;
-                    eastCameraId = brioCameras[2].id;
-                    mainCameraId = centerCameraId; // Center is the main camera
                     
-                    console.log('📷 3-CAMERA MODE ENABLED:');
-                    console.log(`  WEST: ${brioCameras[0].label} (${westCameraId.slice(0,8)})`);
-                    console.log(`  CENTER: ${brioCameras[1].label} (${centerCameraId.slice(0,8)})`);
-                    console.log(`  EAST: ${brioCameras[2].label} (${eastCameraId.slice(0,8)})`);
+                    // Try to load saved configuration
+                    const hasConfig = loadCameraConfig();
+                    
+                    if(hasConfig && cameraConfig.center) {
+                        // Use saved config - verify cameras still exist
+                        const validWest = brioCameras.some(c => c.id === cameraConfig.west);
+                        const validCenter = brioCameras.some(c => c.id === cameraConfig.center);
+                        const validEast = brioCameras.some(c => c.id === cameraConfig.east);
+                        
+                        if(validCenter) {
+                            westCameraId = validWest ? cameraConfig.west : null;
+                            centerCameraId = cameraConfig.center;
+                            eastCameraId = validEast ? cameraConfig.east : null;
+                            mainCameraId = centerCameraId;
+                            
+                            console.log('📷 3-CAMERA MODE (SAVED CONFIG):');
+                            console.log(`  WEST: ${westCameraId?.slice(0,8) || 'not set'}`);
+                            console.log(`  CENTER: ${centerCameraId?.slice(0,8)}`);
+                            console.log(`  EAST: ${eastCameraId?.slice(0,8) || 'not set'}`);
+                        } else {
+                            // Saved config invalid, auto-assign
+                            westCameraId = brioCameras[0].id;
+                            centerCameraId = brioCameras[1].id;
+                            eastCameraId = brioCameras[2].id;
+                            mainCameraId = centerCameraId;
+                            console.log('📷 3-CAMERA MODE (AUTO - saved config invalid):');
+                        }
+                    } else {
+                        // No saved config - auto-assign (1st=West, 2nd=Center, 3rd=East)
+                        westCameraId = brioCameras[0].id;
+                        centerCameraId = brioCameras[1].id;
+                        eastCameraId = brioCameras[2].id;
+                        mainCameraId = centerCameraId;
+                        
+                        console.log('📷 3-CAMERA MODE (AUTO-ASSIGNED):');
+                        console.log(`  WEST: ${brioCameras[0].label} (${westCameraId.slice(0,8)})`);
+                        console.log(`  CENTER: ${brioCameras[1].label} (${centerCameraId.slice(0,8)})`);
+                        console.log(`  EAST: ${brioCameras[2].label} (${eastCameraId.slice(0,8)})`);
+                        console.log('  ⚠️ Use CONFIG button to reassign if wrong!');
+                    }
                     
                     // Show position bar
                     document.getElementById('camera-position-bar').style.display = 'block';
@@ -3254,6 +3323,186 @@
             showToast('success', `${position.toUpperCase()} Camera`, 'Switched successfully', 1500);
         }
         
+        // Camera configuration data
+        let detectedCameras = []; // All BRIO cameras detected
+        let cameraConfig = { west: null, center: null, east: null, flips: {} }; // Saved assignments
+        
+        function openCameraConfig() {
+            const modal = document.getElementById('camera-config-modal');
+            const list = document.getElementById('camera-config-list');
+            
+            // Build configuration UI
+            list.innerHTML = '';
+            
+            if(detectedCameras.length === 0) {
+                list.innerHTML = '<p style="color:#ef4444;text-align:center;">No cameras detected</p>';
+                modal.classList.remove('hidden');
+                return;
+            }
+            
+            // Create row for each position
+            ['west', 'center', 'east'].forEach(position => {
+                const posLabel = position.charAt(0).toUpperCase() + position.slice(1);
+                const currentCamId = cameraConfig[position];
+                const isFlipped = cameraConfig.flips[currentCamId] || false;
+                
+                const row = document.createElement('div');
+                row.className = 'camera-config-row' + (currentCamId ? ' assigned' : '');
+                row.innerHTML = `
+                    <div class="camera-config-label" style="font-weight:700;color:#1e293b;">${position === 'west' ? '◀' : position === 'east' ? '▶' : '●'} ${posLabel.toUpperCase()}</div>
+                    <select class="camera-config-select" id="config-${position}" onchange="updateConfigRow('${position}')">
+                        <option value="">-- Not Assigned --</option>
+                        ${detectedCameras.map(cam => `
+                            <option value="${cam.id}" ${currentCamId === cam.id ? 'selected' : ''}>${cam.label.replace('Logitech ', '').substring(0, 25)}</option>
+                        `).join('')}
+                    </select>
+                    <label class="camera-config-flip">
+                        <input type="checkbox" id="flip-${position}" ${isFlipped ? 'checked' : ''}>
+                        Flip 180°
+                    </label>
+                `;
+                list.appendChild(row);
+            });
+            
+            // Add quick-assign hint
+            const hint = document.createElement('p');
+            hint.style.cssText = 'font-size:11px;color:#64748b;text-align:center;margin-top:8px;';
+            hint.innerHTML = '💡 <strong>Tip:</strong> Switch to each camera, then use CONFIG to see which physical camera it is';
+            list.appendChild(hint);
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function updateConfigRow(position) {
+            // Visual feedback when selection changes
+            const select = document.getElementById(`config-${position}`);
+            const row = select.closest('.camera-config-row');
+            if(select.value) {
+                row.classList.add('assigned');
+            } else {
+                row.classList.remove('assigned');
+            }
+        }
+        
+        function closeCameraConfig() {
+            document.getElementById('camera-config-modal').classList.add('hidden');
+        }
+        
+        function saveCameraConfig() {
+            // Read selections
+            const westId = document.getElementById('config-west').value;
+            const centerId = document.getElementById('config-center').value;
+            const eastId = document.getElementById('config-east').value;
+            
+            // Check for duplicates
+            const selected = [westId, centerId, eastId].filter(id => id);
+            const unique = [...new Set(selected)];
+            if(selected.length !== unique.length) {
+                showToast('error', 'Duplicate Camera', 'Each camera can only be assigned to one position', 3000);
+                return;
+            }
+            
+            // Save configuration
+            cameraConfig.west = westId || null;
+            cameraConfig.center = centerId || null;
+            cameraConfig.east = eastId || null;
+            
+            // Save flip settings
+            cameraConfig.flips = {};
+            if(westId) cameraConfig.flips[westId] = document.getElementById('flip-west').checked;
+            if(centerId) cameraConfig.flips[centerId] = document.getElementById('flip-center').checked;
+            if(eastId) cameraConfig.flips[eastId] = document.getElementById('flip-east').checked;
+            
+            // Update camera IDs
+            westCameraId = cameraConfig.west;
+            centerCameraId = cameraConfig.center;
+            eastCameraId = cameraConfig.east;
+            mainCameraId = centerCameraId || westCameraId || eastCameraId;
+            
+            // Save to localStorage
+            try {
+                localStorage.setItem('vl_camera_config', JSON.stringify(cameraConfig));
+                console.log('📷 Camera config saved:', cameraConfig);
+            } catch(e) {
+                console.warn('Could not save camera config:', e);
+            }
+            
+            // Update UI
+            updateCameraPositionUI();
+            
+            // Apply flip to current camera
+            applyFlipTransform();
+            
+            closeCameraConfig();
+            showToast('success', 'Config Saved', 'Camera positions updated', 2000);
+            
+            // Switch to center camera to apply changes
+            if(centerCameraId) {
+                switchCameraPosition('center');
+            }
+        }
+        
+        function loadCameraConfig() {
+            try {
+                const saved = localStorage.getItem('vl_camera_config');
+                if(saved) {
+                    cameraConfig = JSON.parse(saved);
+                    console.log('📷 Loaded camera config:', cameraConfig);
+                    return true;
+                }
+            } catch(e) {
+                console.warn('Could not load camera config:', e);
+            }
+            return false;
+        }
+        
+        function applyFlipTransform() {
+            const video = document.getElementById('camera-video');
+            if(!video) return;
+            
+            // Determine if current camera needs flipping
+            let needsFlip = false;
+            if(activeCameraId && cameraConfig.flips[activeCameraId]) {
+                needsFlip = true;
+            }
+            
+            // Apply or remove flip class
+            if(needsFlip) {
+                video.classList.add('camera-flipped');
+                console.log('📷 Applied 180° flip to camera');
+            } else {
+                video.classList.remove('camera-flipped');
+            }
+        }
+        
+        // Check if current camera is configured to be flipped
+        function isCameraFlipped() {
+            return activeCameraId && cameraConfig.flips && cameraConfig.flips[activeCameraId];
+        }
+        
+        // Draw video to canvas, applying flip if needed
+        function drawVideoToCanvas(ctx, video, dx, dy, dw, dh, sx, sy, sw, sh) {
+            if(isCameraFlipped()) {
+                // Save state, rotate 180°, draw, restore
+                ctx.save();
+                ctx.translate(dx + dw, dy + dh);
+                ctx.rotate(Math.PI);
+                if(sw !== undefined) {
+                    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, dw, dh);
+                } else {
+                    ctx.drawImage(video, 0, 0, dw, dh);
+                }
+                ctx.restore();
+            } else {
+                // Normal draw
+                if(sw !== undefined) {
+                    ctx.drawImage(video, sx, sy, sw, sh, dx, dy, dw, dh);
+                } else {
+                    ctx.drawImage(video, dx, dy, dw, dh);
+                }
+            }
+        }
+        
         // V99.45: Aggressive max resolution switch for BRIO
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
@@ -3306,6 +3555,9 @@
                     document.getElementById('camera-status').classList.add('live');
                     activeCameraId = deviceId;
                     document.getElementById('camera-select').value = deviceId;
+                    
+                    // Apply flip transform if configured
+                    applyFlipTransform();
                     
                     video.onloadedmetadata = () => {
                         const w = video.videoWidth;
@@ -3727,6 +3979,9 @@
                     activeCameraId = deviceId;
                     document.getElementById('camera-select').value = deviceId;
                     
+                    // Apply flip transform if configured
+                    applyFlipTransform();
+                    
                     video.onloadedmetadata = () => {
                         console.log(`📷 Video element ready: ${video.videoWidth}x${video.videoHeight}`);
                         document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
@@ -3794,6 +4049,9 @@
                     document.getElementById('camera-status').classList.add('live');
                     activeCameraId = deviceId;
                     document.getElementById('camera-select').value = deviceId;
+                    
+                    // Apply flip transform if configured
+                    applyFlipTransform();
                     
                     video.onloadedmetadata = () => {
                         console.log(`⚠️ Fallback resolution: ${video.videoWidth}x${video.videoHeight}`);
@@ -4031,7 +4289,18 @@
                 
                 canvas.width = size;
                 canvas.height = size;
-                ctx.drawImage(video, cropX, cropY, size, size, 0, 0, size, size);
+                
+                // Handle flipped cameras
+                if(isCameraFlipped()) {
+                    ctx.save();
+                    ctx.translate(size, size);
+                    ctx.rotate(Math.PI);
+                    ctx.drawImage(video, cropX, cropY, size, size, 0, 0, size, size);
+                    ctx.restore();
+                    console.log('📸 Applied 180° flip to capture');
+                } else {
+                    ctx.drawImage(video, cropX, cropY, size, size, 0, 0, size, size);
+                }
                 
                 console.log(`📸 ${photoMode.toUpperCase()} Square: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (1:1 ratio)`);
                 
@@ -4097,6 +4366,7 @@
         
         function captureMainWithDefects(video, sourceW, sourceH) {
             const isPortrait = video.classList.contains('portrait-mode');
+            const isFlipped = isCameraFlipped();
             let mainCanvas;
             
             if(isPortrait) {
@@ -4112,7 +4382,16 @@
                 
                 rotatedCtx.translate(0, rotatedCanvas.height);
                 rotatedCtx.rotate(-Math.PI / 2);
-                rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                
+                // If camera is flipped, also apply 180° rotation
+                if(isFlipped) {
+                    rotatedCtx.translate(sourceW, sourceH);
+                    rotatedCtx.rotate(Math.PI);
+                    rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                    console.log('📸 Applied 180° flip to portrait capture');
+                } else {
+                    rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                }
                 
                 mainCanvas = rotatedCanvas;
                 console.log(`📸 MAIN Portrait: ${sourceW}x${sourceH} → rotated to ${mainCanvas.width}x${mainCanvas.height}`);
@@ -4125,7 +4404,18 @@
                 
                 landscapeCanvas.width = sourceW;
                 landscapeCanvas.height = sourceH;
-                landscapeCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                
+                // Handle flipped cameras
+                if(isFlipped) {
+                    landscapeCtx.save();
+                    landscapeCtx.translate(sourceW, sourceH);
+                    landscapeCtx.rotate(Math.PI);
+                    landscapeCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                    landscapeCtx.restore();
+                    console.log('📸 Applied 180° flip to landscape capture');
+                } else {
+                    landscapeCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                }
                 
                 mainCanvas = landscapeCanvas;
                 console.log(`📸 MAIN Landscape: ${mainCanvas.width}x${mainCanvas.height}`);
