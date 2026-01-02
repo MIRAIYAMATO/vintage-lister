@@ -429,6 +429,68 @@
         .config-assign-btn.east:hover { background: #8b5cf6; color: white; }
         .config-assign-btn.active { transform: scale(0.95); opacity: 0.7; }
         
+        /* Multi-Camera 3-Up View */
+        .multi-camera-view {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 8px;
+            width: 100%;
+            height: 100%;
+            background: #0f172a;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .multi-cam-panel {
+            position: relative;
+            background: #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .multi-cam-panel video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .multi-cam-panel.center {
+            border: 3px solid #22c55e;
+        }
+        .multi-cam-panel.west {
+            border: 3px solid #3b82f6;
+        }
+        .multi-cam-panel.east {
+            border: 3px solid #8b5cf6;
+        }
+        .multi-cam-label {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            z-index: 10;
+        }
+        .multi-cam-panel.center .multi-cam-label { background: #22c55e; }
+        .multi-cam-panel.west .multi-cam-label { background: #3b82f6; }
+        .multi-cam-panel.east .multi-cam-label { background: #8b5cf6; }
+        .multi-cam-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        #defect-markers-layer-multi {
+            position: absolute;
+            inset: 0;
+            pointer-events: auto;
+            cursor: crosshair;
+        }
+        
         /* SKU Gate Overlay */
         .sku-gate { position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); z-index: 950; display: flex; align-items: center; justify-content: center; }
         .sku-gate.hidden { display: none; }
@@ -1488,7 +1550,34 @@
                         <div>Select a camera to begin</div>
                         <div style="font-size:11px;margin-top:6px;color:#555;">Logitech Brio 4K DCI (4096×2160)</div>
                     </div>
+                    
+                    <!-- Single Camera View (default) -->
                     <video id="camera-video" autoplay playsinline style="display:none;"></video>
+                    
+                    <!-- 3-Up Camera View (multi-camera mode) -->
+                    <div id="multi-camera-view" class="multi-camera-view" style="display:none;">
+                        <!-- West Camera -->
+                        <div class="multi-cam-panel west" id="multi-cam-west">
+                            <div class="multi-cam-label">◀ WEST</div>
+                            <video id="video-west" autoplay playsinline></video>
+                            <div class="multi-cam-overlay"></div>
+                        </div>
+                        <!-- Center Camera (main - larger) -->
+                        <div class="multi-cam-panel center" id="multi-cam-center">
+                            <div class="multi-cam-label">● CENTER</div>
+                            <video id="video-center" autoplay playsinline></video>
+                            <div class="multi-cam-overlay"></div>
+                            <!-- Defect Markers Layer - only on Center -->
+                            <div class="defect-markers-layer" id="defect-markers-layer-multi" onclick="handleDefectClick(event)"></div>
+                        </div>
+                        <!-- East Camera -->
+                        <div class="multi-cam-panel east" id="multi-cam-east">
+                            <div class="multi-cam-label">EAST ▶</div>
+                            <video id="video-east" autoplay playsinline></video>
+                            <div class="multi-cam-overlay"></div>
+                        </div>
+                    </div>
+                    
                     <div class="camera-overlay" id="camera-overlay">
                         <!-- Stabilizer Indicator -->
                         <div class="stabilizer-indicator" id="stabilizer-indicator">
@@ -1496,7 +1585,7 @@
                             <span class="stabilizer-text" id="stabilizer-text">HOLD STEADY</span>
                         </div>
                     </div>
-                    <!-- Defect Markers Layer -->
+                    <!-- Defect Markers Layer (single camera mode) -->
                     <div class="defect-markers-layer" id="defect-markers-layer" onclick="handleDefectClick(event)"></div>
                     <!-- Defect Mode Banner -->
                     <div class="defect-mode-banner" id="defect-mode-banner">
@@ -1577,7 +1666,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.99";
+        const VERSION = "v100.00";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1668,6 +1757,12 @@
         let eastCameraId = null;
         let activeCameraPosition = 'center'; // 'west', 'center', 'east'
         let multiCameraMode = false; // Enable when 3+ cameras detected
+        
+        // Multi-camera streams (for 3-up view)
+        let streamWest = null;
+        let streamCenter = null;
+        let streamEast = null;
+        let multiViewActive = false;
         let barcodeScanInterval = null;
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
@@ -3280,6 +3375,13 @@
                 
                 if(skuGateVisible) {
                     console.log('📷 SKU Gate visible - NOT starting camera yet');
+                } else if(multiCameraMode && westCameraId && centerCameraId && eastCameraId) {
+                    // Start 3-up multi-camera view
+                    console.log('📷 Starting 3-camera view on startup...');
+                    activeCameraPosition = 'center';
+                    setTimeout(() => {
+                        startMultiCameraView();
+                    }, 500);
                 } else if(centerCameraId || mainCameraId) {
                     const startCameraId = centerCameraId || mainCameraId;
                     select.value = startCameraId;
@@ -3455,8 +3557,12 @@
             
             document.getElementById('camera-config-modal').classList.add('hidden');
             
-            // Restart main camera if we had stopped it
-            if((centerCameraId || mainCameraId) && !currentStream) {
+            // Restart cameras
+            if(multiCameraMode && westCameraId && centerCameraId && eastCameraId && !multiViewActive) {
+                setTimeout(() => {
+                    startMultiCameraView();
+                }, 300);
+            } else if((centerCameraId || mainCameraId) && !currentStream && !multiViewActive) {
                 setTimeout(() => {
                     switchCameraPosition(activeCameraPosition || 'center');
                 }, 300);
@@ -3510,9 +3616,140 @@
             // Switch to center camera to apply changes
             if(centerCameraId) {
                 setTimeout(() => {
-                    switchCameraPosition('center');
+                    startMultiCameraView();
                 }, 300);
             }
+        }
+        
+        // ============ MULTI-CAMERA VIEW FUNCTIONS ============
+        
+        async function startMultiCameraView() {
+            if(!multiCameraMode || !centerCameraId) {
+                console.log('📷 Multi-camera mode not available, using single view');
+                return;
+            }
+            
+            console.log('📷 Starting 3-up multi-camera view...');
+            
+            // Stop any existing streams
+            stopMultiCameraView();
+            if(currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            // Hide single camera, show multi view
+            document.getElementById('camera-video').style.display = 'none';
+            document.getElementById('multi-camera-view').style.display = 'grid';
+            document.getElementById('camera-placeholder').style.display = 'none';
+            document.getElementById('defect-markers-layer').style.display = 'none';
+            
+            // Start all 3 camera streams
+            const videoWest = document.getElementById('video-west');
+            const videoCenter = document.getElementById('video-center');
+            const videoEast = document.getElementById('video-east');
+            
+            // Start West camera
+            if(westCameraId) {
+                try {
+                    streamWest = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: westCameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                    });
+                    videoWest.srcObject = streamWest;
+                    applyVideoTransform(videoWest, westCameraId);
+                    document.getElementById('multi-cam-west').style.display = 'flex';
+                    console.log('📷 West camera started');
+                } catch(e) {
+                    console.error('📷 West camera failed:', e);
+                    document.getElementById('multi-cam-west').style.display = 'none';
+                }
+            } else {
+                document.getElementById('multi-cam-west').style.display = 'none';
+            }
+            
+            // Start Center camera (high res)
+            if(centerCameraId) {
+                try {
+                    streamCenter = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: centerCameraId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
+                    });
+                    videoCenter.srcObject = streamCenter;
+                    applyVideoTransform(videoCenter, centerCameraId);
+                    activeCameraId = centerCameraId;
+                    
+                    videoCenter.onloadedmetadata = () => {
+                        const w = videoCenter.videoWidth;
+                        const h = videoCenter.videoHeight;
+                        document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+                        document.getElementById('camera-resolution').style.color = w >= 3800 ? '#22c55e' : '#3b82f6';
+                    };
+                    
+                    console.log('📷 Center camera started');
+                } catch(e) {
+                    console.error('📷 Center camera failed:', e);
+                }
+            }
+            
+            // Start East camera
+            if(eastCameraId) {
+                try {
+                    streamEast = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: eastCameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                    });
+                    videoEast.srcObject = streamEast;
+                    applyVideoTransform(videoEast, eastCameraId);
+                    document.getElementById('multi-cam-east').style.display = 'flex';
+                    console.log('📷 East camera started');
+                } catch(e) {
+                    console.error('📷 East camera failed:', e);
+                    document.getElementById('multi-cam-east').style.display = 'none';
+                }
+            } else {
+                document.getElementById('multi-cam-east').style.display = 'none';
+            }
+            
+            multiViewActive = true;
+            
+            // Update UI
+            document.getElementById('camera-status').textContent = 'LIVE';
+            document.getElementById('camera-status').classList.add('live');
+            document.getElementById('camera-overlay').style.display = 'block';
+            
+            // Enable defect marking on center
+            if(photoMode === 'main') {
+                enableDefectMarking();
+            }
+            
+            showToast('success', '3 Cameras Active', 'West • Center • East', 2000);
+        }
+        
+        function stopMultiCameraView() {
+            if(streamWest) {
+                streamWest.getTracks().forEach(t => t.stop());
+                streamWest = null;
+            }
+            if(streamCenter) {
+                streamCenter.getTracks().forEach(t => t.stop());
+                streamCenter = null;
+            }
+            if(streamEast) {
+                streamEast.getTracks().forEach(t => t.stop());
+                streamEast = null;
+            }
+            multiViewActive = false;
+        }
+        
+        function applyVideoTransform(videoEl, cameraId) {
+            if(!videoEl || !cameraId) return;
+            
+            let transform = '';
+            if(cameraConfig.flips && cameraConfig.flips[cameraId]) {
+                transform += 'rotate(180deg) ';
+            }
+            if(cameraConfig.rots && cameraConfig.rots[cameraId]) {
+                transform += 'rotate(90deg) ';
+            }
+            videoEl.style.transform = transform.trim() || 'none';
         }
         
         function loadCameraConfig() {
@@ -4429,45 +4666,57 @@
             
             // Auto-switch cameras based on mode
             if(mode === 'main') {
-                video.style.display = 'block';
-                
-                // In multi-camera mode, use centerCameraId; otherwise use mainCameraId
-                const targetCameraId = multiCameraMode ? centerCameraId : mainCameraId;
-                
-                if(targetCameraId) {
-                    console.log(`📷 Main mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, target=${targetCameraId?.slice(0,8)})`);
-                    if(activeCameraId !== targetCameraId) {
-                        console.log('📷 SWITCHING to MAIN/CENTER camera (BRIO)...');
-                        try {
-                            await switchCameraMaxRes(targetCameraId);
-                            console.log('📷 Switch to BRIO complete');
-                            // Ensure full resolution after switch
+                // In multi-camera mode, use 3-up view
+                if(multiCameraMode && westCameraId && centerCameraId && eastCameraId) {
+                    console.log('📷 Starting multi-camera 3-up view...');
+                    video.style.display = 'none';
+                    await startMultiCameraView();
+                } else {
+                    // Single camera mode
+                    video.style.display = 'block';
+                    document.getElementById('multi-camera-view').style.display = 'none';
+                    document.getElementById('defect-markers-layer').style.display = 'block';
+                    
+                    const targetCameraId = multiCameraMode ? centerCameraId : mainCameraId;
+                    
+                    if(targetCameraId) {
+                        console.log(`📷 Main mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, target=${targetCameraId?.slice(0,8)})`);
+                        if(activeCameraId !== targetCameraId) {
+                            console.log('📷 SWITCHING to MAIN/CENTER camera (BRIO)...');
+                            try {
+                                await switchCameraMaxRes(targetCameraId);
+                                console.log('📷 Switch to BRIO complete');
+                                setTimeout(() => {
+                                    forceMaxResolution();
+                                    if(!multiCameraMode || activeCameraPosition === 'center') {
+                                        enableDefectMarking();
+                                    }
+                                }, 500);
+                            } catch(e) {
+                                console.error('📷 Switch to BRIO failed:', e);
+                            }
+                        } else {
+                            console.log('📷 Already on MAIN camera - forcing max resolution');
                             setTimeout(() => {
                                 forceMaxResolution();
-                                // Re-enable defect marking after camera switch
+                                updatePortraitTransform();
+                                renderDefectMarkers();
                                 if(!multiCameraMode || activeCameraPosition === 'center') {
                                     enableDefectMarking();
                                 }
-                            }, 500);
-                        } catch(e) {
-                            console.error('📷 Switch to BRIO failed:', e);
+                            }, 100);
                         }
                     } else {
-                        console.log('📷 Already on MAIN camera - forcing max resolution');
-                        // Force max resolution when returning to main mode
-                        setTimeout(() => {
-                            forceMaxResolution();
-                            updatePortraitTransform();
-                            renderDefectMarkers();
-                            if(!multiCameraMode || activeCameraPosition === 'center') {
-                                enableDefectMarking();
-                            }
-                        }, 100);
+                        console.warn('⚠️ mainCameraId/centerCameraId not set');
                     }
-                } else {
-                    console.warn('⚠️ mainCameraId/centerCameraId not set');
                 }
             } else if(mode === 'tag' || mode === 'defect' || mode === 'defect-closeup' || mode === 'features') {
+                // Stop multi-camera view when switching to other modes
+                if(multiViewActive) {
+                    stopMultiCameraView();
+                }
+                document.getElementById('multi-camera-view').style.display = 'none';
+                document.getElementById('defect-markers-layer').style.display = 'block';
                 video.style.display = 'block';
                 
                 if(secondaryCameraId) {
@@ -4519,6 +4768,12 @@
             }
         }
         function capturePhoto() { 
+            // If in multi-camera view, capture all 3 cameras
+            if(multiViewActive && photoMode === 'main') {
+                captureAllCameras();
+                return;
+            }
+            
             const video = document.getElementById('camera-video'); 
             if(!video.srcObject) return; 
             
@@ -4648,6 +4903,112 @@
                     updateValidation(); 
                 }, 'image/jpeg', 0.95); 
             }
+        }
+        
+        // Capture from all 3 cameras at once
+        async function captureAllCameras() {
+            console.log('📸 Capturing from all 3 cameras...');
+            
+            // Flash effect
+            document.getElementById('flash-overlay').classList.add('flash'); 
+            setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100);
+            
+            let captureCount = 0;
+            
+            // Capture West
+            if(streamWest) {
+                const videoWest = document.getElementById('video-west');
+                if(videoWest.videoWidth > 0) {
+                    captureFromVideo(videoWest, westCameraId, 'West');
+                    captureCount++;
+                }
+            }
+            
+            // Capture Center (main camera - high res)
+            if(streamCenter) {
+                const videoCenter = document.getElementById('video-center');
+                if(videoCenter.videoWidth > 0) {
+                    captureFromVideo(videoCenter, centerCameraId, 'Center');
+                    captureCount++;
+                }
+            }
+            
+            // Capture East
+            if(streamEast) {
+                const videoEast = document.getElementById('video-east');
+                if(videoEast.videoWidth > 0) {
+                    captureFromVideo(videoEast, eastCameraId, 'East');
+                    captureCount++;
+                }
+            }
+            
+            showToast('success', `📸 ${captureCount} Photos Captured`, 'West • Center • East', 2000);
+            updatePhotoGrids();
+            updateValidation();
+        }
+        
+        function captureFromVideo(videoEl, cameraId, position) {
+            const sourceW = videoEl.videoWidth;
+            const sourceH = videoEl.videoHeight;
+            
+            // Get flip/rot settings for this camera
+            const isFlipped = cameraConfig.flips && cameraConfig.flips[cameraId];
+            const isRotated = cameraConfig.rots && cameraConfig.rots[cameraId];
+            
+            // Calculate effective dimensions after rotation
+            const effectiveW = isRotated ? sourceH : sourceW;
+            const effectiveH = isRotated ? sourceW : sourceH;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            
+            canvas.width = effectiveW;
+            canvas.height = effectiveH;
+            
+            ctx.save();
+            
+            // Apply rotation first if needed
+            if(isRotated) {
+                ctx.translate(effectiveW/2, effectiveH/2);
+                ctx.rotate(Math.PI / 2);
+                ctx.translate(-sourceW/2, -sourceH/2);
+            }
+            
+            // Apply flip if needed
+            if(isFlipped) {
+                if(isRotated) {
+                    ctx.translate(sourceW, sourceH);
+                } else {
+                    ctx.translate(effectiveW, effectiveH);
+                }
+                ctx.rotate(Math.PI);
+            }
+            
+            ctx.drawImage(videoEl, 0, 0, sourceW, sourceH);
+            ctx.restore();
+            
+            console.log(`📸 ${position}: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (flip:${isFlipped}, rot:${isRotated})`);
+            
+            // Save photo
+            canvas.toBlob(blob => {
+                const photo = {
+                    blob,
+                    url: URL.createObjectURL(blob),
+                    width: canvas.width,
+                    height: canvas.height,
+                    position: position.toLowerCase(),
+                    cameraId: cameraId
+                };
+                data.mainPhotos.push(photo);
+                
+                // Auto-save to folder if selected
+                if(saveDirectoryHandle) {
+                    const filename = generatePhotoFilename('main-' + position.toLowerCase(), data.mainPhotos.length);
+                    savePhotoToFolder(blob, filename);
+                }
+            }, 'image/jpeg', 0.95);
         }
         
         function captureMainWithDefects(video, sourceW, sourceH) {
