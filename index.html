@@ -1415,7 +1415,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.92";
+        const VERSION = "v99.94";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2439,15 +2439,30 @@
             // Reset stabilizer
             updateSkuGateStabilizer(false);
             
-            // If cameras haven't been enumerated yet, do it now
-            if(!mainCameraId && !secondaryCameraId) {
-                console.log('📷 SKU Gate: Cameras not enumerated yet, requesting permission...');
+            // IMPORTANT: Stop the main camera stream to release it for SKU scanning
+            if(currentStream) {
+                console.log('📷 SKU Gate: Stopping main camera stream...');
+                stopStabilizer();
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+                document.getElementById('camera-video').srcObject = null;
+            }
+            
+            // Small delay to let camera fully release
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Use already-enumerated cameras (set by enumerateCameras on page load)
+            let cameraId = secondaryCameraId || mainCameraId;
+            console.log('📷 SKU Gate: Initial check - mainCameraId=', mainCameraId?.slice(0,8), 'secondaryCameraId=', secondaryCameraId?.slice(0,8));
+            
+            // If no cameras detected yet, try to enumerate now
+            if(!cameraId) {
+                console.log('📷 SKU Gate: No cameras detected, trying to enumerate...');
                 try {
-                    // First request permission with a temporary stream
                     const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    tempStream.getTracks().forEach(t => t.stop()); // Stop immediately
+                    tempStream.getTracks().forEach(t => t.stop());
+                    await new Promise(r => setTimeout(r, 300));
                     
-                    // Now enumerate - we should have labels
                     const devices = await navigator.mediaDevices.enumerateDevices();
                     const filteredCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs', 'camo', 'usb video device'];
                     const videoDevices = devices.filter(d => {
@@ -2455,47 +2470,56 @@
                         const label = (d.label || '').toLowerCase();
                         return !filteredCameras.some(v => label.includes(v));
                     });
-                    console.log('📷 SKU Gate: Found', videoDevices.length, 'cameras (filtered)');
+                    console.log('📷 SKU Gate: Found', videoDevices.length, 'cameras');
                     
                     for(const device of videoDevices) {
                         const label = device.label.toLowerCase();
-                        console.log('📷 SKU Gate: Camera:', device.label, device.deviceId.slice(0,8));
-                        if(label.includes('brio')) {
+                        console.log('📷 SKU Gate: Camera:', device.label);
+                        if(label.includes('brio') && !mainCameraId) {
                             mainCameraId = device.deviceId;
-                            console.log('📷 SKU Gate: Found BRIO:', device.deviceId.slice(0,8));
-                        } else if(label.includes('c922') || label.includes('922')) {
+                        } else if((label.includes('c922') || label.includes('922')) && !secondaryCameraId) {
                             secondaryCameraId = device.deviceId;
-                            console.log('📷 SKU Gate: Found C922X:', device.deviceId.slice(0,8));
                         }
                     }
                     
-                    // Fallback: use first available camera
                     if(!mainCameraId && !secondaryCameraId && videoDevices.length > 0) {
                         mainCameraId = videoDevices[0].deviceId;
-                        console.log('📷 SKU Gate: Using first camera:', mainCameraId.slice(0,8));
                     }
+                    
+                    cameraId = secondaryCameraId || mainCameraId;
                 } catch(e) {
-                    console.error('📷 SKU Gate: Camera access failed:', e);
-                    // Show helpful error message
-                    showToast('warning', 'Camera Busy', 'Close Logi Tune or other camera apps', 4000);
+                    console.error('📷 SKU Gate: Enumeration failed:', e);
                 }
             }
             
-            // Use C922X (secondary camera) for barcode scanning, fallback to BRIO
-            const cameraId = secondaryCameraId || mainCameraId;
             console.log('📷 SKU Gate: Using camera:', cameraId ? cameraId.slice(0,8) : 'NONE');
             
-            // Hide error overlay by default
-            document.getElementById('sku-gate-error').classList.add('hidden');
-            
             if(!cameraId) {
-                // Show error overlay
+                // No cameras available - show error
+                console.error('📷 SKU Gate: No cameras available');
                 document.getElementById('sku-gate-error').classList.remove('hidden');
                 document.getElementById('sku-gate-scan-input').placeholder = 'Type SKU manually...';
                 document.getElementById('sku-gate-scan-input').focus();
+                showToast('warning', 'No Camera', 'Cameras not detected - type SKU manually', 4000);
                 return;
             }
             
+            // Hide error overlay
+            document.getElementById('sku-gate-error').classList.add('hidden');
+            
+            // Start barcode scanning
+            try {
+                await startSkuBarcodeScanningWithCamera(cameraId);
+            } catch(e) {
+                console.error('📷 SKU Gate: Camera failed:', e);
+                document.getElementById('sku-gate-error').classList.remove('hidden');
+                document.getElementById('sku-gate-scan-input').placeholder = 'Type SKU manually...';
+                document.getElementById('sku-gate-scan-input').focus();
+                showToast('warning', 'Camera Error', e.message || 'Could not start camera', 4000);
+            }
+        }
+        
+        async function startSkuBarcodeScanningWithCamera(cameraId) {
             const video = document.getElementById('sku-gate-video');
             const statusEl = document.getElementById('scanner-status');
             
@@ -2555,6 +2579,7 @@
                     // Start scanning
                     setTimeout(scanFrame, 500);
                     console.log('📷 Native barcode scanning started');
+                    return; // Success with native API
                     
                 } catch(err) {
                     console.warn('Native BarcodeDetector failed:', err);
@@ -2562,8 +2587,8 @@
                 }
             }
             
-            // Fallback: Use ZXing (let it manage its own stream)
-            if(!skuGateBarcodeReader && typeof ZXing !== 'undefined') {
+            // Fallback: Use ZXing
+            if(typeof ZXing !== 'undefined') {
                 console.log('📷 Using ZXing library');
                 if(statusEl) statusEl.innerHTML = '📷 Camera Scanner Active';
                 
@@ -2571,59 +2596,40 @@
                     const codeReader = new ZXing.BrowserMultiFormatReader();
                     skuGateBarcodeReader = codeReader;
                     
-                    let scanning = true;
-                    
-                    // Let ZXing manage the video stream - pass the camera ID
                     codeReader.decodeFromVideoDevice(cameraId, 'sku-gate-video', (result, err) => {
-                        if(!scanning) return;
-                        
-                        // Update stream reference for cleanup
-                        if(!skuGateStream && video.srcObject) {
-                            skuGateStream = video.srcObject;
-                            // Start stabilizer once video is ready
-                            if(video.readyState >= 2) {
-                                startSkuGateStabilizer(video);
-                            } else {
-                                video.onloadeddata = () => startSkuGateStabilizer(video);
-                            }
-                        }
-                        
-                        if(result && result.text) {
+                        if(result) {
                             console.log('📷 Barcode detected (ZXing):', result.text);
-                            scanning = false;
-                            
                             const input = document.getElementById('sku-gate-scan-input');
                             input.value = result.text;
                             input.classList.add('valid');
                             if(navigator.vibrate) navigator.vibrate(100);
-                            
                             setTimeout(() => {
                                 if(input.value === result.text) lockSku(result.text);
                             }, 300);
                         }
                     });
                     
-                    skuGateBarcodeReader._stopScanning = () => {
-                        scanning = false;
-                        try { codeReader.reset(); } catch(e) {}
-                    };
+                    // Get stream reference from video element
+                    setTimeout(() => {
+                        if(!skuGateStream && video.srcObject) {
+                            skuGateStream = video.srcObject;
+                        }
+                        startSkuGateStabilizer(video);
+                    }, 500);
                     
-                    console.log('📷 ZXing scanning started with camera:', cameraId.slice(0, 8));
+                    console.log('📷 ZXing barcode scanning started');
+                    return;
                     
                 } catch(err) {
-                    console.error('ZXing init error:', err);
-                    if(statusEl) statusEl.innerHTML = '🔌 Use USB Scanner';
+                    console.error('ZXing failed:', err);
                 }
             }
             
-            // If nothing worked, show USB scanner message
-            if(!skuGateBarcodeReader) {
-                if(statusEl) statusEl.innerHTML = '🔌 Use USB Scanner';
-                document.getElementById('sku-gate-scan-input').placeholder = 'Use USB scanner...';
-            }
-            
-            // Focus scan input for USB scanner
-            setTimeout(() => document.getElementById('sku-gate-scan-input').focus(), 100);
+            // No barcode scanner available - fallback to USB scanner
+            console.log('📷 No barcode scanner available, using USB scanner mode');
+            if(statusEl) statusEl.innerHTML = '🔌 Use USB Scanner';
+            document.getElementById('sku-gate-scan-input').placeholder = 'Use USB scanner...';
+            document.getElementById('sku-gate-scan-input').focus();
         }
         
         async function startSkuGateBarcodeScanning(video) {
@@ -3021,8 +3027,12 @@
                     }
                 });
                 
-                // Start with main camera if detected
-                if(mainCameraId) {
+                // Only start camera if SKU gate is NOT visible (SKU already locked)
+                const skuGateVisible = !document.getElementById('sku-gate').classList.contains('hidden');
+                
+                if(skuGateVisible) {
+                    console.log('📷 SKU Gate visible - NOT starting camera yet');
+                } else if(mainCameraId) {
                     select.value = mainCameraId;
                     // For BRIO, use aggressive max resolution
                     await switchCameraMaxRes(mainCameraId);
