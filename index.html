@@ -459,9 +459,14 @@
         }
         .multi-cam-panel.west {
             border: 3px solid #3b82f6;
+            cursor: pointer;
         }
         .multi-cam-panel.east {
             border: 3px solid #8b5cf6;
+            cursor: pointer;
+        }
+        .multi-cam-panel.west:hover, .multi-cam-panel.east:hover {
+            border-width: 4px;
         }
         .multi-cam-label {
             position: absolute;
@@ -1443,6 +1448,7 @@
                         EAST ▶
                     </button>
                     <button onclick="openCameraConfig()" style="background:#475569;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;" title="Configure camera assignments">⚙️ CONFIG</button>
+                    <button onclick="refreshMultiCameras()" style="background:#0ea5e9;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;" title="Restart all cameras">🔄 REFRESH</button>
                     <span id="position-status" style="color:#64748b;font-size:10px;margin-left:auto;">Defects: Center only</span>
                 </div>
             </div>
@@ -1557,7 +1563,7 @@
                     <!-- 3-Up Camera View (multi-camera mode) -->
                     <div id="multi-camera-view" class="multi-camera-view" style="display:none;">
                         <!-- West Camera -->
-                        <div class="multi-cam-panel west" id="multi-cam-west">
+                        <div class="multi-cam-panel west" id="multi-cam-west" onclick="restartCamera('west')" title="Click to restart West camera">
                             <div class="multi-cam-label">◀ WEST</div>
                             <video id="video-west" autoplay playsinline></video>
                             <div class="multi-cam-overlay"></div>
@@ -1571,7 +1577,7 @@
                             <div class="defect-markers-layer" id="defect-markers-layer-multi" onclick="handleDefectClick(event)"></div>
                         </div>
                         <!-- East Camera -->
-                        <div class="multi-cam-panel east" id="multi-cam-east">
+                        <div class="multi-cam-panel east" id="multi-cam-east" onclick="restartCamera('east')" title="Click to restart East camera">
                             <div class="multi-cam-label">EAST ▶</div>
                             <video id="video-east" autoplay playsinline></video>
                             <div class="multi-cam-overlay"></div>
@@ -1666,7 +1672,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.00";
+        const VERSION = "v100.01";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3649,60 +3655,103 @@
             const videoCenter = document.getElementById('video-center');
             const videoEast = document.getElementById('video-east');
             
-            // Start West camera
-            if(westCameraId) {
-                try {
-                    streamWest = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: { exact: westCameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
-                    });
-                    videoWest.srcObject = streamWest;
-                    applyVideoTransform(videoWest, westCameraId);
-                    document.getElementById('multi-cam-west').style.display = 'flex';
-                    console.log('📷 West camera started');
-                } catch(e) {
-                    console.error('📷 West camera failed:', e);
-                    document.getElementById('multi-cam-west').style.display = 'none';
-                }
-            } else {
-                document.getElementById('multi-cam-west').style.display = 'none';
-            }
+            // IMPORTANT: Start cameras sequentially to avoid USB bandwidth issues
+            // Use lower resolution for side cameras
             
-            // Start Center camera (high res)
+            // Start Center camera FIRST (high res - priority)
             if(centerCameraId) {
                 try {
+                    console.log('📷 Starting CENTER camera (4K)...');
                     streamCenter = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: { exact: centerCameraId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
+                        video: { 
+                            deviceId: { exact: centerCameraId }, 
+                            width: { ideal: 4096 }, 
+                            height: { ideal: 2160 } 
+                        }
                     });
                     videoCenter.srcObject = streamCenter;
                     applyVideoTransform(videoCenter, centerCameraId);
                     activeCameraId = centerCameraId;
                     
-                    videoCenter.onloadedmetadata = () => {
-                        const w = videoCenter.videoWidth;
-                        const h = videoCenter.videoHeight;
-                        document.getElementById('camera-resolution').textContent = `${w}×${h}`;
-                        document.getElementById('camera-resolution').style.color = w >= 3800 ? '#22c55e' : '#3b82f6';
-                    };
-                    
-                    console.log('📷 Center camera started');
+                    await new Promise(resolve => {
+                        videoCenter.onloadedmetadata = () => {
+                            const w = videoCenter.videoWidth;
+                            const h = videoCenter.videoHeight;
+                            console.log(`📷 CENTER ready: ${w}x${h}`);
+                            document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+                            document.getElementById('camera-resolution').style.color = w >= 3800 ? '#22c55e' : '#3b82f6';
+                            resolve();
+                        };
+                    });
                 } catch(e) {
                     console.error('📷 Center camera failed:', e);
+                    showToast('error', 'Center Camera Failed', e.message, 3000);
                 }
             }
             
-            // Start East camera
+            // Small delay between camera starts to avoid USB contention
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Start West camera (lower res to save bandwidth)
+            if(westCameraId) {
+                try {
+                    console.log('📷 Starting WEST camera (1080p)...');
+                    streamWest = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            deviceId: { exact: westCameraId }, 
+                            width: { ideal: 1920, max: 1920 }, 
+                            height: { ideal: 1080, max: 1080 },
+                            frameRate: { ideal: 15, max: 15 } // Lower framerate
+                        }
+                    });
+                    videoWest.srcObject = streamWest;
+                    applyVideoTransform(videoWest, westCameraId);
+                    document.getElementById('multi-cam-west').style.display = 'flex';
+                    
+                    await new Promise(resolve => {
+                        videoWest.onloadedmetadata = () => {
+                            console.log(`📷 WEST ready: ${videoWest.videoWidth}x${videoWest.videoHeight}`);
+                            resolve();
+                        };
+                    });
+                } catch(e) {
+                    console.error('📷 West camera failed:', e);
+                    document.getElementById('multi-cam-west').style.display = 'none';
+                    showToast('warning', 'West Camera Failed', e.message, 2000);
+                }
+            } else {
+                document.getElementById('multi-cam-west').style.display = 'none';
+            }
+            
+            // Small delay
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Start East camera (lower res to save bandwidth)
             if(eastCameraId) {
                 try {
+                    console.log('📷 Starting EAST camera (1080p)...');
                     streamEast = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: { exact: eastCameraId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                        video: { 
+                            deviceId: { exact: eastCameraId }, 
+                            width: { ideal: 1920, max: 1920 }, 
+                            height: { ideal: 1080, max: 1080 },
+                            frameRate: { ideal: 15, max: 15 } // Lower framerate
+                        }
                     });
                     videoEast.srcObject = streamEast;
                     applyVideoTransform(videoEast, eastCameraId);
                     document.getElementById('multi-cam-east').style.display = 'flex';
-                    console.log('📷 East camera started');
+                    
+                    await new Promise(resolve => {
+                        videoEast.onloadedmetadata = () => {
+                            console.log(`📷 EAST ready: ${videoEast.videoWidth}x${videoEast.videoHeight}`);
+                            resolve();
+                        };
+                    });
                 } catch(e) {
                     console.error('📷 East camera failed:', e);
                     document.getElementById('multi-cam-east').style.display = 'none';
+                    showToast('warning', 'East Camera Failed', e.message, 2000);
                 }
             } else {
                 document.getElementById('multi-cam-east').style.display = 'none';
@@ -3720,7 +3769,9 @@
                 enableDefectMarking();
             }
             
-            showToast('success', '3 Cameras Active', 'West • Center • East', 2000);
+            // Count active streams
+            const activeCount = [streamWest, streamCenter, streamEast].filter(s => s).length;
+            showToast('success', `${activeCount} Cameras Active`, 'Ready to capture', 2000);
         }
         
         function stopMultiCameraView() {
@@ -3737,6 +3788,61 @@
                 streamEast = null;
             }
             multiViewActive = false;
+        }
+        
+        // Refresh/restart all multi-cameras
+        async function refreshMultiCameras() {
+            showToast('info', 'Refreshing Cameras...', 'Please wait', 1500);
+            stopMultiCameraView();
+            await new Promise(r => setTimeout(r, 500));
+            await startMultiCameraView();
+        }
+        
+        // Restart a single camera
+        async function restartCamera(position) {
+            const cameraId = position === 'west' ? westCameraId : position === 'east' ? eastCameraId : centerCameraId;
+            if(!cameraId) return;
+            
+            showToast('info', `Restarting ${position.toUpperCase()}...`, 'Please wait', 1500);
+            
+            // Stop existing stream
+            if(position === 'west' && streamWest) {
+                streamWest.getTracks().forEach(t => t.stop());
+                streamWest = null;
+            } else if(position === 'east' && streamEast) {
+                streamEast.getTracks().forEach(t => t.stop());
+                streamEast = null;
+            } else if(position === 'center' && streamCenter) {
+                streamCenter.getTracks().forEach(t => t.stop());
+                streamCenter = null;
+            }
+            
+            await new Promise(r => setTimeout(r, 300));
+            
+            // Restart
+            const videoEl = document.getElementById(`video-${position}`);
+            try {
+                const isCenter = position === 'center';
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        deviceId: { exact: cameraId }, 
+                        width: { ideal: isCenter ? 4096 : 1920, max: isCenter ? 4096 : 1920 }, 
+                        height: { ideal: isCenter ? 2160 : 1080, max: isCenter ? 2160 : 1080 },
+                        frameRate: isCenter ? undefined : { ideal: 15, max: 15 }
+                    }
+                });
+                videoEl.srcObject = stream;
+                applyVideoTransform(videoEl, cameraId);
+                
+                if(position === 'west') streamWest = stream;
+                else if(position === 'east') streamEast = stream;
+                else streamCenter = stream;
+                
+                showToast('success', `${position.toUpperCase()} Restarted`, 'Camera active', 1500);
+            } catch(e) {
+                console.error(`Failed to restart ${position}:`, e);
+                showToast('error', `${position.toUpperCase()} Failed`, e.message, 3000);
+            }
         }
         
         function applyVideoTransform(videoEl, cameraId) {
@@ -4907,108 +5013,146 @@
         
         // Capture from all 3 cameras at once
         async function captureAllCameras() {
-            console.log('📸 Capturing from all 3 cameras...');
+            console.log('📸 captureAllCameras() called');
+            console.log(`   streamWest: ${streamWest ? 'active' : 'null'}`);
+            console.log(`   streamCenter: ${streamCenter ? 'active' : 'null'}`);
+            console.log(`   streamEast: ${streamEast ? 'active' : 'null'}`);
             
             // Flash effect
             document.getElementById('flash-overlay').classList.add('flash'); 
             setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100);
             
             let captureCount = 0;
+            const capturePromises = [];
             
             // Capture West
-            if(streamWest) {
-                const videoWest = document.getElementById('video-west');
-                if(videoWest.videoWidth > 0) {
-                    captureFromVideo(videoWest, westCameraId, 'West');
-                    captureCount++;
-                }
+            const videoWest = document.getElementById('video-west');
+            if(streamWest && videoWest && videoWest.readyState >= 2 && videoWest.videoWidth > 0) {
+                console.log(`📸 WEST: ${videoWest.videoWidth}x${videoWest.videoHeight}, readyState=${videoWest.readyState}`);
+                capturePromises.push(captureFromVideoAsync(videoWest, westCameraId, 'West'));
+                captureCount++;
+            } else {
+                console.warn(`📸 WEST skipped: stream=${!!streamWest}, video=${!!videoWest}, readyState=${videoWest?.readyState}, width=${videoWest?.videoWidth}`);
             }
             
             // Capture Center (main camera - high res)
-            if(streamCenter) {
-                const videoCenter = document.getElementById('video-center');
-                if(videoCenter.videoWidth > 0) {
-                    captureFromVideo(videoCenter, centerCameraId, 'Center');
-                    captureCount++;
-                }
+            const videoCenter = document.getElementById('video-center');
+            if(streamCenter && videoCenter && videoCenter.readyState >= 2 && videoCenter.videoWidth > 0) {
+                console.log(`📸 CENTER: ${videoCenter.videoWidth}x${videoCenter.videoHeight}, readyState=${videoCenter.readyState}`);
+                capturePromises.push(captureFromVideoAsync(videoCenter, centerCameraId, 'Center'));
+                captureCount++;
+            } else {
+                console.warn(`📸 CENTER skipped: stream=${!!streamCenter}, video=${!!videoCenter}, readyState=${videoCenter?.readyState}, width=${videoCenter?.videoWidth}`);
             }
             
             // Capture East
-            if(streamEast) {
-                const videoEast = document.getElementById('video-east');
-                if(videoEast.videoWidth > 0) {
-                    captureFromVideo(videoEast, eastCameraId, 'East');
-                    captureCount++;
-                }
+            const videoEast = document.getElementById('video-east');
+            if(streamEast && videoEast && videoEast.readyState >= 2 && videoEast.videoWidth > 0) {
+                console.log(`📸 EAST: ${videoEast.videoWidth}x${videoEast.videoHeight}, readyState=${videoEast.readyState}`);
+                capturePromises.push(captureFromVideoAsync(videoEast, eastCameraId, 'East'));
+                captureCount++;
+            } else {
+                console.warn(`📸 EAST skipped: stream=${!!streamEast}, video=${!!videoEast}, readyState=${videoEast?.readyState}, width=${videoEast?.videoWidth}`);
             }
             
-            showToast('success', `📸 ${captureCount} Photos Captured`, 'West • Center • East', 2000);
+            // Wait for all captures to complete
+            if(capturePromises.length > 0) {
+                await Promise.all(capturePromises);
+            }
+            
+            if(captureCount > 0) {
+                showToast('success', `📸 ${captureCount} Photos Captured`, captureCount === 3 ? 'West • Center • East' : 'Some cameras unavailable', 2000);
+            } else {
+                showToast('error', 'No Photos Captured', 'Check camera connections', 3000);
+            }
+            
             updatePhotoGrids();
             updateValidation();
         }
         
-        function captureFromVideo(videoEl, cameraId, position) {
-            const sourceW = videoEl.videoWidth;
-            const sourceH = videoEl.videoHeight;
-            
-            // Get flip/rot settings for this camera
-            const isFlipped = cameraConfig.flips && cameraConfig.flips[cameraId];
-            const isRotated = cameraConfig.rots && cameraConfig.rots[cameraId];
-            
-            // Calculate effective dimensions after rotation
-            const effectiveW = isRotated ? sourceH : sourceW;
-            const effectiveH = isRotated ? sourceW : sourceH;
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            
-            canvas.width = effectiveW;
-            canvas.height = effectiveH;
-            
-            ctx.save();
-            
-            // Apply rotation first if needed
-            if(isRotated) {
-                ctx.translate(effectiveW/2, effectiveH/2);
-                ctx.rotate(Math.PI / 2);
-                ctx.translate(-sourceW/2, -sourceH/2);
-            }
-            
-            // Apply flip if needed
-            if(isFlipped) {
-                if(isRotated) {
-                    ctx.translate(sourceW, sourceH);
-                } else {
-                    ctx.translate(effectiveW, effectiveH);
+        // Async version of captureFromVideo that returns a promise
+        function captureFromVideoAsync(videoEl, cameraId, position) {
+            return new Promise((resolve) => {
+                try {
+                    const sourceW = videoEl.videoWidth;
+                    const sourceH = videoEl.videoHeight;
+                    
+                    if(sourceW === 0 || sourceH === 0) {
+                        console.error(`📸 ${position}: Invalid dimensions ${sourceW}x${sourceH}`);
+                        resolve();
+                        return;
+                    }
+                    
+                    // Get flip/rot settings for this camera
+                    const isFlipped = cameraConfig.flips && cameraConfig.flips[cameraId];
+                    const isRotated = cameraConfig.rots && cameraConfig.rots[cameraId];
+                    
+                    // Calculate effective dimensions after rotation
+                    const effectiveW = isRotated ? sourceH : sourceW;
+                    const effectiveH = isRotated ? sourceW : sourceH;
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    
+                    canvas.width = effectiveW;
+                    canvas.height = effectiveH;
+                    
+                    ctx.save();
+                    
+                    // Apply rotation first if needed
+                    if(isRotated) {
+                        ctx.translate(effectiveW/2, effectiveH/2);
+                        ctx.rotate(Math.PI / 2);
+                        ctx.translate(-sourceW/2, -sourceH/2);
+                    }
+                    
+                    // Apply flip if needed
+                    if(isFlipped) {
+                        if(isRotated) {
+                            ctx.translate(sourceW, sourceH);
+                        } else {
+                            ctx.translate(effectiveW, effectiveH);
+                        }
+                        ctx.rotate(Math.PI);
+                    }
+                    
+                    ctx.drawImage(videoEl, 0, 0, sourceW, sourceH);
+                    ctx.restore();
+                    
+                    console.log(`📸 ${position}: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (flip:${isFlipped}, rot:${isRotated})`);
+                    
+                    // Save photo
+                    canvas.toBlob(blob => {
+                        if(blob) {
+                            const photo = {
+                                blob,
+                                url: URL.createObjectURL(blob),
+                                width: canvas.width,
+                                height: canvas.height,
+                                position: position.toLowerCase(),
+                                cameraId: cameraId
+                            };
+                            data.mainPhotos.push(photo);
+                            
+                            // Auto-save to folder if selected
+                            if(saveDirectoryHandle) {
+                                const filename = generatePhotoFilename('main-' + position.toLowerCase(), data.mainPhotos.length);
+                                savePhotoToFolder(blob, filename);
+                            }
+                            
+                            console.log(`📸 ${position}: Saved successfully`);
+                        } else {
+                            console.error(`📸 ${position}: toBlob returned null`);
+                        }
+                        resolve();
+                    }, 'image/jpeg', 0.95);
+                } catch(e) {
+                    console.error(`📸 ${position}: Error capturing`, e);
+                    resolve();
                 }
-                ctx.rotate(Math.PI);
-            }
-            
-            ctx.drawImage(videoEl, 0, 0, sourceW, sourceH);
-            ctx.restore();
-            
-            console.log(`📸 ${position}: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (flip:${isFlipped}, rot:${isRotated})`);
-            
-            // Save photo
-            canvas.toBlob(blob => {
-                const photo = {
-                    blob,
-                    url: URL.createObjectURL(blob),
-                    width: canvas.width,
-                    height: canvas.height,
-                    position: position.toLowerCase(),
-                    cameraId: cameraId
-                };
-                data.mainPhotos.push(photo);
-                
-                // Auto-save to folder if selected
-                if(saveDirectoryHandle) {
-                    const filename = generatePhotoFilename('main-' + position.toLowerCase(), data.mainPhotos.length);
-                    savePhotoToFolder(blob, filename);
-                }
-            }, 'image/jpeg', 0.95);
+            });
         }
         
         function captureMainWithDefects(video, sourceW, sourceH) {
