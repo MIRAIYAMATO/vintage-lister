@@ -252,174 +252,6 @@
         
         /* Camera */
         .camera-header { background: #111; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid #333; flex-shrink: 0; }
-        
-        /* 5-Camera Preview Grid */
-        .multi-camera-toggle { background: #374151; border: 1px solid #4b5563; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
-        .multi-camera-toggle:hover { background: #4b5563; }
-        .multi-camera-toggle.active { background: #3b82f6; border-color: #3b82f6; }
-        
-        .five-camera-grid { display: none; position: absolute; inset: 0; background: #000; z-index: 50; }
-        .five-camera-grid.active { 
-            display: grid; 
-            grid-template-columns: 1fr 1.5fr 1fr; 
-            grid-template-rows: 1fr 2.5fr 1fr;  /* Middle row is taller for portrait cameras */
-            gap: 4px; 
-            padding: 4px; 
-        }
-        
-        .camera-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 3px solid #333; transition: all 0.2s; }
-        .camera-cell video { width: 100%; height: 100%; object-fit: cover; }
-        
-        /* Middle row cameras need 90° rotation for portrait mode */
-        .camera-cell.west video,
-        .camera-cell.primary video,
-        .camera-cell.east video {
-            transform: rotate(90deg);
-            /* Scale up to fill container after rotation */
-            width: 177%;  /* Approximate to fill height after rotation */
-            height: 177%;
-            object-fit: cover;
-        }
-        
-        /* NORTH - Top row, spans all columns (LANDSCAPE) */
-        .camera-cell.north { 
-            grid-column: 1 / span 3; 
-            grid-row: 1; 
-            border-color: #f59e0b; 
-        }
-        
-        /* WEST - Left column, middle row (PORTRAIT) */
-        .camera-cell.west { 
-            grid-column: 1; 
-            grid-row: 2; 
-            border-color: #22c55e; 
-        }
-        
-        /* PRIMARY - Center column, middle row (PORTRAIT) */
-        .camera-cell.primary { 
-            grid-column: 2; 
-            grid-row: 2; 
-            border-color: #3b82f6; 
-            border-width: 4px;
-        }
-        
-        /* EAST - Right column, middle row (PORTRAIT) */
-        .camera-cell.east { 
-            grid-column: 3; 
-            grid-row: 2; 
-            border-color: #22c55e; 
-        }
-        
-        /* SOUTH - Bottom row, spans all columns (LANDSCAPE) */
-        .camera-cell.south { 
-            grid-column: 1 / span 3; 
-            grid-row: 3; 
-            border-color: #f59e0b; 
-        }
-        
-        /* Camera Labels - More prominent */
-        .camera-cell-label { 
-            position: absolute; 
-            top: 8px; 
-            left: 8px; 
-            color: white; 
-            padding: 6px 12px; 
-            border-radius: 6px; 
-            font-size: 12px; 
-            font-weight: 800; 
-            z-index: 5; 
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-        }
-        .camera-cell-label.primary { background: #3b82f6; }
-        .camera-cell-label.north, .camera-cell-label.south { background: #f59e0b; }
-        .camera-cell-label.west, .camera-cell-label.east { background: #22c55e; }
-        
-        /* Camera name display */
-        .camera-cell-name {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(0,0,0,0.8);
-            color: #94a3b8;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-            z-index: 5;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .camera-cell-status { position: absolute; bottom: 8px; right: 8px; font-size: 10px; color: #6b7280; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; font-weight: 600; }
-        .camera-cell-status.live { color: #22c55e; }
-        .camera-cell-status.live::before { content: '●'; margin-right: 4px; animation: pulse 2s infinite; }
-        
-        .camera-cell.disabled { opacity: 0.3; }
-        .camera-cell.active-capture { border-color: #22c55e !important; box-shadow: 0 0 30px rgba(34, 197, 94, 0.6); }
-        
-        .camera-cell-placeholder { color: #555; text-align: center; font-size: 12px; }
-        .camera-cell-placeholder-icon { font-size: 32px; margin-bottom: 8px; }
-        
-        /* Camera Assignment Dropdown - Moved to bottom */
-        .camera-assign-select { 
-            position: absolute; 
-            bottom: 8px; 
-            left: 8px; 
-            background: rgba(0,0,0,0.9); 
-            border: 2px solid #555; 
-            color: white; 
-            padding: 6px 10px; 
-            border-radius: 6px; 
-            font-size: 11px; 
-            font-weight: 600;
-            z-index: 5; 
-            max-width: 160px;
-            cursor: pointer;
-        }
-        .camera-assign-select:focus { outline: none; border-color: #3b82f6; }
-        .camera-assign-select:hover { border-color: #3b82f6; }
-        
-        /* Identify button */
-        .camera-identify-btn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(59, 130, 246, 0.9);
-            border: none;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            z-index: 10;
-            display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-        .camera-cell:hover .camera-identify-btn { display: block; }
-        .camera-identify-btn:hover { background: #2563eb; }
-        
-        /* Flash effect for identification */
-        .camera-cell.identifying {
-            animation: identifyFlash 0.3s ease-in-out 3;
-        }
-        @keyframes identifyFlash {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(3); border-color: #fff; }
-        }
-        
-        /* Category Camera Config Panel */
-        .category-camera-config { background: #1e293b; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
-        .category-camera-config-title { font-size: 11px; color: #94a3b8; margin-bottom: 8px; font-weight: 600; }
-        .camera-config-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .camera-config-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
-        .camera-config-badge.active { background: #22c55e; color: white; }
-        .camera-config-badge.inactive { background: #374151; color: #6b7280; }
         .camera-select { background: var(--color-dark); border: 1px solid var(--color-dark-border); color: white; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 12px; flex: 1; max-width: 220px; transition: var(--transition-fast); }
         .camera-select:focus { outline: none; border-color: var(--color-primary); }
         .camera-status { font-size: 11px; font-weight: 700; color: #555; }
@@ -1481,13 +1313,7 @@
         <div class="camera-panel">
             <div class="camera-header">
                 <select id="camera-select" class="camera-select" onchange="switchCamera(this.value)"><option value="">Select Camera...</option></select>
-                <button id="multi-camera-toggle" class="multi-camera-toggle" onclick="toggleMultiCameraView()">
-                    <span>📹</span> <span id="multi-cam-label">5-CAM</span>
-                </button>
-                <button id="identify-all-btn" class="multi-camera-toggle" onclick="identifyAllCameras()" style="display:none;">
-                    🔦 ID ALL
-                </button>
-                <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 PRIMARY</span>
+                <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 Main Camera</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
                 <button class="fullres-btn" onclick="forceMaxResolution()" title="Click to force maximum resolution">FULL RES</button>
                 <div id="camera-status" class="camera-status">No camera</div>
@@ -1500,90 +1326,6 @@
                         <div style="font-size:11px;margin-top:6px;color:#555;">Logitech Brio 4K DCI (4096×2160)</div>
                     </div>
                     <video id="camera-video" autoplay playsinline style="display:none;"></video>
-                    
-                    <!-- 5-Camera Preview Grid -->
-                    <div class="five-camera-grid" id="five-camera-grid">
-                        <!-- NORTH Camera - TOP ROW (Landscape) -->
-                        <div class="camera-cell north" id="cam-cell-north">
-                            <span class="camera-cell-label north">NORTH</span>
-                            <span class="camera-cell-name" id="cam-name-north">Not assigned</span>
-                            <video id="cam-video-north" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-north">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('north')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-north" onchange="assignCamera('north', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-north">--</span>
-                        </div>
-                        
-                        <!-- WEST Camera - MIDDLE ROW LEFT (Portrait) -->
-                        <div class="camera-cell west" id="cam-cell-west">
-                            <span class="camera-cell-label west">WEST</span>
-                            <span class="camera-cell-name" id="cam-name-west">Not assigned</span>
-                            <video id="cam-video-west" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-west">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('west')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-west" onchange="assignCamera('west', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-west">--</span>
-                        </div>
-                        
-                        <!-- PRIMARY Camera - MIDDLE ROW CENTER (Portrait) -->
-                        <div class="camera-cell primary" id="cam-cell-primary">
-                            <span class="camera-cell-label primary">⭐ PRIMARY</span>
-                            <span class="camera-cell-name" id="cam-name-primary">Not assigned</span>
-                            <video id="cam-video-primary" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-primary">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>PRIMARY (Main)</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('primary')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-primary" onchange="assignCamera('primary', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-primary">--</span>
-                        </div>
-                        
-                        <!-- EAST Camera - MIDDLE ROW RIGHT (Portrait) -->
-                        <div class="camera-cell east" id="cam-cell-east">
-                            <span class="camera-cell-label east">EAST</span>
-                            <span class="camera-cell-name" id="cam-name-east">Not assigned</span>
-                            <video id="cam-video-east" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-east">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('east')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-east" onchange="assignCamera('east', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-east">--</span>
-                        </div>
-                        
-                        <!-- SOUTH Camera - BOTTOM ROW (Landscape) -->
-                        <div class="camera-cell south" id="cam-cell-south">
-                            <span class="camera-cell-label south">SOUTH</span>
-                            <span class="camera-cell-name" id="cam-name-south">Not assigned</span>
-                            <video id="cam-video-south" autoplay playsinline muted></video>
-                            <div class="camera-cell-placeholder" id="cam-placeholder-south">
-                                <div class="camera-cell-placeholder-icon">📷</div>
-                                <div>Click to assign</div>
-                            </div>
-                            <button class="camera-identify-btn" onclick="identifyCamera('south')">🔦 IDENTIFY</button>
-                            <select class="camera-assign-select" id="cam-assign-south" onchange="assignCamera('south', this.value)">
-                                <option value="">Select camera...</option>
-                            </select>
-                            <span class="camera-cell-status" id="cam-status-south">--</span>
-                        </div>
-                    </div>
-                    
                     <div class="camera-overlay" id="camera-overlay">
                         <!-- Stabilizer Indicator -->
                         <div class="stabilizer-indicator" id="stabilizer-indicator">
@@ -1623,7 +1365,7 @@
                 </div>
             </div>
             <div class="camera-footer">
-                <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;" id="main-cam-count">5 cams</small></button>
+                <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
@@ -1672,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.82";
+        const VERSION = "v99.83";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1755,62 +1497,6 @@
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
-        
-        // ============ 5-CAMERA SYSTEM ============
-        let multiCameraMode = false;
-        let cameraAssignments = {
-            primary: null,  // Center camera, 40" height
-            north: null,    // Top camera - 20" height, 15" forward
-            south: null,    // Bottom camera - 20" height, 15" back
-            east: null,     // Right camera - 20" height, 15" right
-            west: null      // Left camera - 20" height, 15" left
-        };
-        let cameraStreams = {
-            primary: null,
-            north: null,
-            south: null,
-            east: null,
-            west: null
-        };
-        
-        // Category-based camera configurations
-        const categoryCameraConfig = {
-            // Tops: All 5 cameras
-            'tops': ['primary', 'north', 'south', 'east', 'west'],
-            't-shirt': ['primary', 'north', 'south', 'east', 'west'],
-            'long-sleeve': ['primary', 'north', 'south', 'east', 'west'],
-            'polo': ['primary', 'north', 'south', 'east', 'west'],
-            'tank': ['primary', 'north', 'south', 'east', 'west'],
-            'sweater': ['primary', 'north', 'south', 'east', 'west'],
-            'hoodie': ['primary', 'north', 'south', 'east', 'west'],
-            'jacket': ['primary', 'north', 'south', 'east', 'west'],
-            
-            // Bottoms: Primary + North + South (waistband & hem)
-            'bottoms': ['primary', 'north', 'south'],
-            'jeans': ['primary', 'north', 'south'],
-            'pants': ['primary', 'north', 'south'],
-            'shorts': ['primary', 'north', 'south'],
-            'skirt': ['primary', 'north', 'south'],
-            
-            // Accessories: Primary only
-            'hats': ['primary'],
-            'hat': ['primary'],
-            'accessories': ['primary'],
-            
-            // Default: All 5
-            'default': ['primary', 'north', 'south', 'east', 'west']
-        };
-        
-        // Get active cameras for current category
-        function getActiveCamerasForCategory() {
-            const superCat = data.superCategory || 'tops';
-            const subCat = data.category || '';
-            
-            // Check subcategory first, then super category, then default
-            return categoryCameraConfig[subCat.toLowerCase()] || 
-                   categoryCameraConfig[superCat.toLowerCase()] || 
-                   categoryCameraConfig['default'];
-        }
         let barcodeScanInterval = null;
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
@@ -2609,7 +2295,7 @@
         
         document.addEventListener('DOMContentLoaded', () => { 
             setVersionDisplays();
-            checkAuth(); loadStats(); loadCameraAssignments(); enumerateCameras(); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
+            checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
             document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
             document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
             // Focus PIN input if PIN screen is visible
@@ -2769,10 +2455,10 @@
                         console.log('📷 SKU Gate: Camera:', device.label, device.deviceId.slice(0,8));
                         if(label.includes('brio')) {
                             mainCameraId = device.deviceId;
-                            console.log('📷 SKU Gate: Found BRIO:', device.deviceId.slice(0,8));
+                            console.log('📷 SKU Gate: Set as MAIN camera:', device.deviceId.slice(0,8));
                         } else if(label.includes('c922') || label.includes('922')) {
                             secondaryCameraId = device.deviceId;
-                            console.log('📷 SKU Gate: Found secondary camera:', device.deviceId.slice(0,8));
+                            console.log('📷 SKU Gate: Set as SECONDARY camera:', device.deviceId.slice(0,8));
                         }
                     }
                     
@@ -3314,11 +3000,11 @@
                     
                     console.log(`  ${i+1}. ${device.label} (${device.deviceId.slice(0,8)}...)`);
                     
-                    // Auto-detect cameras by name
+                    // Auto-detect cameras by name (primary = high-res camera, secondary = close-up camera)
                     const label = device.label.toLowerCase();
                     if(label.includes('brio')) {
                         mainCameraId = device.deviceId;
-                        console.log('  → Set as MAIN camera (Brio 4K)');
+                        console.log('  → Set as MAIN camera');
                     }
                     if(label.includes('c922') || label.includes('922')) {
                         secondaryCameraId = device.deviceId;
@@ -3329,7 +3015,7 @@
                 // Start with main camera if detected
                 if(mainCameraId) {
                     select.value = mainCameraId;
-                    // For BRIO, use aggressive max resolution
+                    // Use aggressive max resolution for main camera
                     await switchCameraMaxRes(mainCameraId);
                     // Auto-trigger full resolution to ensure max quality
                     setTimeout(() => {
@@ -3350,548 +3036,10 @@
                     enableDefectMarking();
                     console.log('📷 Defect marking enabled on startup');
                 }
-                
-                // Populate 5-camera assignment dropdowns
-                populateCameraAssignDropdowns(videoDevices);
-                
-                // Auto-assign cameras based on labels
-                autoAssignCameras(videoDevices);
-                
             } catch(err){ console.error('Camera error:', err); } 
         }
         
-        // ============ 5-CAMERA SYSTEM FUNCTIONS ============
-        
-        // Populate camera assignment dropdowns
-        function populateCameraAssignDropdowns(videoDevices) {
-            const positions = ['primary', 'north', 'south', 'east', 'west'];
-            
-            positions.forEach(pos => {
-                const select = document.getElementById(`cam-assign-${pos}`);
-                if(!select) return;
-                
-                select.innerHTML = '<option value="">Select camera...</option>';
-                videoDevices.forEach((device, i) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    // Add camera number and short ID to make them distinguishable
-                    const shortId = device.deviceId.slice(0, 4);
-                    option.textContent = `Camera #${i+1} (${shortId})`;
-                    select.appendChild(option);
-                });
-                
-                // If there's a saved assignment, restore it
-                if(cameraAssignments[pos]) {
-                    select.value = cameraAssignments[pos];
-                    
-                    // Update name display with short format
-                    const nameEl = document.getElementById(`cam-name-${pos}`);
-                    if(nameEl && select.selectedIndex > 0) {
-                        const shortId = cameraAssignments[pos].slice(0, 4);
-                        nameEl.textContent = `#${select.selectedIndex}: (${shortId})`;
-                    }
-                }
-            });
-            
-            console.log('📷 Camera assignment dropdowns populated');
-        }
-        
-        // Auto-assign cameras based on labels
-        function autoAssignCameras(videoDevices) {
-            console.log('📷 Auto-assigning cameras...');
-            
-            videoDevices.forEach(device => {
-                const label = (device.label || '').toLowerCase();
-                
-                // BRIO = PRIMARY (center, main camera)
-                if(label.includes('brio')) {
-                    cameraAssignments.primary = device.deviceId;
-                    document.getElementById('cam-assign-primary').value = device.deviceId;
-                    console.log('  → PRIMARY: Found main camera');
-                }
-                // Look for cameras with directional labels or numbers
-                else if(label.includes('north') || label.includes('top')) {
-                    cameraAssignments.north = device.deviceId;
-                    document.getElementById('cam-assign-north').value = device.deviceId;
-                    console.log('  → NORTH:', device.label);
-                }
-                else if(label.includes('south') || label.includes('bottom')) {
-                    cameraAssignments.south = device.deviceId;
-                    document.getElementById('cam-assign-south').value = device.deviceId;
-                    console.log('  → SOUTH:', device.label);
-                }
-                else if(label.includes('east') || label.includes('right')) {
-                    cameraAssignments.east = device.deviceId;
-                    document.getElementById('cam-assign-east').value = device.deviceId;
-                    console.log('  → EAST:', device.label);
-                }
-                else if(label.includes('west') || label.includes('left')) {
-                    cameraAssignments.west = device.deviceId;
-                    document.getElementById('cam-assign-west').value = device.deviceId;
-                    console.log('  → WEST:', device.label);
-                }
-            });
-            
-            // If we have 5+ cameras but not all assigned, try to fill gaps
-            const unassignedDevices = videoDevices.filter(d => {
-                return !Object.values(cameraAssignments).includes(d.deviceId);
-            });
-            
-            const unassignedPositions = Object.entries(cameraAssignments)
-                .filter(([pos, id]) => !id)
-                .map(([pos]) => pos);
-            
-            // Auto-fill remaining positions
-            unassignedPositions.forEach((pos, i) => {
-                if(unassignedDevices[i]) {
-                    cameraAssignments[pos] = unassignedDevices[i].deviceId;
-                    document.getElementById(`cam-assign-${pos}`).value = unassignedDevices[i].deviceId;
-                    console.log(`  → ${pos.toUpperCase()} (auto): ${unassignedDevices[i].label}`);
-                }
-            });
-            
-            // Save to localStorage
-            saveCameraAssignments();
-        }
-        
-        // Save camera assignments to localStorage
-        function saveCameraAssignments() {
-            try {
-                localStorage.setItem('vl_camera_assignments', JSON.stringify(cameraAssignments));
-            } catch(e) {}
-        }
-        
-        // Load camera assignments from localStorage
-        function loadCameraAssignments() {
-            try {
-                const saved = localStorage.getItem('vl_camera_assignments');
-                if(saved) {
-                    const parsed = JSON.parse(saved);
-                    Object.assign(cameraAssignments, parsed);
-                    
-                    // Update dropdowns
-                    Object.entries(cameraAssignments).forEach(([pos, id]) => {
-                        if(id) {
-                            const select = document.getElementById(`cam-assign-${pos}`);
-                            if(select) select.value = id;
-                        }
-                    });
-                    console.log('📷 Loaded saved camera assignments');
-                }
-            } catch(e) {}
-        }
-        
-        // Assign camera to position
-        function assignCamera(position, deviceId) {
-            console.log(`📷 Assigning ${position}: ${deviceId ? deviceId.slice(0,8) : 'none'}`);
-            
-            // Stop existing stream for this position
-            if(cameraStreams[position]) {
-                cameraStreams[position].getTracks().forEach(t => t.stop());
-                cameraStreams[position] = null;
-            }
-            
-            cameraAssignments[position] = deviceId || null;
-            saveCameraAssignments();
-            
-            // Update camera name display
-            const nameEl = document.getElementById(`cam-name-${position}`);
-            const select = document.getElementById(`cam-assign-${position}`);
-            if(nameEl && select) {
-                if(deviceId) {
-                    // Find camera number from dropdown
-                    let camNum = '';
-                    for(let i = 0; i < select.options.length; i++) {
-                        if(select.options[i].value === deviceId) {
-                            camNum = `#${i}: `;
-                            break;
-                        }
-                    }
-                    const shortId = deviceId.slice(0, 4);
-                    nameEl.textContent = `${camNum}(${shortId})`;
-                } else {
-                    nameEl.textContent = 'Not assigned';
-                }
-            }
-            
-            // If in multi-camera mode, start the new stream
-            if(multiCameraMode && deviceId) {
-                startCameraStream(position, deviceId);
-            }
-            
-            // Update placeholder visibility
-            const placeholder = document.getElementById(`cam-placeholder-${position}`);
-            const video = document.getElementById(`cam-video-${position}`);
-            if(placeholder && video) {
-                if(deviceId && multiCameraMode) {
-                    placeholder.style.display = 'none';
-                } else if(!deviceId) {
-                    placeholder.style.display = 'block';
-                    video.style.display = 'none';
-                }
-            }
-        }
-        
-        // Toggle multi-camera view
-        async function toggleMultiCameraView() {
-            multiCameraMode = !multiCameraMode;
-            
-            const grid = document.getElementById('five-camera-grid');
-            const toggle = document.getElementById('multi-camera-toggle');
-            const idAllBtn = document.getElementById('identify-all-btn');
-            const mainVideo = document.getElementById('camera-video');
-            const placeholder = document.getElementById('camera-placeholder');
-            const overlay = document.getElementById('camera-overlay');
-            const markersLayer = document.getElementById('defect-markers-layer');
-            const mainCameraSelect = document.getElementById('camera-select');
-            
-            if(multiCameraMode) {
-                // Show 5-camera grid
-                grid.classList.add('active');
-                toggle.classList.add('active');
-                document.getElementById('multi-cam-label').textContent = '1-CAM';
-                if(idAllBtn) idAllBtn.style.display = 'flex';
-                
-                // Hide main camera dropdown (not needed in 5-cam mode)
-                if(mainCameraSelect) mainCameraSelect.style.display = 'none';
-                
-                // Hide single camera elements
-                mainVideo.style.display = 'none';
-                placeholder.style.display = 'none';
-                if(overlay) overlay.style.display = 'none';
-                if(markersLayer) markersLayer.style.display = 'none';
-                
-                // Start all camera streams
-                await startAllCameraStreams();
-                
-                // Update display
-                updateActiveCamerasDisplay();
-                
-                showToast('info', '5-Camera Mode', 'All cameras now active');
-            } else {
-                // Hide 5-camera grid
-                grid.classList.remove('active');
-                toggle.classList.remove('active');
-                document.getElementById('multi-cam-label').textContent = '5-CAM';
-                if(idAllBtn) idAllBtn.style.display = 'none';
-                
-                // Show main camera dropdown
-                if(mainCameraSelect) mainCameraSelect.style.display = 'block';
-                
-                // Stop all multi-camera streams
-                stopAllCameraStreams();
-                
-                // Show single camera elements
-                if(currentStream) {
-                    mainVideo.style.display = 'block';
-                    if(overlay) overlay.style.display = 'block';
-                    if(markersLayer) markersLayer.style.display = 'block';
-                } else {
-                    placeholder.style.display = 'block';
-                }
-                
-                // Update display
-                updateActiveCamerasDisplay();
-                
-                showToast('info', 'Single Camera Mode', 'Using primary camera');
-            }
-        }
-        
-        // Identify camera - flash the physical camera's preview
-        function identifyCamera(position) {
-            const cell = document.getElementById(`cam-cell-${position}`);
-            const deviceId = cameraAssignments[position];
-            
-            if(!deviceId) {
-                showToast('warning', 'No Camera Assigned', `Assign a camera to ${position.toUpperCase()} first`);
-                return;
-            }
-            
-            // Flash the cell
-            cell.classList.add('identifying');
-            setTimeout(() => cell.classList.remove('identifying'), 1000);
-            
-            // Get camera name
-            const select = document.getElementById(`cam-assign-${position}`);
-            const cameraName = select.options[select.selectedIndex]?.text || 'Unknown';
-            
-            showToast('info', `${position.toUpperCase()} Camera`, cameraName);
-        }
-        
-        // Identify all cameras in sequence
-        async function identifyAllCameras() {
-            const positions = ['primary', 'north', 'south', 'east', 'west'];
-            
-            for(const pos of positions) {
-                if(cameraAssignments[pos]) {
-                    const cell = document.getElementById(`cam-cell-${pos}`);
-                    if(cell) {
-                        cell.classList.add('identifying');
-                        
-                        const select = document.getElementById(`cam-assign-${pos}`);
-                        const cameraName = select?.options[select.selectedIndex]?.text || 'Unknown';
-                        showToast('info', `${pos.toUpperCase()}`, cameraName, 1500);
-                        
-                        await new Promise(r => setTimeout(r, 1200));
-                        cell.classList.remove('identifying');
-                    }
-                }
-            }
-        }
-        
-        // Start a single camera stream
-        async function startCameraStream(position, deviceId) {
-            if(!deviceId) return;
-            
-            const video = document.getElementById(`cam-video-${position}`);
-            const placeholder = document.getElementById(`cam-placeholder-${position}`);
-            const status = document.getElementById(`cam-status-${position}`);
-            const nameEl = document.getElementById(`cam-name-${position}`);
-            
-            if(!video) return;
-            
-            // Try multiple resolutions, starting with 4K for ALL cameras
-            const resolutions = [
-                { w: 4096, h: 2160, name: '4K DCI' },
-                { w: 3840, h: 2160, name: '4K UHD' },
-                { w: 2560, h: 1440, name: '1440p' },
-                { w: 1920, h: 1080, name: '1080p' }
-            ];
-            
-            for(const res of resolutions) {
-                try {
-                    console.log(`📷 ${position.toUpperCase()}: Trying ${res.name} (${res.w}x${res.h})...`);
-                    
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            deviceId: { exact: deviceId },
-                            width: { exact: res.w },
-                            height: { exact: res.h }
-                        }
-                    });
-                    
-                    cameraStreams[position] = stream;
-                    
-                    video.srcObject = stream;
-                    video.style.display = 'block';
-                    if(placeholder) placeholder.style.display = 'none';
-                    
-                    const track = stream.getVideoTracks()[0];
-                    const settings = track.getSettings();
-                    
-                    if(status) {
-                        status.textContent = `${settings.width}×${settings.height}`;
-                        status.classList.add('live');
-                        
-                        // Color code based on resolution
-                        if(settings.width >= 3800) {
-                            status.style.color = '#22c55e'; // Green for 4K
-                        } else if(settings.width >= 2500) {
-                            status.style.color = '#3b82f6'; // Blue for 1440p
-                        } else {
-                            status.style.color = '#f59e0b'; // Orange for 1080p
-                        }
-                    }
-                    
-                    // Update camera name from track label with short ID
-                    if(nameEl) {
-                        const label = track.label || 'Camera';
-                        const shortId = deviceId.slice(0, 4);
-                        // Find camera index
-                        const select = document.getElementById(`cam-assign-${position}`);
-                        let camNum = '';
-                        if(select) {
-                            for(let i = 0; i < select.options.length; i++) {
-                                if(select.options[i].value === deviceId) {
-                                    camNum = `#${i}: `;
-                                    break;
-                                }
-                            }
-                        }
-                        nameEl.textContent = `${camNum}(${shortId})`;
-                    }
-                    
-                    console.log(`✅ ${position.toUpperCase()} stream started: ${settings.width}×${settings.height}`);
-                    return; // Success!
-                    
-                } catch(err) {
-                    console.log(`❌ ${position.toUpperCase()}: ${res.name} failed`);
-                    // Continue to next resolution
-                }
-            }
-            
-            // All exact resolutions failed - try with ideal constraints
-            try {
-                console.log(`📷 ${position.toUpperCase()}: Trying ideal constraints...`);
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: deviceId },
-                        width: { ideal: 3840 },
-                        height: { ideal: 2160 }
-                    }
-                });
-                
-                cameraStreams[position] = stream;
-                video.srcObject = stream;
-                video.style.display = 'block';
-                if(placeholder) placeholder.style.display = 'none';
-                
-                const track = stream.getVideoTracks()[0];
-                const settings = track.getSettings();
-                
-                if(status) {
-                    status.textContent = `${settings.width}×${settings.height}`;
-                    status.classList.add('live');
-                }
-                
-                if(nameEl) {
-                    const shortId = deviceId.slice(0, 4);
-                    const select = document.getElementById(`cam-assign-${position}`);
-                    let camNum = '';
-                    if(select) {
-                        for(let i = 0; i < select.options.length; i++) {
-                            if(select.options[i].value === deviceId) {
-                                camNum = `#${i}: `;
-                                break;
-                            }
-                        }
-                    }
-                    nameEl.textContent = `${camNum}(${shortId})`;
-                }
-                
-                console.log(`✅ ${position.toUpperCase()} stream (ideal): ${settings.width}×${settings.height}`);
-                
-            } catch(err) {
-                console.error(`📷 ${position} stream error:`, err);
-                if(status) {
-                    status.textContent = 'Error';
-                    status.classList.remove('live');
-                }
-                if(nameEl) {
-                    nameEl.textContent = 'Error connecting';
-                }
-            }
-        }
-        
-        // Start all camera streams
-        async function startAllCameraStreams() {
-            console.log('📷 Starting all camera streams...');
-            
-            const positions = ['primary', 'north', 'south', 'east', 'west'];
-            
-            for(const pos of positions) {
-                const deviceId = cameraAssignments[pos];
-                if(deviceId) {
-                    await startCameraStream(pos, deviceId);
-                    // Small delay between starting cameras to avoid USB bandwidth issues
-                    await new Promise(r => setTimeout(r, 200));
-                }
-            }
-        }
-        
-        // Stop all camera streams
-        function stopAllCameraStreams() {
-            console.log('📷 Stopping all camera streams...');
-            
-            Object.entries(cameraStreams).forEach(([pos, stream]) => {
-                if(stream) {
-                    stream.getTracks().forEach(t => t.stop());
-                    cameraStreams[pos] = null;
-                    
-                    const status = document.getElementById(`cam-status-${pos}`);
-                    if(status) {
-                        status.textContent = '--';
-                        status.classList.remove('live');
-                    }
-                    
-                    // Hide video, show placeholder
-                    const video = document.getElementById(`cam-video-${pos}`);
-                    const placeholder = document.getElementById(`cam-placeholder-${pos}`);
-                    if(video) video.style.display = 'none';
-                    if(placeholder && !cameraAssignments[pos]) placeholder.style.display = 'block';
-                }
-            });
-        }
-        
-        // Capture photos from all active cameras (based on category)
-        async function captureFromAllCameras() {
-            const activeCameras = getActiveCamerasForCategory();
-            console.log(`📷 Capturing from ${activeCameras.length} cameras:`, activeCameras);
-            
-            const captures = [];
-            
-            for(const pos of activeCameras) {
-                const video = multiCameraMode 
-                    ? document.getElementById(`cam-video-${pos}`)
-                    : (pos === 'primary' ? document.getElementById('camera-video') : null);
-                
-                if(!video || !video.srcObject) continue;
-                
-                // Highlight the camera being captured
-                const cell = document.getElementById(`cam-cell-${pos}`);
-                if(cell) cell.classList.add('active-capture');
-                
-                // Capture frame
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
-                
-                const imageData = canvas.toDataURL('image/jpeg', 0.95);
-                captures.push({
-                    position: pos,
-                    image: imageData,
-                    width: canvas.width,
-                    height: canvas.height,
-                    timestamp: Date.now()
-                });
-                
-                // Flash effect
-                if(cell) {
-                    cell.style.filter = 'brightness(2)';
-                    setTimeout(() => {
-                        cell.style.filter = '';
-                        cell.classList.remove('active-capture');
-                    }, 150);
-                }
-                
-                // Small delay between captures
-                await new Promise(r => setTimeout(r, 100));
-            }
-            
-            console.log(`📷 Captured ${captures.length} photos`);
-            return captures;
-        }
-        
-        // Update which cameras are active based on category selection
-        function updateActiveCamerasDisplay() {
-            const activeCameras = getActiveCamerasForCategory();
-            const positions = ['primary', 'north', 'south', 'east', 'west'];
-            
-            positions.forEach(pos => {
-                const cell = document.getElementById(`cam-cell-${pos}`);
-                if(cell) {
-                    if(activeCameras.includes(pos)) {
-                        cell.classList.remove('disabled');
-                    } else {
-                        cell.classList.add('disabled');
-                    }
-                }
-            });
-            
-            // Update the camera count in footer
-            const countEl = document.getElementById('main-cam-count');
-            if(countEl) {
-                if(multiCameraMode) {
-                    countEl.textContent = `${activeCameras.length} cams`;
-                } else {
-                    countEl.textContent = 'Brio 4K';
-                }
-            }
-        }
-        
-        // V99.45: Aggressive max resolution switch for BRIO
+        // Aggressive max resolution switch for main camera
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
@@ -4435,9 +3583,9 @@
                         console.log('📷 SWITCHING to SECONDARY camera...');
                         try {
                             await switchCamera(secondaryCameraId);
-                            console.log('📷 Switch to secondary complete');
+                            console.log('📷 Switch to secondary camera complete');
                         } catch(e) {
-                            console.error('📷 Switch to secondary failed:', e);
+                            console.error('📷 Switch to secondary camera failed:', e);
                         }
                     } else {
                         console.log('📷 Already on SECONDARY camera');
@@ -4459,7 +3607,7 @@
             const indicator = document.getElementById('camera-indicator');
             if(!indicator) return;
             if(activeCameraId === mainCameraId) {
-                indicator.textContent = '📦 PRIMARY (Main)';
+                indicator.textContent = '📦 Main Camera';
                 indicator.style.background = '#3b82f6';
             } else if(activeCameraId === secondaryCameraId) {
                 if(photoMode === 'defect-closeup') {
@@ -4478,12 +3626,6 @@
             }
         }
         function capturePhoto() { 
-            // Check if we're in multi-camera mode for main photos
-            if(multiCameraMode && photoMode === 'main') {
-                captureMultiCameraMain();
-                return;
-            }
-            
             const video = document.getElementById('camera-video'); 
             if(!video.srcObject) return; 
             
@@ -4581,96 +3723,6 @@
                     updateValidation(); 
                 }, 'image/jpeg', 0.95); 
             }
-        }
-        
-        // Capture from all active cameras in multi-camera mode
-        async function captureMultiCameraMain() {
-            const activeCameras = getActiveCamerasForCategory();
-            console.log(`📸 Multi-camera capture: ${activeCameras.length} cameras`, activeCameras);
-            
-            // Flash effect
-            document.getElementById('flash-overlay').classList.add('flash');
-            setTimeout(() => document.getElementById('flash-overlay').classList.remove('flash'), 100);
-            
-            let capturedCount = 0;
-            
-            for(const pos of activeCameras) {
-                const video = document.getElementById(`cam-video-${pos}`);
-                if(!video || !video.srcObject) {
-                    console.log(`📸 Skipping ${pos} - no stream`);
-                    continue;
-                }
-                
-                const cell = document.getElementById(`cam-cell-${pos}`);
-                
-                // Flash effect on cell
-                if(cell) {
-                    cell.classList.add('active-capture');
-                    cell.style.filter = 'brightness(2)';
-                }
-                
-                const sourceW = video.videoWidth;
-                const sourceH = video.videoHeight;
-                
-                // Create rotated portrait for PRIMARY, regular landscape for others
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                
-                if(pos === 'primary') {
-                    // PRIMARY: Rotate to portrait (same as main capture logic)
-                    canvas.width = sourceH;
-                    canvas.height = sourceW;
-                    ctx.translate(canvas.width / 2, canvas.height / 2);
-                    ctx.rotate(90 * Math.PI / 180);
-                    ctx.drawImage(video, -sourceW / 2, -sourceH / 2);
-                } else {
-                    // Secondary cameras: Use as-is (landscape defect shots)
-                    canvas.width = sourceW;
-                    canvas.height = sourceH;
-                    ctx.drawImage(video, 0, 0);
-                }
-                
-                // Convert to blob
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
-                
-                const photo = {
-                    blob,
-                    url: URL.createObjectURL(blob),
-                    width: canvas.width,
-                    height: canvas.height,
-                    cameraPosition: pos,
-                    isPrimary: pos === 'primary'
-                };
-                
-                data.mainPhotos.push(photo);
-                capturedCount++;
-                
-                // Auto-save to folder if enabled
-                if(saveDirectoryHandle) {
-                    const filename = generatePhotoFilename(`main-${pos}`, data.mainPhotos.length);
-                    savePhotoToFolder(blob, filename);
-                }
-                
-                const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
-                console.log(`📸 ${pos.toUpperCase()}: ${canvas.width}×${canvas.height} | ${sizeMB}MB`);
-                
-                // Remove flash effect
-                if(cell) {
-                    setTimeout(() => {
-                        cell.style.filter = '';
-                        cell.classList.remove('active-capture');
-                    }, 150);
-                }
-                
-                // Small delay between captures
-                await new Promise(r => setTimeout(r, 50));
-            }
-            
-            showToast('success', `📸 Captured ${capturedCount} Photos`, `From ${activeCameras.join(', ').toUpperCase()}`, 2000);
-            updatePhotoGrids();
-            updateValidation();
         }
         
         function captureMainWithDefects(video, sourceW, sourceH) {
@@ -5092,9 +4144,6 @@
                 // Restore tops defaults
                 restoreTopsDefaults();
             }
-            
-            // Update active cameras for new category
-            updateActiveCamerasDisplay();
             
             renderSubCategories(cat); 
             updateValidation(); 
@@ -5527,7 +4576,7 @@
                 // Start barcode scanning
                 setTimeout(() => startBarcodeScanning(), 300);
             } else if(!secondaryCameraId) {
-                statusEl.textContent = '⚠️ No camera detected - type SKU manually';
+                statusEl.textContent = '⚠️ No secondary camera detected - type SKU manually';
                 statusEl.style.color = '#ef4444';
             } else {
                 statusEl.textContent = '⚠️ Camera switch may have failed - try again';
