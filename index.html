@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.85";
+        const VERSION = "v99.86";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3074,7 +3074,7 @@
         async function switchCameraMaxRes(deviceId) {
             if(!deviceId) return;
             
-            console.log('📷 switchCameraMaxRes: Forcing 4K...');
+            console.log('📷 switchCameraMaxRes: Starting camera...');
             const video = document.getElementById('camera-video');
             video.classList.add('switching');
             
@@ -3088,25 +3088,23 @@
             // Longer delay for camera to fully release
             await new Promise(r => setTimeout(r, 500));
             
-            // Try max resolution (4096x2160) first, then fall back
-            const resolutions = [
-                { w: 4096, h: 2160, name: '4K DCI' },
-                { w: 3840, h: 2160, name: '4K UHD' },
-                { w: 2560, h: 1440, name: '1440p' },
-                { w: 1920, h: 1080, name: '1080p' },
-                { w: 1280, h: 720, name: '720p' }
+            // Try with ideal high resolution first, then fall back to simpler constraints
+            const attempts = [
+                { width: { ideal: 3840 }, height: { ideal: 2160 } },
+                { width: { ideal: 1920 }, height: { ideal: 1080 } },
+                { width: { ideal: 1280 }, height: { ideal: 720 } },
+                {} // Last resort: no resolution constraints
             ];
             
-            for(const res of resolutions) {
+            for(let i = 0; i < attempts.length; i++) {
                 try {
-                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
+                    const resConstraint = attempts[i];
+                    console.log(`📷 Attempt ${i+1}: deviceId + resolution ideal...`);
                     
-                    // Use EXACT constraint - this forces the resolution or fails
                     currentStream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             deviceId: { exact: deviceId },
-                            width: { exact: res.w },
-                            height: { exact: res.h }
+                            ...resConstraint
                         }
                     });
                     
@@ -3148,9 +3146,7 @@
                             console.log('📷 Portrait mode applied on load');
                             setTimeout(() => {
                                 updatePortraitTransform();
-                                // Re-render existing markers after layer resize
                                 renderDefectMarkers();
-                                // Ensure defect marking is enabled
                                 enableDefectMarking();
                             }, 100);
                         }
@@ -3162,18 +3158,55 @@
                     return; // Success!
                     
                 } catch(err) {
-                    console.log(`❌ ${res.name} failed: ${err.message}`);
+                    console.log(`❌ Attempt ${i+1} failed: ${err.message}`);
                     if(currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
-                    await new Promise(r => setTimeout(r, 200));
+                    await new Promise(r => setTimeout(r, 300));
                 }
             }
             
-            // All exact resolutions failed - fall back to ideal constraints
-            console.log('⚠️ Exact constraints failed, trying ideal...');
-            await switchCamera(deviceId);
+            // All attempts with exact deviceId failed - try without exact
+            console.log('⚠️ All attempts with exact deviceId failed, trying preferred...');
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { ideal: deviceId } }
+                });
+                
+                const track = currentStream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                console.log(`✅ Fallback got ${settings.width}x${settings.height}`);
+                
+                video.srcObject = currentStream;
+                video.style.display = 'block';
+                document.getElementById('camera-placeholder').style.display = 'none';
+                document.getElementById('camera-overlay').style.display = 'block';
+                document.getElementById('camera-status').textContent = 'LIVE';
+                document.getElementById('camera-status').classList.add('live');
+                activeCameraId = deviceId;
+                
+                video.onloadedmetadata = () => {
+                    const w = video.videoWidth;
+                    const h = video.videoHeight;
+                    document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+                    video.classList.remove('switching');
+                    if(photoMode === 'main') {
+                        video.classList.add('portrait-mode');
+                        setTimeout(() => {
+                            updatePortraitTransform();
+                            enableDefectMarking();
+                        }, 100);
+                    }
+                    setTimeout(() => startStabilizer(), 200);
+                };
+                
+                updateCameraIndicator();
+            } catch(finalErr) {
+                console.error('❌ All camera attempts failed:', finalErr);
+                showToast('error', 'Camera Error', 'Could not start camera. Try selecting a different camera.');
+                video.classList.remove('switching');
+            }
         }
         
         // Force maximum resolution by restarting camera with strict constraints
@@ -3217,13 +3250,13 @@
                 console.log('📷 FULL RES: Could not get capabilities, trying defaults');
             }
             
-            // Now request EXACT max resolution
+            // Now request max resolution with ideal constraints (more flexible than min)
             try {
                 const constraints = {
                     video: {
                         deviceId: { exact: activeCameraId },
-                        width: { ideal: maxWidth, min: Math.min(maxWidth, 1920) },
-                        height: { ideal: maxHeight, min: Math.min(maxHeight, 1080) }
+                        width: { ideal: maxWidth },
+                        height: { ideal: maxHeight }
                     }
                 };
                 
@@ -3378,70 +3411,28 @@
             }
             
             // Small delay to let camera release
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 300));
             
-            // STEP 1: Get camera capabilities first
-            let maxWidth = 1920, maxHeight = 1080;
-            try {
-                const tempStream = await navigator.mediaDevices.getUserMedia({
-                    video: { deviceId: { exact: deviceId } }
-                });
-                const track = tempStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                
-                if(capabilities.width?.max) maxWidth = capabilities.width.max;
-                if(capabilities.height?.max) maxHeight = capabilities.height.max;
-                
-                console.log(`📷 Camera capabilities: max ${maxWidth}x${maxHeight}`);
-                tempStream.getTracks().forEach(t => t.stop());
-                await new Promise(r => setTimeout(r, 100));
-            } catch(e) {
-                console.log('📷 Could not get capabilities, using defaults');
-            }
+            // Try with different constraint levels
+            const attempts = [
+                { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                { deviceId: { exact: deviceId } },
+                { deviceId: { ideal: deviceId } }
+            ];
             
-            // STEP 2: Request the MAXIMUM resolution with exact/min constraints
-            const isMainCamera = deviceId === mainCameraId;
             let success = false;
             
-            // Try exact max resolution first, then fall back
-            const resolutions = [];
-            
-            if(maxWidth >= 3840) {
-                resolutions.push({ width: 3840, height: 2160, name: '4K' });
-            }
-            if(maxWidth >= 1920) {
-                resolutions.push({ width: 1920, height: 1080, name: '1080p' });
-            }
-            resolutions.push({ width: 1280, height: 720, name: '720p' });
-            resolutions.push({ width: 640, height: 480, name: '480p' });
-            
-            for(const res of resolutions) {
+            for(let i = 0; i < attempts.length; i++) {
                 try {
-                    console.log(`📷 Requesting ${res.name} (${res.width}x${res.height}) with min constraint...`);
+                    console.log(`📷 Attempt ${i+1}...`);
                     
-                    // Use 'min' to FORCE at least this resolution, 'ideal' for target
-                    const constraints = {
-                        video: {
-                            deviceId: { exact: deviceId },
-                            width: { min: res.width, ideal: res.width },
-                            height: { min: res.height, ideal: res.height }
-                        }
-                    };
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: attempts[i]
+                    });
                     
-                    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-                    
-                    // Verify we got what we asked for
                     const track = currentStream.getVideoTracks()[0];
                     const settings = track.getSettings();
                     console.log(`✅ Got stream: ${settings.width}x${settings.height}`);
-                    
-                    // Check if resolution is acceptable
-                    if(settings.width < res.width * 0.9) {
-                        console.log(`⚠️ Resolution too low (${settings.width} < ${res.width}), trying next...`);
-                        currentStream.getTracks().forEach(t => t.stop());
-                        currentStream = null;
-                        continue;
-                    }
                     
                     video.srcObject = currentStream; 
                     video.style.display = 'block'; 
@@ -3453,69 +3444,22 @@
                     document.getElementById('camera-select').value = deviceId;
                     
                     video.onloadedmetadata = () => {
-                        console.log(`📷 Video element ready: ${video.videoWidth}x${video.videoHeight}`);
-                        document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
+                        const w = video.videoWidth;
+                        const h = video.videoHeight;
+                        console.log(`📷 Video ready: ${w}x${h}`);
+                        document.getElementById('camera-resolution').textContent = `${w}×${h}`;
                         
-                        // Color code resolution
                         const resEl = document.getElementById('camera-resolution');
-                        if(video.videoWidth >= 3800) {
-                            resEl.style.color = '#22c55e'; // Green for 4K
-                        } else if(video.videoWidth >= 1900) {
-                            resEl.style.color = '#3b82f6'; // Blue for 1080p
-                        } else if(video.videoWidth >= 1200) {
-                            resEl.style.color = '#f59e0b'; // Orange for 720p
+                        if(w >= 3800) {
+                            resEl.style.color = '#22c55e';
+                        } else if(w >= 1900) {
+                            resEl.style.color = '#3b82f6';
+                        } else if(w >= 1200) {
+                            resEl.style.color = '#f59e0b';
                         } else {
-                            resEl.style.color = '#ef4444'; // Red for low res
+                            resEl.style.color = '#ef4444';
                         }
                         
-                        setTimeout(() => video.classList.remove('switching'), 50);
-                        
-                        // Apply portrait mode if in main photo mode
-                        if(photoMode === 'main') {
-                            video.classList.add('portrait-mode');
-                            setTimeout(() => {
-                                updatePortraitTransform();
-                                renderDefectMarkers();
-                                enableDefectMarking();
-                            }, 100);
-                        } else {
-                            video.classList.remove('portrait-mode');
-                        }
-                        
-                        // Start stabilizer after video is ready
-                        stopStabilizer();
-                        setTimeout(() => startStabilizer(), 200);
-                    };
-                    
-                    updateCameraIndicator();
-                    success = true;
-                    break;
-                    
-                } catch(err) {
-                    console.log(`❌ ${res.name} failed:`, err.message);
-                }
-            }
-            
-            if(!success) {
-                // Last resort: let browser pick any resolution
-                console.log('📷 Fallback: letting browser choose resolution...');
-                try {
-                    currentStream = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: { exact: deviceId } }
-                    });
-                    video.srcObject = currentStream;
-                    video.style.display = 'block';
-                    document.getElementById('camera-placeholder').style.display = 'none';
-                    document.getElementById('camera-overlay').style.display = 'block';
-                    document.getElementById('camera-status').textContent = 'LIVE';
-                    document.getElementById('camera-status').classList.add('live');
-                    activeCameraId = deviceId;
-                    document.getElementById('camera-select').value = deviceId;
-                    
-                    video.onloadedmetadata = () => {
-                        console.log(`⚠️ Fallback resolution: ${video.videoWidth}x${video.videoHeight}`);
-                        document.getElementById('camera-resolution').textContent = `${video.videoWidth}×${video.videoHeight}`;
-                        document.getElementById('camera-resolution').style.color = '#ef4444';
                         video.classList.remove('switching');
                         
                         // Apply portrait mode if in main photo mode
@@ -3536,11 +3480,22 @@
                     };
                     updateCameraIndicator();
                     success = true;
-                } catch(err2) {
-                    console.error('❌ All camera attempts failed:', err2);
-                    showToast('error', 'Camera Error', err2.message);
-                    video.classList.remove('switching');
+                    break; // Success!
+                    
+                } catch(err) {
+                    console.log(`❌ Attempt ${i+1} failed: ${err.message}`);
+                    if(currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+                    await new Promise(r => setTimeout(r, 200));
                 }
+            }
+            
+            if(!success) {
+                console.error('❌ All camera attempts failed');
+                showToast('error', 'Camera Error', 'Could not start camera. Try a different one.');
+                video.classList.remove('switching');
             }
             
             console.log(`📷 Camera switch ${success ? 'SUCCESS' : 'FAILED'}, activeCameraId: ${activeCameraId?.slice(0,8)}...`);
