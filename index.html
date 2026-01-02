@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.87";
+        const VERSION = "v99.88";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1422,6 +1422,36 @@
         let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let selectedDefectLink = null; // Index of defect marker to link close-up to
+        
+        // Helper: Check if current category needs portrait orientation
+        // BOTTOMS = portrait (rotated 90°), TOPS/OUTER = landscape (wide)
+        function needsPortraitMode() {
+            return data.superCategory === 'bottoms';
+        }
+        
+        // Update camera preview orientation based on category
+        function updatePreviewOrientation() {
+            const video = document.getElementById('camera-video');
+            if(!video) return;
+            
+            // Only apply orientation in main photo mode
+            if(photoMode !== 'main') return;
+            
+            if(needsPortraitMode()) {
+                video.classList.add('portrait-mode');
+                console.log('📷 Portrait mode ON (BOTTOMS - rotated 90°)');
+            } else {
+                video.classList.remove('portrait-mode');
+                video.style.transform = '';
+                console.log('📷 Landscape mode ON (TOPS/OUTER - wide)');
+            }
+            
+            // Update transform and defect layer
+            setTimeout(() => {
+                updatePortraitTransform();
+                renderDefectMarkers();
+            }, 100);
+        }
         let selectedFeatureType = null; // Type of feature being photographed
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
@@ -3116,15 +3146,23 @@
                         
                         video.classList.remove('switching');
                         
-                        // Apply portrait mode if in main photo mode
-                        if(photoMode === 'main') {
+                        // Apply portrait mode if in main photo mode AND category needs it
+                        if(photoMode === 'main' && needsPortraitMode()) {
                             video.classList.add('portrait-mode');
-                            console.log('📷 Portrait mode applied on load');
+                            console.log('📷 Portrait mode applied on load (BOTTOMS)');
                             setTimeout(() => {
                                 updatePortraitTransform();
                                 // Re-render existing markers after layer resize
                                 renderDefectMarkers();
                                 // Ensure defect marking is enabled
+                                enableDefectMarking();
+                            }, 100);
+                        } else if(photoMode === 'main') {
+                            video.classList.remove('portrait-mode');
+                            video.style.transform = '';
+                            console.log('📷 Landscape mode applied on load (TOPS/OUTER)');
+                            setTimeout(() => {
+                                renderDefectMarkers();
                                 enableDefectMarking();
                             }, 100);
                         }
@@ -3217,11 +3255,18 @@
                     console.log(`✅ FULL RES: Got ${actualW}x${actualH}`);
                     document.getElementById('camera-resolution').textContent = `${actualW}×${actualH}`;
                     
-                    // Apply portrait mode if in main photo mode
-                    if(photoMode === 'main') {
+                    // Apply portrait mode if in main photo mode AND category needs it
+                    if(photoMode === 'main' && needsPortraitMode()) {
                         video.classList.add('portrait-mode');
                         setTimeout(() => {
                             updatePortraitTransform();
+                            renderDefectMarkers();
+                            enableDefectMarking();
+                        }, 100);
+                    } else if(photoMode === 'main') {
+                        video.classList.remove('portrait-mode');
+                        video.style.transform = '';
+                        setTimeout(() => {
                             renderDefectMarkers();
                             enableDefectMarking();
                         }, 100);
@@ -3444,11 +3489,18 @@
                         
                         setTimeout(() => video.classList.remove('switching'), 50);
                         
-                        // Apply portrait mode if in main photo mode
-                        if(photoMode === 'main') {
+                        // Apply portrait mode if in main photo mode AND category needs it
+                        if(photoMode === 'main' && needsPortraitMode()) {
                             video.classList.add('portrait-mode');
                             setTimeout(() => {
                                 updatePortraitTransform();
+                                renderDefectMarkers();
+                                enableDefectMarking();
+                            }, 100);
+                        } else if(photoMode === 'main') {
+                            video.classList.remove('portrait-mode');
+                            video.style.transform = '';
+                            setTimeout(() => {
                                 renderDefectMarkers();
                                 enableDefectMarking();
                             }, 100);
@@ -3492,11 +3544,18 @@
                         document.getElementById('camera-resolution').style.color = '#ef4444';
                         video.classList.remove('switching');
                         
-                        // Apply portrait mode if in main photo mode
-                        if(photoMode === 'main') {
+                        // Apply portrait mode if in main photo mode AND category needs it
+                        if(photoMode === 'main' && needsPortraitMode()) {
                             video.classList.add('portrait-mode');
                             setTimeout(() => {
                                 updatePortraitTransform();
+                                renderDefectMarkers();
+                                enableDefectMarking();
+                            }, 100);
+                        } else if(photoMode === 'main') {
+                            video.classList.remove('portrait-mode');
+                            video.style.transform = '';
+                            setTimeout(() => {
                                 renderDefectMarkers();
                                 enableDefectMarking();
                             }, 100);
@@ -3531,16 +3590,22 @@
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); 
             document.getElementById(`mode-${mode}`).classList.add('active'); 
             
-            // Toggle portrait mode for main photos only
+            // Toggle portrait mode for main photos - only for BOTTOMS category
             const video = document.getElementById('camera-video');
             if(mode === 'main') {
-                video.classList.add('portrait-mode');
-                console.log('📷 Portrait mode ON (rotated 90°)');
+                if(needsPortraitMode()) {
+                    video.classList.add('portrait-mode');
+                    console.log('📷 Portrait mode ON (BOTTOMS - rotated 90°)');
+                } else {
+                    video.classList.remove('portrait-mode');
+                    video.style.transform = '';
+                    console.log('📷 Landscape mode ON (TOPS/OUTER - wide)');
+                }
                 enableDefectMarking();
             } else {
                 video.classList.remove('portrait-mode');
                 video.style.transform = ''; // Clear transform
-                console.log('📷 Portrait mode OFF (landscape)');
+                console.log('📷 Portrait mode OFF (close-up mode)');
                 disableDefectMarking();
             }
             
@@ -3731,26 +3796,41 @@
         }
         
         function captureMainWithDefects(video, sourceW, sourceH) {
-            // Step 1: Create rotated portrait image from landscape camera
-            const rotatedCanvas = document.createElement('canvas');
-            const rotatedCtx = rotatedCanvas.getContext('2d');
-            rotatedCtx.imageSmoothingEnabled = true;
-            rotatedCtx.imageSmoothingQuality = 'high';
+            let mainCanvas;
             
-            // Rotate 90° CCW: landscape (4096x2160) → portrait (2160x4096)
-            rotatedCanvas.width = sourceH;  // Height becomes width
-            rotatedCanvas.height = sourceW; // Width becomes height
+            if(needsPortraitMode()) {
+                // BOTTOMS: Create rotated portrait image from landscape camera
+                const rotatedCanvas = document.createElement('canvas');
+                const rotatedCtx = rotatedCanvas.getContext('2d');
+                rotatedCtx.imageSmoothingEnabled = true;
+                rotatedCtx.imageSmoothingQuality = 'high';
+                
+                // Rotate 90° CCW: landscape (4096x2160) → portrait (2160x4096)
+                rotatedCanvas.width = sourceH;  // Height becomes width
+                rotatedCanvas.height = sourceW; // Width becomes height
+                
+                rotatedCtx.translate(0, rotatedCanvas.height);
+                rotatedCtx.rotate(-Math.PI / 2);
+                rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                
+                mainCanvas = rotatedCanvas;
+                console.log(`📸 MAIN Portrait (BOTTOMS): ${sourceW}x${sourceH} → rotated to ${mainCanvas.width}x${mainCanvas.height}`);
+            } else {
+                // TOPS/OUTER: Keep landscape orientation (no rotation)
+                const landscapeCanvas = document.createElement('canvas');
+                const landscapeCtx = landscapeCanvas.getContext('2d');
+                landscapeCtx.imageSmoothingEnabled = true;
+                landscapeCtx.imageSmoothingQuality = 'high';
+                
+                landscapeCanvas.width = sourceW;
+                landscapeCanvas.height = sourceH;
+                landscapeCtx.drawImage(video, 0, 0, sourceW, sourceH);
+                
+                mainCanvas = landscapeCanvas;
+                console.log(`📸 MAIN Landscape (TOPS/OUTER): ${mainCanvas.width}x${mainCanvas.height}`);
+            }
             
-            rotatedCtx.translate(0, rotatedCanvas.height);
-            rotatedCtx.rotate(-Math.PI / 2);
-            rotatedCtx.drawImage(video, 0, 0, sourceW, sourceH);
-            
-            // Step 2: Use full rotated image (no cropping)
-            const mainCanvas = rotatedCanvas;
-            
-            console.log(`📸 MAIN Portrait Full Res: ${sourceW}x${sourceH} → rotated to ${mainCanvas.width}x${mainCanvas.height}`);
-            
-            // Step 3: Save main photo
+            // Save main photo
             mainCanvas.toBlob(mainBlob => {
                 const mainPhoto = { 
                     blob: mainBlob, 
@@ -3769,7 +3849,7 @@
                 const sizeMB = (mainBlob.size / 1024 / 1024).toFixed(2);
                 console.log(`📸 MAIN: ${mainCanvas.width}×${mainCanvas.height} | ${sizeMB}MB`);
                 
-                // Step 4: If we have defect markers, create crops and annotated version
+                // If we have defect markers, create crops and annotated version
                 if(defectMarkers.length > 0) {
                     createDefectCrops(mainCanvas);
                     createAnnotatedPhoto(mainCanvas);
@@ -4029,6 +4109,9 @@
             document.getElementById('defect-closeup-count').textContent = data.defectCloseupPhotos.length; 
             document.getElementById('features-count').textContent = data.featuresPhotos.length; 
             document.getElementById('photo-count').textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length+data.defectCloseupPhotos.length+data.featuresPhotos.length; 
+            
+            // Update defect link panel in case defect photos changed
+            updateDefectLinkPanel();
         }
         function deletePhoto(mode,index) { 
             if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} 
@@ -4151,7 +4234,10 @@
             }
             
             renderSubCategories(cat); 
-            updateValidation(); 
+            updateValidation();
+            
+            // Update camera preview orientation based on category
+            updatePreviewOrientation();
         }
         
         // Restore default styling for tops construction fields
