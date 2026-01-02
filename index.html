@@ -1323,7 +1323,7 @@
                     <div class="camera-placeholder" id="camera-placeholder">
                         <div class="camera-placeholder-icon">📷</div>
                         <div>Select a camera to begin</div>
-                        <div style="font-size:11px;margin-top:6px;color:#555;">Logitech Brio 4K DCI (4096×2160)</div>
+                        <div style="font-size:11px;margin-top:6px;color:#555;">Supports up to 4K (4096×2160)</div>
                     </div>
                     <video id="camera-video" autoplay playsinline style="display:none;"></video>
                     <div class="camera-overlay" id="camera-overlay">
@@ -1365,7 +1365,7 @@
                 </div>
             </div>
             <div class="camera-footer">
-                <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
+                <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Full shot</small></button>
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.83";
+        const VERSION = "v99.84";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2980,12 +2980,12 @@
                 await new Promise(r => setTimeout(r, 300));
                 
                 const devices = await navigator.mediaDevices.enumerateDevices(); 
-                // Filter out virtual cameras (DroidCam, OBS, ManyCam, etc.)
+                // Filter out virtual cameras and unused devices
                 const videoDevices = devices.filter(d => {
                     if(d.kind !== 'videoinput') return false;
                     const label = (d.label || '').toLowerCase();
-                    const virtualCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs'];
-                    return !virtualCameras.some(v => label.includes(v));
+                    const filteredCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs', 'camo', 'usb video device'];
+                    return !filteredCameras.some(v => label.includes(v));
                 });
                 const select = document.getElementById('camera-select'); 
                 select.innerHTML = '<option value="">Select Camera...</option>'; 
@@ -2994,19 +2994,22 @@
                 
                 videoDevices.forEach((device,i)=>{ 
                     const option = document.createElement('option'); 
-                    option.value = device.deviceId; 
-                    option.textContent = device.label || `Camera ${i+1}`; 
+                    option.value = device.deviceId;
+                    // Add camera number and short ID to differentiate identical cameras
+                    const shortId = device.deviceId.slice(0, 4);
+                    const label = device.label || `Camera ${i+1}`;
+                    option.textContent = `#${i+1}: ${label} (${shortId})`; 
                     select.appendChild(option);
                     
                     console.log(`  ${i+1}. ${device.label} (${device.deviceId.slice(0,8)}...)`);
                     
-                    // Auto-detect cameras by name (primary = high-res camera, secondary = close-up camera)
-                    const label = device.label.toLowerCase();
-                    if(label.includes('brio')) {
+                    // Auto-detect cameras by name (only set if not already set - use FIRST match)
+                    const labelLower = device.label.toLowerCase();
+                    if(labelLower.includes('brio') && !mainCameraId) {
                         mainCameraId = device.deviceId;
                         console.log('  → Set as MAIN camera');
                     }
-                    if(label.includes('c922') || label.includes('922')) {
+                    if((labelLower.includes('c922') || labelLower.includes('922')) && !secondaryCameraId) {
                         secondaryCameraId = device.deviceId;
                         console.log('  → Set as SECONDARY camera');
                     }
@@ -3057,9 +3060,9 @@
             // Longer delay for camera to fully release
             await new Promise(r => setTimeout(r, 500));
             
-            // Try Brio's max resolution (4096x2160) first, then fall back
+            // Try max resolution (4096x2160) first, then fall back
             const resolutions = [
-                { w: 4096, h: 2160, name: '4K DCI (Brio Max)' },
+                { w: 4096, h: 2160, name: '4K DCI' },
                 { w: 3840, h: 2160, name: '4K UHD' },
                 { w: 2560, h: 1440, name: '1440p' },
                 { w: 1920, h: 1080, name: '1080p' },
@@ -3369,7 +3372,7 @@
             }
             
             // STEP 2: Request the MAXIMUM resolution with exact/min constraints
-            const isBrio = deviceId === mainCameraId;
+            const isMainCamera = deviceId === mainCameraId;
             let success = false;
             
             // Try exact max resolution first, then fall back
