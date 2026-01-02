@@ -1414,7 +1414,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v99.84";
+        const VERSION = "v99.85";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2322,7 +2322,19 @@
                     document.getElementById('photographer-badge').textContent=data.photographer; 
                 }catch(e){} 
                 document.getElementById('pin-screen').classList.add('hidden'); 
-                startTimer(); 
+                startTimer();
+                
+                // Now start the camera after login
+                if(mainCameraId && !currentStream) {
+                    console.log('📷 Starting camera after login...');
+                    switchCameraMaxRes(mainCameraId).then(() => {
+                        setTimeout(() => {
+                            if(activeCameraId) forceMaxResolution();
+                        }, 1000);
+                    }).catch(e => {
+                        console.error('📷 Camera start failed:', e);
+                    });
+                }
             } else { 
                 document.getElementById('pin-input').value=''; 
                 document.getElementById('pin-input').classList.add('shake'); 
@@ -2447,16 +2459,22 @@
                     
                     // Now enumerate - we should have labels
                     const devices = await navigator.mediaDevices.enumerateDevices();
-                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-                    console.log('📷 SKU Gate: Found', videoDevices.length, 'cameras');
+                    // Filter out virtual cameras and unused devices (same as main enumeration)
+                    const filteredCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs', 'camo', 'usb video device'];
+                    const videoDevices = devices.filter(d => {
+                        if(d.kind !== 'videoinput') return false;
+                        const label = (d.label || '').toLowerCase();
+                        return !filteredCameras.some(v => label.includes(v));
+                    });
+                    console.log('📷 SKU Gate: Found', videoDevices.length, 'cameras (after filtering)');
                     
                     for(const device of videoDevices) {
                         const label = device.label.toLowerCase();
                         console.log('📷 SKU Gate: Camera:', device.label, device.deviceId.slice(0,8));
-                        if(label.includes('brio')) {
+                        if(label.includes('brio') && !mainCameraId) {
                             mainCameraId = device.deviceId;
                             console.log('📷 SKU Gate: Set as MAIN camera:', device.deviceId.slice(0,8));
-                        } else if(label.includes('c922') || label.includes('922')) {
+                        } else if((label.includes('c922') || label.includes('922')) && !secondaryCameraId) {
                             secondaryCameraId = device.deviceId;
                             console.log('📷 SKU Gate: Set as SECONDARY camera:', device.deviceId.slice(0,8));
                         }
@@ -2967,17 +2985,17 @@
         
         async function enumerateCameras() { 
             try { 
-                // IMPORTANT: Request permission with HIGH resolution to avoid Chrome caching low res
-                console.log('📷 Requesting camera permission with high resolution hint...');
-                const permStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        width: { ideal: 3840 }, 
-                        height: { ideal: 2160 } 
-                    }
-                }); 
-                // Stop permission stream immediately
-                permStream.getTracks().forEach(t => t.stop());
-                await new Promise(r => setTimeout(r, 300));
+                // Request camera permission first (silently - don't show errors)
+                console.log('📷 Requesting camera permission...');
+                try {
+                    const permStream = await navigator.mediaDevices.getUserMedia({ video: true }); 
+                    // Stop permission stream immediately
+                    permStream.getTracks().forEach(t => t.stop());
+                    await new Promise(r => setTimeout(r, 300));
+                } catch(permErr) {
+                    console.warn('📷 Camera permission request failed:', permErr.message);
+                    // Continue anyway - we might still be able to enumerate
+                }
                 
                 const devices = await navigator.mediaDevices.enumerateDevices(); 
                 // Filter out virtual cameras and unused devices
@@ -3015,8 +3033,18 @@
                     }
                 });
                 
-                // Start with main camera if detected
-                if(mainCameraId) {
+                // Start with main camera if detected - BUT only if not on PIN screen
+                const pinScreenVisible = !document.getElementById('pin-screen').classList.contains('hidden');
+                if(pinScreenVisible) {
+                    console.log('📷 PIN screen visible - camera will start after login');
+                    // Just set the dropdown value but don't start the camera yet
+                    if(mainCameraId) {
+                        select.value = mainCameraId;
+                    } else if(videoDevices.length > 0) {
+                        mainCameraId = videoDevices[0].deviceId;
+                        select.value = mainCameraId;
+                    }
+                } else if(mainCameraId) {
                     select.value = mainCameraId;
                     // Use aggressive max resolution for main camera
                     await switchCameraMaxRes(mainCameraId);
@@ -3034,8 +3062,8 @@
                 
                 updateCameraIndicator();
                 
-                // Enable defect marking since we start in main mode
-                if(photoMode === 'main') {
+                // Only enable defect marking if camera actually started
+                if(photoMode === 'main' && activeCameraId) {
                     enableDefectMarking();
                     console.log('📷 Defect marking enabled on startup');
                 }
