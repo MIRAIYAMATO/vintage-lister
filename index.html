@@ -306,16 +306,19 @@
         .defect-marker:hover .defect-marker-delete { opacity: 1; }
         
         /* Defect Type Popup */
-        .defect-popup { position: fixed; z-index: 10000; background: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 12px; display: none; }
+        .defect-popup { position: fixed; z-index: 10000; background: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 12px; display: none; max-width: 280px; }
         .defect-popup.visible { display: block; }
         .defect-popup-title { font-size: 11px; font-weight: 700; color: #64748b; margin-bottom: 8px; text-align: center; }
-        .defect-popup-btns { display: flex; gap: 8px; }
-        .defect-popup-btn { padding: 12px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 70px; transition: transform 0.1s; }
+        .defect-popup-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .defect-popup-btn { padding: 10px 12px; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 75px; transition: transform 0.1s; }
         .defect-popup-btn:hover { transform: scale(1.05); }
         .defect-popup-btn:active { transform: scale(0.95); }
         .defect-popup-btn.stain { background: #fef9c3; color: #a16207; border: 2px solid #eab308; }
         .defect-popup-btn.hole { background: #dbeafe; color: #1d4ed8; border: 2px solid #3b82f6; }
+        .defect-popup-btn.tear { background: #fce7f3; color: #be185d; border: 2px solid #ec4899; }
+        .defect-popup-btn.fade { background: #f3e8ff; color: #7c3aed; border: 2px solid #a855f7; }
         .defect-popup-btn.repair { background: #ffedd5; color: #c2410c; border: 2px solid #f97316; }
+        .defect-popup-btn.other { background: #f1f5f9; color: #475569; border: 2px solid #64748b; }
         .defect-popup-btn span:first-child { font-size: 20px; }
         .defect-popup-cancel { width: 100%; margin-top: 8px; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px; color: #64748b; cursor: pointer; }
         .defect-popup-cancel:hover { background: #e2e8f0; }
@@ -578,9 +581,21 @@
                 <span>🕳️</span>
                 <span>Hole</span>
             </button>
+            <button class="defect-popup-btn tear" onclick="event.stopPropagation(); confirmDefectMarker('tear')">
+                <span>📐</span>
+                <span>Tear</span>
+            </button>
+            <button class="defect-popup-btn fade" onclick="event.stopPropagation(); confirmDefectMarker('fade')">
+                <span>🌫️</span>
+                <span>Fade</span>
+            </button>
             <button class="defect-popup-btn repair" onclick="event.stopPropagation(); confirmDefectMarker('repair')">
                 <span>🧵</span>
                 <span>Repair</span>
+            </button>
+            <button class="defect-popup-btn other" onclick="event.stopPropagation(); confirmDefectMarker('other')">
+                <span>❓</span>
+                <span>Other</span>
             </button>
         </div>
         <button class="defect-popup-cancel" onclick="event.stopPropagation(); cancelDefectMarker()">Cancel</button>
@@ -1493,7 +1508,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.16";
+        const VERSION = "v100.17";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1596,7 +1611,7 @@
         let pendingMarker = null; // Temporary marker waiting for type selection
         let defectMarkingEnabled = false;
         const DEFECT_CROP_SIZE = 0.50; // 50% of max dimension (~1920px from 3840 rotated)
-        const DEFECT_COLORS = { stain: '#eab308', hole: '#3b82f6', repair: '#f97316' };
+        const DEFECT_COLORS = { stain: '#eab308', hole: '#3b82f6', tear: '#ec4899', fade: '#a855f7', repair: '#f97316', other: '#64748b' };
         const DEFECT_ICONS = { stain: '💧', hole: '🕳️', repair: '🧵' };
         
         
@@ -4284,13 +4299,25 @@
             // Draw original image
             ctx.drawImage(mainCanvas, 0, 0);
             
+            // Defect type display names
+            const DEFECT_LABELS = {
+                stain: 'STAIN',
+                hole: 'HOLE',
+                tear: 'TEAR',
+                fade: 'FADE',
+                repair: 'REPAIR',
+                other: 'DEFECT'
+            };
+            
             // Scale marker size based on image resolution (larger on 4K)
             const scaleFactor = Math.max(annotatedCanvas.width, annotatedCanvas.height) / 1920;
             const markerRadius = Math.round(40 * scaleFactor);
             const fontSize = Math.round(28 * scaleFactor);
+            const labelFontSize = Math.round(32 * scaleFactor);
             const lineWidth = Math.round(5 * scaleFactor);
+            const labelPadding = Math.round(12 * scaleFactor);
             
-            // Draw markers
+            // Draw markers with labels
             defectMarkers.forEach((marker, idx) => {
                 // Transform marker coordinates if in portrait mode
                 let markerX = marker.x;
@@ -4304,25 +4331,78 @@
                 
                 const x = (markerX / 100) * annotatedCanvas.width;
                 const y = (markerY / 100) * annotatedCanvas.height;
+                const defectColor = DEFECT_COLORS[marker.type] || '#ef4444';
+                const label = DEFECT_LABELS[marker.type] || 'DEFECT';
                 
                 // Draw circle with shadow for visibility
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 10;
                 ctx.beginPath();
                 ctx.arc(x, y, markerRadius, 0, Math.PI * 2);
-                ctx.fillStyle = DEFECT_COLORS[marker.type];
+                ctx.fillStyle = defectColor;
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = lineWidth;
                 ctx.stroke();
                 
-                // Draw number
+                // Draw number in circle
                 ctx.fillStyle = 'white';
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(idx + 1, x, y);
+                
+                // === DRAW LABEL BOX WITH DEFECT TYPE ===
+                ctx.font = `bold ${labelFontSize}px Arial`;
+                const textMetrics = ctx.measureText(label);
+                const textWidth = textMetrics.width;
+                const textHeight = labelFontSize;
+                
+                // Position label below and to the right of the circle
+                const labelX = x + markerRadius + labelPadding;
+                const labelY = y + markerRadius/2;
+                
+                // Adjust if label would go off right edge
+                const boxWidth = textWidth + labelPadding * 2;
+                const boxHeight = textHeight + labelPadding;
+                let boxX = labelX;
+                let boxY = labelY - boxHeight/2;
+                
+                // Keep label on screen
+                if(boxX + boxWidth > annotatedCanvas.width - 10) {
+                    boxX = x - markerRadius - boxWidth - labelPadding;
+                }
+                if(boxY < 10) {
+                    boxY = 10;
+                }
+                if(boxY + boxHeight > annotatedCanvas.height - 10) {
+                    boxY = annotatedCanvas.height - boxHeight - 10;
+                }
+                
+                // Draw label background
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = defectColor;
+                ctx.beginPath();
+                if(ctx.roundRect) {
+                    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, Math.round(8 * scaleFactor));
+                } else {
+                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                }
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                // Draw white border on label
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = Math.round(3 * scaleFactor);
+                ctx.stroke();
+                
+                // Draw label text
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, boxX + labelPadding, boxY + boxHeight/2);
             });
             
             // Save as defect overview photo (goes to defectPhotos, not mainPhotos)
