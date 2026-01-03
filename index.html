@@ -383,6 +383,13 @@
         .feature-type-btn:hover { background: rgba(255,255,255,0.3); }
         .feature-type-btn.active { background: white; color: #7c3aed; }
         
+        /* Feature Type Panel - fixed positioning to avoid overflow:hidden issues */
+        .feature-type-panel { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.95); color: white; padding: 12px 18px; border-radius: 12px; font-size: 12px; z-index: 1000; display: none; flex-direction: column; gap: 10px; min-width: 320px; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .feature-type-panel.visible { display: flex; }
+        .feature-type-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .feature-type-clear { padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.8); font-size: 11px; cursor: pointer; margin-top: 4px; }
+        .feature-type-clear:hover { background: rgba(255,255,255,0.2); }
+        
         /* Photos panel */
         .photos-header { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .photo-count { background: var(--color-primary-light); color: var(--color-primary-dark); padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
@@ -1371,15 +1378,15 @@
                         <!-- Category-specific measurement hints -->
                         <div id="measure-hint-tops" class="nested-section" style="margin-bottom:10px;background:#eff6ff;border-color:#bfdbfe;">
                             <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px;">Say each + "inches":</div>
-                            <div id="measure-tops-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Shoulder to shoulder<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br>6. Sleeve (shoulder to cuff)</div>
-                            <div id="measure-tops-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong style="color:#7c3aed;">Center neck to cuff</strong> ⭐<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br>6. <strong style="color:#7c3aed;">Sleeve (pit to cuff)</strong> ⭐</div>
-                            <div id="measure-tops-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Shoulder to shoulder<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br><span style="color:#64748b;font-style:italic;">(No sleeve - sleeveless)</span></div>
+                            <div id="measure-tops-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Neck to shoulder (center neck to seam)<br>2. Top sleeve (shoulder to cuff)<br>3. Sleeve opening (cuff width)<br>4. Bottom sleeve (pit to cuff)<br>5. Shoulder to shoulder<br>6. Pit to pit<br>7. Waist<br>8. Bottom hem<br>9. Length (collar to hem)</div>
+                            <div id="measure-tops-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong style="color:#7c3aed;">Neck to cuff</strong> ⭐<br>2. Sleeve opening (cuff width)<br>3. Bottom sleeve (pit to cuff)<br>4. Pit to pit<br>5. Waist<br>6. Bottom hem<br>7. Length (collar to hem)</div>
+                            <div id="measure-tops-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Neck to shoulder (center neck to seam)<br>2. Shoulder to shoulder<br>3. Pit to pit<br>4. Waist<br>5. Bottom hem<br>6. Length (collar to hem)</div>
                         </div>
                         <div id="measure-hint-button-shirt" class="nested-section hidden" style="margin-bottom:10px;background:#eff6ff;border-color:#bfdbfe;">
                             <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px;">Say each + "inches":</div>
-                            <div id="measure-button-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (collar button to button)<br>2. Shoulder to shoulder<br>3. Pit to pit chest<br>4. Waist<br>5. Bottom hem<br>6. Length (back of collar to hem)<br>7. Sleeve (shoulder to cuff)</div>
-                            <div id="measure-button-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (collar button to button)<br>2. <strong style="color:#7c3aed;">Center neck to cuff</strong> ⭐<br>3. Pit to pit chest<br>4. Waist<br>5. Bottom hem<br>6. Length (back of collar to hem)<br>7. <strong style="color:#7c3aed;">Sleeve (pit to cuff)</strong> ⭐</div>
-                            <div id="measure-button-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (collar button to button)<br>2. Shoulder to shoulder<br>3. Pit to pit chest<br>4. Waist<br>5. Bottom hem<br>6. Length (back of collar to hem)<br><span style="color:#64748b;font-style:italic;">(No sleeve - sleeveless)</span></div>
+                            <div id="measure-button-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (button to button)<br>2. Neck to shoulder (center neck to seam)<br>3. Top sleeve (shoulder to cuff)<br>4. Sleeve opening (cuff width)<br>5. Bottom sleeve (pit to cuff)<br>6. Shoulder to shoulder<br>7. Pit to pit<br>8. Waist<br>9. Bottom hem<br>10. Length (collar to hem)</div>
+                            <div id="measure-button-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (button to button)<br>2. <strong style="color:#7c3aed;">Neck to cuff</strong> ⭐<br>3. Sleeve opening (cuff width)<br>4. Bottom sleeve (pit to cuff)<br>5. Pit to pit<br>6. Waist<br>7. Bottom hem<br>8. Length (collar to hem)</div>
+                            <div id="measure-button-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong>Neck circumference</strong> (button to button)<br>2. Neck to shoulder (center neck to seam)<br>3. Shoulder to shoulder<br>4. Pit to pit<br>5. Waist<br>6. Bottom hem<br>7. Length (collar to hem)</div>
                         </div>
                         <div id="measure-hint-bottoms" class="nested-section hidden" style="margin-bottom:10px;background:#eff6ff;border-color:#bfdbfe;">
                             <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px;">Say each + "inches":</div>
@@ -1387,9 +1394,9 @@
                         </div>
                         <div id="measure-hint-outer" class="nested-section hidden" style="margin-bottom:10px;background:#eff6ff;border-color:#bfdbfe;">
                             <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px;">Say each + "inches":</div>
-                            <div id="measure-outer-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Shoulder to shoulder<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br>6. Sleeve (shoulder to cuff)</div>
-                            <div id="measure-outer-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong style="color:#7c3aed;">Center neck to cuff</strong> ⭐<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br>6. <strong style="color:#7c3aed;">Sleeve (pit to cuff)</strong> ⭐</div>
-                            <div id="measure-outer-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Shoulder to shoulder<br>2. Pit to pit chest<br>3. Waist<br>4. Bottom hem<br>5. Length (back of collar to hem)<br><span style="color:#64748b;font-style:italic;">(No sleeve - vest)</span></div>
+                            <div id="measure-outer-standard" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Neck to shoulder (center neck to seam)<br>2. Top sleeve (shoulder to cuff)<br>3. Sleeve opening (cuff width)<br>4. Bottom sleeve (pit to cuff)<br>5. Shoulder to shoulder<br>6. Pit to pit<br>7. Waist<br>8. Bottom hem<br>9. Length (collar to hem)</div>
+                            <div id="measure-outer-raglan" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. <strong style="color:#7c3aed;">Neck to cuff</strong> ⭐<br>2. Sleeve opening (cuff width)<br>3. Bottom sleeve (pit to cuff)<br>4. Pit to pit<br>5. Waist<br>6. Bottom hem<br>7. Length (collar to hem)</div>
+                            <div id="measure-outer-sleeveless" class="hidden" style="font-size:10px;color:#3b82f6;line-height:1.6;">1. Neck to shoulder (center neck to seam)<br>2. Shoulder to shoulder<br>3. Pit to pit<br>4. Waist<br>5. Bottom hem<br>6. Length (collar to hem)</div>
                         </div>
                         <div id="record-section">
                             <button id="record-btn" onclick="toggleRecording()" class="btn btn-hero" style="width:100%;background:#ef4444;padding:16px;display:flex;flex-direction:column;align-items:center;gap:4px;">
@@ -1542,25 +1549,6 @@
                             👔 BACK <kbd>B</kbd>
                         </button>
                     </div>
-                    
-                    <!-- Feature Type Panel -->
-                    <div class="closeup-link-panel" id="feature-type-panel" style="background:rgba(124,58,237,0.95);">
-                        <span style="font-weight:600;">Feature type:</span>
-                        <div class="link-buttons" id="feature-type-buttons">
-                            <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
-                            <button onclick="selectFeatureType('Copyright')" class="feature-type-btn">Copyright</button>
-                            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
-                            <button onclick="selectFeatureType('Buttons')" class="feature-type-btn">Buttons</button>
-                            <button onclick="selectFeatureType('Pockets')" class="feature-type-btn">Pockets</button>
-                            <button onclick="selectFeatureType('Cuffs')" class="feature-type-btn">Cuffs</button>
-                            <button onclick="selectFeatureType('Drawstring')" class="feature-type-btn">Drawstring</button>
-                            <button onclick="selectFeatureType('Stitch')" class="feature-type-btn">Stitch</button>
-                            <button onclick="selectFeatureType('Hardware')" class="feature-type-btn">Hardware</button>
-                            <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
-                            <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
-                        </div>
-                        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="link-btn-none">Clear</button>
-                    </div>
                 </div>
                 
                 <!-- Split-screen view for Defect Closeup mode -->
@@ -1631,9 +1619,8 @@
             </div>
             <div class="stats-section">
                 <div style="font-size:10px;color:var(--color-text-muted);font-weight:700;margin-bottom:8px;">Today's Stats</div>
-                <div class="stats-grid">
+                <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
                     <div><div class="stat-value" style="color:var(--color-primary)" id="stat-today">0</div><div class="stat-label">Today</div></div>
-                    <div><div class="stat-value" style="color:var(--color-success)" id="stat-week">0</div><div class="stat-label">Week</div></div>
                     <div><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total</div></div>
                 </div>
             </div>
@@ -1643,13 +1630,13 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.26";
+        const VERSION = "v100.30";
         // ===============================================================
         
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
         let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
-        let stats = { today:0, week:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
+        let stats = { today:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let selectedDefectLink = null; // Index of defect marker to link close-up to
         let selectedFeatureType = null; // Type of feature being photographed
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
@@ -2161,9 +2148,16 @@
         // Feature Type Panel
         function updateFeatureTypePanel() {
             const panel = document.getElementById('feature-type-panel');
+            if(!panel) {
+                console.error('Feature type panel not found!');
+                return;
+            }
+            
+            console.log('updateFeatureTypePanel called, mode:', photoMode);
             
             if(photoMode === 'features') {
                 panel.classList.add('visible');
+                console.log('Feature panel shown');
                 
                 // Update active state on buttons
                 document.querySelectorAll('.feature-type-btn').forEach(btn => {
@@ -3010,6 +3004,7 @@
         let skuLocked = false;
         
         function showSkuGate() {
+            console.log('📋 showSkuGate called');
             document.getElementById('sku-gate').classList.remove('hidden');
             document.getElementById('sku-gate-input').value = '';
             document.getElementById('sku-gate-input').classList.remove('valid');
@@ -6811,7 +6806,89 @@
             };
             xhr.send(formData);
             
-            recordItemTime(); stats.today++; stats.week++; stats.total++; saveStats(); updateStatsDisplay(); console.log('Submitted:',data); resetForm(); 
+            recordItemTime(); stats.today++; stats.total++; saveStats(); updateStatsDisplay(); 
+            
+            // Save JSON file to folder if directory is selected
+            if(saveDirectoryHandle) {
+                saveJsonToFolder();
+            }
+            
+            console.log('Submitted:',data); 
+            
+            // Always reset and show SKU gate after submit
+            console.log('📋 submitItem calling resetForm(false)...');
+            resetForm(false); 
+            console.log('📋 submitItem complete');
+        }
+        
+        // Save JSON data file to selected folder
+        async function saveJsonToFolder() {
+            if(!saveDirectoryHandle) return;
+            
+            try {
+                const jsonData = {
+                    sku: data.sku,
+                    timestamp: new Date().toISOString(),
+                    category: data.category,
+                    superCategory: data.superCategory,
+                    tagStatus: data.tagStatus,
+                    tagSize: data.tagSize,
+                    origin: data.origin,
+                    country: data.country,
+                    gender: data.gender,
+                    colors: data.colors,
+                    fade: data.fade,
+                    pattern: data.pattern,
+                    patternTraits: data.patternTraits,
+                    printType: data.printType,
+                    graphicCategory: data.graphicCategory,
+                    fabricType: data.fabricType,
+                    fabricTraits: data.fabricTraits,
+                    wash: data.wash,
+                    materials: data.materials,
+                    materialTraits: data.materialTraits,
+                    sleeveLength: data.sleeveLength,
+                    sleeveStyle: data.sleeveStyle,
+                    cutoffType: data.cutoffType,
+                    stitch: data.stitch,
+                    legStyle: data.legStyle,
+                    rise: data.rise,
+                    thickness: data.thickness,
+                    layers: data.layers,
+                    hasDefects: data.hasDefects,
+                    defectTypes: data.defectTypes,
+                    weightLb: data.weightLb,
+                    weightOz: data.weightOz,
+                    flagged: data.flagged,
+                    elasticCheck: data.elasticCheck,
+                    audioDuration: data.audioDuration,
+                    mainPhotoCount: data.mainPhotos.length,
+                    tagPhotoCount: data.tagPhotos.length,
+                    defectPhotoCount: data.defectPhotos.length,
+                    defectCloseupPhotoCount: data.defectCloseupPhotos.length,
+                    featurePhotoCount: data.featuresPhotos.length,
+                    // Include defect markers from main photos
+                    defectMarkers: data.mainPhotos.flatMap((p, photoIdx) => 
+                        (p.defects || []).map(d => ({
+                            photoIndex: photoIdx,
+                            type: d.type,
+                            x: d.x,
+                            y: d.y,
+                            side: p.defectSide || null
+                        }))
+                    )
+                };
+                
+                const filename = `${data.sku}_data.json`;
+                const fileHandle = await saveDirectoryHandle.getFileHandle(filename, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(JSON.stringify(jsonData, null, 2));
+                await writable.close();
+                
+                console.log(`💾 Saved JSON: ${filename}`);
+            } catch(e) {
+                console.error('Failed to save JSON:', e);
+            }
         }
         function resetForm(keepSku = false) { 
             // Store SKU if we want to keep it
@@ -7011,15 +7088,40 @@
                 }
             }
             
-            // Show SKU gate only if not keeping SKU
-            if(!keepSku || !preservedSku) {
+            // Show SKU gate after reset (unless keeping SKU with valid value)
+            if(!keepSku) {
+                console.log('🔄 Showing SKU gate after reset');
                 showSkuGate();
+            } else if(!preservedSku) {
+                console.log('🔄 Showing SKU gate - no preserved SKU');
+                showSkuGate();
+            } else {
+                console.log('🔄 Keeping SKU:', preservedSku);
             }
         }
         
-        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem(`vl_stats_${VERSION}`)||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,week:saved.week||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
+        function loadStats() { try{ const saved = JSON.parse(localStorage.getItem(`vl_stats_${VERSION}`)||'{}'); if(saved.date!==new Date().toDateString()){saved.today=0;} stats = {today:saved.today||0,total:saved.total||0}; itemTimes = saved.itemTimes||[]; updateStatsDisplay(); if(itemTimes.length>0){ const avg = Math.floor(itemTimes.reduce((a,b)=>a+b,0)/itemTimes.length); document.getElementById('timer-avg').textContent = `${Math.floor(avg/60)}:${(avg%60).toString().padStart(2,'0')}`; } }catch(e){} }
         function saveStats() { try{localStorage.setItem(`vl_stats_${VERSION}`,JSON.stringify({...stats,date:new Date().toDateString(),itemTimes:itemTimes.slice(-50)}));}catch(e){} }
-        function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-week').textContent = stats.week; document.getElementById('stat-total').textContent = stats.total; }
+        function updateStatsDisplay() { document.getElementById('stat-today').textContent = stats.today; document.getElementById('stat-total').textContent = stats.total; }
     </script>
+    
+    <!-- Feature Type Panel - at body level to avoid overflow:hidden issues -->
+    <div class="feature-type-panel" id="feature-type-panel">
+        <span style="font-weight:600;">✨ Feature type:</span>
+        <div class="feature-type-buttons">
+            <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
+            <button onclick="selectFeatureType('Copyright')" class="feature-type-btn">Copyright</button>
+            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
+            <button onclick="selectFeatureType('Buttons')" class="feature-type-btn">Buttons</button>
+            <button onclick="selectFeatureType('Pockets')" class="feature-type-btn">Pockets</button>
+            <button onclick="selectFeatureType('Cuffs')" class="feature-type-btn">Cuffs</button>
+            <button onclick="selectFeatureType('Drawstring')" class="feature-type-btn">Drawstring</button>
+            <button onclick="selectFeatureType('Stitch')" class="feature-type-btn">Stitch</button>
+            <button onclick="selectFeatureType('Hardware')" class="feature-type-btn">Hardware</button>
+            <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
+            <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
+        </div>
+        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="feature-type-clear">Clear</button>
+    </div>
 </body>
 </html>
