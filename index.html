@@ -384,8 +384,9 @@
         .feature-type-btn.active { background: white; color: #7c3aed; }
         
         /* Feature Type Panel - fixed positioning to avoid overflow:hidden issues */
-        .feature-type-panel { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.95); color: white; padding: 12px 18px; border-radius: 12px; font-size: 12px; z-index: 1000; display: none; flex-direction: column; gap: 10px; min-width: 320px; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-        .feature-type-panel.visible { display: flex; }
+        /* Feature Type Panel - fixed positioning to avoid overflow:hidden issues */
+        .feature-type-panel { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.98); color: white; padding: 14px 20px; border-radius: 14px; font-size: 12px; z-index: 99999; display: none; flex-direction: column; gap: 10px; min-width: 340px; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3); }
+        .feature-type-panel.visible { display: flex !important; }
         .feature-type-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .feature-type-clear { padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.8); font-size: 11px; cursor: pointer; margin-top: 4px; }
         .feature-type-clear:hover { background: rgba(255,255,255,0.2); }
@@ -1216,6 +1217,13 @@
                                     <button onclick="setStitch('Double', this)" class="btn btn-default stitch-btn">Double Stitch</button>
                                 </div>
                             </div>
+                            <div id="body-construction-section">
+                                <div class="sub-label">Body Construction</div>
+                                <div class="btn-grid btn-grid-2">
+                                    <button onclick="setBodyConstruction('Tubular', this)" class="btn btn-secondary body-btn">🔵 Tubular</button>
+                                    <button onclick="setBodyConstruction('Side Seam', this)" class="btn btn-default body-btn">Side Seam</button>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- BOTTOMS Construction: Leg Style -->
@@ -1630,12 +1638,12 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.30";
+        const VERSION = "v100.32";
         // ===============================================================
         
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
+        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', bodyConstruction:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let selectedDefectLink = null; // Index of defect marker to link close-up to
         let selectedFeatureType = null; // Type of feature being photographed
@@ -2149,15 +2157,16 @@
         function updateFeatureTypePanel() {
             const panel = document.getElementById('feature-type-panel');
             if(!panel) {
-                console.error('Feature type panel not found!');
+                console.error('❌ Feature type panel element not found!');
                 return;
             }
             
-            console.log('updateFeatureTypePanel called, mode:', photoMode);
+            console.log('✨ updateFeatureTypePanel called, mode:', photoMode, 'panel:', panel);
             
             if(photoMode === 'features') {
                 panel.classList.add('visible');
-                console.log('Feature panel shown');
+                panel.style.display = 'flex'; // Force display
+                console.log('✨ Feature panel shown, classList:', panel.classList.toString());
                 
                 // Update active state on buttons
                 document.querySelectorAll('.feature-type-btn').forEach(btn => {
@@ -2169,6 +2178,7 @@
                 });
             } else {
                 panel.classList.remove('visible');
+                panel.style.display = 'none';
             }
         }
         
@@ -5472,8 +5482,8 @@
             
             // Clear construction data when switching and restore defaults
             if(isBottoms) {
-                data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = '';
-                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn').forEach(b => { 
+                data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = ''; data.bodyConstruction = '';
+                document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn, .body-btn').forEach(b => { 
                     b.classList.remove('selected','btn-hero','btn-default'); 
                     b.classList.add('btn-secondary'); 
                 });
@@ -5512,6 +5522,13 @@
             // Stitch: Double
             document.querySelectorAll('.stitch-btn').forEach(b => {
                 if(b.textContent.includes('Double')) {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-default');
+                }
+            });
+            // Body Construction: Side Seam (default)
+            document.querySelectorAll('.body-btn').forEach(b => {
+                if(b.textContent.includes('Side Seam')) {
                     b.classList.remove('btn-secondary');
                     b.classList.add('btn-default');
                 }
@@ -5843,6 +5860,7 @@
             if(outerSleeveless) outerSleeveless.classList.toggle('hidden', !isSleeveless);
         }
         function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
+        function setBodyConstruction(type, btn) { data.bodyConstruction = type; document.querySelectorAll('.body-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
         
         // BOTTOMS: Leg Style Functions
         function setLegStyle(style, btn) { 
@@ -6731,6 +6749,7 @@
             formData.append('sleeveStyle', data.sleeveStyle);
             formData.append('cutoffType', data.cutoffType);
             formData.append('stitch', data.stitch);
+            formData.append('bodyConstruction', data.bodyConstruction);
             formData.append('legStyle', data.legStyle);
             formData.append('rise', data.rise);
             formData.append('thickness', data.thickness);
@@ -6851,6 +6870,7 @@
                     sleeveStyle: data.sleeveStyle,
                     cutoffType: data.cutoffType,
                     stitch: data.stitch,
+                    bodyConstruction: data.bodyConstruction,
                     legStyle: data.legStyle,
                     rise: data.rise,
                     thickness: data.thickness,
@@ -6928,6 +6948,7 @@
                 sleeveStyle:'',
                 cutoffType:'',
                 stitch:'',
+                bodyConstruction:'',
                 legStyle:'',
                 rise:'',
                 thickness:'',
@@ -6980,7 +7001,7 @@
             });
             
             // Reset all other button types
-            document.querySelectorAll('.cat-btn, .size-btn, .country-btn, .gender-btn, .tag-status-btn, .fade-btn, .pattern-btn, .defect-btn, .elastic-btn, .leg-btn, .rise-btn, .sleeve-btn, .stitch-btn').forEach(b => {
+            document.querySelectorAll('.cat-btn, .size-btn, .country-btn, .gender-btn, .tag-status-btn, .fade-btn, .pattern-btn, .defect-btn, .elastic-btn, .leg-btn, .rise-btn, .sleeve-btn, .stitch-btn, .body-btn').forEach(b => {
                 b.classList.remove('selected', 'btn-hero');
                 b.classList.add('btn-secondary');
             });
@@ -7106,9 +7127,9 @@
     </script>
     
     <!-- Feature Type Panel - at body level to avoid overflow:hidden issues -->
-    <div class="feature-type-panel" id="feature-type-panel">
-        <span style="font-weight:600;">✨ Feature type:</span>
-        <div class="feature-type-buttons">
+    <div class="feature-type-panel" id="feature-type-panel" style="display:none;">
+        <span style="font-weight:700;font-size:14px;">✨ Select Feature Type:</span>
+        <div class="feature-type-buttons" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
             <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
             <button onclick="selectFeatureType('Copyright')" class="feature-type-btn">Copyright</button>
             <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
@@ -7121,7 +7142,7 @@
             <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
             <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
         </div>
-        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="feature-type-clear">Clear</button>
+        <button onclick="selectedFeatureType=null;updateFeatureTypePanel();showToast('info','Cleared','No feature type selected',1000)" class="feature-type-clear">Clear Selection</button>
     </div>
 </body>
 </html>
