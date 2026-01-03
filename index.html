@@ -1502,7 +1502,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.14";
+        const VERSION = "v100.15";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1651,26 +1651,69 @@
                 return;
             }
             
-            // Use the clicked layer's bounds (works for both single and multi-camera)
-            const layer = event.currentTarget;
-            const layerRect = layer.getBoundingClientRect();
+            // Get video and container to calculate actual video display bounds
+            const video = document.getElementById('camera-video');
+            const container = document.querySelector('.camera-view-container');
             
-            // Get click position relative to layer
-            const clickX = event.clientX - layerRect.left;
-            const clickY = event.clientY - layerRect.top;
+            if(!video || !container) {
+                console.log('🎯 No video/container - ignoring');
+                return;
+            }
             
-            // In portrait mode, the layer IS sized to match the displayed video
-            // So we can directly calculate percentage
-            const x = (clickX / layerRect.width) * 100;
-            const y = (clickY / layerRect.height) * 100;
+            const containerRect = container.getBoundingClientRect();
+            const containerW = containerRect.width;
+            const containerH = containerRect.height;
             
-            // Clamp to valid range
+            // Get actual video dimensions (accounting for portrait mode)
+            let videoW = video.videoWidth || 1920;
+            let videoH = video.videoHeight || 1080;
+            
+            if(mainPhotoPortrait) {
+                const temp = videoW;
+                videoW = videoH;
+                videoH = temp;
+            }
+            
+            // Calculate displayed video area (object-fit: contain)
+            const videoAspect = videoW / videoH;
+            const containerAspect = containerW / containerH;
+            
+            let displayedW, displayedH, offsetX, offsetY;
+            
+            if(videoAspect > containerAspect) {
+                displayedW = containerW;
+                displayedH = containerW / videoAspect;
+                offsetX = 0;
+                offsetY = (containerH - displayedH) / 2;
+            } else {
+                displayedH = containerH;
+                displayedW = containerH * videoAspect;
+                offsetX = (containerW - displayedW) / 2;
+                offsetY = 0;
+            }
+            
+            // Get click position relative to container
+            const clickX = event.clientX - containerRect.left;
+            const clickY = event.clientY - containerRect.top;
+            
+            // Check if click is within the actual video display area (not the black letterbox)
+            if(clickX < offsetX || clickX > offsetX + displayedW ||
+               clickY < offsetY || clickY > offsetY + displayedH) {
+                console.log('🎯 Click in letterbox area - ignoring');
+                return;
+            }
+            
+            // Calculate percentage position within the video content
+            const x = ((clickX - offsetX) / displayedW) * 100;
+            const y = ((clickY - offsetY) / displayedH) * 100;
+            
+            // Clamp to valid range (safety check)
             if(x < 0 || x > 100 || y < 0 || y > 100) {
                 console.log('🎯 Click outside bounds - ignoring');
                 return;
             }
             
-            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% on layer: ${layer.id}`);
+            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% within video content`);
             
             // Store pending marker position
             pendingMarker = { x, y };
