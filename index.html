@@ -496,6 +496,77 @@
             cursor: crosshair;
         }
         
+        /* Centering Grid Overlay */
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+        .grid-overlay.visible { display: block; }
+        .grid-overlay::before,
+        .grid-overlay::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.4);
+        }
+        /* Vertical center line */
+        .grid-overlay::before {
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            transform: translateX(-50%);
+        }
+        /* Horizontal center line */
+        .grid-overlay::after {
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            transform: translateY(-50%);
+        }
+        /* Rule of thirds lines */
+        .grid-thirds {
+            position: absolute;
+            inset: 0;
+        }
+        .grid-thirds::before {
+            content: '';
+            position: absolute;
+            left: 33.33%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255,255,255,0.25);
+            box-shadow: calc(33.33vw) 0 0 rgba(255,255,255,0.25);
+        }
+        .grid-thirds::after {
+            content: '';
+            position: absolute;
+            top: 33.33%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255,255,255,0.25);
+            box-shadow: 0 calc(33.33vh) 0 rgba(255,255,255,0.25);
+        }
+        .grid-line-v {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: rgba(255,255,255,0.25);
+        }
+        .grid-line-h {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: rgba(255,255,255,0.25);
+        }
+        
         /* SKU Gate Overlay */
         .sku-gate { position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); z-index: 950; display: flex; align-items: center; justify-content: center; }
         .sku-gate.hidden { display: none; }
@@ -1449,6 +1520,7 @@
                     </button>
                     <button onclick="openCameraConfig()" style="background:#475569;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;" title="Configure camera assignments">⚙️ CONFIG</button>
                     <button onclick="refreshMultiCameras()" style="background:#0ea5e9;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;" title="Restart all cameras">🔄 REFRESH</button>
+                    <button onclick="toggleGrid()" id="grid-toggle-btn" style="background:#6b7280;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;" title="Toggle centering grid">⊞ GRID</button>
                     <span id="position-status" style="color:#64748b;font-size:10px;margin-left:auto;">Defects: Center only</span>
                 </div>
             </div>
@@ -1560,6 +1632,14 @@
                     <!-- Single Camera View (default) -->
                     <video id="camera-video" autoplay playsinline style="display:none;"></video>
                     
+                    <!-- Grid Overlay -->
+                    <div class="grid-overlay" id="grid-overlay">
+                        <div class="grid-line-v" style="left:33.33%"></div>
+                        <div class="grid-line-v" style="left:66.66%"></div>
+                        <div class="grid-line-h" style="top:33.33%"></div>
+                        <div class="grid-line-h" style="top:66.66%"></div>
+                    </div>
+                    
                     <!-- 3-Up Camera View (multi-camera mode) -->
                     <div id="multi-camera-view" class="multi-camera-view" style="display:none;">
                         <!-- West Camera -->
@@ -1573,6 +1653,13 @@
                             <div class="multi-cam-label">● CENTER</div>
                             <video id="video-center" autoplay playsinline></video>
                             <div class="multi-cam-overlay"></div>
+                            <!-- Grid Overlay for Center -->
+                            <div class="grid-overlay" id="grid-overlay-center">
+                                <div class="grid-line-v" style="left:33.33%"></div>
+                                <div class="grid-line-v" style="left:66.66%"></div>
+                                <div class="grid-line-h" style="top:33.33%"></div>
+                                <div class="grid-line-h" style="top:66.66%"></div>
+                            </div>
                             <!-- Defect Markers Layer - only on Center -->
                             <div class="defect-markers-layer" id="defect-markers-layer-multi" onclick="handleDefectClick(event)"></div>
                         </div>
@@ -1672,7 +1759,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.02";
+        const VERSION = "v100.03";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3859,6 +3946,30 @@
             videoEl.style.transform = transform.trim() || 'none';
         }
         
+        // Grid overlay toggle
+        let gridVisible = false;
+        
+        function toggleGrid() {
+            gridVisible = !gridVisible;
+            
+            // Toggle both grid overlays (single and multi-camera)
+            const gridSingle = document.getElementById('grid-overlay');
+            const gridCenter = document.getElementById('grid-overlay-center');
+            const btn = document.getElementById('grid-toggle-btn');
+            
+            if(gridVisible) {
+                if(gridSingle) gridSingle.classList.add('visible');
+                if(gridCenter) gridCenter.classList.add('visible');
+                btn.style.background = '#22c55e';
+                btn.textContent = '⊞ GRID ✓';
+            } else {
+                if(gridSingle) gridSingle.classList.remove('visible');
+                if(gridCenter) gridCenter.classList.remove('visible');
+                btn.style.background = '#6b7280';
+                btn.textContent = '⊞ GRID';
+            }
+        }
+        
         function loadCameraConfig() {
             try {
                 const saved = localStorage.getItem('vl_camera_config');
@@ -5624,6 +5735,10 @@
                 if(e.key === 'ArrowLeft') navigatePreview(-1);
                 if(e.key === 'ArrowRight') navigatePreview(1);
                 if(e.key === 'Delete' || e.key === 'Backspace') deleteFromPreview();
+            }
+            // G key toggles grid (when not in input field)
+            if((e.key === 'g' || e.key === 'G') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                toggleGrid();
             }
         });
         
