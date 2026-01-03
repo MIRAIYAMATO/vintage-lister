@@ -371,15 +371,15 @@
         #side-btn-back:hover, #side-btn-back.active { background: #8b5cf6; border-color: #8b5cf6; }
         
         /* Defect Close-up Link Panel & Feature Type Panel */
-        .closeup-link-panel { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(220,38,38,0.95); color: white; padding: 10px 16px; border-radius: 12px; font-size: 11px; z-index: 10; display: none; flex-direction: column; gap: 8px; min-width: 200px; }
+        .closeup-link-panel { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(220,38,38,0.95); color: white; padding: 10px 16px; border-radius: 12px; font-size: 11px; z-index: 10; display: none; flex-direction: column; gap: 8px; min-width: 280px; max-width: 400px; }
         .closeup-link-panel.visible { display: flex; }
-        .closeup-link-panel .link-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
-        .closeup-link-panel .link-btn { padding: 4px 10px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .closeup-link-panel .link-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .closeup-link-panel .link-btn { padding: 6px 12px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
         .closeup-link-panel .link-btn:hover { background: rgba(255,255,255,0.3); }
         .closeup-link-panel .link-btn.active { background: white; color: #dc2626; }
-        .closeup-link-panel .link-btn-none { padding: 4px 10px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.7); font-size: 10px; cursor: pointer; margin-top: 4px; }
+        .closeup-link-panel .link-btn-none { padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.7); font-size: 10px; cursor: pointer; margin-top: 4px; }
         .closeup-link-panel .link-btn-none:hover { background: rgba(255,255,255,0.2); }
-        .feature-type-btn { padding: 4px 8px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 10px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .feature-type-btn { padding: 6px 10px; background: rgba(255,255,255,0.2); border: none; border-radius: 6px; color: white; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
         .feature-type-btn:hover { background: rgba(255,255,255,0.3); }
         .feature-type-btn.active { background: white; color: #7c3aed; }
         
@@ -1547,15 +1547,19 @@
                     <div class="closeup-link-panel" id="feature-type-panel" style="background:rgba(124,58,237,0.95);">
                         <span style="font-weight:600;">Feature type:</span>
                         <div class="link-buttons" id="feature-type-buttons">
-                            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
-                            <button onclick="selectFeatureType('Button')" class="feature-type-btn">Button</button>
                             <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
+                            <button onclick="selectFeatureType('Copyright')" class="feature-type-btn">Copyright</button>
+                            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
+                            <button onclick="selectFeatureType('Buttons')" class="feature-type-btn">Buttons</button>
+                            <button onclick="selectFeatureType('Pockets')" class="feature-type-btn">Pockets</button>
+                            <button onclick="selectFeatureType('Cuffs')" class="feature-type-btn">Cuffs</button>
+                            <button onclick="selectFeatureType('Drawstring')" class="feature-type-btn">Drawstring</button>
                             <button onclick="selectFeatureType('Stitch')" class="feature-type-btn">Stitch</button>
                             <button onclick="selectFeatureType('Hardware')" class="feature-type-btn">Hardware</button>
                             <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
                             <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
                         </div>
-                        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="link-btn-none">None</button>
+                        <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="link-btn-none">Clear</button>
                     </div>
                 </div>
                 
@@ -1639,7 +1643,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.24";
+        const VERSION = "v100.26";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1835,8 +1839,18 @@
             }
             
             // Calculate percentage position within the video content
-            const x = ((clickX - offsetX) / displayedW) * 100;
-            const y = ((clickY - offsetY) / displayedH) * 100;
+            let x = ((clickX - offsetX) / displayedW) * 100;
+            let y = ((clickY - offsetY) / displayedH) * 100;
+            
+            // If in portrait mode, transform coordinates back to landscape space for storage
+            // Inverse of display transform (displayX = 100-y, displayY = x)
+            // So: originalX = displayY, originalY = 100 - displayX
+            if(mainPhotoPortrait) {
+                const origX = y;
+                const origY = 100 - x;
+                x = origX;
+                y = origY;
+            }
             
             // Clamp to valid range (safety check)
             if(x < 0 || x > 100 || y < 0 || y > 100) {
@@ -1844,7 +1858,7 @@
                 return;
             }
             
-            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% within video content`);
+            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% within video content (portrait: ${mainPhotoPortrait})`);
             
             // Store pending marker position
             pendingMarker = { x, y };
@@ -1946,7 +1960,7 @@
         }
         
         function renderDefectMarkers() {
-            console.log('🎯 renderDefectMarkers called, count:', defectMarkers.length, 'mode:', photoMode);
+            console.log('🎯 renderDefectMarkers called, count:', defectMarkers.length, 'mode:', photoMode, 'portrait:', mainPhotoPortrait);
             
             const layer = document.getElementById('defect-markers-layer');
             if(!layer) return;
@@ -1962,8 +1976,19 @@
                 const el = document.createElement('div');
                 el.className = `defect-marker ${marker.type}`;
                 
-                el.style.left = marker.x + '%';
-                el.style.top = marker.y + '%';
+                // Transform coordinates if in portrait mode
+                // Must match captureMainWithDefects transformation for consistency
+                // 90° CW rotation: newX = 100 - y, newY = x
+                let displayX = marker.x;
+                let displayY = marker.y;
+                
+                if(mainPhotoPortrait) {
+                    displayX = 100 - marker.y;
+                    displayY = marker.x;
+                }
+                
+                el.style.left = displayX + '%';
+                el.style.top = displayY + '%';
                 
                 el.innerHTML = `
                     ${idx + 1}
@@ -1974,7 +1999,7 @@
                 layer.appendChild(el);
             });
             
-            console.log(`🎯 Rendered ${defectMarkers.length} markers`);
+            console.log(`🎯 Rendered ${defectMarkers.length} markers (portrait: ${mainPhotoPortrait})`);
         }
         
         function updateMarkerCount() {
@@ -3976,21 +4001,15 @@
             }
             
             // Position defect layer to match actual video display area
+            // Note: Don't rotate layer - we transform marker positions instead
             layer.style.position = 'absolute';
             layer.style.width = displayedW + 'px';
             layer.style.height = displayedH + 'px';
             layer.style.left = offsetX + 'px';
             layer.style.top = offsetY + 'px';
             layer.style.zIndex = '5';
-            
-            // Apply rotation transform if in portrait mode
-            if(mainPhotoPortrait) {
-                layer.style.transform = 'rotate(90deg)';
-                layer.style.transformOrigin = 'center center';
-            } else {
-                layer.style.transform = '';
-                layer.style.transformOrigin = '';
-            }
+            layer.style.transform = '';
+            layer.style.transformOrigin = '';
         }
         
         // Update on window resize
@@ -5412,7 +5431,6 @@
             
             const btn = document.getElementById('rotate-btn');
             const video = document.getElementById('camera-video');
-            const defectLayer = document.getElementById('defect-markers-layer');
             
             if(mainPhotoPortrait) {
                 btn.textContent = '🔄 PORTRAIT';
@@ -5422,11 +5440,6 @@
                 video.style.transform = 'rotate(90deg)';
                 video.style.maxWidth = '100vh';
                 video.style.maxHeight = '100vw';
-                
-                // Rotate defect layer to match
-                if(defectLayer) {
-                    defectLayer.style.transform = 'rotate(90deg)';
-                }
                 
                 showToast('info', 'Portrait Mode ON', 'Vertical garment layout', 2000);
             } else {
@@ -5438,15 +5451,14 @@
                 video.style.maxWidth = '';
                 video.style.maxHeight = '';
                 
-                if(defectLayer) {
-                    defectLayer.style.transform = '';
-                }
-                
                 showToast('info', 'Landscape Mode', 'Horizontal layout', 1500);
             }
             
-            // Re-position defect layer after rotation
-            setTimeout(() => updateDefectLayerPosition(), 100);
+            // Re-position defect layer and re-render markers with transformed coordinates
+            setTimeout(() => {
+                updateDefectLayerPosition();
+                renderDefectMarkers();
+            }, 100);
             
             console.log(`📷 Rotation: ${mainPhotoPortrait ? 'PORTRAIT' : 'LANDSCAPE'}`);
         }
