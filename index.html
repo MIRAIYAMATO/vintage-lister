@@ -1752,7 +1752,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.06";
+        const VERSION = "v100.07";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3873,6 +3873,10 @@
                 enableDefectMarking();
             }
             
+            // Start stabilizer on center camera
+            stopStabilizer();
+            setTimeout(() => startStabilizer(), 500);
+            
             // Count active streams
             const activeCount = [streamWest, streamCenter, streamEast].filter(s => s).length;
             showToast('success', `${activeCount} Cameras Active`, 'Ready to capture', 2000);
@@ -5374,8 +5378,15 @@
         
         // ============ STABILIZER FUNCTIONS ============
         function startStabilizer() {
-            const video = document.getElementById('camera-video');
-            if(!video || !video.srcObject) return;
+            // Use center video in multi-camera mode, otherwise single camera video
+            const video = multiViewActive 
+                ? document.getElementById('video-center')
+                : document.getElementById('camera-video');
+            
+            if(!video || !video.srcObject) {
+                console.log('📷 Stabilizer: No video source available');
+                return;
+            }
             
             // Create small canvas for frame comparison (very lightweight)
             stabilizerCanvas = document.createElement('canvas');
@@ -5393,7 +5404,7 @@
                 checkStability(video);
             }, 100);
             
-            console.log('📷 Stabilizer started');
+            console.log('📷 Stabilizer started on', multiViewActive ? 'CENTER camera' : 'single camera');
         }
         
         function checkStability(video) {
