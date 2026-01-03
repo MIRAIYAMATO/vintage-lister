@@ -492,6 +492,10 @@
         #defect-markers-layer-multi {
             position: absolute;
             inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #defect-markers-layer-multi.active {
             pointer-events: auto;
             cursor: crosshair;
         }
@@ -1759,7 +1763,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.03";
+        const VERSION = "v100.04";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1915,7 +1919,8 @@
                 return;
             }
             
-            const layer = document.getElementById('defect-markers-layer');
+            // Use the clicked layer's bounds (works for both single and multi-camera)
+            const layer = event.currentTarget;
             const layerRect = layer.getBoundingClientRect();
             
             // Get click position relative to layer
@@ -1933,7 +1938,7 @@
                 return;
             }
             
-            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}%`);
+            console.log(`🎯 Click at ${x.toFixed(1)}%, ${y.toFixed(1)}% on layer: ${layer.id}`);
             
             // Store pending marker position
             pendingMarker = { x, y };
@@ -2048,33 +2053,44 @@
         }
         
         function renderDefectMarkers() {
-            console.log('🎯 renderDefectMarkers called, count:', defectMarkers.length, 'mode:', photoMode);
+            console.log('🎯 renderDefectMarkers called, count:', defectMarkers.length, 'mode:', photoMode, 'multiView:', multiViewActive);
             
-            const layer = document.getElementById('defect-markers-layer');
-            if(!layer) return;
+            // Render to both layers
+            const layers = [
+                document.getElementById('defect-markers-layer'),
+                document.getElementById('defect-markers-layer-multi')
+            ].filter(l => l);
             
-            // Remove existing markers
-            layer.querySelectorAll('.defect-marker').forEach(m => m.remove());
+            if(layers.length === 0) return;
             
-            // In portrait mode, the layer IS sized to match the displayed video exactly
-            // So markers can just use direct percentage positioning
-            defectMarkers.forEach((marker, idx) => {
-                const el = document.createElement('div');
-                el.className = `defect-marker ${marker.type}`;
+            layers.forEach(layer => {
+                // Remove existing markers from this layer
+                layer.querySelectorAll('.defect-marker').forEach(m => m.remove());
                 
-                // Direct percentage positioning (layer matches image)
-                el.style.left = marker.x + '%';
-                el.style.top = marker.y + '%';
+                // Only render if we have markers
+                if(defectMarkers.length === 0) return;
                 
-                el.innerHTML = `
-                    ${idx + 1}
-                    <div class="defect-marker-delete" onclick="event.stopPropagation(); removeDefectMarker(${marker.id})">✕</div>
-                `;
-                el.onclick = (e) => e.stopPropagation();
-                el.style.pointerEvents = 'auto';
-                layer.appendChild(el);
-                console.log(`🎯 Rendered marker ${idx + 1} at ${marker.x.toFixed(1)}%, ${marker.y.toFixed(1)}%`);
+                // In portrait mode, the layer IS sized to match the displayed video exactly
+                // So markers can just use direct percentage positioning
+                defectMarkers.forEach((marker, idx) => {
+                    const el = document.createElement('div');
+                    el.className = `defect-marker ${marker.type}`;
+                    
+                    // Direct percentage positioning (layer matches image)
+                    el.style.left = marker.x + '%';
+                    el.style.top = marker.y + '%';
+                    
+                    el.innerHTML = `
+                        ${idx + 1}
+                        <div class="defect-marker-delete" onclick="event.stopPropagation(); removeDefectMarker(${marker.id})">✕</div>
+                    `;
+                    el.onclick = (e) => e.stopPropagation();
+                    el.style.pointerEvents = 'auto';
+                    layer.appendChild(el);
+                });
             });
+            
+            console.log(`🎯 Rendered ${defectMarkers.length} markers to ${layers.length} layer(s)`);
         }
         
         function updateMarkerCount() {
@@ -2084,24 +2100,39 @@
         function enableDefectMarking() {
             console.log('🎯 enableDefectMarking called');
             defectMarkingEnabled = true;
+            
+            // Activate both defect marker layers (single and multi-camera)
             const layer = document.getElementById('defect-markers-layer');
+            const layerMulti = document.getElementById('defect-markers-layer-multi');
+            
             if(layer) {
                 layer.classList.add('active');
-                console.log('🎯 Layer active class added');
-            } else {
-                console.error('🎯 defect-markers-layer not found!');
+                console.log('🎯 Single camera layer active');
             }
+            if(layerMulti) {
+                layerMulti.classList.add('active');
+                console.log('🎯 Multi-camera layer active');
+            }
+            
+            if(!layer && !layerMulti) {
+                console.error('🎯 No defect-markers-layer found!');
+            }
+            
             const banner = document.getElementById('defect-mode-banner');
             if(banner) {
                 banner.classList.add('visible');
                 console.log('🎯 Banner visible');
             }
+            
+            // Also render any existing markers
+            renderDefectMarkers();
         }
         
         function disableDefectMarking() {
             console.log('🎯 disableDefectMarking called');
             defectMarkingEnabled = false;
             document.getElementById('defect-markers-layer')?.classList.remove('active');
+            document.getElementById('defect-markers-layer-multi')?.classList.remove('active');
             document.getElementById('defect-mode-banner')?.classList.remove('visible');
         }
         
@@ -2113,12 +2144,12 @@
             if(photoMode === 'defect-closeup') {
                 panel.classList.add('visible');
                 
-                // Create buttons for each captured defect photo (not temporary markers)
-                if(data.defectPhotos.length === 0) {
-                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked yet</span>';
+                // Create buttons for each defect MARKER (placed on main photos)
+                if(defectMarkers.length === 0) {
+                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked - mark on CENTER first</span>';
                 } else {
-                    buttonsContainer.innerHTML = data.defectPhotos.map((photo, i) => 
-                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}${photo.defectType ? ' ' + photo.defectType.charAt(0).toUpperCase() : ''}</button>`
+                    buttonsContainer.innerHTML = defectMarkers.map((marker, i) => 
+                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}${marker.type ? ' ' + marker.type.charAt(0).toUpperCase() : ''}</button>`
                     ).join('');
                 }
             } else {
@@ -2129,7 +2160,7 @@
         function selectDefectLink(index) {
             selectedDefectLink = index;
             updateDefectLinkPanel();
-            const defectType = data.defectPhotos[index]?.defectType || '';
+            const defectType = defectMarkers[index]?.type || '';
             showToast('info', `Linked to Defect #${index + 1}${defectType ? ' (' + defectType + ')' : ''}`, 'Next photo will be linked', 1500);
         }
         
@@ -4931,14 +4962,20 @@
             } else if(mode === 'tag' || mode === 'defect' || mode === 'defect-closeup' || mode === 'features') {
                 // Stop multi-camera view when switching to other modes
                 if(multiViewActive) {
+                    console.log('📷 Stopping multi-camera view for secondary camera mode');
                     stopMultiCameraView();
+                    await new Promise(r => setTimeout(r, 300)); // Wait for streams to fully stop
                 }
                 document.getElementById('multi-camera-view').style.display = 'none';
                 document.getElementById('defect-markers-layer').style.display = 'block';
+                document.getElementById('camera-placeholder').style.display = 'none';
                 video.style.display = 'block';
                 
                 if(secondaryCameraId) {
-                    console.log(`📷 ${mode} mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, secondary=${secondaryCameraId?.slice(0,8)})`);
+                    console.log(`📷 ${mode} mode: switching to secondary camera`);
+                    console.log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8)}`);
+                    console.log(`   activeCameraId: ${activeCameraId?.slice(0,8)}`);
+                    
                     if(activeCameraId !== secondaryCameraId) {
                         console.log('📷 SWITCHING to SECONDARY camera (C922X)...');
                         try {
@@ -4946,12 +4983,22 @@
                             console.log('📷 Switch to C922X complete');
                         } catch(e) {
                             console.error('📷 Switch to C922X failed:', e);
+                            showToast('error', 'Camera Switch Failed', e.message, 3000);
                         }
                     } else {
                         console.log('📷 Already on SECONDARY camera');
                     }
                 } else {
-                    console.warn('⚠️ No secondary camera detected');
+                    console.warn('⚠️ No secondary camera (C922X) detected - using main camera');
+                    showToast('warning', 'No C922X Found', 'Using main camera for close-ups', 3000);
+                    // Try to use main camera as fallback
+                    if(mainCameraId && activeCameraId !== mainCameraId) {
+                        try {
+                            await switchCamera(mainCameraId);
+                        } catch(e) {
+                            console.error('📷 Fallback to main camera failed:', e);
+                        }
+                    }
                 }
             }
             
