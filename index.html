@@ -1514,6 +1514,7 @@
                     <button onclick="openCameraConfig()" style="background:#475569;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:8px;" title="Configure camera assignments">⚙️ CONFIG</button>
                     <button onclick="refreshMultiCameras()" style="background:#0ea5e9;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;" title="Restart all cameras">🔄 REFRESH</button>
                     <button onclick="toggleGrid()" id="grid-toggle-btn" style="background:#6b7280;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;" title="Toggle centering grid">⊞ GRID</button>
+                    <button onclick="toggleCaptureMode()" id="capture-mode-btn" style="background:#8b5cf6;color:white;border:none;padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;font-weight:600;" title="Toggle between capturing all 3 cameras or just center">📸 ALL 3</button>
                     <span id="position-status" style="color:#64748b;font-size:10px;margin-left:auto;">Defects: Center only</span>
                 </div>
             </div>
@@ -1752,7 +1753,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.07";
+        const VERSION = "v100.08";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1848,6 +1849,7 @@
         let streamCenter = null;
         let streamEast = null;
         let multiViewActive = false;
+        let captureMode3Up = true; // true = capture all 3 cameras, false = center only
         let barcodeScanInterval = null;
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
@@ -3990,6 +3992,21 @@
             }
         }
         
+        function toggleCaptureMode() {
+            captureMode3Up = !captureMode3Up;
+            const btn = document.getElementById('capture-mode-btn');
+            
+            if(captureMode3Up) {
+                btn.style.background = '#8b5cf6';
+                btn.textContent = '📸 ALL 3';
+                showToast('info', 'Capture Mode: ALL 3', 'SPACE captures West + Center + East', 2000);
+            } else {
+                btn.style.background = '#f59e0b';
+                btn.textContent = '📸 CENTER';
+                showToast('info', 'Capture Mode: CENTER', 'SPACE captures Center only', 2000);
+            }
+        }
+        
         function loadCameraConfig() {
             try {
                 const saved = localStorage.getItem('vl_camera_config');
@@ -4875,9 +4892,13 @@
             }
         }
         function capturePhoto() { 
-            // If in multi-camera view, capture all 3 cameras
+            // If in multi-camera view, check capture mode
             if(multiViewActive && photoMode === 'main') {
-                captureAllCameras();
+                if(captureMode3Up) {
+                    captureAllCameras();
+                } else {
+                    captureCenterOnly();
+                }
                 return;
             }
             
@@ -5067,6 +5088,44 @@
             // Restart preview streams
             console.log('📸 Restarting preview streams...');
             await new Promise(r => setTimeout(r, 500));
+            await startMultiCameraView();
+        }
+        
+        // Capture only center camera at FULL 4K
+        async function captureCenterOnly() {
+            console.log('📸 captureCenterOnly() - Center 4K Only');
+            
+            if(!centerCameraId) {
+                showToast('error', 'No Center Camera', 'Configure cameras first', 2000);
+                return;
+            }
+            
+            // Flash effect
+            document.getElementById('flash-overlay').classList.add('flash'); 
+            setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100);
+            
+            showToast('info', '📸 Capturing Center...', 'Hold still', 1500);
+            
+            // Stop all preview streams to free USB bandwidth
+            console.log('📸 Stopping preview streams...');
+            stopMultiCameraView();
+            await new Promise(r => setTimeout(r, 300));
+            
+            // Capture CENTER at 4K
+            const success = await captureSequential4K(centerCameraId, 'Center');
+            
+            if(success) {
+                showToast('success', '📸 Center Photo', 'Full 4K captured', 2000);
+            } else {
+                showToast('error', 'Capture Failed', 'Check camera connection', 3000);
+            }
+            
+            updatePhotoGrids();
+            updateValidation();
+            
+            // Restart preview streams
+            console.log('📸 Restarting preview streams...');
+            await new Promise(r => setTimeout(r, 300));
             await startMultiCameraView();
         }
         
@@ -5602,6 +5661,10 @@
             // G key toggles grid (when not in input field)
             if((e.key === 'g' || e.key === 'G') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 toggleGrid();
+            }
+            // C key toggles capture mode (when not in input field and multi-view is active)
+            if((e.key === 'c' || e.key === 'C') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && multiViewActive) {
+                toggleCaptureMode();
             }
         });
         
