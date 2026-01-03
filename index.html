@@ -267,6 +267,15 @@
             transition: opacity 0.15s ease, transform 0.3s ease;
         }
         .camera-view video.switching { opacity: 0.3; }
+        /* Portrait mode - rotate video 90° */
+        .camera-view video.portrait-mode {
+            transform: rotate(90deg);
+            max-height: none;
+            max-width: none;
+            /* Scale to fit container when rotated */
+            height: auto;
+            width: auto;
+        }
         .camera-placeholder { color: #444; text-align: center; position: absolute; z-index: 1; }
         .camera-placeholder-icon { font-size: 48px; margin-bottom: 12px; }
         .camera-overlay { position: absolute; inset: 0; pointer-events: none; display: none; }
@@ -1383,6 +1392,7 @@
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 BRIO 4K</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
                 <button class="fullres-btn" onclick="forceMaxResolution()" title="Click to force maximum resolution">FULL RES</button>
+                <button class="fullres-btn" id="rotate-btn" onclick="toggleRotation()" style="background:#8b5cf6;" title="Rotate between landscape and portrait">🔄 LANDSCAPE</button>
                 <div id="camera-status" class="camera-status">No camera</div>
             </div>
             <div class="camera-view">
@@ -1492,7 +1502,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.12";
+        const VERSION = "v100.14";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1578,6 +1588,9 @@
         
         // Camera configuration for flip/rotation (can be extended later if needed)
         let cameraConfig = { flips: {}, rots: {} };
+        
+        // Portrait mode - rotates capture 90° for vertical garments
+        let mainPhotoPortrait = false;
         
         let barcodeScanInterval = null;
         // Stabilizer variables
@@ -1827,10 +1840,24 @@
             if(photoMode === 'defect-closeup') {
                 panel.classList.add('visible');
                 
-                // Create buttons for each defect MARKER (placed on main photos)
-                if(defectMarkers.length === 0) {
-                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked - mark on CENTER first</span>';
+                // Get captured defects (exclude overview photo)
+                const capturedDefects = data.defectPhotos.filter(p => !p.isOverview && p.defectType);
+                
+                // Also check current markers (not yet captured)
+                const hasMarkers = defectMarkers.length > 0;
+                const hasCapturedDefects = capturedDefects.length > 0;
+                
+                if(!hasMarkers && !hasCapturedDefects) {
+                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked - mark in Main mode first</span>';
+                } else if(hasCapturedDefects) {
+                    // Show buttons for captured defects
+                    buttonsContainer.innerHTML = capturedDefects.map((defect, i) => {
+                        const typeLabel = defect.defectType ? defect.defectType.charAt(0).toUpperCase() : '';
+                        const num = defect.markerIndex || (i + 1);
+                        return `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${num} ${typeLabel}</button>`;
+                    }).join('');
                 } else {
+                    // Show buttons for current markers (not yet captured)
                     buttonsContainer.innerHTML = defectMarkers.map((marker, i) => 
                         `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}${marker.type ? ' ' + marker.type.charAt(0).toUpperCase() : ''}</button>`
                     ).join('');
@@ -1843,8 +1870,22 @@
         function selectDefectLink(index) {
             selectedDefectLink = index;
             updateDefectLinkPanel();
-            const defectType = defectMarkers[index]?.type || '';
-            showToast('info', `Linked to Defect #${index + 1}${defectType ? ' (' + defectType + ')' : ''}`, 'Next photo will be linked', 1500);
+            
+            // Get defect type from markers or captured photos
+            let defectType = '';
+            let defectNum = index + 1;
+            
+            if(defectMarkers[index]) {
+                defectType = defectMarkers[index].type || '';
+            } else {
+                const capturedDefects = data.defectPhotos.filter(p => !p.isOverview && p.defectType);
+                if(capturedDefects[index]) {
+                    defectType = capturedDefects[index].defectType || '';
+                    defectNum = capturedDefects[index].markerIndex || (index + 1);
+                }
+            }
+            
+            showToast('info', `Linked to Defect #${defectNum}${defectType ? ' (' + defectType + ')' : ''}`, 'Next photo will be linked', 1500);
         }
         
         // Feature Type Panel
@@ -3421,8 +3462,15 @@
             
             const containerW = container.clientWidth;
             const containerH = container.clientHeight;
-            const videoW = video.videoWidth || 1920;
-            const videoH = video.videoHeight || 1080;
+            let videoW = video.videoWidth || 1920;
+            let videoH = video.videoHeight || 1080;
+            
+            // In portrait mode, swap effective dimensions for aspect calculation
+            if(mainPhotoPortrait) {
+                const temp = videoW;
+                videoW = videoH;
+                videoH = temp;
+            }
             
             // Video uses object-fit: contain, calculate actual display area
             const videoAspect = videoW / videoH;
@@ -3451,6 +3499,15 @@
             layer.style.left = offsetX + 'px';
             layer.style.top = offsetY + 'px';
             layer.style.zIndex = '5';
+            
+            // In portrait mode, rotate the layer too
+            if(mainPhotoPortrait) {
+                layer.style.transform = 'rotate(90deg)';
+                layer.style.transformOrigin = 'center center';
+            } else {
+                layer.style.transform = '';
+                layer.style.transformOrigin = '';
+            }
         }
         
         // Update on window resize
@@ -3929,10 +3986,16 @@
             const isRotated = isCameraRotated90();
             
             // If camera is hardware-rotated 90°, we need to account for that
-            const effectiveW = isRotated ? sourceH : sourceW;
-            const effectiveH = isRotated ? sourceW : sourceH;
+            let effectiveW = isRotated ? sourceH : sourceW;
+            let effectiveH = isRotated ? sourceW : sourceH;
             
-            // LANDSCAPE MODE: Keep original orientation
+            // Software portrait mode - rotate 90° to make vertical
+            if(mainPhotoPortrait) {
+                const temp = effectiveW;
+                effectiveW = effectiveH;
+                effectiveH = temp;
+            }
+            
             const mainCanvas = document.createElement('canvas');
             const ctx = mainCanvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
@@ -3943,9 +4006,25 @@
             
             ctx.save();
             
-            // Handle hardware rotation
-            if(isRotated) {
+            // Apply software portrait rotation first
+            if(mainPhotoPortrait) {
                 ctx.translate(effectiveW/2, effectiveH/2);
+                ctx.rotate(Math.PI / 2);
+                if(isRotated) {
+                    ctx.translate(-sourceH/2, -sourceW/2);
+                } else {
+                    ctx.translate(-sourceW/2, -sourceH/2);
+                }
+            }
+            
+            // Handle hardware rotation
+            if(isRotated && !mainPhotoPortrait) {
+                ctx.translate(effectiveW/2, effectiveH/2);
+                ctx.rotate(Math.PI / 2);
+                ctx.translate(-sourceW/2, -sourceH/2);
+            } else if(isRotated && mainPhotoPortrait) {
+                // Combined rotation already handled above
+                ctx.translate(sourceH/2, sourceW/2);
                 ctx.rotate(Math.PI / 2);
                 ctx.translate(-sourceW/2, -sourceH/2);
             }
@@ -3955,7 +4034,7 @@
                 if(isRotated) {
                     ctx.translate(sourceW, sourceH);
                 } else {
-                    ctx.translate(effectiveW, effectiveH);
+                    ctx.translate(mainPhotoPortrait ? sourceH : effectiveW, mainPhotoPortrait ? sourceW : effectiveH);
                 }
                 ctx.rotate(Math.PI);
             }
@@ -3963,7 +4042,7 @@
             ctx.drawImage(video, 0, 0, sourceW, sourceH);
             ctx.restore();
             
-            console.log(`📸 MAIN: ${sourceW}x${sourceH} → ${mainCanvas.width}x${mainCanvas.height} (flip:${isFlipped}, rot:${isRotated})`);
+            console.log(`📸 MAIN: ${sourceW}x${sourceH} → ${mainCanvas.width}x${mainCanvas.height} (flip:${isFlipped}, rot:${isRotated}, portrait:${mainPhotoPortrait})`);
             
             // Save main photo
             mainCanvas.toBlob(mainBlob => {
@@ -3971,7 +4050,8 @@
                     blob: mainBlob, 
                     url: URL.createObjectURL(mainBlob), 
                     width: mainCanvas.width, 
-                    height: mainCanvas.height 
+                    height: mainCanvas.height,
+                    isPortrait: mainPhotoPortrait
                 };
                 data.mainPhotos.push(mainPhoto);
                 
@@ -4479,6 +4559,10 @@
             if((e.key === 'g' || e.key === 'G') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 toggleGrid();
             }
+            // R key toggles rotation (when not in input field and in main mode)
+            if((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && photoMode === 'main') {
+                toggleRotation();
+            }
         });
         
         // Toggle centering grid overlay
@@ -4488,6 +4572,31 @@
                 const isVisible = grid.style.display === 'block';
                 grid.style.display = isVisible ? 'none' : 'block';
             }
+        }
+        
+        // Toggle between landscape and portrait mode
+        function toggleRotation() {
+            mainPhotoPortrait = !mainPhotoPortrait;
+            
+            const video = document.getElementById('camera-video');
+            const btn = document.getElementById('rotate-btn');
+            
+            if(mainPhotoPortrait) {
+                video.classList.add('portrait-mode');
+                btn.textContent = '🔄 PORTRAIT';
+                btn.style.background = '#22c55e';
+                showToast('info', 'Portrait Mode', 'Photos will be rotated 90° (vertical)', 1500);
+            } else {
+                video.classList.remove('portrait-mode');
+                btn.textContent = '🔄 LANDSCAPE';
+                btn.style.background = '#8b5cf6';
+                showToast('info', 'Landscape Mode', 'Photos will be horizontal', 1500);
+            }
+            
+            // Update defect layer positioning
+            setTimeout(() => updateDefectLayerPosition(), 100);
+            
+            console.log(`📷 Rotation: ${mainPhotoPortrait ? 'PORTRAIT' : 'LANDSCAPE'}`);
         }
         
         function setSuperCategory(cat, btn) { 
@@ -6001,6 +6110,19 @@
             goToStep(1); 
             setPhotoMode('main'); 
             resetZoom(); 
+            
+            // Reset portrait mode to landscape
+            if(mainPhotoPortrait) {
+                mainPhotoPortrait = false;
+                const video = document.getElementById('camera-video');
+                const btn = document.getElementById('rotate-btn');
+                if(video) video.classList.remove('portrait-mode');
+                if(btn) {
+                    btn.textContent = '🔄 LANDSCAPE';
+                    btn.style.background = '#8b5cf6';
+                }
+                updateDefectLayerPosition();
+            }
             
             // Show SKU gate only if not keeping SKU
             if(!keepSku || !preservedSku) {
