@@ -1672,7 +1672,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.01";
+        const VERSION = "v100.02";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3661,12 +3661,13 @@
             // Start Center camera FIRST (high res - priority)
             if(centerCameraId) {
                 try {
-                    console.log('📷 Starting CENTER camera (4K)...');
+                    console.log('📷 Starting CENTER camera (4K @ 10fps)...');
                     streamCenter = await navigator.mediaDevices.getUserMedia({
                         video: { 
                             deviceId: { exact: centerCameraId }, 
                             width: { ideal: 4096 }, 
-                            height: { ideal: 2160 } 
+                            height: { ideal: 2160 },
+                            frameRate: { ideal: 10, max: 10 }
                         }
                     });
                     videoCenter.srcObject = streamCenter;
@@ -3692,16 +3693,16 @@
             // Small delay between camera starts to avoid USB contention
             await new Promise(r => setTimeout(r, 500));
             
-            // Start West camera (lower res to save bandwidth)
+            // Start West camera (4K @ 5fps - full res, low bandwidth)
             if(westCameraId) {
                 try {
-                    console.log('📷 Starting WEST camera (1080p)...');
+                    console.log('📷 Starting WEST camera (4K @ 5fps)...');
                     streamWest = await navigator.mediaDevices.getUserMedia({
                         video: { 
                             deviceId: { exact: westCameraId }, 
-                            width: { ideal: 1920, max: 1920 }, 
-                            height: { ideal: 1080, max: 1080 },
-                            frameRate: { ideal: 15, max: 15 } // Lower framerate
+                            width: { ideal: 4096 }, 
+                            height: { ideal: 2160 },
+                            frameRate: { ideal: 5, max: 5 }
                         }
                     });
                     videoWest.srcObject = streamWest;
@@ -3726,16 +3727,16 @@
             // Small delay
             await new Promise(r => setTimeout(r, 500));
             
-            // Start East camera (lower res to save bandwidth)
+            // Start East camera (4K @ 5fps - full res, low bandwidth)
             if(eastCameraId) {
                 try {
-                    console.log('📷 Starting EAST camera (1080p)...');
+                    console.log('📷 Starting EAST camera (4K @ 5fps)...');
                     streamEast = await navigator.mediaDevices.getUserMedia({
                         video: { 
                             deviceId: { exact: eastCameraId }, 
-                            width: { ideal: 1920, max: 1920 }, 
-                            height: { ideal: 1080, max: 1080 },
-                            frameRate: { ideal: 15, max: 15 } // Lower framerate
+                            width: { ideal: 4096 }, 
+                            height: { ideal: 2160 },
+                            frameRate: { ideal: 5, max: 5 }
                         }
                     });
                     videoEast.srcObject = streamEast;
@@ -3819,16 +3820,16 @@
             
             await new Promise(r => setTimeout(r, 300));
             
-            // Restart
+            // Restart at 4K with low framerate
             const videoEl = document.getElementById(`video-${position}`);
             try {
                 const isCenter = position === 'center';
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
                         deviceId: { exact: cameraId }, 
-                        width: { ideal: isCenter ? 4096 : 1920, max: isCenter ? 4096 : 1920 }, 
-                        height: { ideal: isCenter ? 2160 : 1080, max: isCenter ? 2160 : 1080 },
-                        frameRate: isCenter ? undefined : { ideal: 15, max: 15 }
+                        width: { ideal: 4096 }, 
+                        height: { ideal: 2160 },
+                        frameRate: { ideal: isCenter ? 10 : 5, max: isCenter ? 10 : 5 }
                     }
                 });
                 videoEl.srcObject = stream;
@@ -3838,7 +3839,7 @@
                 else if(position === 'east') streamEast = stream;
                 else streamCenter = stream;
                 
-                showToast('success', `${position.toUpperCase()} Restarted`, 'Camera active', 1500);
+                showToast('success', `${position.toUpperCase()} Restarted`, `${videoEl.videoWidth || '4K'}`, 1500);
             } catch(e) {
                 console.error(`Failed to restart ${position}:`, e);
                 showToast('error', `${position.toUpperCase()} Failed`, e.message, 3000);
@@ -5011,148 +5012,173 @@
             }
         }
         
-        // Capture from all 3 cameras at once
+        // Capture from all 3 cameras at FULL 4K - stops preview, captures each sequentially
         async function captureAllCameras() {
-            console.log('📸 captureAllCameras() called');
-            console.log(`   streamWest: ${streamWest ? 'active' : 'null'}`);
-            console.log(`   streamCenter: ${streamCenter ? 'active' : 'null'}`);
-            console.log(`   streamEast: ${streamEast ? 'active' : 'null'}`);
+            console.log('📸 captureAllCameras() - Sequential 4K Mode');
             
             // Flash effect
             document.getElementById('flash-overlay').classList.add('flash'); 
             setTimeout(()=>document.getElementById('flash-overlay').classList.remove('flash'),100);
             
+            showToast('info', '📸 Capturing 4K...', 'Hold still - this takes a moment', 2000);
+            
+            // Remember which cameras were active
+            const hadWest = !!streamWest;
+            const hadCenter = !!streamCenter;
+            const hadEast = !!streamEast;
+            
+            // Stop all preview streams to free USB bandwidth
+            console.log('📸 Stopping preview streams...');
+            stopMultiCameraView();
+            await new Promise(r => setTimeout(r, 500));
+            
             let captureCount = 0;
-            const capturePromises = [];
             
-            // Capture West
-            const videoWest = document.getElementById('video-west');
-            if(streamWest && videoWest && videoWest.readyState >= 2 && videoWest.videoWidth > 0) {
-                console.log(`📸 WEST: ${videoWest.videoWidth}x${videoWest.videoHeight}, readyState=${videoWest.readyState}`);
-                capturePromises.push(captureFromVideoAsync(videoWest, westCameraId, 'West'));
-                captureCount++;
-            } else {
-                console.warn(`📸 WEST skipped: stream=${!!streamWest}, video=${!!videoWest}, readyState=${videoWest?.readyState}, width=${videoWest?.videoWidth}`);
+            // Capture WEST at 4K
+            if(hadWest && westCameraId) {
+                const success = await captureSequential4K(westCameraId, 'West');
+                if(success) captureCount++;
+                await new Promise(r => setTimeout(r, 300));
             }
             
-            // Capture Center (main camera - high res)
-            const videoCenter = document.getElementById('video-center');
-            if(streamCenter && videoCenter && videoCenter.readyState >= 2 && videoCenter.videoWidth > 0) {
-                console.log(`📸 CENTER: ${videoCenter.videoWidth}x${videoCenter.videoHeight}, readyState=${videoCenter.readyState}`);
-                capturePromises.push(captureFromVideoAsync(videoCenter, centerCameraId, 'Center'));
-                captureCount++;
-            } else {
-                console.warn(`📸 CENTER skipped: stream=${!!streamCenter}, video=${!!videoCenter}, readyState=${videoCenter?.readyState}, width=${videoCenter?.videoWidth}`);
+            // Capture CENTER at 4K
+            if(hadCenter && centerCameraId) {
+                const success = await captureSequential4K(centerCameraId, 'Center');
+                if(success) captureCount++;
+                await new Promise(r => setTimeout(r, 300));
             }
             
-            // Capture East
-            const videoEast = document.getElementById('video-east');
-            if(streamEast && videoEast && videoEast.readyState >= 2 && videoEast.videoWidth > 0) {
-                console.log(`📸 EAST: ${videoEast.videoWidth}x${videoEast.videoHeight}, readyState=${videoEast.readyState}`);
-                capturePromises.push(captureFromVideoAsync(videoEast, eastCameraId, 'East'));
-                captureCount++;
-            } else {
-                console.warn(`📸 EAST skipped: stream=${!!streamEast}, video=${!!videoEast}, readyState=${videoEast?.readyState}, width=${videoEast?.videoWidth}`);
+            // Capture EAST at 4K
+            if(hadEast && eastCameraId) {
+                const success = await captureSequential4K(eastCameraId, 'East');
+                if(success) captureCount++;
             }
             
-            // Wait for all captures to complete
-            if(capturePromises.length > 0) {
-                await Promise.all(capturePromises);
-            }
-            
+            // Show results
             if(captureCount > 0) {
-                showToast('success', `📸 ${captureCount} Photos Captured`, captureCount === 3 ? 'West • Center • East' : 'Some cameras unavailable', 2000);
+                showToast('success', `📸 ${captureCount} Photos at 4K!`, 'Full resolution captured', 2500);
             } else {
-                showToast('error', 'No Photos Captured', 'Check camera connections', 3000);
+                showToast('error', 'Capture Failed', 'Check camera connections', 3000);
             }
             
             updatePhotoGrids();
             updateValidation();
+            
+            // Restart preview streams
+            console.log('📸 Restarting preview streams...');
+            await new Promise(r => setTimeout(r, 500));
+            await startMultiCameraView();
         }
         
-        // Async version of captureFromVideo that returns a promise
-        function captureFromVideoAsync(videoEl, cameraId, position) {
-            return new Promise((resolve) => {
-                try {
-                    const sourceW = videoEl.videoWidth;
-                    const sourceH = videoEl.videoHeight;
-                    
-                    if(sourceW === 0 || sourceH === 0) {
-                        console.error(`📸 ${position}: Invalid dimensions ${sourceW}x${sourceH}`);
-                        resolve();
-                        return;
+        // Capture single camera at 4K by opening dedicated stream
+        async function captureSequential4K(cameraId, position) {
+            let tempStream = null;
+            try {
+                console.log(`📸 ${position}: Opening 4K stream...`);
+                
+                // Request maximum resolution
+                tempStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        deviceId: { exact: cameraId }, 
+                        width: { ideal: 4096, min: 3840 }, 
+                        height: { ideal: 2160, min: 2160 }
                     }
-                    
-                    // Get flip/rot settings for this camera
-                    const isFlipped = cameraConfig.flips && cameraConfig.flips[cameraId];
-                    const isRotated = cameraConfig.rots && cameraConfig.rots[cameraId];
-                    
-                    // Calculate effective dimensions after rotation
-                    const effectiveW = isRotated ? sourceH : sourceW;
-                    const effectiveH = isRotated ? sourceW : sourceH;
-                    
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    
-                    canvas.width = effectiveW;
-                    canvas.height = effectiveH;
-                    
-                    ctx.save();
-                    
-                    // Apply rotation first if needed
-                    if(isRotated) {
-                        ctx.translate(effectiveW/2, effectiveH/2);
-                        ctx.rotate(Math.PI / 2);
-                        ctx.translate(-sourceW/2, -sourceH/2);
-                    }
-                    
-                    // Apply flip if needed
-                    if(isFlipped) {
-                        if(isRotated) {
-                            ctx.translate(sourceW, sourceH);
-                        } else {
-                            ctx.translate(effectiveW, effectiveH);
-                        }
-                        ctx.rotate(Math.PI);
-                    }
-                    
-                    ctx.drawImage(videoEl, 0, 0, sourceW, sourceH);
-                    ctx.restore();
-                    
-                    console.log(`📸 ${position}: ${sourceW}x${sourceH} → ${canvas.width}x${canvas.height} (flip:${isFlipped}, rot:${isRotated})`);
-                    
-                    // Save photo
-                    canvas.toBlob(blob => {
-                        if(blob) {
-                            const photo = {
-                                blob,
-                                url: URL.createObjectURL(blob),
-                                width: canvas.width,
-                                height: canvas.height,
-                                position: position.toLowerCase(),
-                                cameraId: cameraId
-                            };
-                            data.mainPhotos.push(photo);
-                            
-                            // Auto-save to folder if selected
-                            if(saveDirectoryHandle) {
-                                const filename = generatePhotoFilename('main-' + position.toLowerCase(), data.mainPhotos.length);
-                                savePhotoToFolder(blob, filename);
-                            }
-                            
-                            console.log(`📸 ${position}: Saved successfully`);
-                        } else {
-                            console.error(`📸 ${position}: toBlob returned null`);
-                        }
-                        resolve();
-                    }, 'image/jpeg', 0.95);
-                } catch(e) {
-                    console.error(`📸 ${position}: Error capturing`, e);
-                    resolve();
+                });
+                
+                // Create temp video element
+                const tempVideo = document.createElement('video');
+                tempVideo.srcObject = tempStream;
+                tempVideo.muted = true;
+                tempVideo.playsInline = true;
+                
+                // Wait for video to be ready
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => reject(new Error('Video timeout')), 5000);
+                    tempVideo.onloadedmetadata = () => {
+                        clearTimeout(timeout);
+                        tempVideo.play().then(resolve).catch(reject);
+                    };
+                    tempVideo.onerror = () => {
+                        clearTimeout(timeout);
+                        reject(new Error('Video error'));
+                    };
+                });
+                
+                // Give camera time to auto-adjust exposure
+                await new Promise(r => setTimeout(r, 400));
+                
+                const sourceW = tempVideo.videoWidth;
+                const sourceH = tempVideo.videoHeight;
+                console.log(`📸 ${position}: Captured ${sourceW}x${sourceH}`);
+                
+                // Apply transforms
+                const isFlipped = cameraConfig.flips && cameraConfig.flips[cameraId];
+                const isRotated = cameraConfig.rots && cameraConfig.rots[cameraId];
+                
+                const effectiveW = isRotated ? sourceH : sourceW;
+                const effectiveH = isRotated ? sourceW : sourceH;
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                canvas.width = effectiveW;
+                canvas.height = effectiveH;
+                
+                ctx.save();
+                if(isRotated) {
+                    ctx.translate(effectiveW/2, effectiveH/2);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.translate(-sourceW/2, -sourceH/2);
                 }
-            });
+                if(isFlipped) {
+                    ctx.translate(isRotated ? sourceW : effectiveW, isRotated ? sourceH : effectiveH);
+                    ctx.rotate(Math.PI);
+                }
+                ctx.drawImage(tempVideo, 0, 0);
+                ctx.restore();
+                
+                // Stop stream immediately after capture
+                tempStream.getTracks().forEach(t => t.stop());
+                tempStream = null;
+                tempVideo.srcObject = null;
+                
+                // Save photo
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.95);
+                });
+                
+                if(!blob) {
+                    console.error(`📸 ${position}: toBlob failed`);
+                    return false;
+                }
+                
+                const photo = {
+                    blob,
+                    url: URL.createObjectURL(blob),
+                    width: canvas.width,
+                    height: canvas.height,
+                    position: position.toLowerCase(),
+                    cameraId: cameraId
+                };
+                data.mainPhotos.push(photo);
+                
+                if(saveDirectoryHandle) {
+                    const filename = generatePhotoFilename('main-' + position.toLowerCase(), data.mainPhotos.length);
+                    savePhotoToFolder(blob, filename);
+                }
+                
+                const sizeMB = (blob.size / 1024 / 1024).toFixed(2);
+                console.log(`📸 ${position}: Saved ${canvas.width}x${canvas.height} (${sizeMB}MB) ✓`);
+                return true;
+                
+            } catch(e) {
+                console.error(`📸 ${position}: 4K capture failed -`, e.message);
+                if(tempStream) {
+                    tempStream.getTracks().forEach(t => t.stop());
+                }
+                return false;
+            }
         }
         
         function captureMainWithDefects(video, sourceW, sourceH) {
