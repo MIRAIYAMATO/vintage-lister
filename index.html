@@ -1492,7 +1492,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.11";
+        const VERSION = "v100.12";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -4004,6 +4004,16 @@
             // Use MAX dimension so portrait photos get larger crops
             const cropSize = Math.round(Math.max(mainW, mainH) * DEFECT_CROP_SIZE);
             
+            // Defect type display names
+            const DEFECT_LABELS = {
+                stain: 'STAIN',
+                hole: 'HOLE',
+                tear: 'TEAR',
+                fade: 'FADE',
+                repair: 'REPAIR',
+                other: 'DEFECT'
+            };
+            
             defectMarkers.forEach((marker, idx) => {
                 // Convert marker percentage to pixel position on main canvas
                 const centerX = Math.round((marker.x / 100) * mainW);
@@ -4013,9 +4023,18 @@
                 let cropX = centerX - Math.round(cropSize / 2);
                 let cropY = centerY - Math.round(cropSize / 2);
                 
+                // Track how much we had to shift the crop (for circle positioning)
+                const originalCropX = cropX;
+                const originalCropY = cropY;
+                
                 // Clamp to image bounds
                 cropX = Math.max(0, Math.min(cropX, mainW - cropSize));
                 cropY = Math.max(0, Math.min(cropY, mainH - cropSize));
+                
+                // Calculate where the defect actually is within the crop
+                // (may not be exactly center if we hit image bounds)
+                const defectInCropX = centerX - cropX;
+                const defectInCropY = centerY - cropY;
                 
                 // Create crop canvas
                 const cropCanvas = document.createElement('canvas');
@@ -4023,18 +4042,122 @@
                 cropCanvas.width = cropSize;
                 cropCanvas.height = cropSize;
                 
+                // Draw the cropped image
                 cropCtx.drawImage(mainCanvas, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
                 
-                // Add small defect type indicator in corner
-                cropCtx.fillStyle = DEFECT_COLORS[marker.type];
+                // Scale factors for annotations based on crop size
+                const scale = cropSize / 1000; // Base scale on 1000px reference
+                const circleRadius = Math.round(80 * scale);
+                const lineWidth = Math.max(3, Math.round(6 * scale));
+                const fontSize = Math.round(42 * scale);
+                const arrowSize = Math.round(20 * scale);
+                const labelPadding = Math.round(16 * scale);
+                
+                const defectColor = DEFECT_COLORS[marker.type] || '#ef4444';
+                const label = DEFECT_LABELS[marker.type] || 'DEFECT';
+                
+                // === DRAW CIRCLE AROUND DEFECT ===
+                cropCtx.strokeStyle = defectColor;
+                cropCtx.lineWidth = lineWidth;
+                cropCtx.setLineDash([lineWidth * 2, lineWidth]); // Dashed line
                 cropCtx.beginPath();
-                cropCtx.arc(cropSize - 30, 30, 20, 0, Math.PI * 2);
+                cropCtx.arc(defectInCropX, defectInCropY, circleRadius, 0, Math.PI * 2);
+                cropCtx.stroke();
+                cropCtx.setLineDash([]); // Reset to solid
+                
+                // === DRAW ARROW FROM TOP-LEFT TO CIRCLE ===
+                // Arrow starts from top-left area, points to edge of circle
+                const arrowStartX = Math.round(cropSize * 0.12);
+                const arrowStartY = Math.round(cropSize * 0.12);
+                
+                // Calculate angle from arrow start to defect center
+                const angle = Math.atan2(defectInCropY - arrowStartY, defectInCropX - arrowStartX);
+                
+                // Arrow ends at edge of circle
+                const arrowEndX = defectInCropX - Math.cos(angle) * (circleRadius + lineWidth);
+                const arrowEndY = defectInCropY - Math.sin(angle) * (circleRadius + lineWidth);
+                
+                // Draw arrow line with shadow for visibility
+                cropCtx.shadowColor = 'rgba(0,0,0,0.5)';
+                cropCtx.shadowBlur = 4;
+                cropCtx.strokeStyle = defectColor;
+                cropCtx.lineWidth = lineWidth;
+                cropCtx.lineCap = 'round';
+                cropCtx.beginPath();
+                cropCtx.moveTo(arrowStartX, arrowStartY);
+                cropCtx.lineTo(arrowEndX, arrowEndY);
+                cropCtx.stroke();
+                
+                // Draw arrowhead
+                cropCtx.fillStyle = defectColor;
+                cropCtx.beginPath();
+                cropCtx.moveTo(arrowEndX, arrowEndY);
+                cropCtx.lineTo(
+                    arrowEndX - arrowSize * Math.cos(angle - Math.PI/6),
+                    arrowEndY - arrowSize * Math.sin(angle - Math.PI/6)
+                );
+                cropCtx.lineTo(
+                    arrowEndX - arrowSize * Math.cos(angle + Math.PI/6),
+                    arrowEndY - arrowSize * Math.sin(angle + Math.PI/6)
+                );
+                cropCtx.closePath();
                 cropCtx.fill();
+                cropCtx.shadowBlur = 0;
+                
+                // === DRAW LABEL BOX ===
+                cropCtx.font = `bold ${fontSize}px Arial`;
+                const textMetrics = cropCtx.measureText(label);
+                const textWidth = textMetrics.width;
+                const textHeight = fontSize;
+                
+                // Position label in top-left, connected to arrow
+                const labelX = arrowStartX;
+                const labelY = arrowStartY + Math.round(fontSize * 0.8);
+                
+                // Draw label background with rounded corners
+                const boxX = labelX - labelPadding;
+                const boxY = labelY - textHeight - labelPadding/2;
+                const boxW = textWidth + labelPadding * 2;
+                const boxH = textHeight + labelPadding;
+                const boxRadius = Math.round(8 * scale);
+                
+                cropCtx.shadowColor = 'rgba(0,0,0,0.4)';
+                cropCtx.shadowBlur = 8;
+                cropCtx.fillStyle = defectColor;
+                cropCtx.beginPath();
+                // Use roundRect if available, fallback to regular rect
+                if(cropCtx.roundRect) {
+                    cropCtx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
+                } else {
+                    cropCtx.rect(boxX, boxY, boxW, boxH);
+                }
+                cropCtx.fill();
+                cropCtx.shadowBlur = 0;
+                
+                // Draw label text
                 cropCtx.fillStyle = 'white';
-                cropCtx.font = 'bold 16px Arial';
+                cropCtx.textAlign = 'left';
+                cropCtx.textBaseline = 'bottom';
+                cropCtx.fillText(label, labelX, labelY);
+                
+                // === DRAW SMALL NUMBER BADGE IN CORNER ===
+                const badgeSize = Math.round(40 * scale);
+                const badgeX = cropSize - badgeSize - Math.round(15 * scale);
+                const badgeY = Math.round(15 * scale);
+                
+                cropCtx.fillStyle = 'rgba(0,0,0,0.7)';
+                cropCtx.beginPath();
+                cropCtx.arc(badgeX + badgeSize/2, badgeY + badgeSize/2, badgeSize/2, 0, Math.PI * 2);
+                cropCtx.fill();
+                cropCtx.strokeStyle = 'white';
+                cropCtx.lineWidth = 2;
+                cropCtx.stroke();
+                
+                cropCtx.fillStyle = 'white';
+                cropCtx.font = `bold ${Math.round(24 * scale)}px Arial`;
                 cropCtx.textAlign = 'center';
                 cropCtx.textBaseline = 'middle';
-                cropCtx.fillText(idx + 1, cropSize - 30, 30);
+                cropCtx.fillText(idx + 1, badgeX + badgeSize/2, badgeY + badgeSize/2);
                 
                 cropCanvas.toBlob(blob => {
                     const defectPhoto = {
@@ -4053,7 +4176,7 @@
                         savePhotoToFolder(blob, filename);
                     }
                     
-                    console.log(`📸 DEFECT CROP ${idx + 1} (${marker.type}): ${cropSize}×${cropSize}`);
+                    console.log(`📸 DEFECT CROP ${idx + 1} (${marker.type}): ${cropSize}×${cropSize} with annotations`);
                     updatePhotoGrids();
                 }, 'image/jpeg', 0.95);
             });
