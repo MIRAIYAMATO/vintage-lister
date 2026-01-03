@@ -289,6 +289,26 @@
         .mode-btn:active { transform: scale(0.97); }
         .mode-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
         
+        /* Split-screen Defect Closeup View */
+        .split-defect-view { display: flex; width: 100%; height: 100%; gap: 4px; padding: 8px; box-sizing: border-box; }
+        .split-left { flex: 0 0 40%; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; }
+        .split-right { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; position: relative; }
+        .split-label { background: #dc2626; color: white; padding: 8px 16px; font-size: 12px; font-weight: 700; text-align: center; flex-shrink: 0; }
+        .split-right .split-label { background: #059669; }
+        .split-photo-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 0; }
+        .split-photo-container img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+        .split-defect-dot { position: absolute; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: white; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.5); transition: transform 0.15s, box-shadow 0.15s; z-index: 10; }
+        .split-defect-dot:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 4px 20px rgba(0,0,0,0.7); }
+        .split-defect-dot.selected { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 0 4px white, 0 0 20px rgba(255,255,255,0.5); animation: pulse-selected 1.5s infinite; }
+        @keyframes pulse-selected { 0%, 100% { box-shadow: 0 0 0 4px white, 0 0 20px rgba(255,255,255,0.5); } 50% { box-shadow: 0 0 0 6px white, 0 0 30px rgba(255,255,255,0.7); } }
+        .split-defect-dot-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; background: rgba(0,0,0,0.9); color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+        .split-selection { background: #333; color: white; padding: 12px 16px; font-size: 14px; font-weight: 600; text-align: center; flex-shrink: 0; }
+        .split-selection.has-selection { background: #22c55e; }
+        .split-right video { flex: 1; width: 100%; object-fit: contain; background: #000; min-height: 0; }
+        .split-stabilizer { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.7); padding: 6px 14px; border-radius: 20px; z-index: 10; }
+        .split-no-defects { color: #666; text-align: center; padding: 40px 20px; font-size: 14px; }
+        .split-no-defects-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        
         
         
         .mode-btn small { display: block; }
@@ -1456,7 +1476,8 @@
                 <div id="camera-status" class="camera-status">No camera</div>
             </div>
             <div class="camera-view">
-                <div class="camera-view-container">
+                <!-- Normal single camera view -->
+                <div class="camera-view-container" id="single-camera-view">
                     <div class="camera-placeholder" id="camera-placeholder">
                         <div class="camera-placeholder-icon">📷</div>
                         <div>Select a camera to begin</div>
@@ -1489,18 +1510,6 @@
                         <span class="marker-count" id="marker-count">0</span>
                     </div>
                     
-                    <!-- Defect Close-up Visual Link Preview -->
-                    <div class="defect-link-preview" id="defect-link-preview" onclick="openDefectPicker()">
-                        <div class="defect-link-preview-inner">
-                            <img id="defect-link-thumb" class="defect-link-preview-thumb" src="" alt="">
-                            <div class="defect-link-preview-info">
-                                <div class="defect-link-preview-title">🔴 LINK TO DEFECT</div>
-                                <div class="defect-link-preview-text" id="defect-link-text">Click to select</div>
-                                <div class="defect-link-preview-hint">Tap photo to pick defect</div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Feature Type Panel -->
                     <div class="closeup-link-panel" id="feature-type-panel" style="background:rgba(124,58,237,0.95);">
                         <span style="font-weight:600;">Feature type:</span>
@@ -1514,6 +1523,27 @@
                             <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
                         </div>
                         <button onclick="selectedFeatureType=null;updateFeatureTypePanel()" class="link-btn-none">None</button>
+                    </div>
+                </div>
+                
+                <!-- Split-screen view for Defect Closeup mode -->
+                <div class="split-defect-view" id="split-defect-view" style="display:none;">
+                    <!-- Left: Main photo with clickable defect dots -->
+                    <div class="split-left">
+                        <div class="split-label">📍 Click defect to link</div>
+                        <div class="split-photo-container" id="split-photo-container">
+                            <!-- Main photo and dots rendered here -->
+                        </div>
+                        <div class="split-selection" id="split-selection">No defect selected</div>
+                    </div>
+                    <!-- Right: C922X camera feed -->
+                    <div class="split-right">
+                        <div class="split-label">📹 C922X Live</div>
+                        <video id="split-camera-video" autoplay playsinline></video>
+                        <div class="split-stabilizer" id="split-stabilizer">
+                            <div class="stabilizer-dot" id="split-stabilizer-dot"></div>
+                            <span class="stabilizer-text" id="split-stabilizer-text">HOLD STEADY</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1567,7 +1597,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.19";
+        const VERSION = "v100.20";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2074,6 +2104,171 @@
             selectedFeatureType = type;
             updateFeatureTypePanel();
             showToast('info', `Feature: ${type}`, 'Next photo will be tagged', 1500);
+        }
+        
+        // ============ SPLIT SCREEN DEFECT CLOSEUP ============
+        let splitCameraStream = null;
+        
+        function renderSplitDefectView() {
+            const container = document.getElementById('split-photo-container');
+            const selectionDiv = document.getElementById('split-selection');
+            
+            // Get all main photos with defects
+            const photosWithDefects = data.mainPhotos.filter(p => p.defects && p.defects.length > 0);
+            
+            if(photosWithDefects.length === 0) {
+                container.innerHTML = `
+                    <div class="split-no-defects">
+                        <div class="split-no-defects-icon">📍</div>
+                        <div>No defects marked yet</div>
+                        <div style="margin-top:8px;font-size:12px;color:#888;">Mark defects in Main mode first</div>
+                    </div>`;
+                selectionDiv.textContent = 'No defects to link';
+                selectionDiv.classList.remove('has-selection');
+                return;
+            }
+            
+            // For now, use the first photo with defects (could add tabs for multiple)
+            const photo = photosWithDefects[0];
+            const photoIndex = data.mainPhotos.indexOf(photo);
+            
+            // Create image with defect dots
+            let dotsHtml = photo.defects.map((defect, defIdx) => {
+                const color = DEFECT_COLORS[defect.type] || '#ef4444';
+                const isSelected = selectedDefectForCloseup && 
+                                 selectedDefectForCloseup.photoIndex === photoIndex && 
+                                 selectedDefectForCloseup.defectIndex === defIdx;
+                return `<div class="split-defect-dot ${isSelected ? 'selected' : ''}" 
+                            style="left:${defect.x}%; top:${defect.y}%; background:${color};"
+                            onclick="selectSplitDefect(${photoIndex}, ${defIdx}, '${defect.type}', ${defect.x}, ${defect.y})">
+                            ${defIdx + 1}
+                            <span class="split-defect-dot-label">${defect.type.toUpperCase()}</span>
+                        </div>`;
+            }).join('');
+            
+            container.innerHTML = `
+                <img src="${photo.url}" alt="Main photo with defects" style="position:relative;">
+                ${dotsHtml}`;
+            
+            // Update selection display
+            updateSplitSelection();
+        }
+        
+        function selectSplitDefect(photoIndex, defectIndex, type, x, y) {
+            selectedDefectForCloseup = { photoIndex, defectIndex, type, x, y };
+            
+            // Update dot visuals
+            document.querySelectorAll('.split-defect-dot').forEach(dot => dot.classList.remove('selected'));
+            event.target.closest('.split-defect-dot').classList.add('selected');
+            
+            updateSplitSelection();
+            showToast('success', `Defect #${defectIndex + 1} Selected`, `${type.toUpperCase()} - Press SPACE to capture`, 1500);
+        }
+        
+        function updateSplitSelection() {
+            const selectionDiv = document.getElementById('split-selection');
+            if(!selectionDiv) return;
+            
+            if(selectedDefectForCloseup) {
+                selectionDiv.innerHTML = `✓ Linked to <strong>#${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}</strong> — Press SPACE to capture`;
+                selectionDiv.classList.add('has-selection');
+            } else {
+                selectionDiv.textContent = 'Click a defect dot to link your closeup';
+                selectionDiv.classList.remove('has-selection');
+            }
+        }
+        
+        async function startSplitCameraFeed(deviceId) {
+            const video = document.getElementById('split-camera-video');
+            if(!video) return;
+            
+            // Stop any existing split stream
+            if(splitCameraStream) {
+                splitCameraStream.getTracks().forEach(t => t.stop());
+                splitCameraStream = null;
+            }
+            
+            try {
+                splitCameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        deviceId: { exact: deviceId },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                video.srcObject = splitCameraStream;
+                
+                // Start stabilizer for split view
+                startSplitStabilizer();
+                
+                console.log('📹 Split camera feed started');
+            } catch(e) {
+                console.error('📹 Failed to start split camera:', e);
+                showToast('error', 'Camera Error', e.message, 3000);
+            }
+        }
+        
+        function stopSplitCameraFeed() {
+            if(splitCameraStream) {
+                splitCameraStream.getTracks().forEach(t => t.stop());
+                splitCameraStream = null;
+            }
+            stopSplitStabilizer();
+        }
+        
+        // Simple stabilizer for split view
+        let splitStabilizerInterval = null;
+        let splitPreviousFrame = null;
+        let splitStableCount = 0;
+        
+        function startSplitStabilizer() {
+            const video = document.getElementById('split-camera-video');
+            const dot = document.getElementById('split-stabilizer-dot');
+            const text = document.getElementById('split-stabilizer-text');
+            
+            if(!video || !dot || !text) return;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 48;
+            
+            splitStabilizerInterval = setInterval(() => {
+                if(video.readyState < 2) return;
+                
+                ctx.drawImage(video, 0, 0, 64, 48);
+                const frame = ctx.getImageData(0, 0, 64, 48);
+                
+                if(splitPreviousFrame) {
+                    let diff = 0;
+                    for(let i = 0; i < frame.data.length; i += 16) {
+                        diff += Math.abs(frame.data[i] - splitPreviousFrame.data[i]);
+                    }
+                    diff = diff / (frame.data.length / 16);
+                    
+                    if(diff < 8) {
+                        splitStableCount++;
+                        if(splitStableCount >= 3) {
+                            dot.classList.add('stable');
+                            text.textContent = 'STABLE ✓';
+                        }
+                    } else {
+                        splitStableCount = 0;
+                        dot.classList.remove('stable');
+                        text.textContent = 'HOLD STEADY';
+                    }
+                }
+                splitPreviousFrame = frame;
+            }, 150);
+        }
+        
+        function stopSplitStabilizer() {
+            if(splitStabilizerInterval) {
+                clearInterval(splitStabilizerInterval);
+                splitStabilizerInterval = null;
+            }
+            splitPreviousFrame = null;
+            splitStableCount = 0;
         }
         
         function clearDefectMarkers() {
@@ -3881,6 +4076,15 @@
             document.getElementById(`mode-${mode}`).classList.add('active'); 
             
             const video = document.getElementById('camera-video');
+            const singleView = document.getElementById('single-camera-view');
+            const splitView = document.getElementById('split-defect-view');
+            
+            // Hide split view by default and stop split camera if running
+            splitView.style.display = 'none';
+            singleView.style.display = 'flex';
+            if(previousMode === 'defect-closeup' && mode !== 'defect-closeup') {
+                stopSplitCameraFeed();
+            }
             
             if(mode === 'main') {
                 // Enable defect marking in main mode
@@ -3928,7 +4132,22 @@
                 } else {
                     console.warn('⚠️ mainCameraId not set');
                 }
-            } else if(mode === 'tag' || mode === 'defect' || mode === 'defect-closeup' || mode === 'features') {
+            } else if(mode === 'defect-closeup') {
+                // SPLIT SCREEN MODE for defect closeups
+                singleView.style.display = 'none';
+                splitView.style.display = 'flex';
+                
+                // Render main photo with defect dots
+                renderSplitDefectView();
+                
+                // Start secondary camera in split view
+                if(secondaryCameraId) {
+                    await startSplitCameraFeed(secondaryCameraId);
+                } else if(mainCameraId) {
+                    await startSplitCameraFeed(mainCameraId);
+                    showToast('warning', 'No C922X Found', 'Using main camera', 2000);
+                }
+            } else if(mode === 'tag' || mode === 'defect' || mode === 'features') {
                 // Reset and show defect layer (though it won't be active in these modes)
                 resetDefectLayerStyles();
                 document.getElementById('defect-markers-layer').style.display = 'block';
@@ -3937,8 +4156,6 @@
                 
                 if(secondaryCameraId) {
                     console.log(`📷 ${mode} mode: switching to secondary camera`);
-                    console.log(`   secondaryCameraId: ${secondaryCameraId?.slice(0,8)}`);
-                    console.log(`   activeCameraId: ${activeCameraId?.slice(0,8)}`);
                     
                     if(activeCameraId !== secondaryCameraId) {
                         console.log('📷 SWITCHING to SECONDARY camera (C922X)...');
@@ -3955,7 +4172,6 @@
                 } else {
                     console.warn('⚠️ No secondary camera (C922X) detected - using main camera');
                     showToast('warning', 'No C922X Found', 'Using main camera for close-ups', 3000);
-                    // Try to use main camera as fallback
                     if(mainCameraId && activeCameraId !== mainCameraId) {
                         try {
                             await switchCamera(mainCameraId);
@@ -3997,8 +4213,14 @@
             }
         }
         function capturePhoto() { 
-            const video = document.getElementById('camera-video'); 
-            if(!video.srcObject) return; 
+            // Use split camera video in defect-closeup mode, otherwise main video
+            const video = photoMode === 'defect-closeup' 
+                ? document.getElementById('split-camera-video')
+                : document.getElementById('camera-video'); 
+            if(!video || !video.srcObject) {
+                showToast('warning', 'No Camera', 'Camera not ready', 2000);
+                return; 
+            }
             
             // Warn if not stable but still allow capture
             if(!isStable && navigator.vibrate) navigator.vibrate(100);
