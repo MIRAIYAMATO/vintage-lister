@@ -526,6 +526,42 @@
         .preview-btn-close:hover { background: var(--color-text-muted); }
         .preview-counter { color: #9ca3af; font-size: 12px; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); }
         
+        /* Visual Defect Picker Modal */
+        .defect-picker-modal { position: fixed; inset: 0; z-index: 700; background: rgba(0,0,0,0.95); display: none; flex-direction: column; }
+        .defect-picker-modal.active { display: flex; }
+        .defect-picker-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #dc2626; flex-shrink: 0; }
+        .defect-picker-title { color: white; font-size: 14px; font-weight: 700; }
+        .defect-picker-close { background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 8px; }
+        .defect-picker-close:hover { color: #fca5a5; }
+        .defect-picker-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; overflow: auto; }
+        .defect-picker-photos { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center; }
+        .defect-picker-photo-container { position: relative; max-width: 600px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .defect-picker-photo-container img { display: block; width: 100%; height: auto; }
+        .defect-picker-photo-label { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .defect-picker-dot { position: absolute; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); transition: transform 0.15s, box-shadow 0.15s; }
+        .defect-picker-dot:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+        .defect-picker-dot.selected { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 4px white, 0 4px 16px rgba(0,0,0,0.6); }
+        .defect-picker-dot-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; background: rgba(0,0,0,0.8); color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; white-space: nowrap; pointer-events: none; }
+        .defect-picker-footer { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 12px 20px; background: #111; flex-shrink: 0; }
+        .defect-picker-selected { color: white; font-size: 14px; font-weight: 600; padding: 8px 16px; background: rgba(255,255,255,0.1); border-radius: 8px; min-width: 200px; text-align: center; }
+        .defect-picker-selected.has-selection { background: #22c55e; }
+        .defect-picker-btn-none { padding: 10px 20px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 8px; color: rgba(255,255,255,0.7); font-size: 13px; cursor: pointer; }
+        .defect-picker-btn-none:hover { background: rgba(255,255,255,0.2); }
+        .defect-picker-btn-close { padding: 10px 24px; background: #dc2626; border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .defect-picker-btn-close:hover { background: #b91c1c; }
+        .defect-picker-empty { color: rgba(255,255,255,0.5); font-size: 16px; text-align: center; padding: 40px; }
+        
+        /* Updated defect link panel - now a clickable preview */
+        .defect-link-preview { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px; border-radius: 12px; z-index: 10; display: none; cursor: pointer; transition: transform 0.15s; }
+        .defect-link-preview.visible { display: block; }
+        .defect-link-preview:hover { transform: translateX(-50%) scale(1.02); }
+        .defect-link-preview-inner { display: flex; align-items: center; gap: 12px; }
+        .defect-link-preview-thumb { width: 80px; height: 60px; border-radius: 6px; object-fit: cover; border: 2px solid #dc2626; }
+        .defect-link-preview-info { color: white; }
+        .defect-link-preview-title { font-size: 11px; font-weight: 700; color: #dc2626; margin-bottom: 4px; }
+        .defect-link-preview-text { font-size: 12px; }
+        .defect-link-preview-hint { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
         /* SKU with scan button */
         .sku-row { display: flex; gap: 8px; }
         .sku-row input { flex: 1; }
@@ -688,6 +724,24 @@
         <div class="preview-footer">
             <button class="preview-btn preview-btn-delete" onclick="deleteFromPreview()">🗑️ Delete Photo</button>
             <button class="preview-btn preview-btn-close" onclick="closePreview()">Close</button>
+        </div>
+    </div>
+    
+    <!-- Visual Defect Picker Modal -->
+    <div class="defect-picker-modal" id="defect-picker-modal">
+        <div class="defect-picker-header">
+            <span class="defect-picker-title">📍 Click on a defect to link your closeup photo</span>
+            <button class="defect-picker-close" onclick="closeDefectPicker()">×</button>
+        </div>
+        <div class="defect-picker-body">
+            <div class="defect-picker-photos" id="defect-picker-photos">
+                <!-- Main photos with clickable defect dots will be rendered here -->
+            </div>
+        </div>
+        <div class="defect-picker-footer">
+            <div class="defect-picker-selected" id="defect-picker-selected">No defect selected</div>
+            <button class="defect-picker-btn-none" onclick="clearDefectSelection()">Clear Selection</button>
+            <button class="defect-picker-btn-close" onclick="closeDefectPicker()">Done</button>
         </div>
     </div>
     
@@ -1435,11 +1489,16 @@
                         <span class="marker-count" id="marker-count">0</span>
                     </div>
                     
-                    <!-- Defect Close-up Link Panel -->
-                    <div class="closeup-link-panel" id="defect-link-panel">
-                        <span style="font-weight:600;">Link to defect:</span>
-                        <div class="link-buttons" id="defect-link-buttons"></div>
-                        <button onclick="selectedDefectLink=null;updateDefectLinkPanel()" class="link-btn-none">None</button>
+                    <!-- Defect Close-up Visual Link Preview -->
+                    <div class="defect-link-preview" id="defect-link-preview" onclick="openDefectPicker()">
+                        <div class="defect-link-preview-inner">
+                            <img id="defect-link-thumb" class="defect-link-preview-thumb" src="" alt="">
+                            <div class="defect-link-preview-info">
+                                <div class="defect-link-preview-title">🔴 LINK TO DEFECT</div>
+                                <div class="defect-link-preview-text" id="defect-link-text">Click to select</div>
+                                <div class="defect-link-preview-hint">Tap photo to pick defect</div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Feature Type Panel -->
@@ -1508,7 +1567,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.17";
+        const VERSION = "v100.19";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1875,60 +1934,120 @@
             document.getElementById('defect-mode-banner')?.classList.remove('visible');
         }
         
-        // Defect Close-up Link Panel
-        function updateDefectLinkPanel() {
-            const panel = document.getElementById('defect-link-panel');
-            const buttonsContainer = document.getElementById('defect-link-buttons');
+        // Visual Defect Link System
+        let selectedDefectForCloseup = null; // {photoIndex, defectIndex, type, x, y}
+        
+        function updateDefectLinkPreview() {
+            const preview = document.getElementById('defect-link-preview');
+            const thumb = document.getElementById('defect-link-thumb');
+            const text = document.getElementById('defect-link-text');
             
-            if(photoMode === 'defect-closeup') {
-                panel.classList.add('visible');
-                
-                // Get captured defects (exclude overview photo)
-                const capturedDefects = data.defectPhotos.filter(p => !p.isOverview && p.defectType);
-                
-                // Also check current markers (not yet captured)
-                const hasMarkers = defectMarkers.length > 0;
-                const hasCapturedDefects = capturedDefects.length > 0;
-                
-                if(!hasMarkers && !hasCapturedDefects) {
-                    buttonsContainer.innerHTML = '<span style="opacity:0.7;font-size:10px;">No defects marked - mark in Main mode first</span>';
-                } else if(hasCapturedDefects) {
-                    // Show buttons for captured defects
-                    buttonsContainer.innerHTML = capturedDefects.map((defect, i) => {
-                        const typeLabel = defect.defectType ? defect.defectType.charAt(0).toUpperCase() : '';
-                        const num = defect.markerIndex || (i + 1);
-                        return `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${num} ${typeLabel}</button>`;
-                    }).join('');
-                } else {
-                    // Show buttons for current markers (not yet captured)
-                    buttonsContainer.innerHTML = defectMarkers.map((marker, i) => 
-                        `<button onclick="selectDefectLink(${i})" class="link-btn ${selectedDefectLink === i ? 'active' : ''}">#${i+1}${marker.type ? ' ' + marker.type.charAt(0).toUpperCase() : ''}</button>`
-                    ).join('');
-                }
+            if(photoMode !== 'defect-closeup') {
+                preview.classList.remove('visible');
+                return;
+            }
+            
+            // Check if we have any main photos with defects
+            const photosWithDefects = data.mainPhotos.filter(p => p.defects && p.defects.length > 0);
+            
+            if(photosWithDefects.length === 0) {
+                preview.classList.remove('visible');
+                return;
+            }
+            
+            preview.classList.add('visible');
+            
+            // Show first photo with defects as thumbnail
+            thumb.src = photosWithDefects[0].url;
+            
+            // Show selection status
+            if(selectedDefectForCloseup) {
+                text.textContent = `#${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}`;
+                text.style.color = '#22c55e';
             } else {
-                panel.classList.remove('visible');
+                text.textContent = 'Click to select';
+                text.style.color = 'white';
             }
         }
         
-        function selectDefectLink(index) {
-            selectedDefectLink = index;
-            updateDefectLinkPanel();
+        function openDefectPicker() {
+            const modal = document.getElementById('defect-picker-modal');
+            const photosContainer = document.getElementById('defect-picker-photos');
             
-            // Get defect type from markers or captured photos
-            let defectType = '';
-            let defectNum = index + 1;
+            // Get all main photos with defects
+            const photosWithDefects = data.mainPhotos.filter(p => p.defects && p.defects.length > 0);
             
-            if(defectMarkers[index]) {
-                defectType = defectMarkers[index].type || '';
+            if(photosWithDefects.length === 0) {
+                photosContainer.innerHTML = '<div class="defect-picker-empty">No defects marked yet.<br>Mark defects in Main mode first.</div>';
             } else {
-                const capturedDefects = data.defectPhotos.filter(p => !p.isOverview && p.defectType);
-                if(capturedDefects[index]) {
-                    defectType = capturedDefects[index].defectType || '';
-                    defectNum = capturedDefects[index].markerIndex || (index + 1);
-                }
+                photosContainer.innerHTML = photosWithDefects.map((photo, photoIdx) => {
+                    const actualPhotoIndex = data.mainPhotos.indexOf(photo);
+                    const dotsHtml = photo.defects.map((defect, defIdx) => {
+                        const color = DEFECT_COLORS[defect.type] || '#ef4444';
+                        const isSelected = selectedDefectForCloseup && 
+                                         selectedDefectForCloseup.photoIndex === actualPhotoIndex && 
+                                         selectedDefectForCloseup.defectIndex === defIdx;
+                        return `<div class="defect-picker-dot ${isSelected ? 'selected' : ''}" 
+                                    style="left:${defect.x}%; top:${defect.y}%; background:${color};"
+                                    onclick="selectDefectFromPicker(${actualPhotoIndex}, ${defIdx}, '${defect.type}', ${defect.x}, ${defect.y})">
+                                    ${defIdx + 1}
+                                    <span class="defect-picker-dot-label">${defect.type.toUpperCase()}</span>
+                                </div>`;
+                    }).join('');
+                    
+                    return `<div class="defect-picker-photo-container">
+                                <div class="defect-picker-photo-label">Photo ${actualPhotoIndex + 1}</div>
+                                <img src="${photo.url}" alt="Main photo ${actualPhotoIndex + 1}">
+                                ${dotsHtml}
+                            </div>`;
+                }).join('');
             }
             
-            showToast('info', `Linked to Defect #${defectNum}${defectType ? ' (' + defectType + ')' : ''}`, 'Next photo will be linked', 1500);
+            updateDefectPickerSelection();
+            modal.classList.add('active');
+        }
+        
+        function closeDefectPicker() {
+            document.getElementById('defect-picker-modal').classList.remove('active');
+            updateDefectLinkPreview();
+        }
+        
+        function selectDefectFromPicker(photoIndex, defectIndex, type, x, y) {
+            selectedDefectForCloseup = { photoIndex, defectIndex, type, x, y };
+            
+            // Update dot selection visuals
+            document.querySelectorAll('.defect-picker-dot').forEach(dot => dot.classList.remove('selected'));
+            event.target.closest('.defect-picker-dot').classList.add('selected');
+            
+            updateDefectPickerSelection();
+            showToast('success', `Selected Defect #${defectIndex + 1}`, type.toUpperCase(), 1500);
+        }
+        
+        function updateDefectPickerSelection() {
+            const selectedDiv = document.getElementById('defect-picker-selected');
+            if(selectedDefectForCloseup) {
+                selectedDiv.textContent = `✓ Defect #${selectedDefectForCloseup.defectIndex + 1} - ${selectedDefectForCloseup.type.toUpperCase()}`;
+                selectedDiv.classList.add('has-selection');
+            } else {
+                selectedDiv.textContent = 'No defect selected';
+                selectedDiv.classList.remove('has-selection');
+            }
+        }
+        
+        function clearDefectSelection() {
+            selectedDefectForCloseup = null;
+            document.querySelectorAll('.defect-picker-dot').forEach(dot => dot.classList.remove('selected'));
+            updateDefectPickerSelection();
+            updateDefectLinkPreview();
+        }
+        
+        // Legacy function name for compatibility
+        function updateDefectLinkPanel() {
+            updateDefectLinkPreview();
+        }
+        
+        function selectDefectLink(index) {
+            // Legacy - now handled by visual picker
         }
         
         // Feature Type Panel
@@ -3967,15 +4086,23 @@
                         showToast('success', `Tag Photo ${data.tagPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
                     else if(photoMode === 'defect-closeup') {
-                        // Add linked defect index if available
-                        photo.linkedDefectIndex = selectedDefectLink;
+                        // Add linked defect info from visual picker
+                        if(selectedDefectForCloseup) {
+                            photo.linkedDefect = {
+                                photoIndex: selectedDefectForCloseup.photoIndex,
+                                defectIndex: selectedDefectForCloseup.defectIndex,
+                                type: selectedDefectForCloseup.type,
+                                x: selectedDefectForCloseup.x,
+                                y: selectedDefectForCloseup.y
+                            };
+                        }
                         data.defectCloseupPhotos.push(photo);
                         // Auto-save to folder if selected
                         if(saveDirectoryHandle) {
                             const filename = generatePhotoFilename('defect-closeup', data.defectCloseupPhotos.length);
                             savePhotoToFolder(blob, filename);
                         }
-                        const linkText = selectedDefectLink !== null ? ` → Defect #${selectedDefectLink + 1}` : '';
+                        const linkText = selectedDefectForCloseup ? ` → #${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}` : '';
                         showToast('success', `🔴 Defect Close-up ${data.defectCloseupPhotos.length}${linkText}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
                     else if(photoMode === 'features') {
@@ -4060,14 +4187,22 @@
             
             console.log(`📸 MAIN: ${sourceW}x${sourceH} → ${mainCanvas.width}x${mainCanvas.height} (flip:${isFlipped}, hwRot:${isRotated}, portrait:${mainPhotoPortrait})`);
             
-            // Save main photo
+            // Save main photo with defect markers
             mainCanvas.toBlob(mainBlob => {
+                // Deep copy defect markers to store with this photo
+                const photoDefects = defectMarkers.map((m, idx) => ({
+                    ...m,
+                    photoIndex: data.mainPhotos.length, // Which main photo this belongs to
+                    globalIndex: idx + 1 // 1-based index for display
+                }));
+                
                 const mainPhoto = { 
                     blob: mainBlob, 
                     url: URL.createObjectURL(mainBlob), 
                     width: mainCanvas.width, 
                     height: mainCanvas.height,
-                    isPortrait: mainPhotoPortrait
+                    isPortrait: mainPhotoPortrait,
+                    defects: photoDefects // Store defects with the photo
                 };
                 data.mainPhotos.push(mainPhoto);
                 
@@ -4317,14 +4452,14 @@
             const lineWidth = Math.round(5 * scaleFactor);
             const labelPadding = Math.round(12 * scaleFactor);
             
-            // Draw markers with labels
-            defectMarkers.forEach((marker, idx) => {
+            // PASS 1: Calculate all marker and label positions
+            ctx.font = `bold ${labelFontSize}px Arial`;
+            const markerData = defectMarkers.map((marker, idx) => {
                 // Transform marker coordinates if in portrait mode
                 let markerX = marker.x;
                 let markerY = marker.y;
                 
                 if(mainPhotoPortrait) {
-                    // 90° clockwise: (x, y) -> (100-y, x)
                     markerX = 100 - marker.y;
                     markerY = marker.x;
                 }
@@ -4334,12 +4469,78 @@
                 const defectColor = DEFECT_COLORS[marker.type] || '#ef4444';
                 const label = DEFECT_LABELS[marker.type] || 'DEFECT';
                 
-                // Draw circle with shadow for visibility
+                const textMetrics = ctx.measureText(label);
+                const textWidth = textMetrics.width;
+                const boxWidth = textWidth + labelPadding * 2;
+                const boxHeight = labelFontSize + labelPadding;
+                
+                // Initial label position (to the right of marker)
+                let boxX = x + markerRadius + labelPadding;
+                let boxY = y - boxHeight/2;
+                
+                // Keep on screen
+                if(boxX + boxWidth > annotatedCanvas.width - 10) {
+                    boxX = x - markerRadius - boxWidth - labelPadding;
+                }
+                if(boxY < 10) boxY = 10;
+                if(boxY + boxHeight > annotatedCanvas.height - 10) {
+                    boxY = annotatedCanvas.height - boxHeight - 10;
+                }
+                
+                return { x, y, defectColor, label, boxX, boxY, boxWidth, boxHeight, idx };
+            });
+            
+            // PASS 2: Resolve label collisions
+            const resolveCollisions = (data) => {
+                const margin = Math.round(8 * scaleFactor);
+                let hasCollision = true;
+                let iterations = 0;
+                const maxIterations = 50;
+                
+                while(hasCollision && iterations < maxIterations) {
+                    hasCollision = false;
+                    iterations++;
+                    
+                    for(let i = 0; i < data.length; i++) {
+                        for(let j = i + 1; j < data.length; j++) {
+                            const a = data[i];
+                            const b = data[j];
+                            
+                            // Check if labels overlap
+                            const overlapX = a.boxX < b.boxX + b.boxWidth + margin && 
+                                           a.boxX + a.boxWidth + margin > b.boxX;
+                            const overlapY = a.boxY < b.boxY + b.boxHeight + margin && 
+                                           a.boxY + a.boxHeight + margin > b.boxY;
+                            
+                            if(overlapX && overlapY) {
+                                hasCollision = true;
+                                
+                                // Move the lower-indexed label up, higher-indexed down
+                                const shift = (a.boxHeight + margin) / 2;
+                                a.boxY -= shift;
+                                b.boxY += shift;
+                                
+                                // Keep on screen
+                                if(a.boxY < 10) a.boxY = 10;
+                                if(b.boxY + b.boxHeight > annotatedCanvas.height - 10) {
+                                    b.boxY = annotatedCanvas.height - b.boxHeight - 10;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            resolveCollisions(markerData);
+            
+            // PASS 3: Draw all markers and labels
+            markerData.forEach((m) => {
+                // Draw circle with shadow
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 10;
                 ctx.beginPath();
-                ctx.arc(x, y, markerRadius, 0, Math.PI * 2);
-                ctx.fillStyle = defectColor;
+                ctx.arc(m.x, m.y, markerRadius, 0, Math.PI * 2);
+                ctx.fillStyle = m.defectColor;
                 ctx.fill();
                 ctx.shadowBlur = 0;
                 ctx.strokeStyle = 'white';
@@ -4351,44 +4552,34 @@
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(idx + 1, x, y);
+                ctx.fillText(m.idx + 1, m.x, m.y);
                 
-                // === DRAW LABEL BOX WITH DEFECT TYPE ===
-                ctx.font = `bold ${labelFontSize}px Arial`;
-                const textMetrics = ctx.measureText(label);
-                const textWidth = textMetrics.width;
-                const textHeight = labelFontSize;
+                // Draw connecting line from marker to label
+                // Determine if label is to the left or right of marker
+                const labelIsRight = m.boxX > m.x;
+                const lineStartX = labelIsRight ? m.x + markerRadius : m.x - markerRadius;
+                const lineStartY = m.y;
+                const lineEndX = labelIsRight ? m.boxX : m.boxX + m.boxWidth;
+                const lineEndY = m.boxY + m.boxHeight/2;
                 
-                // Position label below and to the right of the circle
-                const labelX = x + markerRadius + labelPadding;
-                const labelY = y + markerRadius/2;
-                
-                // Adjust if label would go off right edge
-                const boxWidth = textWidth + labelPadding * 2;
-                const boxHeight = textHeight + labelPadding;
-                let boxX = labelX;
-                let boxY = labelY - boxHeight/2;
-                
-                // Keep label on screen
-                if(boxX + boxWidth > annotatedCanvas.width - 10) {
-                    boxX = x - markerRadius - boxWidth - labelPadding;
-                }
-                if(boxY < 10) {
-                    boxY = 10;
-                }
-                if(boxY + boxHeight > annotatedCanvas.height - 10) {
-                    boxY = annotatedCanvas.height - boxHeight - 10;
-                }
+                ctx.strokeStyle = m.defectColor;
+                ctx.lineWidth = Math.round(3 * scaleFactor);
+                ctx.setLineDash([Math.round(6 * scaleFactor), Math.round(4 * scaleFactor)]);
+                ctx.beginPath();
+                ctx.moveTo(lineStartX, lineStartY);
+                ctx.lineTo(lineEndX, lineEndY);
+                ctx.stroke();
+                ctx.setLineDash([]);
                 
                 // Draw label background
                 ctx.shadowColor = 'rgba(0,0,0,0.4)';
                 ctx.shadowBlur = 8;
-                ctx.fillStyle = defectColor;
+                ctx.fillStyle = m.defectColor;
                 ctx.beginPath();
                 if(ctx.roundRect) {
-                    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, Math.round(8 * scaleFactor));
+                    ctx.roundRect(m.boxX, m.boxY, m.boxWidth, m.boxHeight, Math.round(8 * scaleFactor));
                 } else {
-                    ctx.rect(boxX, boxY, boxWidth, boxHeight);
+                    ctx.rect(m.boxX, m.boxY, m.boxWidth, m.boxHeight);
                 }
                 ctx.fill();
                 ctx.shadowBlur = 0;
@@ -4400,9 +4591,10 @@
                 
                 // Draw label text
                 ctx.fillStyle = 'white';
+                ctx.font = `bold ${labelFontSize}px Arial`;
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(label, boxX + labelPadding, boxY + boxHeight/2);
+                ctx.fillText(m.label, m.boxX + labelPadding, m.boxY + m.boxHeight/2);
             });
             
             // Save as defect overview photo (goes to defectPhotos, not mainPhotos)
@@ -4541,8 +4733,13 @@
                 
                 document.getElementById(gridId).innerHTML = photos.map((p,i) => {
                     let badge = '';
-                    // Show linked defect number for defect close-ups
-                    if(mode === 'defect-closeup' && p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
+                    // Show linked defect info for defect close-ups (new format)
+                    if(mode === 'defect-closeup' && p.linkedDefect) {
+                        const typeInitial = p.linkedDefect.type ? p.linkedDefect.type.charAt(0).toUpperCase() : '';
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:white;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;">#${p.linkedDefect.defectIndex + 1} ${typeInitial}</span>`;
+                    }
+                    // Legacy support for old format
+                    else if(mode === 'defect-closeup' && p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
                         badge = `<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:white;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;">#${p.linkedDefectIndex + 1}</span>`;
                     }
                     // Show feature type for feature close-ups
@@ -4651,6 +4848,11 @@
         
         // Keyboard navigation for preview
         document.addEventListener('keydown', (e) => {
+            // Close defect picker on ESC
+            if(document.getElementById('defect-picker-modal').classList.contains('active')) {
+                if(e.key === 'Escape') closeDefectPicker();
+                return; // Don't process other keys when picker is open
+            }
             if(document.getElementById('preview-modal').classList.contains('active')) {
                 if(e.key === 'Escape') closePreview();
                 if(e.key === 'ArrowLeft') navigatePreview(-1);
@@ -5983,6 +6185,10 @@
             if(data.audioMeasure) formData.append('audio', data.audioMeasure, 'measurements.webm');
             data.mainPhotos.forEach((p,i) => {
                 formData.append(`mainPhoto${i}`, p.blob, `main${i}.jpg`);
+                // Include defect marker data if present
+                if(p.defects && p.defects.length > 0) {
+                    formData.append(`mainPhoto${i}_defects`, JSON.stringify(p.defects));
+                }
             });
             formData.append('mainPhotoCount', data.mainPhotos.length);
             
@@ -6003,7 +6209,16 @@
             formData.append('defectPhotoCount', data.defectPhotos.length);
             data.defectCloseupPhotos.forEach((p,i) => {
                 formData.append(`defectCloseupPhoto${i}`, p.blob, `defect-closeup${i}.jpg`);
-                if(p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
+                // New format with richer data
+                if(p.linkedDefect) {
+                    formData.append(`defectCloseupPhoto${i}_linkedPhotoIndex`, p.linkedDefect.photoIndex);
+                    formData.append(`defectCloseupPhoto${i}_linkedDefectIndex`, p.linkedDefect.defectIndex);
+                    formData.append(`defectCloseupPhoto${i}_linkedType`, p.linkedDefect.type);
+                    formData.append(`defectCloseupPhoto${i}_linkedX`, p.linkedDefect.x);
+                    formData.append(`defectCloseupPhoto${i}_linkedY`, p.linkedDefect.y);
+                }
+                // Legacy support
+                else if(p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
                     formData.append(`defectCloseupPhoto${i}_linkedTo`, p.linkedDefectIndex);
                 }
             });
@@ -6095,6 +6310,7 @@
             tagCutMode = false; 
             skuLocked = wasSkuLocked; 
             selectedDefectLink = null; 
+            selectedDefectForCloseup = null;
             selectedFeatureType = null;
             fabricFilters = {stretch:null, surface:null, interior:null}; 
             materialFilters = {temp:null, shine:null}; 
