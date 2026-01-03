@@ -1639,7 +1639,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.22";
+        const VERSION = "v100.24";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -4818,9 +4818,62 @@
             const lineWidth = Math.round(5 * scaleFactor);
             const labelPadding = Math.round(12 * scaleFactor);
             
+            // PASS 0: Cluster nearby defects of the same type
+            const clusterThreshold = 12; // percentage of image - defects within this distance get grouped
+            
+            const clusterDefects = (markers) => {
+                if(markers.length <= 1) return markers.map((m, i) => ({ ...m, count: 1, indices: [i] }));
+                
+                const used = new Set();
+                const clusters = [];
+                
+                for(let i = 0; i < markers.length; i++) {
+                    if(used.has(i)) continue;
+                    
+                    const cluster = { 
+                        type: markers[i].type,
+                        indices: [i],
+                        sumX: markers[i].x,
+                        sumY: markers[i].y
+                    };
+                    used.add(i);
+                    
+                    // Find all nearby markers of same type
+                    for(let j = i + 1; j < markers.length; j++) {
+                        if(used.has(j)) continue;
+                        if(markers[j].type !== markers[i].type) continue;
+                        
+                        // Check distance to cluster centroid
+                        const cx = cluster.sumX / cluster.indices.length;
+                        const cy = cluster.sumY / cluster.indices.length;
+                        const dist = Math.sqrt((markers[j].x - cx)**2 + (markers[j].y - cy)**2);
+                        
+                        if(dist < clusterThreshold) {
+                            cluster.indices.push(j);
+                            cluster.sumX += markers[j].x;
+                            cluster.sumY += markers[j].y;
+                            used.add(j);
+                        }
+                    }
+                    
+                    // Create cluster marker at centroid
+                    clusters.push({
+                        x: cluster.sumX / cluster.indices.length,
+                        y: cluster.sumY / cluster.indices.length,
+                        type: cluster.type,
+                        count: cluster.indices.length,
+                        indices: cluster.indices
+                    });
+                }
+                
+                return clusters;
+            };
+            
+            const clusteredMarkers = clusterDefects(defectMarkers);
+            
             // PASS 1: Calculate all marker and label positions
             ctx.font = `bold ${labelFontSize}px Arial`;
-            const markerData = defectMarkers.map((marker, idx) => {
+            const markerData = clusteredMarkers.map((marker, idx) => {
                 // Transform marker coordinates if in portrait mode
                 let markerX = marker.x;
                 let markerY = marker.y;
@@ -4833,7 +4886,9 @@
                 const x = (markerX / 100) * annotatedCanvas.width;
                 const y = (markerY / 100) * annotatedCanvas.height;
                 const defectColor = DEFECT_COLORS[marker.type] || '#ef4444';
-                const label = DEFECT_LABELS[marker.type] || 'DEFECT';
+                const baseLabel = DEFECT_LABELS[marker.type] || 'DEFECT';
+                // Add count if more than 1
+                const label = marker.count > 1 ? `${baseLabel} ×${marker.count}` : baseLabel;
                 
                 const textMetrics = ctx.measureText(label);
                 const textWidth = textMetrics.width;
@@ -4853,59 +4908,139 @@
                     boxY = annotatedCanvas.height - boxHeight - 10;
                 }
                 
-                return { x, y, defectColor, label, boxX, boxY, boxWidth, boxHeight, idx };
+                return { x, y, defectColor, label, boxX, boxY, boxWidth, boxHeight, idx, count: marker.count, indices: marker.indices };
             });
             
-            // PASS 2: Resolve label collisions
+            // PASS 2: Resolve label collisions with improved algorithm
             const resolveCollisions = (data) => {
-                const margin = Math.round(8 * scaleFactor);
-                let hasCollision = true;
-                let iterations = 0;
-                const maxIterations = 50;
+                const margin = Math.round(10 * scaleFactor);
                 
-                while(hasCollision && iterations < maxIterations) {
-                    hasCollision = false;
-                    iterations++;
+                // Helper to check if two boxes overlap
+                const boxesOverlap = (a, b) => {
+                    return a.boxX < b.boxX + b.boxWidth + margin && 
+                           a.boxX + a.boxWidth + margin > b.boxX &&
+                           a.boxY < b.boxY + b.boxHeight + margin && 
+                           a.boxY + a.boxHeight + margin > b.boxY;
+                };
+                
+                // Helper to check if label overlaps a marker circle
+                const overlapsMarker = (box, markerX, markerY) => {
+                    const closestX = Math.max(box.boxX, Math.min(markerX, box.boxX + box.boxWidth));
+                    const closestY = Math.max(box.boxY, Math.min(markerY, box.boxY + box.boxHeight));
+                    const dist = Math.sqrt((markerX - closestX)**2 + (markerY - closestY)**2);
+                    return dist < markerRadius + margin;
+                };
+                
+                // Helper to check if label overlaps any placed label or any marker
+                const overlapsAny = (current, placed, allMarkers) => {
+                    for(const other of placed) {
+                        if(boxesOverlap(current, other)) return true;
+                    }
+                    // Also check against all marker circles
+                    for(const m of allMarkers) {
+                        if(m.idx !== current.idx && overlapsMarker(current, m.x, m.y)) return true;
+                    }
+                    return false;
+                };
+                
+                // Generate candidate positions for a label
+                const getCandidates = (m) => {
+                    const candidates = [];
+                    const gap = markerRadius + labelPadding;
                     
-                    for(let i = 0; i < data.length; i++) {
-                        for(let j = i + 1; j < data.length; j++) {
-                            const a = data[i];
-                            const b = data[j];
-                            
-                            // Check if labels overlap
-                            const overlapX = a.boxX < b.boxX + b.boxWidth + margin && 
-                                           a.boxX + a.boxWidth + margin > b.boxX;
-                            const overlapY = a.boxY < b.boxY + b.boxHeight + margin && 
-                                           a.boxY + a.boxHeight + margin > b.boxY;
-                            
-                            if(overlapX && overlapY) {
-                                hasCollision = true;
-                                
-                                // Move the lower-indexed label up, higher-indexed down
-                                const shift = (a.boxHeight + margin) / 2;
-                                a.boxY -= shift;
-                                b.boxY += shift;
-                                
-                                // Keep on screen
-                                if(a.boxY < 10) a.boxY = 10;
-                                if(b.boxY + b.boxHeight > annotatedCanvas.height - 10) {
-                                    b.boxY = annotatedCanvas.height - b.boxHeight - 10;
-                                }
-                            }
+                    // Right of marker
+                    candidates.push({ x: m.x + gap, y: m.y - m.boxHeight/2 });
+                    // Left of marker  
+                    candidates.push({ x: m.x - gap - m.boxWidth, y: m.y - m.boxHeight/2 });
+                    // Below marker
+                    candidates.push({ x: m.x - m.boxWidth/2, y: m.y + gap });
+                    // Above marker
+                    candidates.push({ x: m.x - m.boxWidth/2, y: m.y - gap - m.boxHeight });
+                    // Right-below
+                    candidates.push({ x: m.x + gap, y: m.y + gap/2 });
+                    // Right-above
+                    candidates.push({ x: m.x + gap, y: m.y - gap/2 - m.boxHeight });
+                    // Left-below
+                    candidates.push({ x: m.x - gap - m.boxWidth, y: m.y + gap/2 });
+                    // Left-above
+                    candidates.push({ x: m.x - gap - m.boxWidth, y: m.y - gap/2 - m.boxHeight });
+                    
+                    return candidates;
+                };
+                
+                // Constrain position to canvas
+                const constrain = (m) => {
+                    if(m.boxX < 10) m.boxX = 10;
+                    if(m.boxX + m.boxWidth > annotatedCanvas.width - 10) {
+                        m.boxX = annotatedCanvas.width - m.boxWidth - 10;
+                    }
+                    if(m.boxY < 10) m.boxY = 10;
+                    if(m.boxY + m.boxHeight > annotatedCanvas.height - 10) {
+                        m.boxY = annotatedCanvas.height - m.boxHeight - 10;
+                    }
+                };
+                
+                // Sort by X position (left to right) to handle side-by-side markers better
+                data.sort((a, b) => a.x - b.x);
+                
+                const placed = [];
+                
+                for(let i = 0; i < data.length; i++) {
+                    const m = data[i];
+                    const candidates = getCandidates(m);
+                    let bestCandidate = null;
+                    
+                    // Try each candidate position
+                    for(const cand of candidates) {
+                        m.boxX = cand.x;
+                        m.boxY = cand.y;
+                        constrain(m);
+                        
+                        if(!overlapsAny(m, placed, data)) {
+                            bestCandidate = { x: m.boxX, y: m.boxY };
+                            break;
                         }
                     }
+                    
+                    // If no clean position found, use first candidate with vertical offset
+                    if(!bestCandidate) {
+                        m.boxX = candidates[0].x;
+                        m.boxY = candidates[0].y;
+                        constrain(m);
+                        
+                        // Try shifting vertically until clear
+                        let shift = 0;
+                        const shiftAmount = m.boxHeight + margin;
+                        for(let tries = 0; tries < 8; tries++) {
+                            shift = (tries % 2 === 0 ? 1 : -1) * Math.ceil((tries+1)/2) * shiftAmount;
+                            m.boxY = candidates[0].y + shift;
+                            constrain(m);
+                            if(!overlapsAny(m, placed, data)) break;
+                        }
+                    } else {
+                        m.boxX = bestCandidate.x;
+                        m.boxY = bestCandidate.y;
+                    }
+                    
+                    placed.push(m);
                 }
+                
+                // Restore original order by index
+                data.sort((a, b) => a.idx - b.idx);
             };
             
             resolveCollisions(markerData);
             
             // PASS 3: Draw all markers and labels
-            markerData.forEach((m) => {
+            markerData.forEach((m, clusterIdx) => {
+                // Make marker slightly bigger for clusters
+                const thisRadius = m.count > 1 ? markerRadius * 1.15 : markerRadius;
+                
                 // Draw circle with shadow
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 10;
                 ctx.beginPath();
-                ctx.arc(m.x, m.y, markerRadius, 0, Math.PI * 2);
+                ctx.arc(m.x, m.y, thisRadius, 0, Math.PI * 2);
                 ctx.fillStyle = m.defectColor;
                 ctx.fill();
                 ctx.shadowBlur = 0;
@@ -4913,17 +5048,26 @@
                 ctx.lineWidth = lineWidth;
                 ctx.stroke();
                 
-                // Draw number in circle
+                // For clusters, draw a second ring to indicate multiple
+                if(m.count > 1) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.lineWidth = lineWidth * 0.5;
+                    ctx.beginPath();
+                    ctx.arc(m.x, m.y, thisRadius + lineWidth * 1.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Draw number in circle (cluster index)
                 ctx.fillStyle = 'white';
                 ctx.font = `bold ${fontSize}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(m.idx + 1, m.x, m.y);
+                ctx.fillText(clusterIdx + 1, m.x, m.y);
                 
                 // Draw connecting line from marker to label
                 // Determine if label is to the left or right of marker
                 const labelIsRight = m.boxX > m.x;
-                const lineStartX = labelIsRight ? m.x + markerRadius : m.x - markerRadius;
+                const lineStartX = labelIsRight ? m.x + thisRadius : m.x - thisRadius;
                 const lineStartY = m.y;
                 const lineEndX = labelIsRight ? m.boxX : m.boxX + m.boxWidth;
                 const lineEndY = m.boxY + m.boxHeight/2;
