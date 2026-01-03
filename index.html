@@ -385,7 +385,25 @@
         
         /* Feature Type Panel - fixed positioning to avoid overflow:hidden issues */
         /* Feature Type Panel - fixed positioning to avoid overflow:hidden issues */
-        .feature-type-panel { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(124,58,237,0.98); color: white; padding: 14px 20px; border-radius: 14px; font-size: 12px; z-index: 99999; display: none; flex-direction: column; gap: 10px; min-width: 340px; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3); }
+        .feature-type-panel { 
+            position: fixed !important; 
+            bottom: 120px !important; 
+            left: 50% !important; 
+            transform: translateX(-50%) !important; 
+            background: rgba(124,58,237,0.98) !important; 
+            color: white !important; 
+            padding: 16px 24px !important; 
+            border-radius: 16px !important; 
+            font-size: 13px !important; 
+            z-index: 999999 !important; 
+            display: none; 
+            flex-direction: column !important; 
+            gap: 12px !important; 
+            min-width: 360px !important; 
+            max-width: 500px !important; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6) !important; 
+            border: 3px solid rgba(255,255,255,0.5) !important;
+        }
         .feature-type-panel.visible { display: flex !important; }
         .feature-type-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .feature-type-clear { padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.4); border-radius: 6px; color: rgba(255,255,255,0.8); font-size: 11px; cursor: pointer; margin-top: 4px; }
@@ -1597,7 +1615,7 @@
                 </div>
                 <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
                 <button class="mode-btn" id="mode-defect-closeup" onclick="setPhotoMode('defect-closeup')" style="background:#dc2626;border-color:#dc2626;">🔴 Defect<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
-                <button class="mode-btn" id="mode-features" onclick="setPhotoMode('features')" style="background:#7c3aed;border-color:#7c3aed;">✨ Features<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-features" onclick="setPhotoMode('features'); setTimeout(()=>{const p=document.getElementById('feature-type-panel'); if(p){p.style.display='flex';console.log('✨ Panel forced visible')}}, 200);" style="background:#7c3aed;border-color:#7c3aed;">✨ Features<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
             </div>
         </div>
         
@@ -1638,7 +1656,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.32";
+        const VERSION = "v100.33";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1686,31 +1704,42 @@
         async function savePhotoToFolder(blob, filename) {
             if(!saveDirectoryHandle) return false;
             
-            try {
-                // Create SKU subfolder if SKU exists
-                let targetDir = saveDirectoryHandle;
-                if(data.sku) {
+            // Use requestIdleCallback to avoid blocking timer/UI
+            return new Promise((resolve) => {
+                const doSave = async () => {
                     try {
-                        targetDir = await saveDirectoryHandle.getDirectoryHandle(data.sku, { create: true });
-                    } catch(e) {
-                        console.warn('Could not create SKU folder, saving to root');
+                        // Create SKU subfolder if SKU exists
+                        let targetDir = saveDirectoryHandle;
+                        if(data.sku) {
+                            try {
+                                targetDir = await saveDirectoryHandle.getDirectoryHandle(data.sku, { create: true });
+                            } catch(e) {
+                                console.warn('Could not create SKU folder, saving to root');
+                            }
+                        }
+                        
+                        // Create file
+                        const fileHandle = await targetDir.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        
+                        console.log(`💾 Saved: ${data.sku ? data.sku + '/' : ''}${filename}`);
+                        resolve(true);
+                        
+                    } catch(err) {
+                        console.error('Save error:', err);
+                        resolve(false);
                     }
+                };
+                
+                // Schedule save during idle time to not block timer
+                if('requestIdleCallback' in window) {
+                    requestIdleCallback(() => doSave(), { timeout: 1000 });
+                } else {
+                    setTimeout(doSave, 0);
                 }
-                
-                // Create file
-                const fileHandle = await targetDir.getFileHandle(filename, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(blob);
-                await writable.close();
-                
-                console.log(`💾 Saved: ${data.sku ? data.sku + '/' : ''}${filename}`);
-                return true;
-                
-            } catch(err) {
-                console.error('Save error:', err);
-                // Don't show toast for every save error, just log it
-                return false;
-            }
+            });
         }
         
         function generatePhotoFilename(type, index) {
@@ -2155,18 +2184,24 @@
         
         // Feature Type Panel
         function updateFeatureTypePanel() {
-            const panel = document.getElementById('feature-type-panel');
-            if(!panel) {
-                console.error('❌ Feature type panel element not found!');
-                return;
-            }
-            
-            console.log('✨ updateFeatureTypePanel called, mode:', photoMode, 'panel:', panel);
-            
-            if(photoMode === 'features') {
-                panel.classList.add('visible');
-                panel.style.display = 'flex'; // Force display
-                console.log('✨ Feature panel shown, classList:', panel.classList.toString());
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                const panel = document.getElementById('feature-type-panel');
+                if(!panel) {
+                    console.error('❌ Feature type panel element not found!');
+                    return;
+                }
+                
+                console.log('✨ updateFeatureTypePanel - mode:', photoMode);
+                
+                if(photoMode === 'features') {
+                    panel.style.display = 'flex';
+                    panel.classList.add('visible');
+                    console.log('✨ Feature panel SHOWN at', panel.getBoundingClientRect());
+                } else {
+                    panel.style.display = 'none';
+                    panel.classList.remove('visible');
+                }
                 
                 // Update active state on buttons
                 document.querySelectorAll('.feature-type-btn').forEach(btn => {
@@ -2176,15 +2211,27 @@
                         btn.classList.remove('active');
                     }
                 });
-            } else {
-                panel.classList.remove('visible');
-                panel.style.display = 'none';
-            }
+            }, 100);
         }
         
         function selectFeatureType(type) {
             selectedFeatureType = type;
-            updateFeatureTypePanel();
+            // Keep panel visible and update buttons
+            const panel = document.getElementById('feature-type-panel');
+            if(panel) {
+                panel.style.display = 'flex';
+                document.querySelectorAll('.feature-type-btn').forEach(btn => {
+                    if(btn.textContent === type) {
+                        btn.classList.add('active');
+                        btn.style.background = 'white';
+                        btn.style.color = '#7c3aed';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.background = 'rgba(255,255,255,0.2)';
+                        btn.style.color = 'white';
+                    }
+                });
+            }
             showToast('info', `Feature: ${type}`, 'Next photo will be tagged', 1500);
         }
         
@@ -2955,6 +3002,12 @@
             // Focus PIN input if PIN screen is visible
             if(!document.getElementById('pin-screen').classList.contains('hidden')) {
                 document.getElementById('pin-input').focus();
+            }
+            // Verify feature panel exists
+            const featurePanel = document.getElementById('feature-type-panel');
+            console.log('✨ Feature panel at startup:', featurePanel ? 'FOUND' : 'NOT FOUND');
+            if(!featurePanel) {
+                console.error('❌ Feature panel not in DOM!');
             }
         });
         
@@ -6827,16 +6880,28 @@
             
             recordItemTime(); stats.today++; stats.total++; saveStats(); updateStatsDisplay(); 
             
-            // Save JSON file to folder if directory is selected
+            // Save JSON file to folder if directory is selected (don't await - let it run in background)
             if(saveDirectoryHandle) {
-                saveJsonToFolder();
+                saveJsonToFolder().catch(e => console.error('JSON save error:', e));
             }
             
-            console.log('Submitted:',data); 
+            console.log('✅ Submitted:', data.sku); 
+            
+            // CRITICAL: Store SKU before reset clears it
+            const submittedSku = data.sku;
             
             // Always reset and show SKU gate after submit
             console.log('📋 submitItem calling resetForm(false)...');
-            resetForm(false); 
+            try {
+                resetForm(false);
+                console.log('📋 resetForm completed');
+            } catch(e) {
+                console.error('❌ resetForm error:', e);
+                // Force show SKU gate even if resetForm fails
+                showSkuGate();
+            }
+            
+            showToast('success', 'Item Submitted!', `SKU ${submittedSku} saved`, 2000);
             console.log('📋 submitItem complete');
         }
         
@@ -7127,22 +7192,22 @@
     </script>
     
     <!-- Feature Type Panel - at body level to avoid overflow:hidden issues -->
-    <div class="feature-type-panel" id="feature-type-panel" style="display:none;">
-        <span style="font-weight:700;font-size:14px;">✨ Select Feature Type:</span>
+    <div class="feature-type-panel" id="feature-type-panel" style="display:none;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:999999;background:rgba(124,58,237,0.98);padding:16px 24px;border-radius:16px;border:3px solid rgba(255,255,255,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.6);">
+        <span style="font-weight:700;font-size:14px;color:white;">✨ Select Feature Type:</span>
         <div class="feature-type-buttons" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;">
-            <button onclick="selectFeatureType('Label')" class="feature-type-btn">Label</button>
-            <button onclick="selectFeatureType('Copyright')" class="feature-type-btn">Copyright</button>
-            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn">Zipper</button>
-            <button onclick="selectFeatureType('Buttons')" class="feature-type-btn">Buttons</button>
-            <button onclick="selectFeatureType('Pockets')" class="feature-type-btn">Pockets</button>
-            <button onclick="selectFeatureType('Cuffs')" class="feature-type-btn">Cuffs</button>
-            <button onclick="selectFeatureType('Drawstring')" class="feature-type-btn">Drawstring</button>
-            <button onclick="selectFeatureType('Stitch')" class="feature-type-btn">Stitch</button>
-            <button onclick="selectFeatureType('Hardware')" class="feature-type-btn">Hardware</button>
-            <button onclick="selectFeatureType('Print')" class="feature-type-btn">Print</button>
-            <button onclick="selectFeatureType('Other')" class="feature-type-btn">Other</button>
+            <button onclick="selectFeatureType('Label')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Label</button>
+            <button onclick="selectFeatureType('Copyright')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Copyright</button>
+            <button onclick="selectFeatureType('Zipper')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Zipper</button>
+            <button onclick="selectFeatureType('Buttons')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Buttons</button>
+            <button onclick="selectFeatureType('Pockets')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Pockets</button>
+            <button onclick="selectFeatureType('Cuffs')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Cuffs</button>
+            <button onclick="selectFeatureType('Drawstring')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Drawstring</button>
+            <button onclick="selectFeatureType('Stitch')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Stitch</button>
+            <button onclick="selectFeatureType('Hardware')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Hardware</button>
+            <button onclick="selectFeatureType('Print')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Print</button>
+            <button onclick="selectFeatureType('Other')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Other</button>
         </div>
-        <button onclick="selectedFeatureType=null;updateFeatureTypePanel();showToast('info','Cleared','No feature type selected',1000)" class="feature-type-clear">Clear Selection</button>
+        <button onclick="selectedFeatureType=null;const p=document.getElementById('feature-type-panel');if(p)p.style.display='none';showToast('info','Cleared','Feature type cleared',1000)" class="feature-type-clear" style="padding:8px 14px;background:rgba(255,255,255,0.1);border:1px dashed rgba(255,255,255,0.4);border-radius:8px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;margin-top:8px;">Clear & Close</button>
     </div>
 </body>
 </html>
