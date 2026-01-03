@@ -291,23 +291,35 @@
         
         /* Split-screen Defect Closeup View */
         .split-defect-view { display: flex; width: 100%; height: 100%; gap: 4px; padding: 8px; box-sizing: border-box; }
-        .split-left { flex: 0 0 40%; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; }
+        .split-left { flex: 0 0 45%; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; }
         .split-right { flex: 1; display: flex; flex-direction: column; background: #1a1a1a; border-radius: 12px; overflow: hidden; position: relative; }
+        .split-header { display: flex; align-items: center; background: #111; padding: 0; flex-shrink: 0; }
+        .split-tab { flex: 1; padding: 12px 16px; font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; border: none; background: #333; color: #888; transition: all 0.15s; }
+        .split-tab:first-child { border-radius: 12px 0 0 0; }
+        .split-tab:last-child { border-radius: 0 12px 0 0; }
+        .split-tab:hover { background: #444; color: #ccc; }
+        .split-tab.active { background: #dc2626; color: white; }
+        .split-tab.has-defects::after { content: '●'; margin-left: 6px; color: #22c55e; }
+        .split-tab-count { display: inline-block; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
         .split-label { background: #dc2626; color: white; padding: 8px 16px; font-size: 12px; font-weight: 700; text-align: center; flex-shrink: 0; }
         .split-right .split-label { background: #059669; }
-        .split-photo-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 0; }
-        .split-photo-container img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
-        .split-defect-dot { position: absolute; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: white; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.5); transition: transform 0.15s, box-shadow 0.15s; z-index: 10; }
+        .split-photo-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .split-photo-container { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; padding: 12px; min-height: 0; overflow: hidden; }
+        /* Image wrapper ensures dots are positioned relative to image */
+        .split-photo-wrapper { position: relative; display: inline-block; max-width: 100%; max-height: 100%; }
+        .split-photo-wrapper img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+        .split-defect-dot { position: absolute; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; border: 3px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.5); transition: transform 0.15s, box-shadow 0.15s; z-index: 10; }
         .split-defect-dot:hover { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 4px 20px rgba(0,0,0,0.7); }
         .split-defect-dot.selected { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 0 4px white, 0 0 20px rgba(255,255,255,0.5); animation: pulse-selected 1.5s infinite; }
         @keyframes pulse-selected { 0%, 100% { box-shadow: 0 0 0 4px white, 0 0 20px rgba(255,255,255,0.5); } 50% { box-shadow: 0 0 0 6px white, 0 0 30px rgba(255,255,255,0.7); } }
         .split-defect-dot-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; background: rgba(0,0,0,0.9); color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; }
-        .split-selection { background: #333; color: white; padding: 12px 16px; font-size: 14px; font-weight: 600; text-align: center; flex-shrink: 0; }
+        .split-selection { background: #333; color: white; padding: 12px 16px; font-size: 13px; font-weight: 600; text-align: center; flex-shrink: 0; }
         .split-selection.has-selection { background: #22c55e; }
         .split-right video { flex: 1; width: 100%; object-fit: contain; background: #000; min-height: 0; }
         .split-stabilizer { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.7); padding: 6px 14px; border-radius: 20px; z-index: 10; }
-        .split-no-defects { color: #666; text-align: center; padding: 40px 20px; font-size: 14px; }
-        .split-no-defects-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .split-no-photo { color: #666; text-align: center; padding: 40px 20px; font-size: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+        .split-no-photo-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .split-instruction { background: #0ea5e9; color: white; padding: 10px 16px; font-size: 12px; text-align: center; flex-shrink: 0; }
         
         
         
@@ -344,9 +356,19 @@
         .defect-popup-cancel:hover { background: #e2e8f0; }
         
         /* Defect Mode Indicator */
-        .defect-mode-banner { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; font-weight: 600; z-index: 10; display: none; }
+        .defect-mode-banner { position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: white; padding: 10px 20px; border-radius: 20px; font-size: 12px; font-weight: 600; z-index: 10; display: none; }
         .defect-mode-banner.visible { display: flex; align-items: center; gap: 8px; }
         .defect-mode-banner .marker-count { background: #3b82f6; padding: 2px 8px; border-radius: 10px; }
+        
+        /* Defect Side Selector Panel */
+        .defect-side-panel { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 600; z-index: 11; display: none; align-items: center; gap: 12px; }
+        .defect-side-panel.visible { display: flex; }
+        .defect-side-btn { padding: 10px 16px; border: 2px solid #444; border-radius: 8px; background: #333; color: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 8px; }
+        .defect-side-btn:hover { background: #444; border-color: #666; }
+        .defect-side-btn:active { transform: scale(0.97); }
+        .defect-side-btn kbd { background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+        #side-btn-front:hover, #side-btn-front.active { background: #0ea5e9; border-color: #0ea5e9; }
+        #side-btn-back:hover, #side-btn-back.active { background: #8b5cf6; border-color: #8b5cf6; }
         
         /* Defect Close-up Link Panel & Feature Type Panel */
         .closeup-link-panel { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(220,38,38,0.95); color: white; padding: 10px 16px; border-radius: 12px; font-size: 11px; z-index: 10; display: none; flex-direction: column; gap: 8px; min-width: 200px; }
@@ -1510,6 +1532,17 @@
                         <span class="marker-count" id="marker-count">0</span>
                     </div>
                     
+                    <!-- Defect Side Selector (shows when defects are marked) -->
+                    <div class="defect-side-panel" id="defect-side-panel">
+                        <span style="font-size:11px;opacity:0.8;">Capture as:</span>
+                        <button class="defect-side-btn" id="side-btn-front" onclick="captureDefectSide('front')">
+                            👕 FRONT <kbd>F</kbd>
+                        </button>
+                        <button class="defect-side-btn" id="side-btn-back" onclick="captureDefectSide('back')">
+                            👔 BACK <kbd>B</kbd>
+                        </button>
+                    </div>
+                    
                     <!-- Feature Type Panel -->
                     <div class="closeup-link-panel" id="feature-type-panel" style="background:rgba(124,58,237,0.95);">
                         <span style="font-weight:600;">Feature type:</span>
@@ -1530,15 +1563,24 @@
                 <div class="split-defect-view" id="split-defect-view" style="display:none;">
                     <!-- Left: Main photo with clickable defect dots -->
                     <div class="split-left">
-                        <div class="split-label">📍 Click defect to link</div>
-                        <div class="split-photo-container" id="split-photo-container">
-                            <!-- Main photo and dots rendered here -->
+                        <div class="split-header">
+                            <button class="split-tab active" id="split-tab-front" onclick="switchDefectSide('front')">
+                                👕 FRONT <span class="split-tab-count" id="front-defect-count">0</span>
+                            </button>
+                            <button class="split-tab" id="split-tab-back" onclick="switchDefectSide('back')">
+                                👔 BACK <span class="split-tab-count" id="back-defect-count">0</span>
+                            </button>
                         </div>
-                        <div class="split-selection" id="split-selection">No defect selected</div>
+                        <div class="split-photo-area">
+                            <div class="split-photo-container" id="split-photo-container">
+                                <!-- Photo with dots rendered here -->
+                            </div>
+                        </div>
+                        <div class="split-selection" id="split-selection">Click a defect dot to link</div>
                     </div>
                     <!-- Right: C922X camera feed -->
                     <div class="split-right">
-                        <div class="split-label">📹 C922X Live</div>
+                        <div class="split-label">📹 C922X — Press SPACE to capture</div>
                         <video id="split-camera-video" autoplay playsinline></video>
                         <div class="split-stabilizer" id="split-stabilizer">
                             <div class="stabilizer-dot" id="split-stabilizer-dot"></div>
@@ -1597,7 +1639,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.20";
+        const VERSION = "v100.21";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1937,6 +1979,16 @@
         
         function updateMarkerCount() {
             document.getElementById('marker-count').textContent = defectMarkers.length;
+            
+            // Show/hide the side panel based on whether there are markers
+            const sidePanel = document.getElementById('defect-side-panel');
+            if(sidePanel) {
+                if(defectMarkers.length > 0 && photoMode === 'main') {
+                    sidePanel.classList.add('visible');
+                } else {
+                    sidePanel.classList.remove('visible');
+                }
+            }
         }
         
         function enableDefectMarking() {
@@ -1962,6 +2014,7 @@
             defectMarkingEnabled = false;
             document.getElementById('defect-markers-layer')?.classList.remove('active');
             document.getElementById('defect-mode-banner')?.classList.remove('visible');
+            document.getElementById('defect-side-panel')?.classList.remove('visible');
         }
         
         // Visual Defect Link System
@@ -2108,31 +2161,68 @@
         
         // ============ SPLIT SCREEN DEFECT CLOSEUP ============
         let splitCameraStream = null;
+        let currentDefectSide = 'front'; // 'front' or 'back'
+        
+        // Get defect photos for a specific side
+        function getDefectPhotoForSide(side) {
+            // Find main photo tagged with this side that has defects
+            return data.mainPhotos.find(p => p.defectSide === side && p.defects && p.defects.length > 0);
+        }
+        
+        // Count defects for each side
+        function countDefectsForSide(side) {
+            const photo = getDefectPhotoForSide(side);
+            return photo ? photo.defects.length : 0;
+        }
+        
+        // Switch between front/back tabs
+        function switchDefectSide(side) {
+            currentDefectSide = side;
+            
+            // Update tab visuals
+            document.getElementById('split-tab-front').classList.toggle('active', side === 'front');
+            document.getElementById('split-tab-back').classList.toggle('active', side === 'back');
+            
+            // Clear selection when switching sides
+            selectedDefectForCloseup = null;
+            
+            // Re-render the photo
+            renderSplitDefectView();
+        }
         
         function renderSplitDefectView() {
             const container = document.getElementById('split-photo-container');
             const selectionDiv = document.getElementById('split-selection');
             
-            // Get all main photos with defects
-            const photosWithDefects = data.mainPhotos.filter(p => p.defects && p.defects.length > 0);
+            // Update tab counts
+            document.getElementById('front-defect-count').textContent = countDefectsForSide('front');
+            document.getElementById('back-defect-count').textContent = countDefectsForSide('back');
             
-            if(photosWithDefects.length === 0) {
+            // Get photo for current side
+            const photo = getDefectPhotoForSide(currentDefectSide);
+            
+            if(!photo) {
+                const sideLabel = currentDefectSide.toUpperCase();
                 container.innerHTML = `
-                    <div class="split-no-defects">
-                        <div class="split-no-defects-icon">📍</div>
-                        <div>No defects marked yet</div>
-                        <div style="margin-top:8px;font-size:12px;color:#888;">Mark defects in Main mode first</div>
+                    <div class="split-no-photo">
+                        <div class="split-no-photo-icon">📷</div>
+                        <div>No ${sideLabel} photo with defects</div>
+                        <div style="margin-top:8px;font-size:12px;color:#888;">
+                            In Main mode:<br>
+                            1. Lay item ${currentDefectSide}-side up (T-shape)<br>
+                            2. Mark defects by clicking<br>
+                            3. Press F for Front or B for Back<br>
+                            4. Capture the photo
+                        </div>
                     </div>`;
-                selectionDiv.textContent = 'No defects to link';
+                selectionDiv.textContent = `No ${currentDefectSide} defects to link`;
                 selectionDiv.classList.remove('has-selection');
                 return;
             }
             
-            // For now, use the first photo with defects (could add tabs for multiple)
-            const photo = photosWithDefects[0];
             const photoIndex = data.mainPhotos.indexOf(photo);
             
-            // Create image with defect dots
+            // Create defect dots HTML
             let dotsHtml = photo.defects.map((defect, defIdx) => {
                 const color = DEFECT_COLORS[defect.type] || '#ef4444';
                 const isSelected = selectedDefectForCloseup && 
@@ -2140,29 +2230,33 @@
                                  selectedDefectForCloseup.defectIndex === defIdx;
                 return `<div class="split-defect-dot ${isSelected ? 'selected' : ''}" 
                             style="left:${defect.x}%; top:${defect.y}%; background:${color};"
-                            onclick="selectSplitDefect(${photoIndex}, ${defIdx}, '${defect.type}', ${defect.x}, ${defect.y})">
+                            onclick="selectSplitDefect(${photoIndex}, ${defIdx}, '${defect.type}', ${defect.x}, ${defect.y}, '${currentDefectSide}')">
                             ${defIdx + 1}
                             <span class="split-defect-dot-label">${defect.type.toUpperCase()}</span>
                         </div>`;
             }).join('');
             
+            // Use wrapper div for proper dot positioning relative to image
             container.innerHTML = `
-                <img src="${photo.url}" alt="Main photo with defects" style="position:relative;">
-                ${dotsHtml}`;
+                <div class="split-photo-wrapper">
+                    <img src="${photo.url}" alt="${currentDefectSide} photo with defects">
+                    ${dotsHtml}
+                </div>`;
             
             // Update selection display
             updateSplitSelection();
         }
         
-        function selectSplitDefect(photoIndex, defectIndex, type, x, y) {
-            selectedDefectForCloseup = { photoIndex, defectIndex, type, x, y };
+        function selectSplitDefect(photoIndex, defectIndex, type, x, y, side) {
+            selectedDefectForCloseup = { photoIndex, defectIndex, type, x, y, side };
             
             // Update dot visuals
             document.querySelectorAll('.split-defect-dot').forEach(dot => dot.classList.remove('selected'));
             event.target.closest('.split-defect-dot').classList.add('selected');
             
             updateSplitSelection();
-            showToast('success', `Defect #${defectIndex + 1} Selected`, `${type.toUpperCase()} - Press SPACE to capture`, 1500);
+            const sideLabel = side.charAt(0).toUpperCase() + side.slice(1);
+            showToast('success', `${sideLabel} #${defectIndex + 1} Selected`, `${type.toUpperCase()} - Press SPACE`, 1500);
         }
         
         function updateSplitSelection() {
@@ -2170,7 +2264,8 @@
             if(!selectionDiv) return;
             
             if(selectedDefectForCloseup) {
-                selectionDiv.innerHTML = `✓ Linked to <strong>#${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}</strong> — Press SPACE to capture`;
+                const sideLabel = selectedDefectForCloseup.side ? selectedDefectForCloseup.side.toUpperCase() : '';
+                selectionDiv.innerHTML = `✓ <strong>${sideLabel} #${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}</strong> — Press SPACE to capture`;
                 selectionDiv.classList.add('has-selection');
             } else {
                 selectionDiv.textContent = 'Click a defect dot to link your closeup';
@@ -2270,6 +2365,44 @@
             splitPreviousFrame = null;
             splitStableCount = 0;
         }
+        
+        // Capture main photo with defects tagged as front or back
+        function captureDefectSide(side) {
+            if(defectMarkers.length === 0) {
+                showToast('warning', 'No Defects Marked', 'Click on the preview to mark defects first', 2000);
+                return;
+            }
+            
+            if(photoMode !== 'main') {
+                showToast('warning', 'Wrong Mode', 'Switch to Main mode first', 2000);
+                return;
+            }
+            
+            // Check if we already have a photo for this side
+            const existingPhoto = data.mainPhotos.find(p => p.defectSide === side);
+            if(existingPhoto) {
+                if(!confirm(`You already have a ${side.toUpperCase()} defect photo. Replace it?`)) {
+                    return;
+                }
+                // Remove the existing photo
+                const idx = data.mainPhotos.indexOf(existingPhoto);
+                if(idx > -1) {
+                    URL.revokeObjectURL(existingPhoto.url);
+                    data.mainPhotos.splice(idx, 1);
+                }
+            }
+            
+            // Store the side we're capturing for
+            pendingDefectSide = side;
+            
+            // Capture the photo (this will use pendingDefectSide)
+            capturePhoto();
+            
+            showToast('success', `${side.toUpperCase()} Defects Captured`, `${defectMarkers.length} defects marked`, 2000);
+        }
+        
+        // Variable to track pending defect side
+        let pendingDefectSide = null;
         
         function clearDefectMarkers() {
             defectMarkers = [];
@@ -4424,9 +4557,13 @@
                     width: mainCanvas.width, 
                     height: mainCanvas.height,
                     isPortrait: mainPhotoPortrait,
-                    defects: photoDefects // Store defects with the photo
+                    defects: photoDefects, // Store defects with the photo
+                    defectSide: pendingDefectSide || null // 'front', 'back', or null
                 };
                 data.mainPhotos.push(mainPhoto);
+                
+                // Clear the pending side after use
+                pendingDefectSide = null;
                 
                 // Auto-save to folder if selected
                 if(saveDirectoryHandle) {
@@ -4955,10 +5092,18 @@
                 
                 document.getElementById(gridId).innerHTML = photos.map((p,i) => {
                     let badge = '';
+                    // Show front/back + defect count for main photos with defectSide
+                    if(mode === 'main' && p.defectSide) {
+                        const sideColor = p.defectSide === 'front' ? '#0ea5e9' : '#8b5cf6';
+                        const sideLabel = p.defectSide === 'front' ? 'F' : 'B';
+                        const defectCount = p.defects ? p.defects.length : 0;
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:${sideColor};color:white;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;">${sideLabel} ×${defectCount}</span>`;
+                    }
                     // Show linked defect info for defect close-ups (new format)
-                    if(mode === 'defect-closeup' && p.linkedDefect) {
+                    else if(mode === 'defect-closeup' && p.linkedDefect) {
+                        const sideLabel = p.linkedDefect.side ? p.linkedDefect.side.charAt(0).toUpperCase() : '';
                         const typeInitial = p.linkedDefect.type ? p.linkedDefect.type.charAt(0).toUpperCase() : '';
-                        badge = `<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:white;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;">#${p.linkedDefect.defectIndex + 1} ${typeInitial}</span>`;
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:#dc2626;color:white;font-size:9px;padding:1px 4px;border-radius:4px;font-weight:700;">${sideLabel}#${p.linkedDefect.defectIndex + 1}</span>`;
                     }
                     // Legacy support for old format
                     else if(mode === 'defect-closeup' && p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
@@ -5088,6 +5233,16 @@
             // R key toggles rotation (when not in input field and in main mode)
             if((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && photoMode === 'main') {
                 toggleRotation();
+            }
+            // F key captures FRONT defect photo (when in main mode with defects marked)
+            if((e.key === 'f' || e.key === 'F') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && photoMode === 'main' && defectMarkers.length > 0) {
+                e.preventDefault();
+                captureDefectSide('front');
+            }
+            // B key captures BACK defect photo (when in main mode with defects marked)
+            if((e.key === 'b' || e.key === 'B') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && photoMode === 'main' && defectMarkers.length > 0) {
+                e.preventDefault();
+                captureDefectSide('back');
             }
         });
         
