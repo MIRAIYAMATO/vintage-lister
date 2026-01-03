@@ -1639,7 +1639,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.21";
+        const VERSION = "v100.22";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -3982,8 +3982,15 @@
             layer.style.left = offsetX + 'px';
             layer.style.top = offsetY + 'px';
             layer.style.zIndex = '5';
-            layer.style.transform = '';
-            layer.style.transformOrigin = '';
+            
+            // Apply rotation transform if in portrait mode
+            if(mainPhotoPortrait) {
+                layer.style.transform = 'rotate(90deg)';
+                layer.style.transformOrigin = 'center center';
+            } else {
+                layer.style.transform = '';
+                layer.style.transformOrigin = '';
+            }
         }
         
         // Update on window resize
@@ -5260,16 +5267,42 @@
             mainPhotoPortrait = !mainPhotoPortrait;
             
             const btn = document.getElementById('rotate-btn');
+            const video = document.getElementById('camera-video');
+            const defectLayer = document.getElementById('defect-markers-layer');
             
             if(mainPhotoPortrait) {
                 btn.textContent = '🔄 PORTRAIT';
                 btn.style.background = '#22c55e';
-                showToast('info', 'Portrait Mode ON', 'Captured photos will be rotated 90° (vertical)', 2000);
+                
+                // Rotate video 90° CW visually
+                video.style.transform = 'rotate(90deg)';
+                video.style.maxWidth = '100vh';
+                video.style.maxHeight = '100vw';
+                
+                // Rotate defect layer to match
+                if(defectLayer) {
+                    defectLayer.style.transform = 'rotate(90deg)';
+                }
+                
+                showToast('info', 'Portrait Mode ON', 'Vertical garment layout', 2000);
             } else {
                 btn.textContent = '🔄 LANDSCAPE';
                 btn.style.background = '#8b5cf6';
-                showToast('info', 'Landscape Mode', 'Photos will be saved horizontally', 1500);
+                
+                // Reset to landscape
+                video.style.transform = '';
+                video.style.maxWidth = '';
+                video.style.maxHeight = '';
+                
+                if(defectLayer) {
+                    defectLayer.style.transform = '';
+                }
+                
+                showToast('info', 'Landscape Mode', 'Horizontal layout', 1500);
             }
+            
+            // Re-position defect layer after rotation
+            setTimeout(() => updateDefectLayerPosition(), 100);
             
             console.log(`📷 Rotation: ${mainPhotoPortrait ? 'PORTRAIT' : 'LANDSCAPE'}`);
         }
@@ -6807,6 +6840,18 @@
                 if(btn) {
                     btn.textContent = '🔄 LANDSCAPE';
                     btn.style.background = '#8b5cf6';
+                }
+                // Reset video transform
+                const video = document.getElementById('camera-video');
+                if(video) {
+                    video.style.transform = '';
+                    video.style.maxWidth = '';
+                    video.style.maxHeight = '';
+                }
+                // Reset defect layer transform
+                const defectLayer = document.getElementById('defect-markers-layer');
+                if(defectLayer) {
+                    defectLayer.style.transform = '';
                 }
             }
             
