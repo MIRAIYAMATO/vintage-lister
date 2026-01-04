@@ -1615,7 +1615,7 @@
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
                 <div style="text-align:center;">
-                    <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
+                    <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto('shutterClick')"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
                 </div>
                 <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
@@ -1661,7 +1661,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.34";
+        const VERSION = "v100.37";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1672,6 +1672,779 @@
         let selectedFeatureType = null; // Type of feature being photographed
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
+        
+        // ============ METRICS TRACKING SYSTEM ============
+        let metrics = null;
+        let itemSequenceToday = 0; // Track items completed today
+        
+        function initMetrics() {
+            const now = new Date();
+            metrics = {
+                // Timing
+                itemStartTime: now.toISOString(),
+                itemStartTimestamp: Date.now(),
+                stepStartTime: Date.now(),
+                modeStartTime: Date.now(),
+                currentStep: 1,
+                currentMode: 'main',
+                
+                timing: {
+                    stepSeconds: { step1_tag: 0, step2_garment: 0, step3_weight: 0, step4_review: 0 },
+                    modeSeconds: { main: 0, tag: 0, defect: 0, 'defect-closeup': 0, features: 0 }
+                },
+                
+                // Audio tracking
+                audio: {
+                    attempts: [],
+                    currentAttemptStart: null
+                },
+                
+                // Photo tracking
+                photos: {
+                    captured: [],  // All photos taken (kept and deleted)
+                    deleted: [],   // Deleted photo records
+                    captureMethod: { footPedal: 0, spacebar: 0, shutterClick: 0 },
+                    deletedByMethod: { footPedal: 0, spacebar: 0, shutterClick: 0 }
+                },
+                
+                // Hardware tracking
+                hardware: {
+                    primaryCamera: mainCameraId ? {
+                        id: mainCameraId,
+                        name: mainCameraName || 'Primary Camera',
+                        resolution: '4096x2160'
+                    } : null,
+                    secondaryCamera: secondaryCameraId ? {
+                        id: secondaryCameraId,
+                        name: secondaryCameraName || 'Secondary Camera',
+                        resolution: '1920x1080'
+                    } : null,
+                    switches: [],
+                    lastSwitchStart: null,
+                    pendingSwitchFrom: null,
+                    pendingSwitchTo: null
+                },
+                
+                // Stabilizer tracking
+                stabilizer: {
+                    waitStartTime: null,
+                    perPhoto: []  // Will store stability data per photo
+                },
+                
+                // Default tracking
+                defaults: {
+                    tracked: {}  // Will store { field: { default: x, selected: y, matched: bool } }
+                },
+                
+                // Workflow tracking
+                workflow: {
+                    softResets: 0,
+                    reviewVisits: 0,
+                    backtrackFromReview: [],
+                    incompleteOnFirstReview: null,
+                    stepTransitions: 0,
+                    validationBlocks: 0,
+                    blockedBy: []
+                },
+                
+                // Interaction tracking
+                interaction: {
+                    totalClicks: 0,
+                    clicksByArea: {
+                        category: 0, tagSection: 0, colorPicker: 0, fabricType: 0,
+                        material: 0, construction: 0, defects: 0, weight: 0,
+                        photos: 0, navigation: 0, audio: 0, other: 0
+                    },
+                    corrections: { total: 0, bySection: {} },
+                    helpButtonClicks: { materialHelp: 0, fabricHelp: 0 },
+                    scrollEvents: { step1: 0, step2: 0, step3: 0, step4: 0 }
+                },
+                
+                // Session info
+                session: {
+                    photographer: data.photographer,
+                    date: now.toISOString().split('T')[0],
+                    itemSequence: itemSequenceToday + 1,
+                    hour: now.getHours(),
+                    timeOfDay: now.getHours() < 12 ? 'morning' : (now.getHours() < 18 ? 'afternoon' : 'evening')
+                }
+            };
+            
+            console.log('📊 Metrics initialized for new item');
+        }
+        
+        // Track step changes
+        function trackStepChange(newStep) {
+            if (!metrics) return;
+            
+            // Don't track if staying on same step (e.g., after reset)
+            if (newStep === metrics.currentStep) {
+                // Just update the start time for fresh tracking
+                metrics.stepStartTime = Date.now();
+                return;
+            }
+            
+            const now = Date.now();
+            const elapsed = Math.floor((now - metrics.stepStartTime) / 1000);
+            const stepKey = `step${metrics.currentStep}_${['', 'tag', 'garment', 'weight', 'review'][metrics.currentStep]}`;
+            
+            if (metrics.timing.stepSeconds[stepKey] !== undefined) {
+                metrics.timing.stepSeconds[stepKey] += elapsed;
+            }
+            
+            metrics.stepStartTime = now;
+            metrics.workflow.stepTransitions++;
+            
+            // Track review visits and bouncebacks
+            if (newStep === 4) {
+                metrics.workflow.reviewVisits++;
+                if (metrics.workflow.reviewVisits === 1) {
+                    // First time reaching review - capture what's incomplete
+                    metrics.workflow.incompleteOnFirstReview = getIncompleteFields();
+                }
+            }
+            
+            // Track backtrack from review
+            if (metrics.currentStep === 4 && newStep < 4) {
+                metrics.workflow.backtrackFromReview.push({
+                    toStep: newStep,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            metrics.currentStep = newStep;
+        }
+        
+        // Track mode changes
+        function trackModeChange(newMode) {
+            if (!metrics) return;
+            
+            // Don't track if staying on same mode (e.g., after reset)
+            if (newMode === metrics.currentMode) {
+                // Just update the start time for fresh tracking
+                metrics.modeStartTime = Date.now();
+                return;
+            }
+            
+            const now = Date.now();
+            const elapsed = Math.floor((now - metrics.modeStartTime) / 1000);
+            
+            if (metrics.timing.modeSeconds[metrics.currentMode] !== undefined) {
+                metrics.timing.modeSeconds[metrics.currentMode] += elapsed;
+            }
+            
+            metrics.modeStartTime = now;
+            metrics.currentMode = newMode;
+        }
+        
+        // Track camera switch
+        function trackCameraSwitch(fromCamera, toCamera) {
+            if (!metrics) return;
+            
+            // Cancel any existing switch tracking (shouldn't happen but be safe)
+            if (metrics.hardware.lastSwitchStart) {
+                console.log('📊 Warning: Previous camera switch not completed, discarding');
+            }
+            
+            metrics.hardware.lastSwitchStart = Date.now();
+            metrics.hardware.pendingSwitchFrom = fromCamera;
+            metrics.hardware.pendingSwitchTo = toCamera;
+        }
+        
+        function trackCameraSwitchComplete(fromCamera, toCamera) {
+            if (!metrics || !metrics.hardware.lastSwitchStart) return;
+            
+            const switchTime = (Date.now() - metrics.hardware.lastSwitchStart) / 1000;
+            
+            // Only record if switch time is reasonable (< 30 seconds)
+            if (switchTime < 30) {
+                metrics.hardware.switches.push({
+                    from: metrics.hardware.pendingSwitchFrom || fromCamera,
+                    to: metrics.hardware.pendingSwitchTo || toCamera,
+                    timeSeconds: Math.round(switchTime * 100) / 100
+                });
+            } else {
+                console.log(`📊 Camera switch took too long (${switchTime}s), not recording`);
+            }
+            
+            metrics.hardware.lastSwitchStart = null;
+            metrics.hardware.pendingSwitchFrom = null;
+            metrics.hardware.pendingSwitchTo = null;
+        }
+        
+        // Track photo capture
+        function trackPhotoCapture(mode, camera, method, stabilityScore, wasStable, waitSeconds) {
+            if (!metrics) return;
+            
+            const photoRecord = {
+                index: metrics.photos.captured.length + 1,
+                mode: mode,
+                camera: camera,
+                method: method,
+                stabilityScore: stabilityScore,
+                wasStable: wasStable,
+                waitSeconds: waitSeconds,
+                timestamp: new Date().toISOString(),
+                kept: true  // Will be updated if deleted
+            };
+            
+            metrics.photos.captured.push(photoRecord);
+            
+            if (metrics.photos.captureMethod[method] !== undefined) {
+                metrics.photos.captureMethod[method]++;
+            }
+            
+            // Track stabilizer per photo
+            metrics.stabilizer.perPhoto.push({
+                index: photoRecord.index,
+                mode: mode,
+                camera: camera,
+                score: stabilityScore,
+                stable: wasStable,
+                waitSeconds: waitSeconds
+            });
+        }
+        
+        // Track photo deletion
+        function trackPhotoDeletion(mode, photoIndex) {
+            if (!metrics) return;
+            
+            // Find all captured photos of this mode that are still kept
+            const keptPhotosOfMode = metrics.photos.captured.filter(p => 
+                p.mode === mode && p.kept === true
+            );
+            
+            // Get the photo at the specified index (if it exists)
+            // photoIndex corresponds to the position in the kept photos of that mode
+            const capturedPhoto = keptPhotosOfMode[photoIndex];
+            
+            if (capturedPhoto) {
+                capturedPhoto.kept = false;
+                
+                // Determine deletion reason based on timing
+                const timeSinceCapture = (Date.now() - new Date(capturedPhoto.timestamp).getTime()) / 1000;
+                let reason = 'cleanup';
+                if (timeSinceCapture < 5) reason = 'immediate';
+                else if (timeSinceCapture < 60) reason = 'delayed';
+                if (currentStep === 4) reason = 'duringReview';
+                
+                metrics.photos.deleted.push({
+                    originalIndex: capturedPhoto.index,
+                    mode: mode,
+                    method: capturedPhoto.method,
+                    reason: reason,
+                    timeSinceCapture: Math.round(timeSinceCapture)
+                });
+                
+                if (metrics.photos.deletedByMethod[capturedPhoto.method] !== undefined) {
+                    metrics.photos.deletedByMethod[capturedPhoto.method]++;
+                }
+            }
+        }
+        
+        // Track audio recording attempt
+        function trackAudioAttemptStart() {
+            if (!metrics) return;
+            metrics.audio.currentAttemptStart = Date.now();
+        }
+        
+        function trackAudioAttemptEnd(outcome) {
+            if (!metrics || !metrics.audio.currentAttemptStart) return;
+            
+            const duration = Math.floor((Date.now() - metrics.audio.currentAttemptStart) / 1000);
+            let abandonedAt = null;
+            
+            if (outcome === 'abandoned') {
+                if (duration < 15) abandonedAt = 'early';
+                else if (duration < 45) abandonedAt = 'mid';
+                else abandonedAt = 'late';
+            }
+            
+            metrics.audio.attempts.push({
+                attempt: metrics.audio.attempts.length + 1,
+                durationSeconds: duration,
+                outcome: outcome,
+                abandonedAt: abandonedAt
+            });
+            
+            metrics.audio.currentAttemptStart = null;
+        }
+        
+        // Track clicks by area
+        function trackClick(area) {
+            if (!metrics) return;
+            
+            metrics.interaction.totalClicks++;
+            
+            if (metrics.interaction.clicksByArea[area] !== undefined) {
+                metrics.interaction.clicksByArea[area]++;
+            } else {
+                metrics.interaction.clicksByArea.other++;
+            }
+        }
+        
+        // Track corrections (changed selection)
+        function trackCorrection(section) {
+            if (!metrics) return;
+            
+            metrics.interaction.corrections.total++;
+            if (!metrics.interaction.corrections.bySection[section]) {
+                metrics.interaction.corrections.bySection[section] = 0;
+            }
+            metrics.interaction.corrections.bySection[section]++;
+        }
+        
+        // Track default usage
+        function trackDefault(field, defaultValue, selectedValue) {
+            if (!metrics) return;
+            
+            metrics.defaults.tracked[field] = {
+                default: defaultValue,
+                selected: selectedValue,
+                matched: defaultValue === selectedValue
+            };
+        }
+        
+        // Track validation block
+        function trackValidationBlock(missingFields) {
+            if (!metrics) return;
+            
+            metrics.workflow.validationBlocks++;
+            metrics.workflow.blockedBy = missingFields;
+        }
+        
+        // Track soft reset
+        function trackSoftReset() {
+            if (!metrics) return;
+            metrics.workflow.softResets++;
+        }
+        
+        // Reset metrics tracking arrays for soft reset (keep workflow metadata)
+        function resetMetricsForSoftReset() {
+            if (!metrics) return;
+            
+            console.log('📊 Soft reset: resetting metrics tracking arrays');
+            
+            const now = Date.now();
+            const softResetCount = metrics.workflow.softResets; // Preserve this
+            
+            // Reset timing
+            metrics.itemStartTimestamp = now;
+            metrics.itemStartTime = new Date().toISOString();
+            metrics.stepStartTime = now;
+            metrics.modeStartTime = now;
+            metrics.currentStep = 1;
+            metrics.currentMode = 'main';
+            metrics.timing.stepSeconds = { step1_tag: 0, step2_garment: 0, step3_weight: 0, step4_review: 0 };
+            metrics.timing.modeSeconds = { main: 0, tag: 0, defect: 0, 'defect-closeup': 0, features: 0 };
+            
+            // Reset audio
+            metrics.audio.attempts = [];
+            metrics.audio.currentAttemptStart = null;
+            
+            // Reset photos
+            metrics.photos.captured = [];
+            metrics.photos.deleted = [];
+            metrics.photos.captureMethod = { footPedal: 0, spacebar: 0, shutterClick: 0 };
+            metrics.photos.deletedByMethod = { footPedal: 0, spacebar: 0, shutterClick: 0 };
+            
+            // Reset stabilizer
+            metrics.stabilizer.waitStartTime = now;
+            metrics.stabilizer.perPhoto = [];
+            
+            // Reset workflow (except softResets)
+            metrics.workflow.reviewVisits = 0;
+            metrics.workflow.backtrackFromReview = [];
+            metrics.workflow.incompleteOnFirstReview = null;
+            metrics.workflow.stepTransitions = 0;
+            metrics.workflow.validationBlocks = 0;
+            metrics.workflow.blockedBy = [];
+            metrics.workflow.softResets = softResetCount; // Restore preserved count
+            
+            // Reset interaction
+            metrics.interaction.totalClicks = 0;
+            metrics.interaction.clicksByArea = {
+                category: 0, tagSection: 0, colorPicker: 0, fabricType: 0,
+                material: 0, construction: 0, defects: 0, weight: 0,
+                photos: 0, navigation: 0, audio: 0, other: 0
+            };
+            metrics.interaction.corrections = { total: 0, bySection: {} };
+            metrics.interaction.helpButtonClicks = { materialHelp: 0, fabricHelp: 0 };
+            metrics.interaction.scrollEvents = { step1: 0, step2: 0, step3: 0, step4: 0 };
+            
+            // Reset defaults tracking
+            metrics.defaults.tracked = {};
+            
+            // Hardware stays the same (cameras don't change)
+            // But reset switch tracking for new item
+            metrics.hardware.switches = [];
+            metrics.hardware.lastSwitchStart = null;
+            metrics.hardware.pendingSwitchFrom = null;
+            metrics.hardware.pendingSwitchTo = null;
+        }
+        
+        // Track stabilizer wait start
+        function trackStabilizerWaitStart() {
+            if (!metrics) return;
+            metrics.stabilizer.waitStartTime = Date.now();
+        }
+        
+        // Get stabilizer wait time
+        function getStabilizerWaitTime() {
+            if (!metrics || !metrics.stabilizer.waitStartTime) return 0;
+            return (Date.now() - metrics.stabilizer.waitStartTime) / 1000;
+        }
+        
+        // Get incomplete fields for review tracking
+        function getIncompleteFields() {
+            const incomplete = [];
+            if (!data.category) incomplete.push('category');
+            if (!data.tagStatus) incomplete.push('tag');
+            if (data.colors.length === 0) incomplete.push('color');
+            if (!data.fade) incomplete.push('fade');
+            if (!data.pattern) incomplete.push('pattern');
+            if (!data.fabricType) incomplete.push('fabricType');
+            if (data.materials.length === 0) incomplete.push('material');
+            if (!data.thickness || !data.layers) incomplete.push('feel');
+            if (data.hasDefects === null) incomplete.push('condition');
+            if (data.weightLb === 0 && data.weightOz === 0) incomplete.push('weight');
+            if (!data.audioMeasure) incomplete.push('audio');
+            if (!data.sku) incomplete.push('sku');
+            return incomplete;
+        }
+        
+        // Build final metrics object for submission
+        function buildMetricsPayload() {
+            if (!metrics) return null;
+            
+            const now = Date.now();
+            const totalSeconds = Math.floor((now - metrics.itemStartTimestamp) / 1000);
+            
+            // Finalize current step/mode timing
+            trackStepChange(metrics.currentStep);
+            trackModeChange(metrics.currentMode);
+            
+            // Calculate photo stats
+            const totalCaptured = metrics.photos.captured.length;
+            const totalKept = metrics.photos.captured.filter(p => p.kept).length;
+            const totalDeleted = totalCaptured - totalKept;
+            
+            // Calculate deletion reasons
+            const deletionsByReason = { accidental: 0, retake: 0, cleanup: 0, immediate: 0, delayed: 0, duringReview: 0 };
+            metrics.photos.deleted.forEach(d => {
+                if (d.reason === 'immediate' && d.timeSinceCapture < 2) {
+                    deletionsByReason.accidental++;
+                } else if (d.reason === 'immediate') {
+                    deletionsByReason.retake++;
+                } else {
+                    deletionsByReason[d.reason] = (deletionsByReason[d.reason] || 0) + 1;
+                }
+            });
+            
+            // Calculate deletions by mode
+            const deletionsByMode = { main: 0, tag: 0, defect: 0, 'defect-closeup': 0, features: 0 };
+            metrics.photos.deleted.forEach(d => {
+                if (deletionsByMode[d.mode] !== undefined) deletionsByMode[d.mode]++;
+            });
+            
+            // Calculate stabilizer stats
+            const stabilizerByMode = {};
+            const stabilizerByCamera = {};
+            let totalWaitSeconds = 0;
+            let totalScore = 0;
+            let stableCount = 0;
+            let unstableCount = 0;
+            
+            metrics.stabilizer.perPhoto.forEach(p => {
+                totalWaitSeconds += p.waitSeconds || 0;
+                totalScore += p.score || 0;
+                if (p.stable) stableCount++; else unstableCount++;
+                
+                // By mode
+                if (!stabilizerByMode[p.mode]) {
+                    stabilizerByMode[p.mode] = { waitSeconds: 0, photos: 0, totalScore: 0 };
+                }
+                stabilizerByMode[p.mode].waitSeconds += p.waitSeconds || 0;
+                stabilizerByMode[p.mode].photos++;
+                stabilizerByMode[p.mode].totalScore += p.score || 0;
+                
+                // By camera
+                if (p.camera) {
+                    if (!stabilizerByCamera[p.camera]) {
+                        stabilizerByCamera[p.camera] = { waitSeconds: 0, photos: 0, totalScore: 0 };
+                    }
+                    stabilizerByCamera[p.camera].waitSeconds += p.waitSeconds || 0;
+                    stabilizerByCamera[p.camera].photos++;
+                    stabilizerByCamera[p.camera].totalScore += p.score || 0;
+                }
+            });
+            
+            // Format stabilizer by mode
+            const formattedByMode = {};
+            for (const mode in stabilizerByMode) {
+                const m = stabilizerByMode[mode];
+                formattedByMode[mode] = {
+                    waitSeconds: Math.round(m.waitSeconds * 10) / 10,
+                    photos: m.photos,
+                    avgWait: m.photos > 0 ? Math.round((m.waitSeconds / m.photos) * 10) / 10 : 0,
+                    avgScore: m.photos > 0 ? Math.round((m.totalScore / m.photos) * 10) / 10 : 0
+                };
+            }
+            
+            // Format stabilizer by camera
+            const formattedByCamera = {};
+            for (const cam in stabilizerByCamera) {
+                const c = stabilizerByCamera[cam];
+                formattedByCamera[cam] = {
+                    waitSeconds: Math.round(c.waitSeconds * 10) / 10,
+                    photos: c.photos,
+                    avgWait: c.photos > 0 ? Math.round((c.waitSeconds / c.photos) * 10) / 10 : 0,
+                    avgScore: c.photos > 0 ? Math.round((c.totalScore / c.photos) * 10) / 10 : 0
+                };
+            }
+            
+            // Calculate audio stats
+            const audioAttempts = metrics.audio.attempts;
+            const completedAttempt = audioAttempts.find(a => a.outcome === 'completed');
+            const abandonedAttempts = audioAttempts.filter(a => a.outcome === 'abandoned');
+            const discardedAttempts = audioAttempts.filter(a => a.outcome === 'discarded');
+            const totalAudioTime = audioAttempts.reduce((sum, a) => sum + a.durationSeconds, 0);
+            const wastedAudioTime = [...abandonedAttempts, ...discardedAttempts].reduce((sum, a) => sum + a.durationSeconds, 0);
+            
+            // Calculate default match rate
+            const defaultsTracked = Object.keys(metrics.defaults.tracked);
+            const defaultsMatched = defaultsTracked.filter(k => metrics.defaults.tracked[k].matched).length;
+            const defaultMatchRate = defaultsTracked.length > 0 ? Math.round((defaultsMatched / defaultsTracked.length) * 100) / 100 : 1;
+            const changedFromDefault = defaultsTracked.filter(k => !metrics.defaults.tracked[k].matched);
+            
+            // Calculate capture method stats
+            const captureMethodStats = {};
+            for (const method in metrics.photos.captureMethod) {
+                const captures = metrics.photos.captureMethod[method];
+                const deleted = metrics.photos.deletedByMethod[method] || 0;
+                captureMethodStats[method] = {
+                    captures: captures,
+                    deleted: deleted,
+                    wasteRate: captures > 0 ? Math.round((deleted / captures) * 100) / 100 : 0
+                };
+            }
+            
+            // Detect rapid fire (accidental captures)
+            let rapidFireEvents = 0;
+            let rapidFireDeleted = 0;
+            for (let i = 1; i < metrics.photos.captured.length; i++) {
+                const prev = new Date(metrics.photos.captured[i-1].timestamp).getTime();
+                const curr = new Date(metrics.photos.captured[i].timestamp).getTime();
+                if ((curr - prev) < 1000) {
+                    rapidFireEvents++;
+                    if (!metrics.photos.captured[i].kept) rapidFireDeleted++;
+                }
+            }
+            
+            // Get measurement count based on category
+            let measurementCount = 9; // default standard
+            let measurementType = 'standard';
+            if (data.sleeveStyle === 'Raglan') {
+                measurementCount = 7;
+                measurementType = 'raglan';
+            } else if (data.sleeveLength === 'Sleeveless' || data.sleeveLength === 'Tank') {
+                measurementCount = 6;
+                measurementType = 'sleeveless';
+            } else if (data.superCategory === 'bottoms') {
+                measurementCount = 6;
+                measurementType = 'bottoms';
+            }
+            
+            // Camera switch stats
+            const switchCount = metrics.hardware.switches.length;
+            const totalSwitchTime = metrics.hardware.switches.reduce((sum, s) => sum + s.timeSeconds, 0);
+            
+            // Build the final payload
+            const payload = {
+                timing: {
+                    totalSeconds: totalSeconds,
+                    targetSeconds: 300,
+                    withinTarget: totalSeconds <= 300,
+                    stepSeconds: metrics.timing.stepSeconds,
+                    modeSeconds: metrics.timing.modeSeconds
+                },
+                
+                audio: {
+                    recorded: !!data.audioMeasure,
+                    finalDurationSeconds: data.audioDuration || 0,
+                    measurementCount: measurementCount,
+                    measurementType: measurementType,
+                    attempts: audioAttempts,
+                    summary: {
+                        totalAttempts: audioAttempts.length,
+                        abandonedAttempts: abandonedAttempts.length,
+                        discardedAttempts: discardedAttempts.length,
+                        totalAudioTimeSeconds: totalAudioTime,
+                        wastedTimeSeconds: wastedAudioTime,
+                        firstAttemptSuccess: audioAttempts.length > 0 && (audioAttempts[0].outcome === 'completed' || audioAttempts[0].outcome === 'discarded')
+                    },
+                    efficiency: {
+                        expectedDurationSeconds: measurementCount * 6,
+                        actualDurationSeconds: data.audioDuration || 0,
+                        secondsPerMeasurement: measurementCount > 0 && data.audioDuration ? Math.round((data.audioDuration / measurementCount) * 10) / 10 : 0
+                    }
+                },
+                
+                photos: {
+                    counts: {
+                        main: data.mainPhotos.length,
+                        tag: data.tagPhotos.length,
+                        defect: data.defectPhotos.length,
+                        defectCloseup: data.defectCloseupPhotos.length,
+                        features: data.featuresPhotos.length,
+                        total: data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + data.defectCloseupPhotos.length + data.featuresPhotos.length
+                    },
+                    captures: {
+                        totalCaptured: totalCaptured,
+                        totalKept: totalKept,
+                        deleted: totalDeleted,
+                        wasteRate: totalCaptured > 0 ? Math.round((totalDeleted / totalCaptured) * 100) / 100 : 0
+                    },
+                    deletionsByMode: deletionsByMode,
+                    deletionsByReason: deletionsByReason,
+                    captureMethod: captureMethodStats,
+                    issues: {
+                        rapidFireEvents: rapidFireEvents,
+                        rapidFireDeleted: rapidFireDeleted
+                    },
+                    retakes: {
+                        total: deletionsByReason.retake,
+                        byMode: deletionsByMode
+                    }
+                },
+                
+                hardware: {
+                    cameras: {
+                        primary: metrics.hardware.primaryCamera,
+                        secondary: metrics.hardware.secondaryCamera
+                    },
+                    usage: formattedByCamera,
+                    switches: {
+                        count: switchCount,
+                        totalTimeSeconds: Math.round(totalSwitchTime * 10) / 10,
+                        avgSwitchTimeSeconds: switchCount > 0 ? Math.round((totalSwitchTime / switchCount) * 10) / 10 : 0
+                    }
+                },
+                
+                stabilizer: {
+                    summary: {
+                        totalWaitSeconds: Math.round(totalWaitSeconds * 10) / 10,
+                        avgScoreAtCapture: metrics.stabilizer.perPhoto.length > 0 ? Math.round((totalScore / metrics.stabilizer.perPhoto.length) * 10) / 10 : 0,
+                        capturedStable: stableCount,
+                        capturedUnstable: unstableCount,
+                        stabilityRate: (stableCount + unstableCount) > 0 ? Math.round((stableCount / (stableCount + unstableCount)) * 100) / 100 : 1
+                    },
+                    byMode: formattedByMode,
+                    byCamera: formattedByCamera,
+                    perPhoto: metrics.stabilizer.perPhoto,
+                    issues: {
+                        highScorePhotos: metrics.stabilizer.perPhoto.filter(p => p.score > 20).length,
+                        longestWaitSeconds: metrics.stabilizer.perPhoto.length > 0 ? Math.max(...metrics.stabilizer.perPhoto.map(p => p.waitSeconds || 0)) : 0
+                    }
+                },
+                
+                defects: {
+                    hasDefects: data.hasDefects,
+                    types: data.defectTypes,
+                    markerCount: data.mainPhotos.reduce((sum, p) => sum + (p.defects ? p.defects.length : 0), 0),
+                    closeupCount: data.defectCloseupPhotos.length,
+                    sides: [...new Set(data.mainPhotos.filter(p => p.defectSide).map(p => p.defectSide))]
+                },
+                
+                complexity: {
+                    materialCount: data.materials.length,
+                    colorCount: data.colors.length,
+                    hasPattern: !!data.pattern && data.pattern !== 'Solid',
+                    constructionType: data.sleeveStyle === 'Raglan' ? 'raglan' : (data.sleeveLength === 'Sleeveless' ? 'sleeveless' : 'standard')
+                },
+                
+                defaults: {
+                    matchRate: defaultMatchRate,
+                    changedFromDefault: changedFromDefault,
+                    details: metrics.defaults.tracked
+                },
+                
+                workflow: {
+                    softResets: metrics.workflow.softResets,
+                    reviewVisits: metrics.workflow.reviewVisits,
+                    backtrackFromReview: metrics.workflow.backtrackFromReview.length,
+                    incompleteOnFirstReview: metrics.workflow.incompleteOnFirstReview,
+                    stepTransitions: metrics.workflow.stepTransitions,
+                    firstPassYield: metrics.workflow.reviewVisits <= 1 && metrics.workflow.backtrackFromReview.length === 0,
+                    validationBlocks: metrics.workflow.validationBlocks,
+                    blockedBy: metrics.workflow.blockedBy
+                },
+                
+                interaction: {
+                    totalClicks: metrics.interaction.totalClicks,
+                    clicksPerMinute: totalSeconds > 0 ? Math.round((metrics.interaction.totalClicks / (totalSeconds / 60)) * 10) / 10 : 0,
+                    clicksByArea: metrics.interaction.clicksByArea,
+                    corrections: metrics.interaction.corrections,
+                    helpButtonClicks: metrics.interaction.helpButtonClicks,
+                    scrollEvents: metrics.interaction.scrollEvents
+                },
+                
+                session: {
+                    photographer: data.photographer,
+                    date: metrics.session.date,
+                    itemSequence: metrics.session.itemSequence,
+                    submittedAt: new Date().toISOString(),
+                    hour: new Date().getHours(),
+                    timeOfDay: new Date().getHours() < 12 ? 'morning' : (new Date().getHours() < 18 ? 'afternoon' : 'evening')
+                },
+                
+                completeness: {
+                    tagPhotosTaken: data.tagPhotos.length > 0,
+                    featurePhotosTaken: data.featuresPhotos.length > 0,
+                    defectsFullyDocumented: !data.hasDefects || (data.defectPhotos.length > 0 || data.defectCloseupPhotos.length > 0),
+                    flaggedAsUnusual: data.flagged
+                },
+                
+                meta: {
+                    appVersion: VERSION
+                }
+            };
+            
+            return payload;
+        }
+        
+        // Send abandoned item event
+        async function sendAbandonedItemEvent(reason) {
+            if (!metrics) return;
+            
+            const event = {
+                event: 'item_abandoned',
+                photographer: data.photographer,
+                timestamp: new Date().toISOString(),
+                sku: data.sku || 'unknown',
+                secondsSpent: Math.floor((Date.now() - metrics.itemStartTimestamp) / 1000),
+                lastStep: `step${currentStep}`,
+                photosCount: data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length,
+                reason: reason,
+                incompleteFields: getIncompleteFields()
+            };
+            
+            console.log('📊 Abandoned item event:', event);
+            
+            // Send to webhook (fire and forget)
+            try {
+                const formData = new FormData();
+                formData.append('event', 'item_abandoned');
+                formData.append('abandonedData', JSON.stringify(event));
+                
+                fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    body: formData
+                }).catch(e => console.warn('Abandoned event send failed:', e));
+            } catch(e) {
+                console.warn('Could not send abandoned event:', e);
+            }
+        }
         
         // ============ LOCAL FOLDER SAVE (File System Access API) ============
         let saveDirectoryHandle = null;
@@ -1755,6 +2528,7 @@
         let timerStart = null, timerInterval = null, itemTimes = [];
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
+        let mainCameraName = null, secondaryCameraName = null; // Store camera names for metrics
         
         // Camera configuration for flip/rotation (can be extended later if needed)
         let cameraConfig = { flips: {}, rots: {} };
@@ -1766,6 +2540,7 @@
         // Stabilizer variables
         let stabilizerInterval = null, stabilizerCanvas = null, stabilizerCtx = null;
         let previousFrame = null, stableFrameCount = 0, isStable = false;
+        let currentMotionDelta = 0; // Track current motion delta for metrics
         const STABILITY_THRESHOLD = 8; // Lower = more sensitive
         const FRAMES_NEEDED = 3; // Frames needed to be "stable"
         let previewMode = null, previewIndex = 0;
@@ -3003,7 +3778,21 @@
         document.addEventListener('DOMContentLoaded', () => { 
             setVersionDisplays();
             checkAuth(); loadStats(); enumerateCameras(); renderSubCategories('tops'); clearDefectMarkers(); renderFabricCards(); renderMaterialCards(); renderPatternCards(); updateValidation(); 
-            document.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { e.preventDefault(); capturePhoto(); } }); 
+            document.addEventListener('keydown', (e) => { 
+                // Spacebar capture
+                if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !document.getElementById('preview-modal').classList.contains('active')) { 
+                    e.preventDefault(); 
+                    capturePhoto('spacebar'); 
+                }
+                // Enter key (common foot pedal binding) - only when not in inputs
+                if (e.code === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && !document.getElementById('preview-modal').classList.contains('active') && !document.getElementById('sku-gate').classList.contains('hidden') === false) { 
+                    // Only capture if SKU gate is hidden (we're in photo mode)
+                    if(document.getElementById('sku-gate').classList.contains('hidden')) {
+                        e.preventDefault(); 
+                        capturePhoto('footPedal'); 
+                    }
+                }
+            }); 
             document.getElementById('pin-input').addEventListener('keydown', (e) => { if(e.key==='Enter') checkPin(); });
             // Focus PIN input if PIN screen is visible
             if(!document.getElementById('pin-screen').classList.contains('hidden')) {
@@ -3015,6 +3804,43 @@
             if(!featurePanel) {
                 console.error('❌ Feature panel not in DOM!');
             }
+            
+            // Add global click tracking for metrics
+            document.addEventListener('click', (e) => {
+                if(!metrics) return;
+                
+                const target = e.target;
+                const parent = target.closest('[data-track-area]') || target.closest('.section-card');
+                
+                // Determine click area
+                let area = 'other';
+                
+                if(target.closest('#step-1')) {
+                    if(target.closest('.color-btn') || target.closest('.color-section')) area = 'colorPicker';
+                    else if(target.closest('[data-track-area="category"]') || target.closest('.hero-btn') || target.closest('.sub-cat-btn')) area = 'category';
+                    else area = 'tagSection';
+                } else if(target.closest('#step-2')) {
+                    if(target.closest('.fabric-card') || target.closest('#fabric-cards-grid') || target.closest('#fabric-other-select')) area = 'fabricType';
+                    else if(target.closest('.material-card') || target.closest('#material-cards-grid') || target.closest('#material-other-select')) area = 'material';
+                    else if(target.closest('.stitch-btn') || target.closest('.body-btn') || target.closest('.hem-btn')) area = 'construction';
+                    else if(target.closest('.defect-btn') || target.closest('.condition-section')) area = 'defects';
+                    else area = 'tagSection';
+                } else if(target.closest('#step-3')) {
+                    if(target.closest('#weight-lb') || target.closest('#weight-oz') || target.closest('.weight-section')) area = 'weight';
+                    else if(target.closest('#record-btn') || target.closest('.measurement-section')) area = 'audio';
+                    else area = 'other';
+                } else if(target.closest('#step-4')) {
+                    area = 'navigation';
+                } else if(target.closest('.camera-view') || target.closest('.photos-panel')) {
+                    if(target.closest('.mode-btn') || target.closest('.shutter-btn')) area = 'photos';
+                    else if(target.closest('.nav-btn')) area = 'navigation';
+                    else area = 'photos';
+                } else if(target.closest('.nav-btn') || target.closest('.progress-dot')) {
+                    area = 'navigation';
+                }
+                
+                trackClick(area);
+            });
         });
         
         function checkAuth() { 
@@ -3189,8 +4015,10 @@
                         console.log('📷 SKU Gate: Camera:', device.label);
                         if(label.includes('brio') && !mainCameraId) {
                             mainCameraId = device.deviceId;
+                            mainCameraName = device.label; // Store for metrics
                         } else if((label.includes('c922') || label.includes('922')) && !secondaryCameraId) {
                             secondaryCameraId = device.deviceId;
+                            secondaryCameraName = device.label; // Store for metrics
                         }
                     }
                     
@@ -3613,6 +4441,10 @@
             data.sku = value;
             skuLocked = true;
             
+            // Initialize metrics for this item
+            initMetrics();
+            trackStabilizerWaitStart(); // Start tracking stabilizer wait time
+            
             // Stop SKU gate barcode scanning, stabilizer and camera
             stopSkuGateBarcodeScanning();
             stopSkuGateStabilizer();
@@ -3678,7 +4510,22 @@
             updateValidation();
         }
         
-        function goToStep(step) { currentStep = step; document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active')); document.getElementById(`step-${step}`).classList.add('active'); document.querySelectorAll('.progress-dot').forEach((d,i) => { d.classList.remove('active'); if(i+1 < step) d.classList.add('complete'); else d.classList.remove('complete'); if(i+1 === step) d.classList.add('active'); }); const labels = {1:'Step 1: Tag', 2:'Step 2: Check', 3:'Step 3: Snap', 4:'Step 4: Review'}; document.getElementById('step-label').textContent = labels[step] || ''; if(step===4) updateReviewCards(); window.scrollTo(0, 0); }
+        function goToStep(step) { 
+            trackStepChange(step); // Track step change for metrics
+            currentStep = step; 
+            document.querySelectorAll('.step-container').forEach(s => s.classList.remove('active')); 
+            document.getElementById(`step-${step}`).classList.add('active'); 
+            document.querySelectorAll('.progress-dot').forEach((d,i) => { 
+                d.classList.remove('active'); 
+                if(i+1 < step) d.classList.add('complete'); 
+                else d.classList.remove('complete'); 
+                if(i+1 === step) d.classList.add('active'); 
+            }); 
+            const labels = {1:'Step 1: Tag', 2:'Step 2: Check', 3:'Step 3: Snap', 4:'Step 4: Review'}; 
+            document.getElementById('step-label').textContent = labels[step] || ''; 
+            if(step===4) updateReviewCards(); 
+            window.scrollTo(0, 0); 
+        }
         
         function updateReviewCards() {
             document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'<img src="https://flagcdn.com/w16/us.png" style="vertical-align:middle;"> USA':data.country||''} • ${data.gender||''}`;
@@ -3737,9 +4584,11 @@
                     const label = device.label.toLowerCase();
                     if(label.includes('brio') && !mainCameraId) {
                         mainCameraId = device.deviceId;
+                        mainCameraName = device.label; // Store for metrics
                         console.log('  → Set as MAIN camera (Brio 4K)');
                     } else if((label.includes('c922') || label.includes('922')) && !secondaryCameraId) {
                         secondaryCameraId = device.deviceId;
+                        secondaryCameraName = device.label; // Store for metrics
                         console.log('  → Set as SECONDARY camera (C922X)');
                     }
                 });
@@ -4300,6 +5149,7 @@
             console.log(`   activeCameraId: ${activeCameraId?.slice(0,8) || 'null'}`);
             
             const previousMode = photoMode;
+            trackModeChange(mode); // Track mode change for metrics
             photoMode = mode; 
             document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); 
             document.getElementById(`mode-${mode}`).classList.add('active'); 
@@ -4326,6 +5176,9 @@
             // Reset zoom when switching modes
             resetZoom();
             
+            // Track camera switch start time
+            const previousCameraId = activeCameraId;
+            
             // Auto-switch cameras based on mode
             if(mode === 'main') {
                 // Single camera mode
@@ -4339,8 +5192,10 @@
                     console.log(`📷 Main mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, target=${mainCameraId?.slice(0,8)})`);
                     if(activeCameraId !== mainCameraId) {
                         console.log('📷 SWITCHING to MAIN camera (BRIO)...');
+                        trackCameraSwitch(previousCameraId, mainCameraId); // Start tracking switch
                         try {
                             await switchCameraMaxRes(mainCameraId);
+                            trackCameraSwitchComplete(previousCameraId, mainCameraId); // Complete tracking
                             console.log('📷 Switch to BRIO complete');
                             setTimeout(() => {
                                 forceMaxResolution();
@@ -4388,8 +5243,10 @@
                     
                     if(activeCameraId !== secondaryCameraId) {
                         console.log('📷 SWITCHING to SECONDARY camera (C922X)...');
+                        trackCameraSwitch(previousCameraId, secondaryCameraId); // Start tracking switch
                         try {
                             await switchCamera(secondaryCameraId);
+                            trackCameraSwitchComplete(previousCameraId, secondaryCameraId); // Complete tracking
                             console.log('📷 Switch to C922X complete');
                         } catch(e) {
                             console.error('📷 Switch to C922X failed:', e);
@@ -4441,7 +5298,12 @@
                 indicator.style.background = '#64748b';
             }
         }
-        function capturePhoto() { 
+        // Track last capture method for metrics
+        let lastCaptureMethod = 'shutterClick';
+        
+        function capturePhoto(method = 'shutterClick') { 
+            lastCaptureMethod = method;
+            
             // Use split camera video in defect-closeup mode, otherwise main video
             const video = photoMode === 'defect-closeup' 
                 ? document.getElementById('split-camera-video')
@@ -4450,6 +5312,20 @@
                 showToast('warning', 'No Camera', 'Camera not ready', 2000);
                 return; 
             }
+            
+            // Capture current stability metrics before taking photo
+            const stabilityScore = currentMotionDelta || 0;
+            const wasStable = isStable;
+            const waitSeconds = getStabilizerWaitTime();
+            const cameraName = activeCameraId === mainCameraId ? 
+                (metrics?.hardware?.primaryCamera?.name || 'Primary') : 
+                (metrics?.hardware?.secondaryCamera?.name || 'Secondary');
+            
+            // Track photo capture in metrics
+            trackPhotoCapture(photoMode, cameraName, method, stabilityScore, wasStable, waitSeconds);
+            
+            // Reset stabilizer wait tracking for next photo
+            trackStabilizerWaitStart();
             
             // Warn if not stable but still allow capture
             if(!isStable && navigator.vibrate) navigator.vibrate(100);
@@ -5265,6 +6141,7 @@
             
             if(previousFrame) {
                 const diff = calculateFrameDifference(previousFrame, currentFrame);
+                currentMotionDelta = Math.round(diff * 10) / 10; // Store for metrics
                 
                 if(diff < STABILITY_THRESHOLD) {
                     stableFrameCount++;
@@ -5375,6 +6252,9 @@
             updateDefectLinkPanel();
         }
         function deletePhoto(mode,index) { 
+            // Track deletion in metrics
+            trackPhotoDeletion(mode, index);
+            
             if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} 
             else if(mode==='tag'){URL.revokeObjectURL(data.tagPhotos[index].url);data.tagPhotos.splice(index,1);} 
             else if(mode==='defect-closeup'){URL.revokeObjectURL(data.defectCloseupPhotos[index].url);data.defectCloseupPhotos.splice(index,1);} 
@@ -5501,6 +6381,9 @@
             
             const btn = document.getElementById('rotate-btn');
             const video = document.getElementById('camera-video');
+            
+            // Track rotation change in metrics
+            trackClick('photos');
             
             if(mainPhotoPortrait) {
                 btn.textContent = '🔄 PORTRAIT';
@@ -6196,10 +7079,12 @@
                 };
                 mediaRecorder.start();
                 recordingStart = Date.now();
+                trackAudioAttemptStart(); // Track audio attempt start
                 document.getElementById('record-btn').innerHTML = '<span style="font-size:24px;">⏹️</span><span>RECORDING...</span>';
                 document.getElementById('record-btn').style.background = '#dc2626';
                 document.getElementById('record-btn').classList.add('recording');
                 recordingInterval = setInterval(updateRecordingTime, 1000);
+                trackClick('audio'); // Track click
             } catch(e) { showToast('error', 'Microphone Error', 'Microphone access denied'); }
         }
         function stopRecording() {
@@ -6208,6 +7093,7 @@
                 clearInterval(recordingInterval);
                 const duration = Math.floor((Date.now() - recordingStart) / 1000);
                 data.audioDuration = duration;
+                trackAudioAttemptEnd('completed'); // Track successful completion
                 document.getElementById('recording-duration').textContent = formatTime(duration);
                 document.getElementById('record-section').classList.add('hidden');
                 document.getElementById('post-record-section').classList.remove('hidden');
@@ -6218,12 +7104,21 @@
             document.getElementById('record-btn').querySelector('span:last-child').textContent = `RECORDING ${formatTime(elapsed)}`;
         }
         function reRecord() {
+            // Track that the previous recording was discarded (not abandoned mid-recording)
+            if(data.audioMeasure && metrics && metrics.audio.attempts.length > 0) {
+                // Mark the last completed attempt as 'discarded'
+                const lastAttempt = metrics.audio.attempts[metrics.audio.attempts.length - 1];
+                if(lastAttempt.outcome === 'completed') {
+                    lastAttempt.outcome = 'discarded';
+                }
+            }
             data.audioMeasure = null; data.audioDuration = 0;
             document.getElementById('record-section').classList.remove('hidden');
             document.getElementById('post-record-section').classList.add('hidden');
             document.getElementById('record-btn').innerHTML = '<span style="font-size:24px;">🎤</span><span>TAP TO RECORD</span>';
             document.getElementById('record-btn').style.background = '#ef4444';
             document.getElementById('record-btn').classList.remove('recording');
+            trackClick('audio'); // Track click
             updateValidation();
         }
         function formatTime(s) { return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
@@ -6784,10 +7679,19 @@
         }
         
         function submitItem() { 
-            if(!data.sku) { showToast('error', 'Missing SKU', 'Enter or scan a SKU number'); return; }
-            if(data.mainPhotos.length===0) { showToast('error', 'Missing Photo', 'Add at least one main photo'); return; }
-            if(data.weightLb===0 && data.weightOz===0) { showToast('error', 'Missing Weight', 'Enter the item weight'); return; }
-            if(!data.audioMeasure) { showToast('error', 'Missing Measurements', 'Record voice measurements'); return; }
+            const missingFields = [];
+            if(!data.sku) missingFields.push('sku');
+            if(data.mainPhotos.length===0) missingFields.push('mainPhotos');
+            if(data.weightLb===0 && data.weightOz===0) missingFields.push('weight');
+            if(!data.audioMeasure) missingFields.push('audio');
+            
+            if(missingFields.length > 0) {
+                trackValidationBlock(missingFields);
+                if(!data.sku) { showToast('error', 'Missing SKU', 'Enter or scan a SKU number'); return; }
+                if(data.mainPhotos.length===0) { showToast('error', 'Missing Photo', 'Add at least one main photo'); return; }
+                if(data.weightLb===0 && data.weightOz===0) { showToast('error', 'Missing Weight', 'Enter the item weight'); return; }
+                if(!data.audioMeasure) { showToast('error', 'Missing Measurements', 'Record voice measurements'); return; }
+            }
             
             // Send to n8n webhook
             const formData = new FormData();
@@ -6874,6 +7778,13 @@
                 }
             });
             
+            // Build and append metrics
+            const metricsPayload = buildMetricsPayload();
+            if(metricsPayload) {
+                formData.append('metrics', JSON.stringify(metricsPayload));
+                console.log('📊 Metrics payload:', metricsPayload);
+            }
+            
             const xhr = new XMLHttpRequest();
             xhr.open('POST', N8N_WEBHOOK_URL, true);
             xhr.onload = () => { 
@@ -6922,6 +7833,9 @@
             if(!saveDirectoryHandle) return;
             
             try {
+                // Build metrics for JSON
+                const metricsPayload = buildMetricsPayload();
+                
                 const jsonData = {
                     sku: data.sku,
                     timestamp: new Date().toISOString(),
@@ -6973,7 +7887,9 @@
                             y: d.y,
                             side: p.defectSide || null
                         }))
-                    )
+                    ),
+                    // Include metrics
+                    metrics: metricsPayload
                 };
                 
                 const filename = `${data.sku}_data.json`;
@@ -6994,12 +7910,32 @@
             
             console.log(`🔄 resetForm called - keepSku: ${keepSku}, preservedSku: ${preservedSku}`);
             
+            // Track reset type for metrics
+            if(keepSku && metrics) {
+                trackSoftReset();
+                // For soft reset: reset tracking arrays but keep workflow metadata
+                resetMetricsForSoftReset();
+            } else if(!keepSku && metrics && data.sku) {
+                // Full reset with data - send abandoned item event
+                sendAbandonedItemEvent('full_reset');
+            }
+            
+            // Increment item sequence for next item
+            if(!keepSku) {
+                itemSequenceToday++;
+            }
+            
             // Revoke all photo URLs
             data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            
+            // Reset metrics if full reset
+            if(!keepSku) {
+                metrics = null;
+            }
             
             // Reset data object
             data = {
