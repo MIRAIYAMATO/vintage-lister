@@ -825,12 +825,14 @@
                     <div>Avg: <strong id="timer-avg">--</strong></div>
                     <div>Last: <strong id="timer-last">--</strong></div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos">📁 No Folder</button>
+                <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+                    <button id="folder-btn" class="folder-btn" onclick="selectSaveFolder()" title="Select folder to auto-save photos" style="white-space:nowrap;">📁 No Folder</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
                     <span class="version-badge" id="header-version">...</span>
                     <div class="reset-dropdown" id="reset-dropdown">
-                        <button class="reset-btn" onclick="toggleResetMenu()" title="Reset options" style="margin-left:4px;">↻</button>
+                        <button class="reset-btn" onclick="toggleResetMenu()" title="Reset options">↻</button>
                         <div class="reset-menu" id="reset-menu">
                             <button onclick="resetForm(true); hideResetMenu();">🔄 Reset (Keep SKU)</button>
                             <button onclick="resetForm(false); hideResetMenu();" style="border-top:1px solid #e2e8f0;">🗑️ Full Reset (New SKU)</button>
@@ -1043,7 +1045,7 @@
                         <div class="section-label"><span id="check-fabric-type" class="check-circle">○</span> Fabric Type</div>
                         <div id="fabric-cards-grid" class="cards-grid"></div>
                         <!-- Other Fabric Types dropdown (eBay fabric types from PDF) -->
-                        <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select" style="margin-top:8px; font-size:12px;">
+                        <select id="fabric-other-select" onchange="onFabricOtherChange()" class="form-select" style="margin-top:10px; font-size:13px; padding:10px 12px;">
                             <option value="" selected>Other fabric types...</option>
                             <option value="Wool">Wool (warm, textured)</option>
                             <option value="Canvas">Canvas (heavy cotton)</option>
@@ -1132,8 +1134,9 @@
                         <div id="material-tag-warning" class="tag-warning hidden">⚠️ No readable tag — use touch tests</div>
                         <div id="material-cards-grid" class="cards-grid"></div>
                         <!-- Other Materials dropdown -->
-                        <select id="material-other-select" onchange="onMaterialOtherChange()" class="form-select" style="margin-top:8px; font-size:12px;">
+                        <select id="material-other-select" onchange="onMaterialOtherChange()" class="form-select" style="margin-top:10px; font-size:13px; padding:10px 12px;">
                             <option value="" selected>Other materials...</option>
+                            <option value="Wool">Wool (warm, natural)</option>
                             <option value="Mohair">Mohair (fuzzy, luxe)</option>
                             <option value="Alpaca">Alpaca (soft, warm)</option>
                             <option value="Cashmere">Cashmere (luxury)</option>
@@ -1380,6 +1383,8 @@
                             </select>
                             <select id="weight-oz" onchange="updateWeight()" class="form-select" style="font-size:16px;font-weight:700;">
                                 <option value="0" selected>0 oz</option>
+                                <option value="1">1 oz</option>
+                                <option value="2">2 oz</option>
                                 <option value="3">3 oz</option>
                                 <option value="4">4 oz</option>
                                 <option value="5">5 oz</option>
@@ -1656,7 +1661,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.33";
+        const VERSION = "v100.34";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -2687,6 +2692,7 @@
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Wrinkle-free." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Silky, drapey." },
                 { name:"Linen", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Cool, wrinkles." },
+                { name:"Wool", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Warm. Flannel." },
                 { name:"Silk", priority:3, traits:{temp:"cool",shine:"sheen"}, desc:"Luxury. Shiny." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Disco era." }
             ],
@@ -3638,6 +3644,12 @@
             
             // Switch back to main camera mode
             setPhotoMode('main');
+            
+            // IMPORTANT: Go to Step 1 to start the workflow fresh
+            goToStep(1);
+            
+            // Start timer for new item
+            startTimer();
             
             showToast('success', 'SKU Locked', `Item: ${value}`, 2000);
             updateValidation();
