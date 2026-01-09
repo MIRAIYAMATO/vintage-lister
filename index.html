@@ -1620,6 +1620,7 @@
             </div>
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
+                <button class="mode-btn" id="mode-detail" onclick="setPhotoMode('detail'); setTimeout(()=>{const p=document.getElementById('detail-type-panel'); if(p){p.style.display='flex';console.log('🔍 Detail panel forced visible')}}, 200);" style="background:#0891b2;border-color:#0891b2;">🔍 Detail<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto('shutterClick')"></button>
                     <div class="shutter-hint">Press <kbd>SPACE</kbd> or foot pedal</div>
@@ -1637,6 +1638,10 @@
             <div class="photo-section">
                 <div class="photo-section-title"><span>Main Photos</span><span id="main-count">0</span></div>
                 <div class="photo-grid" id="main-photos-grid"><div class="photo-thumb photo-thumb-empty" onclick="setPhotoMode('main')">+</div></div>
+            </div>
+            <div class="photo-section">
+                <div class="photo-section-title" style="color:#0891b2;"><span>🔍 Detail Photos</span><span id="detail-count" style="background:#0891b2;color:white;">0</span></div>
+                <div class="photo-grid" id="detail-photos-grid"><div class="photo-thumb square photo-thumb-empty" onclick="setPhotoMode('detail')" title="Detail shots: graphic, collar, pocket, etc." style="border-color:#0891b2;">+</div></div>
             </div>
             <div class="photo-section">
                 <div class="photo-section-title"><span>Tag Photos</span><span id="tag-count">0</span></div>
@@ -1667,7 +1672,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.40";
+        const VERSION = "v100.43";
         // ===============================================================
         
         const APP_PIN = "1234";
@@ -1676,40 +1681,55 @@
         const S3_BUCKET = "listing-media-koga-prod";
         
         // Shot sequence configuration per category
-        // Categories that need inside-out shots
-        const CATEGORIES_WITH_INSIDE_SHOTS = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Button Shirt', 'Jacket', 'Coat', 'Vest', 'Jeans', 'Pants'];
+        // Categories that need inside-out shots (for insulation, lining, red lines, etc.)
+        const CATEGORIES_WITH_INSIDE_SHOTS = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Jacket', 'Coat', 'Vest', 'Jeans', 'Pants'];
         
-        // Shot sequence for main photos
-        const SHOT_SEQUENCE_STANDARD = [
-            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
-            { id: 'front_tshape', label: 'Front T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip item, arms folded down' },
-            { id: 'back_tshape', label: 'Back T-Shape', hint: 'Open arms to T-shape' }
+        // Shot sequence: SHORT SLEEVE tops (T-Shirt, Polo, Tank Top, Jersey)
+        // No T-shape needed - sleeves are short, ghost mannequin doesn't need sleeve extension
+        const SHOT_SEQUENCE_SHORT_SLEEVE = [
+            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, front facing up' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back' }
         ];
         
-        const SHOT_SEQUENCE_WITH_INSIDE = [
+        // Shot sequence: LONG SLEEVE tops (Long Sleeve T, Henley, Button Shirt without lining)
+        // Need T-shape to show sleeve length for AI ghost mannequin
+        const SHOT_SEQUENCE_LONG_SLEEVE = [
             { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
-            { id: 'front_tshape', label: 'Front T-Shape', hint: 'Open arms to T-shape' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip item, arms folded down' },
-            { id: 'back_tshape', label: 'Back T-Shape', hint: 'Open arms to T-shape' },
-            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out, front view' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back, arms folded' },
+            { id: 'front_tshape', label: 'T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' }
+        ];
+        
+        // Shot sequence: OUTERWEAR (Jackets, Coats, Hoodies, Sweaters, etc.)
+        // T-shape + inside shots (for insulation/lining)
+        const SHOT_SEQUENCE_OUTERWEAR = [
+            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back, arms folded' },
+            { id: 'front_tshape', label: 'T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' },
+            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out, front view (check lining/insulation)' },
             { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
         ];
         
+        // Shot sequence: BOTTOMS (Jeans, Pants, Shorts, Sweatpants) and VESTS
+        // No T-shape (no sleeves), but need inside shots (for red lines, hems, pockets, lining)
         const SHOT_SEQUENCE_BOTTOMS = [
             { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, front facing up' },
             { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back' },
-            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out (check for red line, hems)' },
+            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out (check for red line, hems, lining)' },
             { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
         ];
+        
+        // Legacy aliases for backward compatibility
+        const SHOT_SEQUENCE_STANDARD = SHOT_SEQUENCE_SHORT_SLEEVE;
+        const SHOT_SEQUENCE_WITH_INSIDE = SHOT_SEQUENCE_OUTERWEAR;
         
         // Current shot tracking
         let currentShotIndex = 0;
         let currentShotSequence = SHOT_SEQUENCE_STANDARD;
-        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', bodyConstruction:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
+        let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', bodyConstruction:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], detailPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let selectedDefectLink = null; // Index of defect marker to link close-up to
         let selectedFeatureType = null; // Type of feature being photographed
+        let selectedDetailType = null; // Type of detail being photographed (graphic, collar, pocket, etc.)
         let fabricFilters = { stretch:null, surface:null, interior:null }, materialFilters = { temp:null, shine:null }, patternFilters = { lines:null, shapes:null, method:null };
         let tagCutMode = false; // When true, fabric selection disabled, traits mandatory
         
@@ -2622,6 +2642,16 @@
                 });
             });
             
+            // Detail photos - include detail type
+            data.detailPhotos.forEach((photo, i) => {
+                const detailType = (photo.detailType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                files.push({
+                    name: `${sku}_detail_${detailType}_${String(i+1).padStart(2,'0')}.jpg`,
+                    folder: 'detail',
+                    blob: photo.blob
+                });
+            });
+            
             // Tag photos
             data.tagPhotos.forEach((photo, i) => {
                 files.push({
@@ -2740,6 +2770,10 @@
                     const shotName = p.shotId || `main_${String(i+1).padStart(2,'0')}`;
                     return `${sku}/main/${sku}_${shotName}.jpg`;
                 }),
+                detail: data.detailPhotos.map((p, i) => {
+                    const type = (p.detailType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                    return `${sku}/detail/${sku}_detail_${type}_${String(i+1).padStart(2,'0')}.jpg`;
+                }),
                 tag: data.tagPhotos.map((_, i) => `${sku}/tag/${sku}_tag_${String(i+1).padStart(2,'0')}.jpg`),
                 defects: [
                     ...data.defectCloseupPhotos.map((p, i) => {
@@ -2763,25 +2797,53 @@
         
         // Get shot sequence based on category
         function getShotSequenceForCategory(category) {
-            if (!category) return SHOT_SEQUENCE_STANDARD;
+            if (!category) return SHOT_SEQUENCE_SHORT_SLEEVE;
             
-            // Bottoms have different sequence (no T-shape, but need inside shots)
+            // Bottoms: front/back + inside (no T-shape)
             if (['Jeans', 'Pants', 'Shorts', 'Sweatpants'].includes(category)) {
                 return SHOT_SEQUENCE_BOTTOMS;
             }
             
-            // Categories that need inside-out shots
-            if (CATEGORIES_WITH_INSIDE_SHOTS.includes(category)) {
-                return SHOT_SEQUENCE_WITH_INSIDE;
+            // Vest: no sleeves so no T-shape, but needs inside shots for lining
+            if (category === 'Vest') {
+                return SHOT_SEQUENCE_BOTTOMS; // Same structure: front, back, inside front, inside back
             }
             
-            return SHOT_SEQUENCE_STANDARD;
+            // Outerwear with sleeves AND lining: T-shape + inside shots
+            // These categories have insulation, lining, or interior details worth capturing
+            if (['Jacket', 'Coat', 'Hoodie', 'Sweatshirt', 'Sweater', 'Cardigan'].includes(category)) {
+                return SHOT_SEQUENCE_OUTERWEAR;
+            }
+            
+            // Button Shirt - typically long sleeve, needs T-shape but no inside shots
+            if (category === 'Button Shirt') {
+                return SHOT_SEQUENCE_LONG_SLEEVE;
+            }
+            
+            // For other tops (T-Shirt, Polo, Henley, Jersey, Tank), check sleeve length
+            // Long sleeves need T-shape for AI ghost mannequin
+            // Short sleeves don't need T-shape
+            const needsTShape = data.sleeveLength === 'Long' || data.sleeveLength === '3/4';
+            
+            if (needsTShape) {
+                return SHOT_SEQUENCE_LONG_SLEEVE;
+            }
+            
+            // Default: short sleeve (just front/back)
+            return SHOT_SEQUENCE_SHORT_SLEEVE;
         }
         
-        // Update shot sequence when category changes
+        // Update shot sequence when category OR sleeve length changes
         function updateShotSequence() {
+            const oldSequence = currentShotSequence;
             currentShotSequence = getShotSequenceForCategory(data.category);
-            currentShotIndex = 0;
+            
+            // Only reset index if sequence actually changed
+            if (oldSequence !== currentShotSequence) {
+                currentShotIndex = 0;
+                console.log(`📸 Shot sequence changed to ${currentShotSequence.length} shots`);
+            }
+            
             updateShotHint();
         }
         
@@ -2826,7 +2888,7 @@
         
         // Reset shot sequence (called on new item)
         function resetShotSequence() {
-            currentShotSequence = SHOT_SEQUENCE_STANDARD;
+            currentShotSequence = SHOT_SEQUENCE_SHORT_SLEEVE;
             currentShotIndex = 0;
             updateShotHint();
         }
@@ -3324,6 +3386,39 @@
                 });
             }
             showToast('info', `Feature: ${type}`, 'Next photo will be tagged', 1500);
+        }
+        
+        function selectDetailType(type) {
+            selectedDetailType = type;
+            // Keep panel visible and update buttons
+            const panel = document.getElementById('detail-type-panel');
+            if(panel) {
+                panel.style.display = 'flex';
+                document.querySelectorAll('.detail-type-btn').forEach(btn => {
+                    // Check if button text contains the type (accounting for emoji)
+                    if(btn.textContent.includes(type)) {
+                        btn.classList.add('active');
+                        btn.style.background = 'white';
+                        btn.style.color = '#0891b2';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.style.background = 'rgba(255,255,255,0.2)';
+                        btn.style.color = 'white';
+                    }
+                });
+            }
+            showToast('info', `Detail: ${type}`, 'Slide item under detail camera', 1500);
+        }
+        
+        function updateDetailTypePanel() {
+            const panel = document.getElementById('detail-type-panel');
+            if(!panel) return;
+            
+            if(photoMode === 'detail') {
+                panel.style.display = 'flex';
+            } else {
+                panel.style.display = 'none';
+            }
         }
         
         // ============ SPLIT SCREEN DEFECT CLOSEUP ============
@@ -5571,6 +5666,36 @@
                     await startSplitCameraFeed(mainCameraId);
                     showToast('warning', 'No C922X Found', 'Using main camera', 2000);
                 }
+            } else if(mode === 'detail') {
+                // Detail mode uses MAIN camera (Brio) at secondary position
+                video.style.display = 'block';
+                
+                // Show detail type panel
+                const detailPanel = document.getElementById('detail-type-panel');
+                if(detailPanel) detailPanel.style.display = 'flex';
+                
+                // Reset and show defect layer (though it won't be active)
+                resetDefectLayerStyles();
+                document.getElementById('defect-markers-layer').style.display = 'none';
+                
+                if(mainCameraId) {
+                    console.log(`📷 Detail mode: using MAIN camera (Brio) at detail position`);
+                    if(activeCameraId !== mainCameraId) {
+                        console.log('📷 SWITCHING to MAIN camera (BRIO) for detail...');
+                        trackCameraSwitch(previousCameraId, mainCameraId);
+                        try {
+                            await switchCameraMaxRes(mainCameraId);
+                            trackCameraSwitchComplete(previousCameraId, mainCameraId);
+                            console.log('📷 Switch to BRIO complete for detail');
+                            setTimeout(() => forceMaxResolution(), 500);
+                        } catch(e) {
+                            console.error('📷 Switch to BRIO failed:', e);
+                        }
+                    } else {
+                        console.log('📷 Already on MAIN camera for detail');
+                        setTimeout(() => forceMaxResolution(), 100);
+                    }
+                }
             } else if(mode === 'tag' || mode === 'defect' || mode === 'features') {
                 // Reset and show defect layer (though it won't be active in these modes)
                 resetDefectLayerStyles();
@@ -5614,14 +5739,20 @@
             // Update selection panels based on mode
             updateDefectLinkPanel();
             updateFeatureTypePanel();
+            updateDetailTypePanel();
         }
         
         function updateCameraIndicator() {
             const indicator = document.getElementById('camera-indicator');
             if(!indicator) return;
             if(activeCameraId === mainCameraId) {
-                indicator.textContent = '📦 BRIO 4K (Main)';
-                indicator.style.background = '#3b82f6';
+                if(photoMode === 'detail') {
+                    indicator.textContent = '🔍 BRIO 4K (Detail)';
+                    indicator.style.background = '#0891b2';
+                } else {
+                    indicator.textContent = '📦 BRIO 4K (Main)';
+                    indicator.style.background = '#3b82f6';
+                }
             } else if(activeCameraId === secondaryCameraId) {
                 if(photoMode === 'defect-closeup') {
                     indicator.textContent = '🔴 C922X (Defect Close-up)';
@@ -5783,6 +5914,19 @@
                         }
                         const typeText = selectedFeatureType ? ` (${selectedFeatureType})` : '';
                         showToast('success', `✨ Feature Close-up ${data.featuresPhotos.length}${typeText}`, `${canvas.width}×${canvas.height}`, 1500);
+                    }
+                    else if(photoMode === 'detail') {
+                        // Add detail type if selected
+                        photo.detailType = selectedDetailType || null;
+                        data.detailPhotos.push(photo);
+                        // Auto-save to folder if selected
+                        if(saveDirectoryHandle) {
+                            const detailName = selectedDetailType ? selectedDetailType.toLowerCase() : 'detail';
+                            const filename = generatePhotoFilename(`detail_${detailName}`, data.detailPhotos.length);
+                            savePhotoToFolder(blob, filename);
+                        }
+                        const typeText = selectedDetailType ? ` (${selectedDetailType})` : '';
+                        showToast('success', `🔍 Detail Photo ${data.detailPhotos.length}${typeText}`, `${canvas.width}×${canvas.height}`, 1500);
                     }
                     else {
                         data.defectPhotos.push(photo);
@@ -6546,11 +6690,12 @@
         
         function updatePhotoGrids() { 
             const renderGrid = (photos, gridId, mode) => { 
-                // Main = portrait (full res), Tag/Defect/etc = square (1:1)
-                const thumbClass = mode === 'main' ? 'photo-thumb' : 'photo-thumb square';
+                // Main/Detail = portrait (full res), Tag/Defect/etc = square (1:1)
+                const thumbClass = (mode === 'main' || mode === 'detail') ? 'photo-thumb' : 'photo-thumb square';
                 let thumbStyle = '';
                 if(mode === 'defect-closeup') thumbStyle = 'border-color:#dc2626;';
                 else if(mode === 'features') thumbStyle = 'border-color:#7c3aed;';
+                else if(mode === 'detail') thumbStyle = 'border-color:#0891b2;';
                 
                 document.getElementById(gridId).innerHTML = photos.map((p,i) => {
                     let badge = '';
@@ -6575,6 +6720,10 @@
                     if(mode === 'features' && p.featureType) {
                         badge = `<span style="position:absolute;top:2px;left:2px;background:#7c3aed;color:white;font-size:8px;padding:1px 3px;border-radius:3px;font-weight:600;">${p.featureType}</span>`;
                     }
+                    // Show detail type for detail photos
+                    if(mode === 'detail' && p.detailType) {
+                        badge = `<span style="position:absolute;top:2px;left:2px;background:#0891b2;color:white;font-size:8px;padding:1px 3px;border-radius:3px;font-weight:600;">${p.detailType}</span>`;
+                    }
                     return `<div class="${thumbClass}" style="${thumbStyle}" ondblclick="openPreview('${mode}',${i})" title="Double-click to preview">
                         <img src="${p.url}">${badge}
                         <button class="photo-thumb-delete" onclick="event.stopPropagation();deletePhoto('${mode}',${i})">×</button>
@@ -6582,16 +6731,18 @@
                 }).join('') + `<div class="${thumbClass} photo-thumb-empty" style="${thumbStyle}" onclick="setPhotoMode('${mode}')">+</div>`; 
             }; 
             renderGrid(data.mainPhotos,'main-photos-grid','main'); 
+            renderGrid(data.detailPhotos,'detail-photos-grid','detail'); 
             renderGrid(data.tagPhotos,'tag-photos-grid','tag'); 
             renderGrid(data.defectPhotos,'defect-photos-grid','defect'); 
             renderGrid(data.defectCloseupPhotos,'defect-closeup-photos-grid','defect-closeup'); 
             renderGrid(data.featuresPhotos,'features-photos-grid','features'); 
             document.getElementById('main-count').textContent = data.mainPhotos.length; 
+            document.getElementById('detail-count').textContent = data.detailPhotos.length; 
             document.getElementById('tag-count').textContent = data.tagPhotos.length; 
             document.getElementById('defect-count').textContent = data.defectPhotos.length; 
             document.getElementById('defect-closeup-count').textContent = data.defectCloseupPhotos.length; 
             document.getElementById('features-count').textContent = data.featuresPhotos.length; 
-            document.getElementById('photo-count').textContent = data.mainPhotos.length+data.tagPhotos.length+data.defectPhotos.length+data.defectCloseupPhotos.length+data.featuresPhotos.length; 
+            document.getElementById('photo-count').textContent = data.mainPhotos.length+data.detailPhotos.length+data.tagPhotos.length+data.defectPhotos.length+data.defectCloseupPhotos.length+data.featuresPhotos.length; 
             
             // Update defect link panel when photos change
             updateDefectLinkPanel();
@@ -6601,6 +6752,7 @@
             trackPhotoDeletion(mode, index);
             
             if(mode==='main'){URL.revokeObjectURL(data.mainPhotos[index].url);data.mainPhotos.splice(index,1);} 
+            else if(mode==='detail'){URL.revokeObjectURL(data.detailPhotos[index].url);data.detailPhotos.splice(index,1);} 
             else if(mode==='tag'){URL.revokeObjectURL(data.tagPhotos[index].url);data.tagPhotos.splice(index,1);} 
             else if(mode==='defect-closeup'){URL.revokeObjectURL(data.defectCloseupPhotos[index].url);data.defectCloseupPhotos.splice(index,1);} 
             else if(mode==='features'){URL.revokeObjectURL(data.featuresPhotos[index].url);data.featuresPhotos.splice(index,1);} 
@@ -6612,7 +6764,7 @@
         function openPreview(mode, index) {
             previewMode = mode;
             previewIndex = index;
-            const photos = mode === 'main' ? data.mainPhotos : mode === 'tag' ? data.tagPhotos : mode === 'defect-closeup' ? data.defectCloseupPhotos : mode === 'features' ? data.featuresPhotos : data.defectPhotos;
+            const photos = mode === 'main' ? data.mainPhotos : mode === 'detail' ? data.detailPhotos : mode === 'tag' ? data.tagPhotos : mode === 'defect-closeup' ? data.defectCloseupPhotos : mode === 'features' ? data.featuresPhotos : data.defectPhotos;
             if(photos.length === 0) return;
             
             const photo = photos[index];
@@ -7112,6 +7264,8 @@
             if(length !== 'None') { data.cutoffType = ''; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected','btn-hero')); }
             // Update measurement hints for sleeveless
             updateMeasurementHintsForSleeveStyle(data.sleeveStyle, length);
+            // Update shot sequence - long sleeves need T-shape
+            updateShotSequence();
             updateValidation(); 
         }
         function setCutoff(type, btn) { data.cutoffType = type; document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
@@ -8200,6 +8354,7 @@
                 
                 // Photo counts
                 formData.append('mainPhotoCount', data.mainPhotos.length);
+                formData.append('detailPhotoCount', data.detailPhotos.length);
                 formData.append('tagPhotoCount', data.tagPhotos.length);
                 formData.append('defectPhotoCount', data.defectPhotos.length);
                 formData.append('defectCloseupPhotoCount', data.defectCloseupPhotos.length);
@@ -8223,6 +8378,17 @@
                     }
                     if(p.defectSide) {
                         formData.append(`mainPhoto${i}_defectSide`, p.defectSide);
+                    }
+                });
+                
+                // Detail photo metadata
+                data.detailPhotos.forEach((p, i) => {
+                    const detailType = (p.detailType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                    formData.append(`detailPhoto${i}_s3Key`, `${data.sku}/detail/${data.sku}_detail_${detailType}_${String(i+1).padStart(2,'0')}.jpg`);
+                    formData.append(`detailPhoto${i}_width`, p.width);
+                    formData.append(`detailPhoto${i}_height`, p.height);
+                    if(p.detailType) {
+                        formData.append(`detailPhoto${i}_type`, p.detailType);
                     }
                 });
                 
@@ -8435,10 +8601,15 @@
             
             // Revoke all photo URLs
             data.mainPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            data.detailPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.tagPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.defectPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.defectCloseupPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
             data.featuresPhotos.forEach(p=>URL.revokeObjectURL(p.url)); 
+            
+            // Reset selection states
+            selectedDetailType = null;
+            selectedFeatureType = null; 
             
             // Reset metrics if full reset
             if(!keepSku) {
@@ -8486,6 +8657,7 @@
                 audioMeasure:null,
                 audioDuration:0,
                 mainPhotos:[],
+                detailPhotos:[],
                 tagPhotos:[],
                 defectPhotos:[],
                 defectCloseupPhotos:[],
@@ -8667,6 +8839,22 @@
             <button onclick="selectFeatureType('Other')" class="feature-type-btn" style="padding:8px 14px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:12px;font-weight:600;cursor:pointer;">Other</button>
         </div>
         <button onclick="selectedFeatureType=null;const p=document.getElementById('feature-type-panel');if(p)p.style.display='none';showToast('info','Cleared','Feature type cleared',1000)" class="feature-type-clear" style="padding:8px 14px;background:rgba(255,255,255,0.1);border:1px dashed rgba(255,255,255,0.4);border-radius:8px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;margin-top:8px;">Clear & Close</button>
+    </div>
+    
+    <!-- Detail Type Panel - for detail photos (graphic, collar, pocket, etc.) -->
+    <div class="detail-type-panel" id="detail-type-panel" style="display:none;position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:999999;background:rgba(8,145,178,0.98);padding:16px 24px;border-radius:16px;border:3px solid rgba(255,255,255,0.5);box-shadow:0 10px 40px rgba(0,0,0,0.6);">
+        <span style="font-weight:700;font-size:14px;color:white;">🔍 Select Detail Type:</span>
+        <div class="detail-type-buttons" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;">
+            <button onclick="selectDetailType('Graphic')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">🎨 Graphic</button>
+            <button onclick="selectDetailType('Collar')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">👔 Collar</button>
+            <button onclick="selectDetailType('Pocket')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">🪪 Pocket</button>
+            <button onclick="selectDetailType('Hem')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">↕️ Hem</button>
+            <button onclick="selectDetailType('Cuff')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">🔘 Cuff</button>
+            <button onclick="selectDetailType('Texture')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">🧶 Texture</button>
+            <button onclick="selectDetailType('Logo')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">™️ Logo</button>
+            <button onclick="selectDetailType('Other')" class="detail-type-btn" style="padding:10px 16px;background:rgba(255,255,255,0.2);border:none;border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;">📷 Other</button>
+        </div>
+        <button onclick="selectedDetailType=null;const p=document.getElementById('detail-type-panel');if(p)p.style.display='none';showToast('info','Cleared','Detail type cleared',1000)" class="detail-type-clear" style="padding:8px 14px;background:rgba(255,255,255,0.1);border:1px dashed rgba(255,255,255,0.4);border-radius:8px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;margin-top:8px;">Clear & Close</button>
     </div>
 </body>
 </html>
