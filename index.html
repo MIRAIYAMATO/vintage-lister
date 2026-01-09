@@ -1612,6 +1612,12 @@
                     </div>
                 </div>
             </div>
+            <!-- Shot Sequence Hint -->
+            <div id="shot-hint" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;padding:10px 16px;text-align:center;display:none;">
+                <div style="font-weight:700;font-size:14px;">📸 Front Flat</div>
+                <div style="font-size:11px;opacity:0.8;">Lay flat, arms folded down</div>
+                <div style="font-size:10px;opacity:0.6;margin-top:4px;">Shot 1 of 4</div>
+            </div>
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">Brio 4K</small></button>
                 <div style="text-align:center;">
@@ -1661,11 +1667,45 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.37";
+        const VERSION = "v100.40";
         // ===============================================================
         
         const APP_PIN = "1234";
         const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
+        const S3_PRESIGN_LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
+        const S3_BUCKET = "listing-media-koga-prod";
+        
+        // Shot sequence configuration per category
+        // Categories that need inside-out shots
+        const CATEGORIES_WITH_INSIDE_SHOTS = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Button Shirt', 'Jacket', 'Coat', 'Vest', 'Jeans', 'Pants'];
+        
+        // Shot sequence for main photos
+        const SHOT_SEQUENCE_STANDARD = [
+            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
+            { id: 'front_tshape', label: 'Front T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip item, arms folded down' },
+            { id: 'back_tshape', label: 'Back T-Shape', hint: 'Open arms to T-shape' }
+        ];
+        
+        const SHOT_SEQUENCE_WITH_INSIDE = [
+            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
+            { id: 'front_tshape', label: 'Front T-Shape', hint: 'Open arms to T-shape' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip item, arms folded down' },
+            { id: 'back_tshape', label: 'Back T-Shape', hint: 'Open arms to T-shape' },
+            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out, front view' },
+            { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
+        ];
+        
+        const SHOT_SEQUENCE_BOTTOMS = [
+            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, front facing up' },
+            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back' },
+            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out (check for red line, hems)' },
+            { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
+        ];
+        
+        // Current shot tracking
+        let currentShotIndex = 0;
+        let currentShotSequence = SHOT_SEQUENCE_STANDARD;
         let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', bodyConstruction:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, mainPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
         let selectedDefectLink = null; // Index of defect marker to link close-up to
@@ -2518,6 +2558,277 @@
                     setTimeout(doSave, 0);
                 }
             });
+        }
+        
+        // ============ S3 UPLOAD FUNCTIONS ============
+        
+        // Get presigned URLs from Lambda
+        async function getPresignedUrls(sku, files) {
+            console.log('🔐 Getting presigned URLs for', files.length, 'files');
+            try {
+                const response = await fetch(S3_PRESIGN_LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sku, files })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Lambda error: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('✅ Got presigned URLs:', Object.keys(result.urls).length);
+                return result;
+            } catch (err) {
+                console.error('❌ Failed to get presigned URLs:', err);
+                throw err;
+            }
+        }
+        
+        // Upload single file to S3 using presigned URL
+        async function uploadToS3(presignedUrl, blob, filename) {
+            console.log(`⬆️ Uploading ${filename} (${(blob.size/1024/1024).toFixed(2)}MB)`);
+            try {
+                const response = await fetch(presignedUrl, {
+                    method: 'PUT',
+                    body: blob,
+                    headers: { 'Content-Type': blob.type || 'application/octet-stream' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`S3 upload error: ${response.status}`);
+                }
+                
+                console.log(`✅ Uploaded ${filename}`);
+                return true;
+            } catch (err) {
+                console.error(`❌ Failed to upload ${filename}:`, err);
+                throw err;
+            }
+        }
+        
+        // Build S3 file list from current data
+        function buildS3FileList() {
+            const sku = data.sku;
+            const files = [];
+            
+            // Main photos - use shot sequence names
+            data.mainPhotos.forEach((photo, i) => {
+                const shotName = photo.shotId || `main_${String(i+1).padStart(2,'0')}`;
+                files.push({
+                    name: `${sku}_${shotName}.jpg`,
+                    folder: 'main',
+                    blob: photo.blob
+                });
+            });
+            
+            // Tag photos
+            data.tagPhotos.forEach((photo, i) => {
+                files.push({
+                    name: `${sku}_tag_${String(i+1).padStart(2,'0')}.jpg`,
+                    folder: 'tag',
+                    blob: photo.blob
+                });
+            });
+            
+            // Defect closeup photos - include defect type
+            data.defectCloseupPhotos.forEach((photo, i) => {
+                const defectType = photo.linkedDefect?.type || 'unknown';
+                files.push({
+                    name: `${sku}_defect_${defectType}_${String(i+1).padStart(2,'0')}.jpg`,
+                    folder: 'defects',
+                    blob: photo.blob
+                });
+            });
+            
+            // Auto-cropped defect photos from main
+            data.defectPhotos.forEach((photo, i) => {
+                const defectType = photo.defectType || 'crop';
+                files.push({
+                    name: `${sku}_defect_${defectType}_crop_${String(i+1).padStart(2,'0')}.jpg`,
+                    folder: 'defects',
+                    blob: photo.blob
+                });
+            });
+            
+            // Feature photos - include feature type
+            data.featuresPhotos.forEach((photo, i) => {
+                const featureType = (photo.featureType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                files.push({
+                    name: `${sku}_feature_${featureType}_${String(i+1).padStart(2,'0')}.jpg`,
+                    folder: 'features',
+                    blob: photo.blob
+                });
+            });
+            
+            // Audio file
+            if (data.audioMeasure) {
+                files.push({
+                    name: `${sku}_measurements.webm`,
+                    folder: 'audio',
+                    blob: data.audioMeasure
+                });
+            }
+            
+            return files;
+        }
+        
+        // Upload all files to S3
+        async function uploadAllToS3(progressCallback) {
+            const sku = data.sku;
+            const files = buildS3FileList();
+            
+            if (files.length === 0) {
+                console.log('⚠️ No files to upload');
+                return { success: true, uploaded: 0 };
+            }
+            
+            console.log(`📦 Uploading ${files.length} files to S3 for SKU ${sku}`);
+            
+            try {
+                // Get presigned URLs for all files
+                const fileList = files.map(f => ({ name: f.name, folder: f.folder }));
+                const { urls } = await getPresignedUrls(sku, fileList);
+                
+                // Upload each file
+                let uploaded = 0;
+                let failed = 0;
+                
+                for (const file of files) {
+                    const presignedUrl = urls[file.name];
+                    if (!presignedUrl) {
+                        console.error(`❌ No presigned URL for ${file.name}`);
+                        failed++;
+                        continue;
+                    }
+                    
+                    try {
+                        await uploadToS3(presignedUrl, file.blob, file.name);
+                        uploaded++;
+                        if (progressCallback) {
+                            progressCallback(uploaded, files.length, file.name);
+                        }
+                    } catch (err) {
+                        console.error(`❌ Failed to upload ${file.name}:`, err);
+                        failed++;
+                    }
+                }
+                
+                console.log(`✅ S3 upload complete: ${uploaded}/${files.length} files`);
+                
+                return {
+                    success: failed === 0,
+                    uploaded,
+                    failed,
+                    total: files.length,
+                    s3Prefix: `${sku}/`
+                };
+                
+            } catch (err) {
+                console.error('❌ S3 upload failed:', err);
+                return { success: false, error: err.message };
+            }
+        }
+        
+        // Build S3 file manifest for n8n (just paths, no blobs)
+        function buildS3FileManifest() {
+            const sku = data.sku;
+            return {
+                bucket: S3_BUCKET,
+                prefix: `${sku}/`,
+                main: data.mainPhotos.map((p, i) => {
+                    const shotName = p.shotId || `main_${String(i+1).padStart(2,'0')}`;
+                    return `${sku}/main/${sku}_${shotName}.jpg`;
+                }),
+                tag: data.tagPhotos.map((_, i) => `${sku}/tag/${sku}_tag_${String(i+1).padStart(2,'0')}.jpg`),
+                defects: [
+                    ...data.defectCloseupPhotos.map((p, i) => {
+                        const type = p.linkedDefect?.type || 'unknown';
+                        return `${sku}/defects/${sku}_defect_${type}_${String(i+1).padStart(2,'0')}.jpg`;
+                    }),
+                    ...data.defectPhotos.map((p, i) => {
+                        const type = p.defectType || 'crop';
+                        return `${sku}/defects/${sku}_defect_${type}_crop_${String(i+1).padStart(2,'0')}.jpg`;
+                    })
+                ],
+                features: data.featuresPhotos.map((p, i) => {
+                    const type = (p.featureType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                    return `${sku}/features/${sku}_feature_${type}_${String(i+1).padStart(2,'0')}.jpg`;
+                }),
+                audio: data.audioMeasure ? `${sku}/audio/${sku}_measurements.webm` : null
+            };
+        }
+        
+        // ============ SHOT SEQUENCE FUNCTIONS ============
+        
+        // Get shot sequence based on category
+        function getShotSequenceForCategory(category) {
+            if (!category) return SHOT_SEQUENCE_STANDARD;
+            
+            // Bottoms have different sequence (no T-shape, but need inside shots)
+            if (['Jeans', 'Pants', 'Shorts', 'Sweatpants'].includes(category)) {
+                return SHOT_SEQUENCE_BOTTOMS;
+            }
+            
+            // Categories that need inside-out shots
+            if (CATEGORIES_WITH_INSIDE_SHOTS.includes(category)) {
+                return SHOT_SEQUENCE_WITH_INSIDE;
+            }
+            
+            return SHOT_SEQUENCE_STANDARD;
+        }
+        
+        // Update shot sequence when category changes
+        function updateShotSequence() {
+            currentShotSequence = getShotSequenceForCategory(data.category);
+            currentShotIndex = 0;
+            updateShotHint();
+        }
+        
+        // Get current shot ID
+        function getCurrentShotId() {
+            if (currentShotIndex < currentShotSequence.length) {
+                return currentShotSequence[currentShotIndex].id;
+            }
+            // Beyond sequence - use numbered
+            return `extra_${String(data.mainPhotos.length + 1).padStart(2, '0')}`;
+        }
+        
+        // Advance to next shot in sequence
+        function advanceShotSequence() {
+            if (currentShotIndex < currentShotSequence.length) {
+                currentShotIndex++;
+            }
+            updateShotHint();
+        }
+        
+        // Update the shot hint display
+        function updateShotHint() {
+            const hintEl = document.getElementById('shot-hint');
+            if (!hintEl) return;
+            
+            if (currentShotIndex < currentShotSequence.length) {
+                const shot = currentShotSequence[currentShotIndex];
+                hintEl.innerHTML = `
+                    <div style="font-weight:700;font-size:14px;">📸 ${shot.label}</div>
+                    <div style="font-size:11px;opacity:0.8;">${shot.hint}</div>
+                    <div style="font-size:10px;opacity:0.6;margin-top:4px;">Shot ${currentShotIndex + 1} of ${currentShotSequence.length}</div>
+                `;
+                hintEl.style.display = 'block';
+            } else {
+                hintEl.innerHTML = `
+                    <div style="font-weight:700;font-size:14px;">✅ Sequence Complete</div>
+                    <div style="font-size:11px;opacity:0.8;">Additional shots: extra_${data.mainPhotos.length + 1}</div>
+                `;
+                hintEl.style.display = 'block';
+            }
+        }
+        
+        // Reset shot sequence (called on new item)
+        function resetShotSequence() {
+            currentShotSequence = SHOT_SEQUENCE_STANDARD;
+            currentShotIndex = 0;
+            updateShotHint();
         }
         
         function generatePhotoFilename(type, index) {
@@ -4528,14 +4839,36 @@
         }
         
         function updateReviewCards() {
-            document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'<img src="https://flagcdn.com/w16/us.png" style="vertical-align:middle;"> USA':data.country||''} • ${data.gender||''}`;
-            document.getElementById('summary-check').innerHTML = `${data.fabricType||'?'} / ${data.materials.length?data.materials.join('+'):'?'}<br>${(data.colors||[]).slice(0,3).join(', ')||'?'} • ${data.pattern||'?'}`;
+            // Construction check depends on superCategory
+            const constructionOk = data.superCategory === 'bottoms' ? !!data.legStyle : !!data.sleeveLength;
+            const feelOk = !!data.thickness && !!data.layers;
+            const conditionOk = data.hasDefects !== null;
+            
+            document.getElementById('summary-tag').innerHTML = `${data.category||'?'} • ${data.tagSize||'?'}<br>${data.origin==='usa'?'<img src="https://flagcdn.com/w16/us.png" style="vertical-align:middle;"> USA':data.country||''} • ${data.gender||'?'}`;
+            
+            // Show what's missing in the check summary
+            const checkMissing = [];
+            if(!data.fabricType) checkMissing.push('fabric');
+            if(data.colors.length===0) checkMissing.push('color');
+            if(!data.fade) checkMissing.push('FADE');
+            if(!data.pattern) checkMissing.push('pattern');
+            if(data.materials.length===0) checkMissing.push('material');
+            if(!constructionOk) checkMissing.push('construction');
+            if(!feelOk) checkMissing.push('feel');
+            if(!conditionOk) checkMissing.push('condition');
+            
+            if(checkMissing.length > 0) {
+                document.getElementById('summary-check').innerHTML = `<span style="color:#dc2626;">Missing: ${checkMissing.join(', ')}</span>`;
+            } else {
+                document.getElementById('summary-check').innerHTML = `${data.fabricType} / ${data.materials.join('+')}<br>${data.colors.slice(0,3).join(', ')} • ${data.fade} • ${data.pattern}`;
+            }
+            
             const pc = data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length;
             document.getElementById('summary-snap').innerHTML = `${pc} photo(s)<br>${data.audioMeasure?'Audio: '+formatTime(data.audioDuration):'No audio'}`;
             document.getElementById('summary-weight').innerHTML = (data.weightLb>0||data.weightOz>0) ? `${data.weightLb} lb ${data.weightOz} oz<br>SKU: ${data.sku||'?'}` : 'No weight';
             
             setCardStatus('tag', !!data.category && !!data.tagStatus);
-            setCardStatus('check', !!data.fabricType && data.colors.length>0 && !!data.pattern && data.materials.length>0);
+            setCardStatus('check', !!data.fabricType && data.colors.length>0 && !!data.fade && !!data.pattern && data.materials.length>0 && constructionOk && feelOk && conditionOk);
             setCardStatus('snap', data.mainPhotos.length>0 && !!data.audioMeasure);
             setCardStatus('weight', (data.weightLb>0 || data.weightOz>0) && !!data.sku);
         }
@@ -5168,9 +5501,16 @@
             if(mode === 'main') {
                 // Enable defect marking in main mode
                 enableDefectMarking();
+                // Show shot sequence hint
+                updateShotHint();
+                const hintEl = document.getElementById('shot-hint');
+                if(hintEl) hintEl.style.display = 'block';
             } else {
                 video.style.transform = ''; // Clear transform
                 disableDefectMarking();
+                // Hide shot sequence hint for other modes
+                const hintEl = document.getElementById('shot-hint');
+                if(hintEl) hintEl.style.display = 'none';
             }
             
             // Reset zoom when switching modes
@@ -5530,16 +5870,21 @@
                     height: mainCanvas.height,
                     isPortrait: mainPhotoPortrait,
                     defects: photoDefects, // Store defects with the photo
-                    defectSide: pendingDefectSide || null // 'front', 'back', or null
+                    defectSide: pendingDefectSide || null, // 'front', 'back', or null
+                    // Track shot sequence for S3 naming
+                    shotId: getCurrentShotId()
                 };
                 data.mainPhotos.push(mainPhoto);
+                
+                // Advance shot sequence for next photo
+                advanceShotSequence();
                 
                 // Clear the pending side after use
                 pendingDefectSide = null;
                 
                 // Auto-save to folder if selected
                 if(saveDirectoryHandle) {
-                    const filename = generatePhotoFilename('main', data.mainPhotos.length);
+                    const filename = generatePhotoFilename(mainPhoto.shotId || 'main', data.mainPhotos.length);
                     savePhotoToFolder(mainBlob, filename);
                 }
                 
@@ -6520,6 +6865,8 @@
             // Show elastic check for Sweatpants
             const elasticSection = document.getElementById('elastic-section');
             if(elasticSection) elasticSection.classList.toggle('hidden', cat !== 'Sweatpants');
+            // Update shot sequence based on category
+            updateShotSequence();
             // Update measurement hints based on category
             updateMeasurementHints(cat);
             // Update tag location help if panel is open
@@ -7678,7 +8025,7 @@
             if(currentStep===4) updateReviewCards();
         }
         
-        function submitItem() { 
+        async function submitItem() { 
             const missingFields = [];
             if(!data.sku) missingFields.push('sku');
             if(data.mainPhotos.length===0) missingFields.push('mainPhotos');
@@ -7693,113 +8040,278 @@
                 if(!data.audioMeasure) { showToast('error', 'Missing Measurements', 'Record voice measurements'); return; }
             }
             
-            // Send to n8n webhook
-            const formData = new FormData();
-            formData.append('sku', data.sku);
-            formData.append('category', data.category);
-            formData.append('superCategory', data.superCategory);
-            formData.append('tagStatus', data.tagStatus);
-            formData.append('tagSize', data.tagSize);
-            formData.append('origin', data.origin);
-            formData.append('country', data.country);
-            formData.append('gender', data.gender);
-            formData.append('colors', JSON.stringify(data.colors));
-            formData.append('fade', data.fade);
-            formData.append('pattern', data.pattern);
-            formData.append('patternTraits', JSON.stringify(data.patternTraits));
-            formData.append('printType', data.printType);
-            formData.append('graphicCategory', data.graphicCategory);
-            formData.append('fabricType', data.fabricType);
-            formData.append('fabricTraits', JSON.stringify(data.fabricTraits));
-            formData.append('wash', data.wash);
-            formData.append('materials', JSON.stringify(data.materials));
-            formData.append('materialTraits', JSON.stringify(data.materialTraits));
-            formData.append('sleeveLength', data.sleeveLength);
-            formData.append('sleeveStyle', data.sleeveStyle);
-            formData.append('cutoffType', data.cutoffType);
-            formData.append('stitch', data.stitch);
-            formData.append('bodyConstruction', data.bodyConstruction);
-            formData.append('legStyle', data.legStyle);
-            formData.append('rise', data.rise);
-            formData.append('thickness', data.thickness);
-            formData.append('layers', data.layers);
-            formData.append('hasDefects', data.hasDefects);
-            formData.append('defectTypes', JSON.stringify(data.defectTypes));
-            formData.append('flagged', data.flagged);
-            formData.append('elasticCheck', data.elasticCheck);
-            formData.append('weightLb', data.weightLb);
-            formData.append('weightOz', data.weightOz);
-            formData.append('photographer', data.photographer);
-            formData.append('audioDuration', data.audioDuration);
-            if(data.audioMeasure) formData.append('audio', data.audioMeasure, 'measurements.webm');
-            data.mainPhotos.forEach((p,i) => {
-                formData.append(`mainPhoto${i}`, p.blob, `main${i}.jpg`);
-                // Include defect marker data if present
-                if(p.defects && p.defects.length > 0) {
-                    formData.append(`mainPhoto${i}_defects`, JSON.stringify(p.defects));
-                }
-            });
-            formData.append('mainPhotoCount', data.mainPhotos.length);
+            // CRITICAL: Store SKU before any async operations
+            const submittedSku = data.sku;
             
-            data.tagPhotos.forEach((p,i) => formData.append(`tagPhoto${i}`, p.blob, `tag${i}.jpg`));
-            data.defectPhotos.forEach((p,i) => {
-                // Better filename: defect_overview.jpg or defect_stain_1.jpg
-                let filename = 'defect' + i + '.jpg';
-                if(p.isOverview) {
-                    filename = 'defect_overview.jpg';
-                    formData.append(`defectPhoto${i}_isOverview`, 'true');
-                } else if(p.defectType) {
-                    filename = `defect_${p.defectType}_${p.markerIndex || i}.jpg`;
-                    formData.append(`defectPhoto${i}_type`, p.defectType);
-                    if(p.markerIndex) formData.append(`defectPhoto${i}_markerIndex`, p.markerIndex);
-                }
-                formData.append(`defectPhoto${i}`, p.blob, filename);
-            });
-            formData.append('defectPhotoCount', data.defectPhotos.length);
-            data.defectCloseupPhotos.forEach((p,i) => {
-                formData.append(`defectCloseupPhoto${i}`, p.blob, `defect-closeup${i}.jpg`);
-                // New format with richer data
-                if(p.linkedDefect) {
-                    formData.append(`defectCloseupPhoto${i}_linkedPhotoIndex`, p.linkedDefect.photoIndex);
-                    formData.append(`defectCloseupPhoto${i}_linkedDefectIndex`, p.linkedDefect.defectIndex);
-                    formData.append(`defectCloseupPhoto${i}_linkedType`, p.linkedDefect.type);
-                    formData.append(`defectCloseupPhoto${i}_linkedX`, p.linkedDefect.x);
-                    formData.append(`defectCloseupPhoto${i}_linkedY`, p.linkedDefect.y);
-                }
-                // Legacy support
-                else if(p.linkedDefectIndex !== null && p.linkedDefectIndex !== undefined) {
-                    formData.append(`defectCloseupPhoto${i}_linkedTo`, p.linkedDefectIndex);
-                }
-            });
-            data.featuresPhotos.forEach((p,i) => {
-                formData.append(`featurePhoto${i}`, p.blob, `feature${i}.jpg`);
-                if(p.featureType) {
-                    formData.append(`featurePhoto${i}_type`, p.featureType);
-                }
-            });
+            // Disable submit button during upload to prevent double-submit
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'UPLOADING...';
             
-            // Build and append metrics
-            const metricsPayload = buildMetricsPayload();
-            if(metricsPayload) {
-                formData.append('metrics', JSON.stringify(metricsPayload));
-                console.log('📊 Metrics payload:', metricsPayload);
+            // Show uploading toast
+            const uploadToast = showToast('info', '⬆️ Uploading to S3...', 'Starting upload', 120000);
+            
+            try {
+                // Step 1: Upload all files to S3
+                const uploadResult = await uploadAllToS3((uploaded, total, filename) => {
+                    // Update progress toast (with safety check)
+                    const msgEl = uploadToast.querySelector('.toast-message');
+                    if (msgEl) msgEl.textContent = `${uploaded}/${total}: ${filename}`;
+                });
+                
+                if (!uploadResult.success && uploadResult.failed > 0) {
+                    console.warn(`⚠️ ${uploadResult.failed} files failed to upload`);
+                }
+                
+                // Remove upload toast
+                uploadToast.remove();
+                
+                // Step 2: Send metadata only to n8n (no binary files!)
+                const metadata = {
+                    sku: data.sku,
+                    timestamp: new Date().toISOString(),
+                    category: data.category,
+                    superCategory: data.superCategory,
+                    tagStatus: data.tagStatus,
+                    tagSize: data.tagSize,
+                    origin: data.origin,
+                    country: data.country,
+                    gender: data.gender,
+                    colors: data.colors,
+                    fade: data.fade,
+                    pattern: data.pattern,
+                    patternTraits: data.patternTraits,
+                    printType: data.printType,
+                    graphicCategory: data.graphicCategory,
+                    fabricType: data.fabricType,
+                    fabricTraits: data.fabricTraits,
+                    wash: data.wash,
+                    materials: data.materials,
+                    materialTraits: data.materialTraits,
+                    sleeveLength: data.sleeveLength,
+                    sleeveStyle: data.sleeveStyle,
+                    cutoffType: data.cutoffType,
+                    stitch: data.stitch,
+                    bodyConstruction: data.bodyConstruction,
+                    legStyle: data.legStyle,
+                    rise: data.rise,
+                    thickness: data.thickness,
+                    layers: data.layers,
+                    hasDefects: data.hasDefects,
+                    defectTypes: data.defectTypes,
+                    flagged: data.flagged,
+                    elasticCheck: data.elasticCheck,
+                    weightLb: data.weightLb,
+                    weightOz: data.weightOz,
+                    photographer: data.photographer,
+                    audioDuration: data.audioDuration,
+                    
+                    // Photo counts
+                    mainPhotoCount: data.mainPhotos.length,
+                    tagPhotoCount: data.tagPhotos.length,
+                    defectPhotoCount: data.defectPhotos.length,
+                    defectCloseupPhotoCount: data.defectCloseupPhotos.length,
+                    featurePhotoCount: data.featuresPhotos.length,
+                    
+                    // S3 file manifest (paths only, no binary data)
+                    s3: buildS3FileManifest(),
+                    
+                    // Main photo details with shot IDs and defect data
+                    mainPhotos: data.mainPhotos.map((p, i) => ({
+                        index: i,
+                        shotId: p.shotId || `main_${String(i+1).padStart(2,'0')}`,
+                        width: p.width,
+                        height: p.height,
+                        isPortrait: p.isPortrait || false,
+                        defects: p.defects || [],
+                        defectSide: p.defectSide || null
+                    })),
+                    
+                    // Defect marker summary
+                    defectMarkers: data.mainPhotos.flatMap((p, photoIdx) => 
+                        (p.defects || []).map(d => ({
+                            photoIndex: photoIdx,
+                            type: d.type,
+                            x: d.x,
+                            y: d.y,
+                            side: p.defectSide || null
+                        }))
+                    ),
+                    
+                    // Defect closeup linkage
+                    defectCloseups: data.defectCloseupPhotos.map((p, i) => ({
+                        index: i,
+                        linkedDefect: p.linkedDefect || null
+                    })),
+                    
+                    // Feature photo types
+                    features: data.featuresPhotos.map((p, i) => ({
+                        index: i,
+                        featureType: p.featureType || null
+                    })),
+                    
+                    // Metrics
+                    metrics: buildMetricsPayload()
+                };
+                
+                console.log('📤 Sending metadata to n8n (no binary files):', metadata);
+                
+                // Build FormData for n8n (backward compatible format)
+                // n8n expects FormData, not JSON
+                const formData = new FormData();
+                
+                // Basic fields (same as v100.37)
+                formData.append('sku', data.sku);
+                formData.append('category', data.category);
+                formData.append('superCategory', data.superCategory);
+                formData.append('tagStatus', data.tagStatus);
+                formData.append('tagSize', data.tagSize);
+                formData.append('origin', data.origin);
+                formData.append('country', data.country);
+                formData.append('gender', data.gender);
+                formData.append('colors', JSON.stringify(data.colors));
+                formData.append('fade', data.fade);
+                formData.append('pattern', data.pattern);
+                formData.append('patternTraits', JSON.stringify(data.patternTraits));
+                formData.append('printType', data.printType);
+                formData.append('graphicCategory', data.graphicCategory);
+                formData.append('fabricType', data.fabricType);
+                formData.append('fabricTraits', JSON.stringify(data.fabricTraits));
+                formData.append('wash', data.wash);
+                formData.append('materials', JSON.stringify(data.materials));
+                formData.append('materialTraits', JSON.stringify(data.materialTraits));
+                formData.append('sleeveLength', data.sleeveLength);
+                formData.append('sleeveStyle', data.sleeveStyle);
+                formData.append('cutoffType', data.cutoffType);
+                formData.append('stitch', data.stitch);
+                formData.append('bodyConstruction', data.bodyConstruction);
+                formData.append('legStyle', data.legStyle);
+                formData.append('rise', data.rise);
+                formData.append('thickness', data.thickness);
+                formData.append('layers', data.layers);
+                formData.append('hasDefects', data.hasDefects);
+                formData.append('defectTypes', JSON.stringify(data.defectTypes));
+                formData.append('flagged', data.flagged);
+                formData.append('elasticCheck', data.elasticCheck);
+                formData.append('weightLb', data.weightLb);
+                formData.append('weightOz', data.weightOz);
+                formData.append('photographer', data.photographer);
+                formData.append('audioDuration', data.audioDuration);
+                
+                // Photo counts
+                formData.append('mainPhotoCount', data.mainPhotos.length);
+                formData.append('tagPhotoCount', data.tagPhotos.length);
+                formData.append('defectPhotoCount', data.defectPhotos.length);
+                formData.append('defectCloseupPhotoCount', data.defectCloseupPhotos.length);
+                formData.append('featurePhotoCount', data.featuresPhotos.length);
+                
+                // NEW: S3 file paths (so n8n knows where to find files)
+                formData.append('s3Bucket', S3_BUCKET);
+                formData.append('s3Prefix', `${data.sku}/`);
+                formData.append('s3Files', JSON.stringify(buildS3FileManifest()));
+                
+                // Main photo metadata (without binary data)
+                data.mainPhotos.forEach((p, i) => {
+                    const shotId = p.shotId || `main_${String(i+1).padStart(2,'0')}`;
+                    formData.append(`mainPhoto${i}_shotId`, shotId);
+                    formData.append(`mainPhoto${i}_width`, p.width);
+                    formData.append(`mainPhoto${i}_height`, p.height);
+                    formData.append(`mainPhoto${i}_isPortrait`, p.isPortrait || false);
+                    formData.append(`mainPhoto${i}_s3Key`, `${data.sku}/main/${data.sku}_${shotId}.jpg`);
+                    if(p.defects && p.defects.length > 0) {
+                        formData.append(`mainPhoto${i}_defects`, JSON.stringify(p.defects));
+                    }
+                    if(p.defectSide) {
+                        formData.append(`mainPhoto${i}_defectSide`, p.defectSide);
+                    }
+                });
+                
+                // Tag photo S3 keys
+                data.tagPhotos.forEach((p, i) => {
+                    formData.append(`tagPhoto${i}_s3Key`, `${data.sku}/tag/${data.sku}_tag_${String(i+1).padStart(2,'0')}.jpg`);
+                });
+                
+                // Defect photo metadata
+                data.defectPhotos.forEach((p, i) => {
+                    const defectType = p.defectType || 'crop';
+                    formData.append(`defectPhoto${i}_s3Key`, `${data.sku}/defects/${data.sku}_defect_${defectType}_crop_${String(i+1).padStart(2,'0')}.jpg`);
+                    if(p.isOverview) {
+                        formData.append(`defectPhoto${i}_isOverview`, 'true');
+                    }
+                    if(p.defectType) {
+                        formData.append(`defectPhoto${i}_type`, p.defectType);
+                    }
+                });
+                
+                // Defect closeup metadata
+                data.defectCloseupPhotos.forEach((p, i) => {
+                    const defectType = p.linkedDefect?.type || 'unknown';
+                    formData.append(`defectCloseupPhoto${i}_s3Key`, `${data.sku}/defects/${data.sku}_defect_${defectType}_${String(i+1).padStart(2,'0')}.jpg`);
+                    if(p.linkedDefect) {
+                        formData.append(`defectCloseupPhoto${i}_linkedPhotoIndex`, p.linkedDefect.photoIndex);
+                        formData.append(`defectCloseupPhoto${i}_linkedDefectIndex`, p.linkedDefect.defectIndex);
+                        formData.append(`defectCloseupPhoto${i}_linkedType`, p.linkedDefect.type);
+                        formData.append(`defectCloseupPhoto${i}_linkedX`, p.linkedDefect.x);
+                        formData.append(`defectCloseupPhoto${i}_linkedY`, p.linkedDefect.y);
+                    }
+                });
+                
+                // Feature photo metadata
+                data.featuresPhotos.forEach((p, i) => {
+                    const featureType = (p.featureType || 'detail').toLowerCase().replace(/\s+/g, '-');
+                    formData.append(`featurePhoto${i}_s3Key`, `${data.sku}/features/${data.sku}_feature_${featureType}_${String(i+1).padStart(2,'0')}.jpg`);
+                    if(p.featureType) {
+                        formData.append(`featurePhoto${i}_type`, p.featureType);
+                    }
+                });
+                
+                // Audio S3 key
+                if(data.audioMeasure) {
+                    formData.append('audio_s3Key', `${data.sku}/audio/${data.sku}_measurements.webm`);
+                }
+                
+                // Metrics
+                const metricsPayload = buildMetricsPayload();
+                if(metricsPayload) {
+                    formData.append('metrics', JSON.stringify(metricsPayload));
+                }
+                
+                // Send FormData to n8n (backward compatible)
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', N8N_WEBHOOK_URL, true);
+                xhr.onload = () => { 
+                    if(xhr.status === 200) { 
+                        console.log('✅ Submitted to n8n');
+                        showToast('success', 'Item Submitted!', `SKU ${submittedSku} uploaded to S3 & n8n`);
+                    } else {
+                        console.warn('⚠️ n8n response not OK:', xhr.status);
+                        showToast('warning', 'Partial Success', 'S3 uploaded, n8n may have issues');
+                    }
+                };
+                xhr.onerror = () => { 
+                    console.error('Webhook error'); 
+                    showToast('warning', 'S3 OK, n8n Error', 'Files in S3, check n8n connection');
+                };
+                xhr.send(formData);
+                
+            } catch (err) {
+                console.error('❌ Submit error:', err);
+                // Safely remove upload toast if it still exists
+                if (uploadToast && uploadToast.parentNode) {
+                    uploadToast.remove();
+                }
+                showToast('error', 'Upload Failed', err.message);
+                
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'SUBMIT ✓';
+                
+                // Fall back to local save only
+                if(saveDirectoryHandle) {
+                    showToast('info', 'Saving Locally', 'Files saved to local folder');
+                }
+                return; // Don't reset if upload failed
             }
-            
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', N8N_WEBHOOK_URL, true);
-            xhr.onload = () => { 
-                if(xhr.status===200) { 
-                    console.log('Submitted to n8n'); 
-                    showToast('success', 'Item Submitted!', `SKU ${data.sku} saved successfully`);
-                } else {
-                    showToast('warning', 'Submission Issue', 'Item saved locally, server may have issues');
-                }
-            };
-            xhr.onerror = () => { 
-                console.error('Webhook error'); 
-                showToast('error', 'Network Error', 'Item saved locally, check connection');
-            };
-            xhr.send(formData);
             
             recordItemTime(); stats.today++; stats.total++; saveStats(); updateStatsDisplay(); 
             
@@ -7808,10 +8320,7 @@
                 saveJsonToFolder().catch(e => console.error('JSON save error:', e));
             }
             
-            console.log('✅ Submitted:', data.sku); 
-            
-            // CRITICAL: Store SKU before reset clears it
-            const submittedSku = data.sku;
+            console.log('✅ Submitted:', submittedSku); 
             
             // Always reset and show SKU gate after submit
             console.log('📋 submitItem calling resetForm(false)...');
@@ -7824,7 +8333,6 @@
                 showSkuGate();
             }
             
-            showToast('success', 'Item Submitted!', `SKU ${submittedSku} saved`, 2000);
             console.log('📋 submitItem complete');
         }
         
@@ -7936,6 +8444,9 @@
             if(!keepSku) {
                 metrics = null;
             }
+            
+            // Reset shot sequence for new item
+            resetShotSequence();
             
             // Reset data object
             data = {
