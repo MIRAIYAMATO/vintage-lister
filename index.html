@@ -1681,7 +1681,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.46";
+        const VERSION = "v100.49";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -2807,12 +2807,28 @@
         // Upload all files to S3
         async function uploadAllToS3(progressCallback) {
             const sku = data.sku;
-            const files = buildS3FileList();
+            
+            console.log('📦 === STARTING S3 UPLOAD ===');
+            
+            let files;
+            try {
+                files = buildS3FileList();
+            } catch(err) {
+                console.error('❌ Error building file list:', err);
+                return { success: false, error: 'Failed to build file list: ' + err.message };
+            }
             
             console.log('📦 buildS3FileList returned', files.length, 'files');
-            files.forEach((f, i) => {
-                console.log(`  ${i+1}. ${f.folder}/${f.name} - blob: ${f.blob ? f.blob.size + ' bytes' : 'MISSING!'}`);
-            });
+            
+            // Log each file with error handling
+            for(let i = 0; i < files.length; i++) {
+                const f = files[i];
+                try {
+                    console.log(`  ${i+1}. ${f.folder}/${f.name} - blob: ${f.blob ? f.blob.size + ' bytes' : 'MISSING!'}`);
+                } catch(err) {
+                    console.error(`  ${i+1}. ERROR logging file:`, err);
+                }
+            }
             
             if (files.length === 0) {
                 console.log('⚠️ No files to upload');
@@ -2824,8 +2840,18 @@
             try {
                 // Get presigned URLs for all files
                 const fileList = files.map(f => ({ name: f.name, folder: f.folder }));
-                console.log('📦 Requesting presigned URLs for:', fileList);
-                const { urls } = await getPresignedUrls(sku, fileList);
+                console.log('📦 Requesting presigned URLs for', fileList.length, 'files...');
+                
+                let presignResult;
+                try {
+                    presignResult = await getPresignedUrls(sku, fileList);
+                    console.log('📦 Presign result:', presignResult);
+                } catch(presignErr) {
+                    console.error('❌ Presign request failed:', presignErr);
+                    throw presignErr;
+                }
+                
+                const { urls } = presignResult;
                 
                 if (!urls || Object.keys(urls).length === 0) {
                     console.error('❌ No presigned URLs returned from Lambda');
@@ -3375,6 +3401,9 @@
             const thumb = document.getElementById('defect-link-thumb');
             const text = document.getElementById('defect-link-text');
             
+            // Guard against null elements
+            if (!preview) return;
+            
             if(photoMode !== 'defect-closeup') {
                 preview.classList.remove('visible');
                 return;
@@ -3391,15 +3420,21 @@
             preview.classList.add('visible');
             
             // Show first photo with defects as thumbnail
-            thumb.src = photosWithDefects[0].url;
+            if (thumb && photosWithDefects[0]?.url) {
+                thumb.src = photosWithDefects[0].url;
+            }
             
             // Show selection status
             if(selectedDefectForCloseup) {
-                text.textContent = `#${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}`;
-                text.style.color = '#22c55e';
+                if (text) {
+                    text.textContent = `#${selectedDefectForCloseup.defectIndex + 1} ${selectedDefectForCloseup.type.toUpperCase()}`;
+                    text.style.color = '#22c55e';
+                }
             } else {
-                text.textContent = 'Click to select';
-                text.style.color = 'white';
+                if (text) {
+                    text.textContent = 'Click to select';
+                    text.style.color = 'white';
+                }
             }
         }
         
@@ -7761,28 +7796,29 @@
             
             // Replace common spoken fractions BEFORE tokenizing
             let processed = lower
-                .replace(/\band a half\b/g, '.5')
                 .replace(/\bpoint five\b/g, '.5')
                 .replace(/\bpoint 5\b/g, '.5')
-                .replace(/\band a quarter\b/g, '.25')
+                .replace(/\band a half\b/g, '.5')
                 .replace(/\bpoint two five\b/g, '.25')
                 .replace(/\bpoint 25\b/g, '.25')
+                .replace(/\band a quarter\b/g, '.25')
                 .replace(/\bpoint seven five\b/g, '.75')
                 .replace(/\bpoint 75\b/g, '.75');
             
             // Remove punctuation except decimal points, then split
-            processed = processed.replace(/[.,!?;:]+(?=\s|$)/g, ' '); // Remove trailing punctuation
+            processed = processed.replace(/[.,!?;:]+(?=\s|$)/g, ' ');
             const tokens = processed.split(/\s+/).filter(t => t);
             
             console.log('🔢 Parsing tokens:', tokens);
             
             let i = 0;
             while(i < tokens.length) {
-                let token = tokens[i].replace(/[^a-z0-9.-]/g, ''); // Clean token
+                let token = tokens[i].replace(/[^a-z0-9.-]/g, '');
                 
-                // Check for direct number (e.g., "22", "28.5", ".5")
+                // Check for direct number >= 1 (e.g., "22", "28.5")
+                // Don't pick up standalone fractions like ".5" or "0.5"
                 const directNum = parseFloat(token);
-                if(!isNaN(directNum) && directNum > 0 && directNum < 100) {
+                if(!isNaN(directNum) && directNum >= 1 && directNum < 100) {
                     numbers.push(directNum);
                     console.log('🔢 Direct number:', directNum);
                     i++;
@@ -7793,7 +7829,7 @@
                 if(wordToNum[token] !== undefined) {
                     let num = wordToNum[token];
                     
-                    // Check for tens + ones (e.g., "twenty two" or "twenty-two")
+                    // Check for tens + ones (e.g., "twenty two")
                     if(num >= 20 && i + 1 < tokens.length) {
                         const nextToken = tokens[i + 1].replace(/[^a-z0-9.-]/g, '');
                         if(wordToNum[nextToken] !== undefined && wordToNum[nextToken] < 10) {
@@ -7802,7 +7838,7 @@
                         }
                     }
                     
-                    // Check for fraction after (e.g., "four .5" or standalone ".5")
+                    // Check for fraction after (must follow a whole number)
                     if(i + 1 < tokens.length) {
                         const nextToken = tokens[i + 1].replace(/[^0-9.-]/g, '');
                         const fractionVal = parseFloat(nextToken);
@@ -7812,7 +7848,7 @@
                         }
                     }
                     
-                    if(num > 0 && num < 100) {
+                    if(num >= 1 && num < 100) {
                         numbers.push(num);
                         console.log('🔢 Word number:', token, '→', num);
                     }
