@@ -1684,10 +1684,9 @@
         const VERSION = "v100.44";
         // ===============================================================
         
-        const APP_PIN = "1234";
-        const N8N_WEBHOOK_URL = "https://jeffkoga.app.n8n.cloud/webhook/0845a6d3-be69-4b68-aba7-28f55112678c";
-        const S3_PRESIGN_LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
-        const S3_BUCKET = "listing-media-koga-prod";
+        const APP_PIN = "1234"; // Local UI lock only - not a security feature
+        const LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
+        // All secrets (n8n URL, OpenAI key, S3 bucket) are now in Lambda environment variables
         
         // Shot sequence configuration per category
         // Categories that need inside-out shots (for insulation, lining, red lines, etc.)
@@ -2500,15 +2499,18 @@
             
             console.log('📊 Abandoned item event:', event);
             
-            // Send to webhook (fire and forget)
+            // Send to n8n via Lambda proxy (fire and forget)
             try {
-                const formData = new FormData();
-                formData.append('event', 'item_abandoned');
-                formData.append('abandonedData', JSON.stringify(event));
-                
-                fetch(N8N_WEBHOOK_URL, {
+                fetch(LAMBDA_URL, {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'n8n',
+                        formData: {
+                            event: 'item_abandoned',
+                            abandonedData: event
+                        }
+                    })
                 }).catch(e => console.warn('Abandoned event send failed:', e));
             } catch(e) {
                 console.warn('Could not send abandoned event:', e);
@@ -2596,7 +2598,7 @@
             console.log('🔐 Getting presigned URLs for', files.length, 'files');
             console.log('🔐 Files:', JSON.stringify(files, null, 2));
             try {
-                const response = await fetch(S3_PRESIGN_LAMBDA_URL, {
+                const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sku, files })
@@ -2913,7 +2915,7 @@
             }
             
             return {
-                bucket: S3_BUCKET,
+                // bucket is set server-side in Lambda
                 prefix: `${sku}/`,
                 main: data.mainPhotos.map((p, i) => {
                     const shotName = p.shotId || `main_${String(i+1).padStart(2,'0')}`;
@@ -7848,7 +7850,7 @@
             console.log('🎤 Audio converted to base64, length:', base64Audio.length);
             
             try {
-                const response = await fetch(S3_PRESIGN_LAMBDA_URL, {
+                const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -8799,167 +8801,84 @@
                 
                 console.log('📤 Sending metadata to n8n (no binary files):', metadata);
                 
-                // Build FormData for n8n (backward compatible format)
-                // n8n expects FormData, not JSON
-                const formData = new FormData();
-                
-                // Basic fields (same as v100.37)
-                formData.append('sku', data.sku);
-                formData.append('category', data.category);
-                formData.append('superCategory', data.superCategory);
-                formData.append('tagStatus', data.tagStatus);
-                formData.append('tagSize', data.tagSize);
-                formData.append('origin', data.origin);
-                formData.append('country', data.country);
-                formData.append('gender', data.gender);
-                formData.append('colors', JSON.stringify(data.colors));
-                formData.append('fade', data.fade);
-                formData.append('pattern', data.pattern);
-                formData.append('patternTraits', JSON.stringify(data.patternTraits));
-                formData.append('printType', data.printType);
-                formData.append('graphicCategory', data.graphicCategory);
-                formData.append('fabricType', data.fabricType);
-                formData.append('fabricTraits', JSON.stringify(data.fabricTraits));
-                formData.append('wash', data.wash);
-                formData.append('materials', JSON.stringify(data.materials));
-                formData.append('materialTraits', JSON.stringify(data.materialTraits));
-                formData.append('sleeveLength', data.sleeveLength);
-                formData.append('sleeveStyle', data.sleeveStyle);
-                formData.append('cutoffType', data.cutoffType);
-                formData.append('stitch', data.stitch);
-                formData.append('bodyConstruction', data.bodyConstruction);
-                formData.append('legStyle', data.legStyle);
-                formData.append('rise', data.rise);
-                formData.append('thickness', data.thickness);
-                formData.append('layers', data.layers);
-                formData.append('hasDefects', data.hasDefects);
-                formData.append('defectTypes', JSON.stringify(data.defectTypes));
-                formData.append('flagged', data.flagged);
-                formData.append('elasticCheck', data.elasticCheck);
-                formData.append('weightLb', data.weightLb);
-                formData.append('weightOz', data.weightOz);
-                formData.append('photographer', data.photographer);
-                formData.append('audioDuration', data.audioDuration);
-                formData.append('audioTranscript', data.audioTranscript || '');
-                formData.append('parsedMeasurements', JSON.stringify(data.parsedMeasurements || {}));
-                
-                // Photo counts
-                formData.append('mainPhotoCount', data.mainPhotos.length);
-                formData.append('detailPhotoCount', data.detailPhotos.length);
-                formData.append('tagPhotoCount', data.tagPhotos.length);
-                formData.append('defectPhotoCount', data.defectPhotos.length);
-                formData.append('defectCloseupPhotoCount', data.defectCloseupPhotos.length);
-                formData.append('featurePhotoCount', data.featuresPhotos.length);
-                
-                // NEW: S3 file paths (so n8n knows where to find files)
-                formData.append('s3Bucket', S3_BUCKET);
-                formData.append('s3Prefix', `${data.sku}/`);
-                formData.append('s3Files', JSON.stringify(buildS3FileManifest()));
-                
-                // Main photo metadata (without binary data)
-                data.mainPhotos.forEach((p, i) => {
-                    const shotId = p.shotId || `main_${String(i+1).padStart(2,'0')}`;
-                    formData.append(`mainPhoto${i}_shotId`, shotId);
-                    formData.append(`mainPhoto${i}_width`, p.width);
-                    formData.append(`mainPhoto${i}_height`, p.height);
-                    formData.append(`mainPhoto${i}_isPortrait`, p.isPortrait || false);
-                    formData.append(`mainPhoto${i}_s3Key`, `${data.sku}/main/${data.sku}_${shotId}.jpg`);
-                    if(p.defects && p.defects.length > 0) {
-                        formData.append(`mainPhoto${i}_defects`, JSON.stringify(p.defects));
-                    }
-                    if(p.defectSide) {
-                        formData.append(`mainPhoto${i}_defectSide`, p.defectSide);
-                    }
-                });
-                
-                // Detail photo metadata
-                data.detailPhotos.forEach((p, i) => {
-                    const detailType = (p.detailType || 'detail').toLowerCase().replace(/\s+/g, '-');
-                    formData.append(`detailPhoto${i}_s3Key`, `${data.sku}/detail/${data.sku}_detail_${detailType}_${String(i+1).padStart(2,'0')}.jpg`);
-                    formData.append(`detailPhoto${i}_width`, p.width);
-                    formData.append(`detailPhoto${i}_height`, p.height);
-                    if(p.detailType) {
-                        formData.append(`detailPhoto${i}_type`, p.detailType);
-                    }
-                });
-                
-                // Tag photo S3 keys
-                data.tagPhotos.forEach((p, i) => {
-                    formData.append(`tagPhoto${i}_s3Key`, `${data.sku}/tag/${data.sku}_tag_${String(i+1).padStart(2,'0')}.jpg`);
-                });
-                
-                // Defect photo metadata
-                data.defectPhotos.forEach((p, i) => {
-                    const defectType = p.defectType || 'crop';
-                    formData.append(`defectPhoto${i}_s3Key`, `${data.sku}/defects/${data.sku}_defect_${defectType}_crop_${String(i+1).padStart(2,'0')}.jpg`);
-                    if(p.isOverview) {
-                        formData.append(`defectPhoto${i}_isOverview`, 'true');
-                    }
-                    if(p.defectType) {
-                        formData.append(`defectPhoto${i}_type`, p.defectType);
-                    }
-                });
-                
-                // Defect closeup metadata
-                data.defectCloseupPhotos.forEach((p, i) => {
-                    const defectType = p.linkedDefect?.type || 'unknown';
-                    formData.append(`defectCloseupPhoto${i}_s3Key`, `${data.sku}/defects/${data.sku}_defect_closeup_${defectType}_${String(i+1).padStart(2,'0')}.jpg`);
-                    if(p.linkedDefect) {
-                        formData.append(`defectCloseupPhoto${i}_linkedPhotoIndex`, p.linkedDefect.photoIndex);
-                        formData.append(`defectCloseupPhoto${i}_linkedDefectIndex`, p.linkedDefect.defectIndex);
-                        formData.append(`defectCloseupPhoto${i}_linkedType`, p.linkedDefect.type);
-                        formData.append(`defectCloseupPhoto${i}_linkedX`, p.linkedDefect.x);
-                        formData.append(`defectCloseupPhoto${i}_linkedY`, p.linkedDefect.y);
-                    }
-                });
-                
-                // Feature photo metadata
-                data.featuresPhotos.forEach((p, i) => {
-                    const featureType = (p.featureType || 'detail').toLowerCase().replace(/\s+/g, '-');
-                    formData.append(`featurePhoto${i}_s3Key`, `${data.sku}/features/${data.sku}_feature_${featureType}_${String(i+1).padStart(2,'0')}.jpg`);
-                    if(p.featureType) {
-                        formData.append(`featurePhoto${i}_type`, p.featureType);
-                    }
-                });
-                
-                // Audio S3 key
-                if(data.audioMeasure) {
-                    let audioExt = 'webm';
-                    if(data.audioMeasure.type) {
-                        if(data.audioMeasure.type.includes('mp4') || data.audioMeasure.type.includes('m4a')) {
-                            audioExt = 'mp4';
-                        } else if(data.audioMeasure.type.includes('ogg')) {
-                            audioExt = 'ogg';
-                        } else if(data.audioMeasure.type.includes('wav')) {
-                            audioExt = 'wav';
-                        }
-                    }
-                    formData.append('audio_s3Key', `${data.sku}/audio/${data.sku}_measurements.${audioExt}`);
-                }
-                
                 // Metrics
                 const metricsPayload = buildMetricsPayload();
-                if(metricsPayload) {
-                    formData.append('metrics', JSON.stringify(metricsPayload));
-                }
                 
-                // Send FormData to n8n (backward compatible)
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', N8N_WEBHOOK_URL, true);
-                xhr.onload = () => { 
-                    if(xhr.status === 200) { 
-                        console.log('✅ Submitted to n8n');
+                // Build n8n payload (will be forwarded through Lambda)
+                const n8nPayload = {
+                    sku: data.sku,
+                    category: data.category,
+                    superCategory: data.superCategory,
+                    tagStatus: data.tagStatus,
+                    tagSize: data.tagSize,
+                    origin: data.origin,
+                    country: data.country,
+                    gender: data.gender,
+                    colors: data.colors,
+                    fade: data.fade,
+                    pattern: data.pattern,
+                    patternTraits: data.patternTraits,
+                    printType: data.printType,
+                    graphicCategory: data.graphicCategory,
+                    fabricType: data.fabricType,
+                    fabricTraits: data.fabricTraits,
+                    wash: data.wash,
+                    materials: data.materials,
+                    materialTraits: data.materialTraits,
+                    sleeveLength: data.sleeveLength,
+                    sleeveStyle: data.sleeveStyle,
+                    cutoffType: data.cutoffType,
+                    stitch: data.stitch,
+                    bodyConstruction: data.bodyConstruction,
+                    legStyle: data.legStyle,
+                    rise: data.rise,
+                    thickness: data.thickness,
+                    layers: data.layers,
+                    hasDefects: data.hasDefects,
+                    defectTypes: data.defectTypes,
+                    flagged: data.flagged,
+                    elasticCheck: data.elasticCheck,
+                    weightLb: data.weightLb,
+                    weightOz: data.weightOz,
+                    photographer: data.photographer,
+                    audioDuration: data.audioDuration,
+                    audioTranscript: data.audioTranscript || '',
+                    parsedMeasurements: data.parsedMeasurements || {},
+                    mainPhotoCount: data.mainPhotos.length,
+                    tagPhotoCount: data.tagPhotos.length,
+                    defectPhotoCount: data.defectPhotos.length,
+                    defectCloseupPhotoCount: data.defectCloseupPhotos.length,
+                    featurePhotoCount: data.featuresPhotos.length,
+                    s3Files: buildS3FileManifest(),
+                    metrics: metricsPayload
+                };
+                
+                // Send to n8n through Lambda proxy
+                console.log('📤 Sending to n8n via Lambda proxy:', n8nPayload.sku);
+                
+                try {
+                    const n8nResponse = await fetch(LAMBDA_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'n8n',
+                            formData: n8nPayload
+                        })
+                    });
+                    
+                    const n8nResult = await n8nResponse.json();
+                    
+                    if(n8nResult.success) {
+                        console.log('✅ Submitted to n8n via Lambda');
                         showToast('success', 'Item Submitted!', `SKU ${submittedSku} uploaded to S3 & n8n`);
                     } else {
-                        console.warn('⚠️ n8n response not OK:', xhr.status);
+                        console.warn('⚠️ n8n response not OK:', n8nResult);
                         showToast('warning', 'Partial Success', 'S3 uploaded, n8n may have issues');
                     }
-                };
-                xhr.onerror = () => { 
-                    console.error('Webhook error'); 
+                } catch(n8nErr) {
+                    console.error('n8n proxy error:', n8nErr);
                     showToast('warning', 'S3 OK, n8n Error', 'Files in S3, check n8n connection');
-                };
-                xhr.send(formData);
+                }
                 
             } catch (err) {
                 console.error('❌ Submit error:', err);
