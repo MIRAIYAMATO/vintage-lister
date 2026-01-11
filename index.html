@@ -1681,7 +1681,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.44";
+        const VERSION = "v100.46";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -7759,26 +7759,32 @@
             const numbers = [];
             const lower = text.toLowerCase();
             
-            // Replace common spoken fractions
+            // Replace common spoken fractions BEFORE tokenizing
             let processed = lower
-                .replace(/and a half/g, '.5')
-                .replace(/point five/g, '.5')
-                .replace(/point 5/g, '.5')
-                .replace(/and a quarter/g, '.25')
-                .replace(/point two five/g, '.25')
-                .replace(/point 25/g, '.25');
+                .replace(/\band a half\b/g, '.5')
+                .replace(/\bpoint five\b/g, '.5')
+                .replace(/\bpoint 5\b/g, '.5')
+                .replace(/\band a quarter\b/g, '.25')
+                .replace(/\bpoint two five\b/g, '.25')
+                .replace(/\bpoint 25\b/g, '.25')
+                .replace(/\bpoint seven five\b/g, '.75')
+                .replace(/\bpoint 75\b/g, '.75');
             
-            // Split into tokens
-            const tokens = processed.split(/[\s,]+/).filter(t => t);
+            // Remove punctuation except decimal points, then split
+            processed = processed.replace(/[.,!?;:]+(?=\s|$)/g, ' '); // Remove trailing punctuation
+            const tokens = processed.split(/\s+/).filter(t => t);
+            
+            console.log('🔢 Parsing tokens:', tokens);
             
             let i = 0;
             while(i < tokens.length) {
-                const token = tokens[i];
+                let token = tokens[i].replace(/[^a-z0-9.-]/g, ''); // Clean token
                 
-                // Check for direct number (e.g., "22", "28.5")
+                // Check for direct number (e.g., "22", "28.5", ".5")
                 const directNum = parseFloat(token);
                 if(!isNaN(directNum) && directNum > 0 && directNum < 100) {
                     numbers.push(directNum);
+                    console.log('🔢 Direct number:', directNum);
                     i++;
                     continue;
                 }
@@ -7787,35 +7793,35 @@
                 if(wordToNum[token] !== undefined) {
                     let num = wordToNum[token];
                     
-                    // Check for tens + ones (e.g., "twenty two")
+                    // Check for tens + ones (e.g., "twenty two" or "twenty-two")
                     if(num >= 20 && i + 1 < tokens.length) {
-                        const nextToken = tokens[i + 1];
+                        const nextToken = tokens[i + 1].replace(/[^a-z0-9.-]/g, '');
                         if(wordToNum[nextToken] !== undefined && wordToNum[nextToken] < 10) {
                             num += wordToNum[nextToken];
                             i++;
                         }
                     }
                     
-                    // Check for fraction after
+                    // Check for fraction after (e.g., "four .5" or standalone ".5")
                     if(i + 1 < tokens.length) {
-                        const nextToken = tokens[i + 1];
-                        if(nextToken === '.5' || nextToken === '0.5') {
-                            num += 0.5;
-                            i++;
-                        } else if(nextToken === '.25' || nextToken === '0.25') {
-                            num += 0.25;
+                        const nextToken = tokens[i + 1].replace(/[^0-9.-]/g, '');
+                        const fractionVal = parseFloat(nextToken);
+                        if(!isNaN(fractionVal) && fractionVal > 0 && fractionVal < 1) {
+                            num += fractionVal;
                             i++;
                         }
                     }
                     
                     if(num > 0 && num < 100) {
                         numbers.push(num);
+                        console.log('🔢 Word number:', token, '→', num);
                     }
                 }
                 
                 i++;
             }
             
+            console.log('🔢 Final parsed numbers:', numbers);
             return numbers;
         }
         
