@@ -702,7 +702,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version" id="pin-version">Loading...</div>
+        <div class="pin-version" id="pin-version">v100.64 Desktop Station</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
@@ -4418,9 +4418,9 @@
                     capturePhoto('spacebar'); 
                 }
                 // Enter key (common foot pedal binding) - only when not in inputs
-                if (e.code === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && !document.getElementById('preview-modal').classList.contains('active') && !document.getElementById('sku-gate').classList.contains('hidden') === false) { 
-                    // Only capture if SKU gate is hidden (we're in photo mode)
-                    if(document.getElementById('sku-gate').classList.contains('hidden')) {
+                if (e.code === 'Enter' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && !document.getElementById('preview-modal').classList.contains('active')) { 
+                    // Only capture if PIN screen is hidden (we're in photo mode)
+                    if(document.getElementById('pin-screen').classList.contains('hidden')) {
                         e.preventDefault(); 
                         capturePhoto('footPedal'); 
                     }
@@ -4532,22 +4532,27 @@
         
         function onSkuGateInput() {
             const input = document.getElementById('sku-gate-input');
+            if(!input) return; // SKU gate removed
             const value = input.value.trim();
             
             // Visual feedback
             if(value.length >= 3) {
                 input.classList.add('valid');
-                document.getElementById('sku-gate-status').textContent = 'Press ENTER to confirm';
+                const status = document.getElementById('sku-gate-status');
+                if(status) status.textContent = 'Press ENTER to confirm';
             } else {
                 input.classList.remove('valid');
-                document.getElementById('sku-gate-status').textContent = '';
+                const status = document.getElementById('sku-gate-status');
+                if(status) status.textContent = '';
             }
         }
         
         function handleSkuGateKeydown(e) {
+            const input = document.getElementById('sku-gate-input');
+            if(!input) return; // SKU gate removed
             if(e.key === 'Enter') {
                 e.preventDefault();
-                const value = document.getElementById('sku-gate-input').value.trim();
+                const value = input.value.trim();
                 if(value.length >= 1) {
                     lockSku(value);
                 }
@@ -4561,9 +4566,12 @@
         let skuGateScanInterval = null;
         
         async function activateSkuGateScan() {
-            // Show camera preview, hide entry form
-            document.getElementById('sku-gate-entry').classList.add('hidden');
-            document.getElementById('sku-gate-camera').classList.remove('hidden');
+            // SKU gate removed - this function is now a no-op
+            const entry = document.getElementById('sku-gate-entry');
+            if(!entry) {
+                console.log('📷 activateSkuGateScan: SKU gate removed, skipping');
+                return;
+            }
             
             // Clear and focus scan input
             document.getElementById('sku-gate-scan-input').value = '';
@@ -4991,6 +4999,7 @@
         
         function onSkuGateScanInput() {
             const input = document.getElementById('sku-gate-scan-input');
+            if(!input) return; // SKU gate removed
             const value = input.value.trim();
             
             if(value.length >= 3) {
@@ -5001,9 +5010,11 @@
         }
         
         function handleSkuGateScanKeydown(e) {
+            const input = document.getElementById('sku-gate-scan-input');
+            if(!input) return; // SKU gate removed
             if(e.key === 'Enter') {
                 e.preventDefault();
-                const value = document.getElementById('sku-gate-scan-input').value.trim();
+                const value = input.value.trim();
                 if(value.length >= 1) {
                     lockSku(value);
                 }
@@ -5023,14 +5034,19 @@
                 skuGateStream = null;
             }
             
-            // Hide camera, show entry form
-            document.getElementById('sku-gate-camera').classList.add('hidden');
-            document.getElementById('sku-gate-entry').classList.remove('hidden');
-            document.getElementById('sku-gate-status').textContent = '';
-            document.getElementById('sku-gate-scan-input').placeholder = 'Waiting for scan...';
+            // Hide camera, show entry form (with null checks for removed elements)
+            const camera = document.getElementById('sku-gate-camera');
+            if(camera) camera.classList.add('hidden');
+            const entry = document.getElementById('sku-gate-entry');
+            if(entry) entry.classList.remove('hidden');
+            const status = document.getElementById('sku-gate-status');
+            if(status) status.textContent = '';
+            const scanInput = document.getElementById('sku-gate-scan-input');
+            if(scanInput) scanInput.placeholder = 'Waiting for scan...';
             
             // Focus input
-            document.getElementById('sku-gate-input').focus();
+            const input = document.getElementById('sku-gate-input');
+            if(input) input.focus();
         }
         
         function lockSku(value) {
@@ -5081,11 +5097,6 @@
                 skuInput.select();
             }
             skuLocked = false;
-        }
-            document.getElementById('sku-locked-display').style.display = 'none';
-            document.getElementById('sku-manual-input').classList.remove('hidden');
-            document.getElementById('sku-input').focus();
-            document.getElementById('sku-input').select();
         }
         
         // Override onSkuInput to update locked state
@@ -7457,9 +7468,11 @@
             
             // Show status
             const statusEl = document.getElementById('sku-camera-status');
-            statusEl.style.display = 'block';
-            statusEl.textContent = '📷 Switching to C922X...';
-            statusEl.style.color = '#f59e0b';
+            if(statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = '📷 Switching to C922X...';
+                statusEl.style.color = '#f59e0b';
+            }
             
             // Switch to SKU photo mode (this will switch camera)
             setPhotoMode('sku');
@@ -7520,12 +7533,14 @@
         
         async function startBarcodeScanning() {
             const statusEl = document.getElementById('sku-camera-status');
-            statusEl.style.display = 'block';
+            if(statusEl) statusEl.style.display = 'block';
             
             // Check if Quagga loaded
             if(typeof Quagga === 'undefined') {
-                statusEl.innerHTML = '⚠️ Barcode library failed to load<br><small style="font-size:9px;">Type SKU manually or use USB scanner</small>';
-                statusEl.style.color = '#f59e0b';
+                if(statusEl) {
+                    statusEl.innerHTML = '⚠️ Barcode library failed to load<br><small style="font-size:9px;">Type SKU manually or use USB scanner</small>';
+                    statusEl.style.color = '#f59e0b';
+                }
                 console.log('❌ QuaggaJS not loaded');
                 return;
             }
@@ -7534,14 +7549,18 @@
             
             const video = document.getElementById('camera-video');
             if(!video.srcObject) {
-                statusEl.textContent = '⚠️ Camera not active';
-                statusEl.style.color = '#f59e0b';
+                if(statusEl) {
+                    statusEl.textContent = '⚠️ Camera not active';
+                    statusEl.style.color = '#f59e0b';
+                }
                 return;
             }
             
             console.log('🔍 Starting QuaggaJS barcode scanning...');
-            statusEl.textContent = '🔍 Scanning for barcode...';
-            statusEl.style.color = '#3b82f6';
+            if(statusEl) {
+                statusEl.textContent = '🔍 Scanning for barcode...';
+                statusEl.style.color = '#3b82f6';
+            }
             
             // Create a canvas to capture frames from video
             const scanCanvas = document.createElement('canvas');
