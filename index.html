@@ -685,7 +685,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version" id="pin-version">v100.67 Desktop Station</div>
+        <div class="pin-version" id="pin-version">v100.73 Desktop Station</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
@@ -787,10 +787,10 @@
                     
                     <div class="section-card">
                         <div class="section-label"><span id="check-tag" class="check-circle">○</span> Tag Info</div>
-                        <button onclick="setTagStatus('has', this)" class="btn btn-secondary tag-btn" style="width:100%;margin-bottom:8px;">✓ TAG READABLE</button>
+                        <button onclick="updateState('tagStatus', 'has')" data-value="has" class="btn btn-secondary tag-btn" style="width:100%;margin-bottom:8px;">✓ TAG READABLE</button>
                         <div class="btn-grid btn-grid-2">
-                            <button onclick="setTagStatus('worn', this)" class="btn btn-secondary tag-btn">👀 Worn/Faded</button>
-                            <button onclick="setTagStatus('none', this)" class="btn btn-secondary tag-btn">✂️ Missing/Cut</button>
+                            <button onclick="updateState('tagStatus', 'worn')" data-value="worn" class="btn btn-secondary tag-btn">👀 Worn/Faded</button>
+                            <button onclick="updateState('tagStatus', 'none')" data-value="none" class="btn btn-secondary tag-btn">✂️ Missing/Cut</button>
                         </div>
                         
                         <!-- Tag Location Help -->
@@ -1452,7 +1452,7 @@
         <!-- CENTER: Camera -->
         <div class="camera-panel">
             <div class="camera-header">
-                <select id="camera-select" class="camera-select" onchange="switchCamera(this.value)"><option value="">Select Camera...</option></select>
+                <select id="camera-select" class="camera-select" onchange="handleCameraSelect(this.value)"><option value="">Select Camera...</option></select>
                 <span id="camera-indicator" style="background:#3b82f6;color:white;padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;">📦 ARDUCAM 48MP</span>
                 <span id="camera-resolution" style="color:#6b7280;font-size:10px;font-family:monospace;">--</span>
                 <button class="fullres-btn" onclick="forceMaxResolution()" title="Click to force maximum resolution">FULL RES</button>
@@ -1464,8 +1464,10 @@
                 <div class="camera-view-container" id="single-camera-view">
                     <div class="camera-placeholder" id="camera-placeholder">
                         <div class="camera-placeholder-icon">📷</div>
-                        <div>Select a camera to begin</div>
+                        <div id="camera-placeholder-text">Select a camera to begin</div>
                         <div style="font-size:11px;margin-top:6px;color:#555;">Arducam 48MP (8000×6000)</div>
+                        <button onclick="retryCamera()" style="margin-top:12px;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;display:none;" id="retry-camera-btn">🔄 Retry Camera</button>
+                        <div id="camera-error-hint" style="font-size:10px;color:#ef4444;margin-top:8px;display:none;max-width:200px;text-align:center;"></div>
                     </div>
                     
                     <!-- Single Camera View (default) -->
@@ -1536,12 +1538,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Shot Sequence Hint -->
-            <div id="shot-hint" style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;padding:10px 16px;text-align:center;display:none;">
-                <div style="font-weight:700;font-size:14px;">📸 Front Flat</div>
-                <div style="font-size:11px;opacity:0.8;">Lay flat, arms folded down</div>
-                <div style="font-size:10px;opacity:0.6;margin-top:4px;">Shot 1 of 4</div>
-            </div>
             <div class="camera-footer">
                 <button class="mode-btn active" id="mode-main" onclick="setPhotoMode('main')">📦 Main<br><small style="font-size:9px;opacity:0.7;">48MP</small></button>
                 <div style="text-align:center;">
@@ -1550,7 +1546,7 @@
                 </div>
                 <button class="mode-btn" id="mode-tag" onclick="setPhotoMode('tag')">🏷️ Tag<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
                 <button class="mode-btn" id="mode-defect-closeup" onclick="setPhotoMode('defect-closeup')" style="background:#dc2626;border-color:#dc2626;">🔴 Defect<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
-                <button class="mode-btn" id="mode-features" onclick="setPhotoMode('features'); setTimeout(()=>{const p=document.getElementById('feature-type-panel'); if(p){p.style.display='flex';console.log('✨ Panel forced visible')}}, 200);" style="background:#7c3aed;border-color:#7c3aed;">✨ Features<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
+                <button class="mode-btn" id="mode-features" onclick="setPhotoMode('features')" style="background:#7c3aed;border-color:#7c3aed;">✨ Features<br><small style="font-size:9px;opacity:0.7;">C922X</small></button>
             </div>
         </div>
         
@@ -1591,7 +1587,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.67";
+        const VERSION = "v100.73";
         // ===============================================================
         
         // ============ DEBUG LOGGING SYSTEM ============
@@ -1693,6 +1689,25 @@
                     return false;
                 }
                 
+                // Ask user for confirmation before restoring
+                const ageMinutes = Math.round(age / 60000);
+                const draftInfo = draft.sku ? `SKU: ${draft.sku}` : 'No SKU';
+                const photoInfo = draft.photoCount ? `Photos: ${draft.photoCount.main || 0} main` : '';
+                
+                const shouldRestore = confirm(
+                    `📋 Resume Previous Session?\n\n` +
+                    `Found draft from ${ageMinutes} min ago\n` +
+                    `${draftInfo}\n` +
+                    `${photoInfo}\n\n` +
+                    `Click OK to restore, or Cancel to start fresh.`
+                );
+                
+                if(!shouldRestore) {
+                    debugLog('User declined draft restore', 'info');
+                    localStorage.removeItem(DRAFT_KEY);
+                    return false;
+                }
+                
                 // Restore data
                 if(draft.sku) {
                     data.sku = draft.sku;
@@ -1717,8 +1732,13 @@
                 if(draft.weightLb) data.weightLb = draft.weightLb;
                 if(draft.weightOz) data.weightOz = draft.weightOz;
                 if(draft.flagged) data.flagged = draft.flagged;
+                if(draft.sleeveLength) data.sleeveLength = draft.sleeveLength;
+                if(draft.fade) data.fade = draft.fade;
                 
-                debugLog(`Draft restored (${Math.round(age/60000)}min old)`, 'success');
+                // RENDER PATTERN: Sync all UI to data state
+                renderButtonGroups();
+                
+                debugLog(`Draft restored (${ageMinutes}min old)`, 'success');
                 
                 // Show indicator
                 const indicator = document.getElementById('draft-indicator');
@@ -1742,6 +1762,72 @@
         }
         // ===============================================
         
+        // ============ CAMERA HELPERS ============
+        // Wrap getUserMedia with timeout to prevent hanging
+        async function getUserMediaWithTimeout(constraints, timeoutMs = 8000) {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    reject(new Error('Timeout starting video source'));
+                }, timeoutMs);
+                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(stream => {
+                        clearTimeout(timer);
+                        resolve(stream);
+                    })
+                    .catch(err => {
+                        clearTimeout(timer);
+                        reject(err);
+                    });
+            });
+        }
+        
+        // Retry camera connection
+        async function retryCamera() {
+            debugLog('Retrying camera connection...', 'info');
+            
+            const placeholder = document.getElementById('camera-placeholder');
+            const retryBtn = document.getElementById('retry-camera-btn');
+            const errorHint = document.getElementById('camera-error-hint');
+            const placeholderText = document.getElementById('camera-placeholder-text');
+            
+            if(retryBtn) retryBtn.style.display = 'none';
+            if(errorHint) errorHint.style.display = 'none';
+            if(placeholderText) placeholderText.textContent = 'Reconnecting camera...';
+            
+            // Force stop any existing streams
+            if(currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            // Wait a moment for camera to fully release
+            await new Promise(r => setTimeout(r, 1000));
+            
+            // Re-enumerate and start camera
+            mainCameraId = null;
+            secondaryCameraId = null;
+            await enumerateCameras();
+        }
+        
+        function showCameraError(message) {
+            const placeholder = document.getElementById('camera-placeholder');
+            const retryBtn = document.getElementById('retry-camera-btn');
+            const errorHint = document.getElementById('camera-error-hint');
+            const placeholderText = document.getElementById('camera-placeholder-text');
+            
+            if(placeholder) placeholder.style.display = 'flex';
+            if(retryBtn) retryBtn.style.display = 'block';
+            if(errorHint) {
+                errorHint.style.display = 'block';
+                errorHint.innerHTML = message + '<br><br><b>Try:</b> Close Logi Tune, unplug/replug camera';
+            }
+            if(placeholderText) placeholderText.textContent = 'Camera connection failed';
+            
+            document.getElementById('camera-video').style.display = 'none';
+        }
+        // =========================================
+        
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
         const LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
         // All secrets (n8n URL, OpenAI key, S3 bucket) are now in Lambda environment variables
@@ -1750,49 +1836,115 @@
         // Categories that need inside-out shots (for insulation, lining, red lines, etc.)
         const CATEGORIES_WITH_INSIDE_SHOTS = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Jacket', 'Coat', 'Vest', 'Jeans', 'Pants'];
         
-        // Shot sequence: SHORT SLEEVE tops (T-Shirt, Polo, Tank Top, Jersey)
-        // No T-shape needed - sleeves are short, ghost mannequin doesn't need sleeve extension
-        const SHOT_SEQUENCE_SHORT_SLEEVE = [
-            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, front facing up' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back' }
-        ];
-        
-        // Shot sequence: LONG SLEEVE tops (Long Sleeve T, Henley, Button Shirt without lining)
-        // Need T-shape to show sleeve length for AI ghost mannequin
-        const SHOT_SEQUENCE_LONG_SLEEVE = [
-            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back, arms folded' },
-            { id: 'front_tshape', label: 'T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' }
-        ];
-        
-        // Shot sequence: OUTERWEAR (Jackets, Coats, Hoodies, Sweaters, etc.)
-        // T-shape + inside shots (for insulation/lining)
-        const SHOT_SEQUENCE_OUTERWEAR = [
-            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, arms folded down' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back, arms folded' },
-            { id: 'front_tshape', label: 'T-Shape', hint: 'Open arms to T-shape (for AI ghost mannequin)' },
-            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out, front view (check lining/insulation)' },
-            { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
-        ];
-        
-        // Shot sequence: BOTTOMS (Jeans, Pants, Shorts, Sweatpants) and VESTS
-        // No T-shape (no sleeves), but need inside shots (for red lines, hems, pockets, lining)
-        const SHOT_SEQUENCE_BOTTOMS = [
-            { id: 'front_flat', label: 'Front Flat', hint: 'Lay flat, front facing up' },
-            { id: 'back_flat', label: 'Back Flat', hint: 'Flip to back' },
-            { id: 'inside_front', label: 'Inside Front', hint: 'Turn inside-out (check for red line, hems, lining)' },
-            { id: 'inside_back', label: 'Inside Back', hint: 'Inside-out, back view' }
-        ];
-        
-        // Legacy aliases for backward compatibility
-        const SHOT_SEQUENCE_STANDARD = SHOT_SEQUENCE_SHORT_SLEEVE;
-        const SHOT_SEQUENCE_WITH_INSIDE = SHOT_SEQUENCE_OUTERWEAR;
-        
-        // Current shot tracking
-        let currentShotIndex = 0;
-        let currentShotSequence = SHOT_SEQUENCE_STANDARD;
         let data = { superCategory:'tops', category:'', tagStatus:'', tagSize:'', origin:'', country:'', gender:'', colors:[], fade:'', pattern:'', patternTraits:{lines:'',shapes:'',method:''}, printType:'', graphicCategory:'', fabricType:'', fabricTraits:{stretch:'',surface:'',interior:''}, wash:'', materials:[], materialTraits:{temp:'',shine:''}, sleeveLength:'', sleeveStyle:'', cutoffType:'', stitch:'', bodyConstruction:'', legStyle:'', rise:'', thickness:'', layers:'', hasDefects:null, defectTypes:[], weightLb:0, weightOz:0, sku:'', photographer:'P02', audioMeasure:null, audioDuration:0, audioMimeType:'audio/webm', audioTranscript:'', parsedMeasurements:{}, mainPhotos:[], detailPhotos:[], tagPhotos:[], defectPhotos:[], defectCloseupPhotos:[], featuresPhotos:[], flagged:false, elasticCheck:'' };
         let stats = { today:0, total:0 }, currentStep = 1, photoMode = 'main', currentStream = null;
+        
+        // ============ RENDER PATTERN - SINGLE SOURCE OF TRUTH ============
+        // All state changes go through updateState() → renderButtonGroups()
+        // This eliminates split logic between user clicks, AI, and draft loading
+        
+        let saveDraftTimer = null; // Track debounce timer for cancellation
+        
+        // Update state and trigger UI sync
+        function updateState(field, value, skipRender = false) {
+            // Handle nested fields (e.g., 'patternTraits.lines')
+            if (field.includes('.')) {
+                const parts = field.split('.');
+                if (parts.length === 2) {
+                    data[parts[0]][parts[1]] = value;
+                }
+            } else {
+                data[field] = value;
+            }
+            
+            // Sync UI to data (unless skipped for batch updates)
+            if (!skipRender) {
+                renderButtonGroups();
+            }
+            
+            // Debounced auto-save
+            if (saveDraftTimer) clearTimeout(saveDraftTimer);
+            saveDraftTimer = setTimeout(() => {
+                saveDraft();
+                saveDraftTimer = null;
+            }, 500);
+            
+            // Update validation
+            updateValidation();
+        }
+        
+        // Render all button groups to match data state
+        // This is the "brute force consistency" - UI always reflects data
+        function renderButtonGroups() {
+            // Map of data field → button selector
+            const buttonGroups = {
+                tagStatus: '.tag-btn',
+                origin: '.origin-btn',
+                country: '.country-btn',
+                gender: '.gender-btn',
+                fade: '.fade-btn',
+                sleeveLength: '.sleeve-btn',
+                sleeveStyle: '.style-btn',
+                cutoffType: '.cutoff-btn',
+                stitch: '.stitch-btn',
+                bodyConstruction: '.body-btn',
+                legStyle: '.leg-btn',
+                rise: '.rise-btn',
+                thickness: '.thickness-btn',
+                layers: '.layers-btn',
+                elasticCheck: '.elastic-btn'
+            };
+            
+            // Sync each button group
+            Object.entries(buttonGroups).forEach(([field, selector]) => {
+                const value = data[field];
+                document.querySelectorAll(selector).forEach(btn => {
+                    // Get value from data-value attribute or onclick
+                    let btnValue = btn.dataset.value;
+                    if (!btnValue) {
+                        // Fallback: parse from onclick attribute
+                        const onclick = btn.getAttribute('onclick') || '';
+                        const match = onclick.match(/['"]([^'"]+)['"]/);
+                        btnValue = match ? match[1] : null;
+                    }
+                    
+                    const isSelected = btnValue && btnValue === value;
+                    
+                    if (isSelected) {
+                        btn.classList.add('selected', 'btn-hero');
+                        btn.classList.remove('btn-secondary');
+                    } else {
+                        btn.classList.remove('selected', 'btn-hero');
+                        btn.classList.add('btn-secondary');
+                    }
+                });
+            });
+            
+            // Handle visibility rules
+            const countrySection = document.getElementById('country-section');
+            if (countrySection) {
+                countrySection.classList.toggle('hidden', data.origin !== 'import');
+            }
+            
+            const countryOther = document.getElementById('country-other-input');
+            if (countryOther) {
+                const isOther = data.country === 'Other' || 
+                    !['Mexico', 'Honduras', 'China', 'Korea', 'Taiwan', 'Philippines', 'Vietnam', 'Bangladesh', ''].includes(data.country);
+                countryOther.classList.toggle('hidden', !isOther);
+                if (isOther && data.country !== 'Other') {
+                    countryOther.value = data.country;
+                }
+            }
+        }
+        // ================================================================
+        
+        // ============ PERSISTENT CAMERA STREAMS ============
+        // Keep both cameras running to avoid thrashing (1-2s black screen on switch)
+        let mainCameraStream = null;      // Arducam 48MP - kept at max resolution
+        let secondaryCameraStream = null; // C922X 1080p - kept at max resolution
+        let camerasInitialized = false;   // Flag to prevent re-initialization
+        // ===================================================
+        
         let selectedDefectLink = null; // Index of defect marker to link close-up to
         let selectedFeatureType = null; // Type of feature being photographed
         let selectedDetailType = null; // Type of detail being photographed (graphic, collar, pocket, etc.)
@@ -3107,106 +3259,6 @@
             };
         }
         
-        // ============ SHOT SEQUENCE FUNCTIONS ============
-        
-        // Get shot sequence based on category
-        function getShotSequenceForCategory(category) {
-            if (!category) return SHOT_SEQUENCE_SHORT_SLEEVE;
-            
-            // Bottoms: front/back + inside (no T-shape)
-            if (['Jeans', 'Pants', 'Shorts', 'Sweatpants'].includes(category)) {
-                return SHOT_SEQUENCE_BOTTOMS;
-            }
-            
-            // Vest: no sleeves so no T-shape, but needs inside shots for lining
-            if (category === 'Vest') {
-                return SHOT_SEQUENCE_BOTTOMS; // Same structure: front, back, inside front, inside back
-            }
-            
-            // Outerwear with sleeves AND lining: T-shape + inside shots
-            // These categories have insulation, lining, or interior details worth capturing
-            if (['Jacket', 'Coat', 'Hoodie', 'Sweatshirt', 'Sweater', 'Cardigan'].includes(category)) {
-                return SHOT_SEQUENCE_OUTERWEAR;
-            }
-            
-            // Button Shirt - typically long sleeve, needs T-shape but no inside shots
-            if (category === 'Button Shirt') {
-                return SHOT_SEQUENCE_LONG_SLEEVE;
-            }
-            
-            // For other tops (T-Shirt, Polo, Henley, Jersey, Tank), check sleeve length
-            // Long sleeves need T-shape for AI ghost mannequin
-            // Short sleeves don't need T-shape
-            const needsTShape = data.sleeveLength === 'Long' || data.sleeveLength === '3/4';
-            
-            if (needsTShape) {
-                return SHOT_SEQUENCE_LONG_SLEEVE;
-            }
-            
-            // Default: short sleeve (just front/back)
-            return SHOT_SEQUENCE_SHORT_SLEEVE;
-        }
-        
-        // Update shot sequence when category OR sleeve length changes
-        function updateShotSequence() {
-            const oldSequence = currentShotSequence;
-            currentShotSequence = getShotSequenceForCategory(data.category);
-            
-            // Only reset index if sequence actually changed
-            if (oldSequence !== currentShotSequence) {
-                currentShotIndex = 0;
-                console.log(`📸 Shot sequence changed to ${currentShotSequence.length} shots`);
-            }
-            
-            updateShotHint();
-        }
-        
-        // Get current shot ID
-        function getCurrentShotId() {
-            if (currentShotIndex < currentShotSequence.length) {
-                return currentShotSequence[currentShotIndex].id;
-            }
-            // Beyond sequence - use numbered
-            return `extra_${String(data.mainPhotos.length + 1).padStart(2, '0')}`;
-        }
-        
-        // Advance to next shot in sequence
-        function advanceShotSequence() {
-            if (currentShotIndex < currentShotSequence.length) {
-                currentShotIndex++;
-            }
-            updateShotHint();
-        }
-        
-        // Update the shot hint display
-        function updateShotHint() {
-            const hintEl = document.getElementById('shot-hint');
-            if (!hintEl) return;
-            
-            if (currentShotIndex < currentShotSequence.length) {
-                const shot = currentShotSequence[currentShotIndex];
-                hintEl.innerHTML = `
-                    <div style="font-weight:700;font-size:14px;">📸 ${shot.label}</div>
-                    <div style="font-size:11px;opacity:0.8;">${shot.hint}</div>
-                    <div style="font-size:10px;opacity:0.6;margin-top:4px;">Shot ${currentShotIndex + 1} of ${currentShotSequence.length}</div>
-                `;
-                hintEl.style.display = 'block';
-            } else {
-                hintEl.innerHTML = `
-                    <div style="font-weight:700;font-size:14px;">✅ Sequence Complete</div>
-                    <div style="font-size:11px;opacity:0.8;">Additional shots: extra_${data.mainPhotos.length + 1}</div>
-                `;
-                hintEl.style.display = 'block';
-            }
-        }
-        
-        // Reset shot sequence (called on new item)
-        function resetShotSequence() {
-            currentShotSequence = SHOT_SEQUENCE_SHORT_SLEEVE;
-            currentShotIndex = 0;
-            updateShotHint();
-        }
-        
         function generatePhotoFilename(type, index) {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
             const sku = data.sku || 'NOSKU';
@@ -3216,6 +3268,127 @@
         let mediaRecorder = null, audioChunks = [], recordingStart = null, recordingInterval = null;
         let mainCameraId = null, secondaryCameraId = null, activeCameraId = null;
         let mainCameraName = null, secondaryCameraName = null; // Store camera names for metrics
+        
+        // ============ INSTANT CAMERA SWITCHING ============
+        // These functions switch video.srcObject WITHOUT restarting streams
+        // This eliminates the 1-2 second black screen
+        
+        function useMainCamera() {
+            if (!mainCameraStream) {
+                debugLog('Main camera stream not ready', 'warn');
+                return false;
+            }
+            
+            const video = document.getElementById('camera-video');
+            if (video.srcObject === mainCameraStream) {
+                debugLog('Already using main camera', 'info');
+                return true;
+            }
+            
+            debugLog('Instant switch to main camera (Arducam)', 'info');
+            video.srcObject = mainCameraStream;
+            currentStream = mainCameraStream;
+            activeCameraId = mainCameraId;
+            
+            document.getElementById('camera-select').value = mainCameraId;
+            applyFlipTransform();
+            
+            // Update resolution display
+            video.onloadedmetadata = () => {
+                const resEl = document.getElementById('camera-resolution');
+                resEl.textContent = `${video.videoWidth}×${video.videoHeight}`;
+                resEl.style.color = video.videoWidth >= 3800 ? '#22c55e' : video.videoWidth >= 1900 ? '#3b82f6' : '#f59e0b';
+            };
+            
+            return true;
+        }
+        
+        function useSecondaryCamera() {
+            if (!secondaryCameraStream) {
+                debugLog('Secondary camera stream not ready', 'warn');
+                return false;
+            }
+            
+            const video = document.getElementById('camera-video');
+            if (video.srcObject === secondaryCameraStream) {
+                debugLog('Already using secondary camera', 'info');
+                return true;
+            }
+            
+            debugLog('Instant switch to secondary camera (C922X)', 'info');
+            video.srcObject = secondaryCameraStream;
+            currentStream = secondaryCameraStream;
+            activeCameraId = secondaryCameraId;
+            
+            document.getElementById('camera-select').value = secondaryCameraId;
+            applyFlipTransform();
+            
+            // Update resolution display
+            video.onloadedmetadata = () => {
+                const resEl = document.getElementById('camera-resolution');
+                resEl.textContent = `${video.videoWidth}×${video.videoHeight}`;
+                resEl.style.color = video.videoWidth >= 1900 ? '#3b82f6' : '#f59e0b';
+            };
+            
+            return true;
+        }
+        
+        // Initialize a camera stream at max resolution (called once at startup)
+        async function initializeCameraStream(deviceId, isMain = false) {
+            const cameraType = isMain ? 'Main (Arducam)' : 'Secondary (C922X)';
+            debugLog(`Initializing ${cameraType} stream...`, 'info');
+            
+            try {
+                // Get camera capabilities
+                const tempStream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId } }
+                });
+                const track = tempStream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                const maxWidth = capabilities.width?.max || 1920;
+                const maxHeight = capabilities.height?.max || 1080;
+                tempStream.getTracks().forEach(t => t.stop());
+                
+                await new Promise(r => setTimeout(r, 100));
+                
+                // Request max resolution
+                const resolutions = [];
+                if (maxWidth >= 8000) resolutions.push({ w: 8000, h: 6000, name: '48MP' });
+                if (maxWidth >= 3840) resolutions.push({ w: 3840, h: 2160, name: '4K' });
+                if (maxWidth >= 1920) resolutions.push({ w: 1920, h: 1080, name: '1080p' });
+                resolutions.push({ w: 1280, h: 720, name: '720p' });
+                
+                for (const res of resolutions) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                deviceId: { exact: deviceId },
+                                width: { ideal: res.w },
+                                height: { ideal: res.h }
+                            }
+                        });
+                        
+                        const settings = stream.getVideoTracks()[0].getSettings();
+                        debugLog(`${cameraType} initialized at ${settings.width}x${settings.height}`, 'success');
+                        return stream;
+                    } catch (e) {
+                        debugLog(`${cameraType} ${res.name} failed, trying next...`, 'warn');
+                    }
+                }
+                
+                // Fallback - let browser choose
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId } }
+                });
+                debugLog(`${cameraType} initialized at fallback resolution`, 'warn');
+                return stream;
+                
+            } catch (err) {
+                debugLog(`Failed to initialize ${cameraType}: ${err.message}`, 'error');
+                return null;
+            }
+        }
+        // ===================================================
         
         // Camera configuration for flip/rotation (can be extended later if needed)
         let cameraConfig = { flips: {}, rots: {} };
@@ -3660,20 +3833,18 @@
         
         // Feature Type Panel
         function updateFeatureTypePanel() {
-            // Small delay to ensure DOM is ready
-            setTimeout(() => {
+            // Use requestAnimationFrame for reliable DOM update
+            requestAnimationFrame(() => {
                 const panel = document.getElementById('feature-type-panel');
                 if(!panel) {
-                    console.error('❌ Feature type panel element not found!');
+                    debugLog('Feature type panel element not found!', 'error');
                     return;
                 }
-                
-                console.log('✨ updateFeatureTypePanel - mode:', photoMode);
                 
                 if(photoMode === 'features') {
                     panel.style.display = 'flex';
                     panel.classList.add('visible');
-                    console.log('✨ Feature panel SHOWN at', panel.getBoundingClientRect());
+                    debugLog('Feature panel shown', 'info');
                 } else {
                     panel.style.display = 'none';
                     panel.classList.remove('visible');
@@ -3687,7 +3858,7 @@
                         btn.classList.remove('active');
                     }
                 });
-            }, 100);
+            });
         }
         
         function selectFeatureType(type) {
@@ -4895,30 +5066,66 @@
                     }
                 });
                 
-                // Always start camera immediately (no SKU gate blocking)
-                if(mainCameraId) {
-                    select.value = mainCameraId;
-                    debugLog('Starting main camera...', 'info');
-                    try {
-                        // Use regular switchCamera first (more reliable), then force full res
-                        await switchCamera(mainCameraId);
-                        debugLog('Main camera started', 'success');
-                        // Auto-trigger full resolution after camera is stable
-                        setTimeout(() => {
-                            debugLog('Auto-triggering FULL RES...', 'info');
-                            forceMaxResolution();
-                        }, 1500);
-                    } catch(camErr) {
-                        debugLog(`Failed to start main camera: ${camErr.message}`, 'error');
-                        showToast('error', 'Camera Error', 'Could not start camera');
+                // ============ INITIALIZE PERSISTENT STREAMS ============
+                // Start both cameras ONCE and keep them running to avoid thrashing
+                
+                if (mainCameraId) {
+                    debugLog('Initializing main camera stream (Arducam)...', 'info');
+                    mainCameraStream = await initializeCameraStream(mainCameraId, true);
+                    
+                    if (mainCameraStream) {
+                        // Set as active camera
+                        const video = document.getElementById('camera-video');
+                        video.srcObject = mainCameraStream;
+                        currentStream = mainCameraStream;
+                        activeCameraId = mainCameraId;
+                        select.value = mainCameraId;
+                        
+                        video.style.display = 'block';
+                        document.getElementById('camera-placeholder').style.display = 'none';
+                        document.getElementById('camera-overlay').style.display = 'block';
+                        document.getElementById('camera-status').textContent = 'LIVE';
+                        document.getElementById('camera-status').classList.add('live');
+                        
+                        applyFlipTransform();
+                        
+                        video.onloadedmetadata = () => {
+                            debugLog(`Main camera ready: ${video.videoWidth}x${video.videoHeight}`, 'success');
+                            const resEl = document.getElementById('camera-resolution');
+                            resEl.textContent = `${video.videoWidth}×${video.videoHeight}`;
+                            resEl.style.color = video.videoWidth >= 3800 ? '#22c55e' : video.videoWidth >= 1900 ? '#3b82f6' : '#f59e0b';
+                        };
                     }
-                } else if(videoDevices.length > 0) {
+                } else if (videoDevices.length > 0) {
                     // Fallback to first camera
                     debugLog('No Arducam found, using first camera', 'warn');
                     mainCameraId = videoDevices[0].deviceId;
-                    select.value = mainCameraId;
-                    await switchCamera(mainCameraId);
+                    mainCameraStream = await initializeCameraStream(mainCameraId, true);
+                    if (mainCameraStream) {
+                        const video = document.getElementById('camera-video');
+                        video.srcObject = mainCameraStream;
+                        currentStream = mainCameraStream;
+                        activeCameraId = mainCameraId;
+                        select.value = mainCameraId;
+                    }
+                }
+                
+                // Initialize secondary camera in background (non-blocking)
+                if (secondaryCameraId) {
+                    debugLog('Initializing secondary camera stream (C922X) in background...', 'info');
+                    // Use setTimeout to not block the main camera
+                    setTimeout(async () => {
+                        secondaryCameraStream = await initializeCameraStream(secondaryCameraId, false);
+                        if (secondaryCameraStream) {
+                            debugLog('Secondary camera ready for instant switching', 'success');
+                            camerasInitialized = true;
+                        }
+                    }, 1000);
                 } else {
+                    camerasInitialized = true;
+                }
+                
+                if (!mainCameraStream && videoDevices.length === 0) {
                     debugLog('NO CAMERAS FOUND!', 'error');
                     showToast('error', 'No Cameras', 'No cameras detected. Check connections.');
                 }
@@ -4935,6 +5142,35 @@
                 showToast('error', 'Camera Error', err.message);
             } 
         }
+        
+        // Smart camera select - uses instant switching when possible
+        async function handleCameraSelect(deviceId) {
+            if (!deviceId) return;
+            
+            debugLog(`Camera select: ${deviceId.slice(0, 8)}...`, 'info');
+            
+            // Try instant switching first
+            if (deviceId === mainCameraId && mainCameraStream) {
+                if (useMainCamera()) {
+                    debugLog('Used instant switch for main camera', 'success');
+                    updateCameraIndicator();
+                    return;
+                }
+            }
+            
+            if (deviceId === secondaryCameraId && secondaryCameraStream) {
+                if (useSecondaryCamera()) {
+                    debugLog('Used instant switch for secondary camera', 'success');
+                    updateCameraIndicator();
+                    return;
+                }
+            }
+            
+            // Fallback to full camera switch
+            debugLog('Using fallback camera switch', 'warn');
+            await switchCamera(deviceId);
+        }
+        
         function applyFlipTransform() {
             const video = document.getElementById('camera-video');
             if(!video) return;
@@ -5486,16 +5722,9 @@
             if(mode === 'main') {
                 // Enable defect marking in main mode
                 enableDefectMarking();
-                // Show shot sequence hint
-                updateShotHint();
-                const hintEl = document.getElementById('shot-hint');
-                if(hintEl) hintEl.style.display = 'block';
             } else {
                 video.style.transform = ''; // Clear transform
                 disableDefectMarking();
-                // Hide shot sequence hint for other modes
-                const hintEl = document.getElementById('shot-hint');
-                if(hintEl) hintEl.style.display = 'none';
             }
             
             // Reset zoom when switching modes
@@ -5504,42 +5733,37 @@
             // Track camera switch start time
             const previousCameraId = activeCameraId;
             
-            // Auto-switch cameras based on mode
+            // Auto-switch cameras based on mode - INSTANT SWITCHING (no stream restart)
             if(mode === 'main') {
-                // Single camera mode
+                // Single camera mode - use main camera (Arducam)
                 video.style.display = 'block';
                 
                 // Reset and show defect layer
                 resetDefectLayerStyles();
                 document.getElementById('defect-markers-layer').style.display = 'block';
                 
-                if(mainCameraId) {
-                    console.log(`📷 Main mode: checking if need to switch (active=${activeCameraId?.slice(0,8)}, target=${mainCameraId?.slice(0,8)})`);
-                    if(activeCameraId !== mainCameraId) {
-                        console.log('📷 SWITCHING to MAIN camera (ARDUCAM)...');
-                        trackCameraSwitch(previousCameraId, mainCameraId); // Start tracking switch
-                        try {
-                            await switchCameraMaxRes(mainCameraId);
-                            trackCameraSwitchComplete(previousCameraId, mainCameraId); // Complete tracking
-                            console.log('📷 Switch to ARDUCAM complete');
-                            setTimeout(() => {
-                                forceMaxResolution();
-                                enableDefectMarking();
-                            }, 500);
-                        } catch(e) {
-                            console.error('📷 Switch to ARDUCAM failed:', e);
-                        }
-                    } else {
-                        console.log('📷 Already on MAIN camera - forcing max resolution');
-                        setTimeout(() => {
-                            forceMaxResolution();
+                if(mainCameraStream) {
+                    // INSTANT SWITCH - just change srcObject, no stream restart
+                    if(useMainCamera()) {
+                        trackCameraSwitch(previousCameraId, mainCameraId);
+                        trackCameraSwitchComplete(previousCameraId, mainCameraId);
+                        debugLog('Instant switch to main camera complete', 'success');
+                        
+                        // Update defect layer after switch
+                        requestAnimationFrame(() => {
                             updateDefectLayerPosition();
                             renderDefectMarkers();
                             enableDefectMarking();
-                        }, 100);
+                        });
                     }
-                } else {
-                    console.warn('⚠️ mainCameraId not set');
+                } else if(mainCameraId) {
+                    // Fallback: stream not ready, use old method
+                    debugLog('Main stream not ready, using fallback switch', 'warn');
+                    try {
+                        await switchCameraMaxRes(mainCameraId);
+                    } catch(e) {
+                        debugLog(`Fallback switch failed: ${e.message}`, 'error');
+                    }
                 }
             } else if(mode === 'defect-closeup') {
                 // SPLIT SCREEN MODE for defect closeups
@@ -5557,38 +5781,33 @@
                     showToast('warning', 'No C922X Found', 'Using main camera', 2000);
                 }
             } else if(mode === 'tag' || mode === 'defect' || mode === 'features') {
-                // Reset and show defect layer (though it won't be active in these modes)
+                // Secondary camera modes - use C922X for close-ups
                 resetDefectLayerStyles();
                 document.getElementById('defect-markers-layer').style.display = 'block';
                 document.getElementById('camera-placeholder').style.display = 'none';
                 video.style.display = 'block';
                 
-                if(secondaryCameraId) {
-                    console.log(`📷 ${mode} mode: switching to secondary camera`);
-                    
-                    if(activeCameraId !== secondaryCameraId) {
-                        console.log('📷 SWITCHING to SECONDARY camera (C922X)...');
-                        trackCameraSwitch(previousCameraId, secondaryCameraId); // Start tracking switch
-                        try {
-                            await switchCamera(secondaryCameraId);
-                            trackCameraSwitchComplete(previousCameraId, secondaryCameraId); // Complete tracking
-                            console.log('📷 Switch to C922X complete');
-                        } catch(e) {
-                            console.error('📷 Switch to C922X failed:', e);
-                            showToast('error', 'Camera Switch Failed', e.message, 3000);
-                        }
-                    } else {
-                        console.log('📷 Already on SECONDARY camera');
+                if(secondaryCameraStream) {
+                    // INSTANT SWITCH - just change srcObject, no stream restart
+                    if(useSecondaryCamera()) {
+                        trackCameraSwitch(previousCameraId, secondaryCameraId);
+                        trackCameraSwitchComplete(previousCameraId, secondaryCameraId);
+                        debugLog('Instant switch to secondary camera complete', 'success');
+                    }
+                } else if(secondaryCameraId) {
+                    // Fallback: stream not ready, use old method
+                    debugLog('Secondary stream not ready, using fallback switch', 'warn');
+                    try {
+                        await switchCamera(secondaryCameraId);
+                    } catch(e) {
+                        debugLog(`Fallback switch failed: ${e.message}`, 'error');
                     }
                 } else {
-                    console.warn('⚠️ No secondary camera (C922X) detected - using main camera');
+                    // No secondary camera - use main
+                    debugLog('No secondary camera, using main for close-ups', 'warn');
                     showToast('warning', 'No C922X Found', 'Using main camera for close-ups', 3000);
-                    if(mainCameraId && activeCameraId !== mainCameraId) {
-                        try {
-                            await switchCamera(mainCameraId);
-                        } catch(e) {
-                            console.error('📷 Fallback to main camera failed:', e);
-                        }
+                    if(mainCameraStream) {
+                        useMainCamera();
                     }
                 }
             }
@@ -5854,10 +6073,10 @@
                     globalIndex: idx + 1 // 1-based index for display
                 }));
                 
-                // Generate filename for S3
-                const shotId = getCurrentShotId();
+                // Generate filename for S3 - simple numbered scheme
                 const photoIndex = data.mainPhotos.length + 1;
-                const filename = generatePhotoFilename(shotId || 'main', photoIndex);
+                const shotId = `main_${String(photoIndex).padStart(2, '0')}`;
+                const filename = generatePhotoFilename('main', photoIndex);
                 
                 // Compress for memory storage (keeps browser fast)
                 // Full 48MP → ~2K preview (2048px max dimension)
@@ -5872,16 +6091,13 @@
                     isPortrait: mainPhotoPortrait,
                     defects: photoDefects, // Store defects with the photo
                     defectSide: pendingDefectSide || null, // 'front', 'back', or null
-                    // Track shot sequence for S3 naming
+                    // Track for S3 naming
                     shotId: shotId,
                     filename: filename,
                     s3Key: null, // Will be set after upload
                     s3Uploaded: false
                 };
                 data.mainPhotos.push(mainPhoto);
-                
-                // Advance shot sequence for next photo
-                advanceShotSequence();
                 
                 // Clear the pending side after use
                 pendingDefectSide = null;
@@ -5893,7 +6109,16 @@
                 
                 const fullSizeMB = (fullResBlob.size / 1024 / 1024).toFixed(2);
                 const compSizeMB = (compressedBlob.size / 1024 / 1024).toFixed(2);
-                console.log(`📸 MAIN: ${mainCanvas.width}×${mainCanvas.height} | Full: ${fullSizeMB}MB → Memory: ${compSizeMB}MB`);
+                debugLog(`MAIN: ${mainCanvas.width}×${mainCanvas.height} | Full: ${fullSizeMB}MB → Memory: ${compSizeMB}MB`, 'info');
+                
+                // Memory management: drop oldest fullResBlobs if we have too many pending
+                const pendingFullRes = data.mainPhotos.filter(p => p.fullResBlob && !p.s3Uploaded);
+                if (pendingFullRes.length > 5) {
+                    // Drop the oldest fullResBlob to prevent memory bomb
+                    const oldest = pendingFullRes[0];
+                    oldest.fullResBlob = null;
+                    debugLog(`⚠️ Memory management: dropped oldest pending fullResBlob`, 'warn');
+                }
                 
                 // Upload full res to S3 immediately (background, non-blocking)
                 uploadMainPhotoToS3Immediately(fullResBlob, filename).then(s3Key => {
@@ -5902,8 +6127,10 @@
                         mainPhoto.s3Uploaded = true;
                         // Clear full res blob from memory after successful upload
                         mainPhoto.fullResBlob = null;
-                        console.log(`💾 Cleared full res blob from memory after S3 upload`);
+                        debugLog(`S3 upload complete, freed memory`, 'success');
                     }
+                }).catch(err => {
+                    debugLog(`S3 upload failed: ${err.message}`, 'error');
                 });
                 
                 // If we have defect markers, create crops and annotated version
@@ -6829,8 +7056,6 @@
             // Show elastic check for Sweatpants
             const elasticSection = document.getElementById('elastic-section');
             if(elasticSection) elasticSection.classList.toggle('hidden', cat !== 'Sweatpants');
-            // Update shot sequence based on category
-            updateShotSequence();
             // Update measurement hints based on category
             updateMeasurementHints(cat);
             // Update tag location help if panel is open
@@ -6905,13 +7130,10 @@
         }
         
         function setTagStatus(status, btn) { 
-            data.tagStatus = status; 
-            document.querySelectorAll('.tag-btn').forEach(b => { 
-                b.classList.remove('selected','btn-hero'); 
-                b.classList.add('btn-secondary'); 
-            }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary'); 
+            data.tagStatus = status;
+            renderButtonGroups(); // Sync UI to data
+            
+            // Additional visibility logic
             document.getElementById('tag-details').classList.toggle('hidden', status !== 'has'); 
             document.getElementById('material-tag-warning').classList.toggle('hidden', status === 'has'); 
             
@@ -6923,30 +7145,18 @@
             const fabricHelpBtn = document.getElementById('fabric-help-btn');
             const fabricHelpPanel = document.getElementById('fabric-help-panel');
             
-            if(fabricTagCutSection) {
-                fabricTagCutSection.classList.toggle('hidden', !tagCutMode);
-            }
-            if(fabricHelpBtn) {
-                fabricHelpBtn.classList.toggle('hidden', tagCutMode);
-            }
-            if(fabricHelpPanel && tagCutMode) {
-                fabricHelpPanel.classList.add('hidden');
-            }
+            if(fabricTagCutSection) fabricTagCutSection.classList.toggle('hidden', !tagCutMode);
+            if(fabricHelpBtn) fabricHelpBtn.classList.toggle('hidden', tagCutMode);
+            if(fabricHelpPanel && tagCutMode) fabricHelpPanel.classList.add('hidden');
             
             // Material tag cut section
             const materialTagCutSection = document.getElementById('material-tag-cut-section');
             const materialHelpBtn = document.getElementById('material-help-btn');
             const materialHelpPanel = document.getElementById('material-help-panel');
             
-            if(materialTagCutSection) {
-                materialTagCutSection.classList.toggle('hidden', !tagCutMode);
-            }
-            if(materialHelpBtn) {
-                materialHelpBtn.classList.toggle('hidden', tagCutMode);
-            }
-            if(materialHelpPanel && tagCutMode) {
-                materialHelpPanel.classList.add('hidden');
-            }
+            if(materialTagCutSection) materialTagCutSection.classList.toggle('hidden', !tagCutMode);
+            if(materialHelpBtn) materialHelpBtn.classList.toggle('hidden', tagCutMode);
+            if(materialHelpPanel && tagCutMode) materialHelpPanel.classList.add('hidden');
             
             // Re-render cards (they'll be disabled in tagCutMode)
             renderFabricCards();
@@ -6956,10 +7166,12 @@
         function setSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('tag-size-input').value=''; }
         function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
         function onSizeInput(el) { data.tagSize = el.value.trim(); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function setOrigin(origin, btn) { data.origin = origin; document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('country-section').classList.toggle('hidden', origin !== 'import'); if(origin==='usa')data.country='USA'; }
+        function setOrigin(origin, btn) { 
+            data.origin = origin; 
+            if(origin === 'usa') data.country = 'USA';
+            renderButtonGroups(); // Sync UI to data
+        }
         function setCountry(country, btn) { 
-            document.querySelectorAll('.country-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); 
             if(country === 'Other') {
                 document.getElementById('country-other-input').classList.remove('hidden');
                 document.getElementById('country-other-input').focus();
@@ -6968,11 +7180,19 @@
                 document.getElementById('country-other-input').value = '';
                 data.country = country;
             }
+            renderButtonGroups(); // Sync UI to data
         }
         function onCountryOtherInput() { data.country = document.getElementById('country-other-input').value.trim(); }
-        function setGender(gender, btn) { data.gender = gender; document.querySelectorAll('.gender-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setGender(gender, btn) { 
+            data.gender = gender; 
+            renderButtonGroups(); // Sync UI to data
+        }
         function toggleColor(color, btn) { const idx = data.colors.indexOf(color); if(idx>-1){data.colors.splice(idx,1);btn.classList.remove('selected');} else{data.colors.push(color);btn.classList.add('selected');} updateValidation(); }
-        function setFade(fade, btn) { data.fade = fade; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
+        function setFade(fade, btn) { 
+            data.fade = fade; 
+            renderButtonGroups(); // Sync UI to data
+            updateValidation(); 
+        }
         function setPattern(pattern, btn) { 
             data.pattern = pattern; 
             document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
@@ -6998,28 +7218,25 @@
         function setGraphicCategory(cat, btn) { data.graphicCategory = cat; document.querySelectorAll('.graphic-cat-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function setSleeve(length, btn) { 
             data.sleeveLength = length; 
-            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary'); 
+            renderButtonGroups(); // Sync UI to data
             // Hide sleeve style when None
             document.getElementById('sleeve-style-section').classList.toggle('hidden', length==='None'); 
             // Show cutoff section for T-Shirts when sleeveless
             const isTShirt = ['T-Shirt','Sweatshirt','Hoodie'].includes(data.category);
             document.getElementById('cutoff-section').classList.toggle('hidden', !(length==='None' && isTShirt));
             // Clear cutoff if not sleeveless
-            if(length !== 'None') { data.cutoffType = ''; document.querySelectorAll('.cutoff-btn').forEach(b => b.classList.remove('selected','btn-hero')); }
+            if(length !== 'None') { data.cutoffType = ''; }
             // Update measurement hints for sleeveless
             updateMeasurementHintsForSleeveStyle(data.sleeveStyle, length);
-            // Update shot sequence - long sleeves need T-shape
-            updateShotSequence();
             updateValidation(); 
         }
-        function setCutoff(type, btn) { data.cutoffType = type; document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setCutoff(type, btn) { 
+            data.cutoffType = type; 
+            renderButtonGroups(); // Sync UI to data
+        }
         function setSleeveStyle(style, btn) { 
             data.sleeveStyle = style; 
-            document.querySelectorAll('.style-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary'); 
+            renderButtonGroups(); // Sync UI to data
             // Show/hide measurement notice for Raglan/Dolman
             const notice = document.getElementById('sleeve-measurement-notice');
             if(notice) notice.classList.toggle('hidden', style === 'Standard');
@@ -7054,29 +7271,39 @@
             if(outerRag) outerRag.classList.toggle('hidden', !isRaglanDolman || isSleeveless);
             if(outerSleeveless) outerSleeveless.classList.toggle('hidden', !isSleeveless);
         }
-        function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
-        function setBodyConstruction(type, btn) { data.bodyConstruction = type; document.querySelectorAll('.body-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setStitch(stitch, btn) { 
+            data.stitch = stitch; 
+            renderButtonGroups(); // Sync UI to data
+        }
+        function setBodyConstruction(type, btn) { 
+            data.bodyConstruction = type; 
+            renderButtonGroups(); // Sync UI to data
+        }
         
         // BOTTOMS: Leg Style Functions
         function setLegStyle(style, btn) { 
             data.legStyle = style; 
-            document.querySelectorAll('.leg-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary'); 
+            renderButtonGroups(); // Sync UI to data
             updateValidation(); 
         }
         function setRise(rise, btn) { 
             data.rise = rise; 
-            document.querySelectorAll('.rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
-            btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary'); 
+            renderButtonGroups(); // Sync UI to data
         }
         function toggleLegStyleHelp() {
             document.getElementById('leg-style-help').classList.toggle('hidden');
         }
         
-        function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
-        function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
+        function setThickness(thickness, btn) { 
+            data.thickness = thickness; 
+            renderButtonGroups(); // Sync UI to data
+            updateValidation(); 
+        }
+        function setLayers(layers, btn) { 
+            data.layers = layers; 
+            renderButtonGroups(); // Sync UI to data
+            updateValidation(); 
+        }
         function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.remove('btn-secondary'); document.getElementById('btn-clean').classList.add('selected','btn-hero'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
         function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected','btn-hero'); document.getElementById('btn-clean').classList.add('btn-secondary'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null;} updateValidation(); }
@@ -7549,193 +7776,364 @@
             }
         }
         
+        // ============ AI UI HELPER FUNCTIONS ============
+        // These helpers click buttons by their onclick value, not by textContent
+        // This avoids the "text content trap" where emojis break matching
+        
+        function clickButtonByOnclick(selector, value) {
+            // Find button where onclick contains the value
+            const buttons = document.querySelectorAll(selector);
+            for (const btn of buttons) {
+                const onclick = btn.getAttribute('onclick') || '';
+                // Check if onclick contains the value (e.g., "setGender('Men', this)")
+                if (onclick.includes(`'${value}'`) || onclick.includes(`"${value}"`)) {
+                    btn.click();
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function selectButtonByValue(selector, value, selectedClasses = ['selected', 'btn-hero'], removeClasses = ['btn-secondary']) {
+            // Update button visual state by onclick value
+            const buttons = document.querySelectorAll(selector);
+            buttons.forEach(btn => {
+                const onclick = btn.getAttribute('onclick') || '';
+                const isMatch = onclick.includes(`'${value}'`) || onclick.includes(`"${value}"`);
+                
+                if (isMatch) {
+                    selectedClasses.forEach(c => btn.classList.add(c));
+                    removeClasses.forEach(c => btn.classList.remove(c));
+                } else {
+                    selectedClasses.forEach(c => btn.classList.remove(c));
+                    removeClasses.forEach(c => btn.classList.add(c));
+                }
+            });
+        }
+        // ================================================
+        
         function applyAISuggestions(aiData, type) {
-            console.log('🤖 Applying AI suggestions:', aiData);
+            debugLog(`Applying AI suggestions (${type}): ${JSON.stringify(aiData)}`, 'info');
             let fieldsUpdated = [];
             
             if (type === 'tag') {
-                // Size
-                if (aiData.size && !data.tagSize) {
-                    data.tagSize = aiData.size;
-                    fieldsUpdated.push('Size: ' + aiData.size);
-                    // Update UI
-                    document.querySelectorAll('#tag-size-options .chip-btn').forEach(btn => {
-                        btn.classList.toggle('active', btn.textContent.trim() === aiData.size);
-                    });
-                }
-                
-                // Country
-                if (aiData.country && !data.country) {
-                    data.country = aiData.country;
-                    fieldsUpdated.push('Country: ' + aiData.country);
-                    // Update origin dropdown
-                    const countrySelect = document.getElementById('country-select');
-                    if (countrySelect) {
-                        countrySelect.value = aiData.country;
-                        // Trigger change event
-                        countrySelect.dispatchEvent(new Event('change'));
+                // ============ TAG STATUS ============
+                // Determine tag readability status
+                if (!data.tagStatus) {
+                    let tagStatus = 'has'; // Default to readable if AI returned data
+                    
+                    // Check for explicit tagCondition or tagStatus from AI
+                    if (aiData.tagCondition) {
+                        const condition = aiData.tagCondition.toLowerCase();
+                        if (condition === 'missing' || condition === 'cut' || condition === 'none' || condition === 'no tag') {
+                            tagStatus = 'none';
+                        } else if (condition === 'worn' || condition === 'faded' || condition === 'damaged' || condition === 'partial' || condition === 'hard to read') {
+                            tagStatus = 'worn';
+                        } else {
+                            tagStatus = 'has'; // excellent, good, readable, etc.
+                        }
+                    } else if (aiData.tagStatus) {
+                        const status = aiData.tagStatus.toLowerCase();
+                        if (status.includes('missing') || status.includes('cut') || status.includes('none')) {
+                            tagStatus = 'none';
+                        } else if (status.includes('worn') || status.includes('faded')) {
+                            tagStatus = 'worn';
+                        } else {
+                            tagStatus = 'has';
+                        }
+                    } else if (aiData.noTagVisible || aiData.tagMissing) {
+                        tagStatus = 'none';
                     }
+                    // If AI returned size/materials/brand, tag must be readable
+                    else if (aiData.size || aiData.materials || aiData.brand) {
+                        tagStatus = 'has';
+                    }
+                    
+                    data.tagStatus = tagStatus;
+                    fieldsUpdated.push('Tag Status: ' + (tagStatus === 'has' ? 'Readable' : tagStatus === 'worn' ? 'Worn/Faded' : 'Missing/Cut'));
+                    
+                    // Update UI using helper (avoids text content trap)
+                    selectButtonByValue('.tag-btn', tagStatus);
                 }
                 
-                // Materials
-                if (aiData.materials && aiData.materials.length > 0 && data.materials.length === 0) {
-                    const materialNames = aiData.materials.map(m => m.material);
-                    data.materials = materialNames;
-                    fieldsUpdated.push('Materials: ' + materialNames.join(', '));
-                    // Update material chips
-                    document.querySelectorAll('#material-options .chip-btn').forEach(btn => {
-                        const mat = btn.textContent.trim();
-                        if (materialNames.includes(mat)) {
-                            btn.classList.add('active');
+                // ============ SIZE ============
+                if (aiData.size && !data.tagSize) {
+                    // Normalize size (handle variations like "Large", "L", "LG")
+                    let size = aiData.size.toUpperCase().trim();
+                    const sizeMap = {
+                        'XSMALL': 'XS', 'X-SMALL': 'XS', 'EXTRA SMALL': 'XS',
+                        'SMALL': 'S',
+                        'MEDIUM': 'M', 'MED': 'M',
+                        'LARGE': 'L', 'LG': 'L',
+                        'XLARGE': 'XL', 'X-LARGE': 'XL', 'EXTRA LARGE': 'XL', '1X': 'XL',
+                        'XXLARGE': 'XXL', 'XX-LARGE': 'XXL', '2XL': 'XXL', '2X': 'XXL',
+                        'XXXLARGE': 'XXXL', 'XXX-LARGE': 'XXXL', '3XL': 'XXXL', '3X': 'XXXL',
+                        '4XL': '4XL', '4X': '4XL',
+                        '5XL': '5XL', '5X': '5XL'
+                    };
+                    size = sizeMap[size] || size;
+                    
+                    data.tagSize = size;
+                    fieldsUpdated.push('Size: ' + size);
+                    
+                    // Update size chips
+                    document.querySelectorAll('.size-chip, .size-btn').forEach(btn => {
+                        const btnText = btn.textContent.trim().toUpperCase();
+                        if (btnText === size) {
+                            btn.classList.add('active', 'selected');
                         }
                     });
                 }
                 
-                // Tag condition → tagStatus
-                if (aiData.tagCondition) {
-                    const conditionMap = {
-                        'excellent': 'Present',
-                        'good': 'Present',
-                        'faded': 'Faded',
-                        'damaged': 'Faded',
-                        'partial': 'Faded'
+                // ============ GENDER FROM TAG ============
+                if (!data.gender) {
+                    let gender = null;
+                    
+                    if (aiData.gender) {
+                        const g = aiData.gender.toLowerCase();
+                        if (g.includes('men') && !g.includes('women')) gender = 'Men';
+                        else if (g.includes('women') || g.includes('ladies') || g.includes('female')) gender = 'Women';
+                        else if (g.includes('boy')) gender = 'Boys';
+                        else if (g.includes('girl')) gender = 'Girls';
+                        else if (g.includes('kid') || g.includes('child') || g.includes('youth')) gender = 'Kids Unisex';
+                        else if (g.includes('unisex')) gender = 'Unisex';
+                        else if (g === 'none' || g === 'not specified' || g === 'n/a') gender = 'None';
+                    }
+                    // If AI explicitly says no gender on tag
+                    else if (aiData.noGenderOnTag || aiData.genderNotSpecified) {
+                        gender = 'None';
+                    }
+                    
+                    if (gender) {
+                        data.gender = gender;
+                        fieldsUpdated.push('Gender: ' + gender);
+                        
+                        // Update gender buttons using helper (avoids text content trap)
+                        selectButtonByValue('.gender-btn', gender);
+                    }
+                }
+                
+                // ============ COUNTRY / ORIGIN ============
+                if (aiData.country && !data.country) {
+                    const country = aiData.country.trim();
+                    const usaVariants = ['usa', 'united states', 'us', 'america', 'u.s.a.', 'u.s.', 'made in usa'];
+                    
+                    if (usaVariants.some(v => country.toLowerCase().includes(v))) {
+                        // It's USA - set origin to 'usa'
+                        if (!data.origin) {
+                            data.origin = 'usa';
+                            data.country = 'USA';
+                            fieldsUpdated.push('Origin: USA Made');
+                            selectButtonByValue('.origin-btn', 'usa');
+                        }
+                    } else {
+                        // It's an import
+                        if (!data.origin) {
+                            data.origin = 'import';
+                            const countrySection = document.getElementById('country-section');
+                            if (countrySection) countrySection.classList.remove('hidden');
+                            selectButtonByValue('.origin-btn', 'import');
+                        }
+                        
+                        data.country = country;
+                        fieldsUpdated.push('Country: ' + country);
+                        
+                        // Try to find matching country button using onclick value
+                        const countryFound = clickButtonByOnclick('.country-btn', country);
+                        
+                        if (!countryFound) {
+                            const otherInput = document.getElementById('country-other-input');
+                            if (otherInput) {
+                                otherInput.classList.remove('hidden');
+                                otherInput.value = country;
+                            }
+                        }
+                    }
+                }
+                
+                // ============ MATERIALS ============
+                if (aiData.materials && aiData.materials.length > 0 && data.materials.length === 0) {
+                    // Normalize material names
+                    const materialMap = {
+                        'cotton': 'Cotton', 'polyester': 'Polyester', 'poly': 'Polyester',
+                        'acrylic': 'Acrylic', 'nylon': 'Nylon', 'rayon': 'Rayon',
+                        'wool': 'Wool', 'linen': 'Linen', 'silk': 'Silk',
+                        'spandex': 'Spandex', 'elastane': 'Spandex', 'lycra': 'Spandex',
+                        'viscose': 'Viscose', 'modal': 'Modal', 'tencel': 'Tencel',
+                        'cashmere': 'Cashmere', 'hemp': 'Hemp', 'bamboo': 'Bamboo',
+                        'leather': 'Leather', 'denim': 'Denim', 'fleece': 'Fleece'
                     };
-                    const status = conditionMap[aiData.tagCondition] || 'Present';
-                    if (!data.tagStatus) {
-                        data.tagStatus = status;
-                        fieldsUpdated.push('Tag: ' + status);
-                        document.querySelectorAll('#tag-status-options .chip-btn').forEach(btn => {
-                            btn.classList.toggle('active', btn.textContent.trim() === status);
+                    
+                    const materialNames = aiData.materials.map(m => {
+                        const raw = (typeof m === 'object' ? m.material : m).toLowerCase().trim();
+                        return materialMap[raw] || raw.charAt(0).toUpperCase() + raw.slice(1);
+                    });
+                    
+                    data.materials = materialNames;
+                    fieldsUpdated.push('Materials: ' + materialNames.join(', '));
+                    if (typeof renderMaterialCards === 'function') {
+                        renderMaterialCards();
+                    }
+                }
+                
+                // ============ VINTAGE INDICATORS ============
+                if (aiData.vintageIndicators && aiData.vintageIndicators.length > 0 && !data.origin) {
+                    const indicators = aiData.vintageIndicators.map(v => v.toLowerCase());
+                    if (indicators.some(v => v.includes('union') || v.includes('single stitch') || v.includes('made in usa'))) {
+                        // Vintage USA items - set origin to 'usa'
+                        data.origin = 'usa';
+                        data.country = 'USA';
+                        fieldsUpdated.push('Origin: USA (Vintage indicators detected)');
+                        selectButtonByValue('.origin-btn', 'usa');
+                    }
+                }
+                
+                // ============ BRAND (log only) ============
+                if (aiData.brand) {
+                    fieldsUpdated.push('Brand: ' + aiData.brand);
+                    // Store for later use
+                    data.brand = aiData.brand;
+                }
+                
+                // ============ ERA (log only) ============
+                if (aiData.estimatedEra) {
+                    fieldsUpdated.push('Era: ~' + aiData.estimatedEra);
+                    data.era = aiData.estimatedEra;
+                }
+            }
+            
+            // ============ MAIN PHOTO ANALYSIS ============
+            if (type === 'main') {
+                // ============ SUPER CATEGORY ============
+                if (aiData.superCategory && !data.superCategory) {
+                    const superCat = aiData.superCategory.toLowerCase();
+                    if (['tops', 'bottoms', 'outer'].includes(superCat)) {
+                        data.superCategory = superCat;
+                        fieldsUpdated.push('Type: ' + superCat);
+                        // Click the right super category button
+                        document.querySelectorAll('.hero-btn').forEach(btn => {
+                            if (btn.textContent.toLowerCase().includes(superCat)) {
+                                btn.click();
+                            }
                         });
                     }
                 }
                 
-                // Vintage indicators → origin
-                if (aiData.vintageIndicators && aiData.vintageIndicators.length > 0) {
-                    const indicators = aiData.vintageIndicators.map(v => v.toLowerCase());
-                    if (indicators.some(v => v.includes('union') || v.includes('made in usa') || v.includes('single stitch'))) {
-                        if (!data.origin) {
-                            data.origin = 'Vintage';
-                            fieldsUpdated.push('Origin: Vintage');
-                            document.querySelectorAll('#origin-options .chip-btn').forEach(btn => {
-                                btn.classList.toggle('active', btn.textContent.trim() === 'Vintage');
-                            });
-                        }
-                    }
-                }
-                
-                // Estimated era - just log for now
-                if (aiData.estimatedEra) {
-                    console.log('🤖 AI estimated era:', aiData.estimatedEra);
-                    fieldsUpdated.push('Era: ~' + aiData.estimatedEra);
-                }
-                
-                // Brand - log for reference (not a form field currently)
-                if (aiData.brand) {
-                    console.log('🤖 AI detected brand:', aiData.brand);
-                    fieldsUpdated.push('Brand: ' + aiData.brand);
-                }
-            }
-            
-            // Main photo analysis
-            if (type === 'main') {
-                // Category
+                // ============ CATEGORY ============
                 if (aiData.category && !data.category) {
                     data.category = aiData.category;
                     fieldsUpdated.push('Category: ' + aiData.category);
-                    // Update category buttons
-                    document.querySelectorAll('.cat-btn').forEach(btn => {
+                    
+                    // Try to click the matching sub-category button
+                    document.querySelectorAll('.sub-cat-btn, .cat-btn').forEach(btn => {
                         const btnText = btn.textContent.replace(/[^\w\s-]/g, '').trim();
-                        if (btnText.toUpperCase() === aiData.category.toUpperCase()) {
-                            btn.click(); // Trigger the setCategory function
-                        }
-                    });
-                }
-                
-                // Super Category
-                if (aiData.superCategory && !data.superCategory) {
-                    data.superCategory = aiData.superCategory;
-                    fieldsUpdated.push('SuperCategory: ' + aiData.superCategory);
-                }
-                
-                // Colors
-                if (aiData.colors && aiData.colors.length > 0 && data.colors.length === 0) {
-                    data.colors = aiData.colors;
-                    fieldsUpdated.push('Colors: ' + aiData.colors.join(', '));
-                    // Update color chips
-                    document.querySelectorAll('#color-options .chip-btn').forEach(btn => {
-                        const colorText = btn.textContent.trim();
-                        if (aiData.colors.includes(colorText)) {
-                            btn.classList.add('active');
-                        }
-                    });
-                }
-                
-                // Pattern
-                if (aiData.pattern && !data.pattern) {
-                    data.pattern = aiData.pattern;
-                    fieldsUpdated.push('Pattern: ' + aiData.pattern);
-                    document.querySelectorAll('.pattern-btn').forEach(btn => {
-                        if (btn.textContent.trim() === aiData.pattern) {
+                        if (btnText.toLowerCase() === aiData.category.toLowerCase()) {
                             btn.click();
                         }
                     });
                 }
                 
-                // Fabric Type
+                // ============ COLORS ============
+                if (aiData.colors && aiData.colors.length > 0 && data.colors.length === 0) {
+                    // Normalize color names
+                    const colorMap = {
+                        'white': 'White', 'cream': 'Cream', 'beige': 'Cream', 'off-white': 'Cream',
+                        'tan': 'Tan', 'khaki': 'Tan', 'gray': 'Gray', 'grey': 'Gray',
+                        'black': 'Black', 'red': 'Red', 'orange': 'Orange', 'yellow': 'Yellow',
+                        'green': 'Green', 'olive': 'Green', 'blue': 'Blue', 'navy': 'Navy',
+                        'purple': 'Purple', 'pink': 'Pink', 'brown': 'Brown',
+                        'multicolor': 'Multi', 'multi': 'Multi', 'multicolored': 'Multi'
+                    };
+                    
+                    const normalizedColors = aiData.colors.map(c => {
+                        const lower = c.toLowerCase().trim();
+                        return colorMap[lower] || c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+                    });
+                    
+                    data.colors = normalizedColors;
+                    fieldsUpdated.push('Colors: ' + normalizedColors.join(', '));
+                    
+                    // Update color items
+                    document.querySelectorAll('.color-item').forEach(item => {
+                        const colorText = item.querySelector('span')?.textContent?.trim();
+                        if (colorText && normalizedColors.some(c => c.toLowerCase() === colorText.toLowerCase())) {
+                            item.classList.add('selected');
+                        }
+                    });
+                }
+                
+                // ============ PATTERN ============
+                if (aiData.pattern && !data.pattern) {
+                    // Normalize pattern names
+                    const patternMap = {
+                        'solid': 'Solid', 'plain': 'Solid',
+                        'striped': 'Striped', 'stripes': 'Striped',
+                        'graphic': 'Graphic', 'print': 'Graphic', 'logo': 'Graphic',
+                        'plaid': 'Plaid', 'tartan': 'Plaid', 'flannel': 'Plaid',
+                        'checkered': 'Plaid', 'buffalo check': 'Plaid',
+                        'tie dye': 'Tie Dye', 'tie-dye': 'Tie Dye', 'tiedye': 'Tie Dye',
+                        'camo': 'Camo', 'camouflage': 'Camo',
+                        'color block': 'Color Block', 'colorblock': 'Color Block',
+                        'embroidered': 'Embroidered', 'embroidery': 'Embroidered',
+                        'animal print': 'Animal Print', 'leopard': 'Animal Print',
+                        'floral': 'Floral', 'paisley': 'Paisley',
+                        'abstract': 'Abstract', 'geometric': 'Geometric'
+                    };
+                    
+                    const lower = aiData.pattern.toLowerCase().trim();
+                    const pattern = patternMap[lower] || aiData.pattern;
+                    
+                    data.pattern = pattern;
+                    fieldsUpdated.push('Pattern: ' + pattern);
+                    
+                    // Call selectPattern to update UI properly
+                    if (typeof selectPattern === 'function') {
+                        selectPattern(pattern);
+                    }
+                }
+                
+                // ============ SLEEVE LENGTH ============
+                if (aiData.sleeveLength && !data.sleeveLength) {
+                    // Normalize sleeve length
+                    const sleeveMap = {
+                        'short': 'Short', 'short sleeve': 'Short', 'short-sleeve': 'Short',
+                        'long': 'Long', 'long sleeve': 'Long', 'long-sleeve': 'Long',
+                        '3/4': '3/4', 'three quarter': '3/4', '3/4 sleeve': '3/4',
+                        'sleeveless': 'None', 'none': 'None', 'tank': 'None', 'no sleeves': 'None'
+                    };
+                    
+                    const lower = aiData.sleeveLength.toLowerCase().trim();
+                    const sleeve = sleeveMap[lower] || aiData.sleeveLength;
+                    
+                    data.sleeveLength = sleeve;
+                    fieldsUpdated.push('Sleeves: ' + sleeve);
+                    
+                    // Update sleeve buttons using helper (avoids text content trap)
+                    selectButtonByValue('.sleeve-btn', sleeve);
+                }
+                
+                // ============ FABRIC TYPE (estimate from visual) ============
                 if (aiData.fabricType && !data.fabricType) {
                     data.fabricType = aiData.fabricType;
-                    fieldsUpdated.push('Fabric: ' + aiData.fabricType);
+                    fieldsUpdated.push('Fabric Type: ' + aiData.fabricType);
                 }
                 
-                // Sleeve Length
-                if (aiData.sleeveLength && !data.sleeveLength) {
-                    data.sleeveLength = aiData.sleeveLength;
-                    fieldsUpdated.push('Sleeve: ' + aiData.sleeveLength);
-                    document.querySelectorAll('.sleeve-btn').forEach(btn => {
-                        if (btn.textContent.trim() === aiData.sleeveLength) {
-                            btn.click();
-                        }
-                    });
-                }
-                
-                // Sleeve Style
-                if (aiData.sleeveStyle && !data.sleeveStyle) {
-                    data.sleeveStyle = aiData.sleeveStyle;
-                    fieldsUpdated.push('Sleeve Style: ' + aiData.sleeveStyle);
-                }
-                
-                // Gender
-                if (aiData.gender && !data.gender) {
-                    const genderMap = { 'mens': 'Mens', 'womens': 'Womens', 'unisex': 'Unisex' };
-                    data.gender = genderMap[aiData.gender] || aiData.gender;
-                    fieldsUpdated.push('Gender: ' + data.gender);
-                }
-                
-                // Print Type
-                if (aiData.printType && !data.printType) {
-                    data.printType = aiData.printType;
-                    fieldsUpdated.push('Print: ' + aiData.printType);
-                }
-                
-                // Graphic Category
-                if (aiData.graphicCategory && !data.graphicCategory) {
-                    data.graphicCategory = aiData.graphicCategory;
-                    fieldsUpdated.push('Graphic: ' + aiData.graphicCategory);
-                }
-                
-                // Visible Defects - just log for now
+                // ============ VISIBLE DEFECTS (flag for attention) ============
                 if (aiData.visibleDefects && aiData.visibleDefects.length > 0) {
-                    console.log('🤖 AI detected potential defects:', aiData.visibleDefects);
-                    fieldsUpdated.push('Defects detected: ' + aiData.visibleDefects.join(', '));
+                    debugLog(`AI detected potential defects: ${aiData.visibleDefects.join(', ')}`, 'warn');
+                    fieldsUpdated.push('⚠️ Defects spotted: ' + aiData.visibleDefects.join(', '));
                 }
             }
             
             // Log what was updated
             if (fieldsUpdated.length > 0) {
-                console.log('🤖 Fields auto-filled:', fieldsUpdated);
+                debugLog(`AI filled ${fieldsUpdated.length} fields: ${fieldsUpdated.join(', ')}`, 'success');
+            } else {
+                debugLog('AI returned data but no new fields were updated (already filled?)', 'warn');
             }
             
+            // RENDER PATTERN: Sync all UI to data state
+            renderButtonGroups();
             updateValidation();
         }
         
@@ -9087,6 +9485,12 @@
             }
         }
         function resetForm(keepSku = false) { 
+            // CRITICAL: Clear any pending saveDraft timer to prevent saving empty state
+            if (saveDraftTimer) {
+                clearTimeout(saveDraftTimer);
+                saveDraftTimer = null;
+            }
+            
             // Clear saved draft since we're starting fresh
             clearDraft();
             
@@ -9127,9 +9531,6 @@
             if(!keepSku) {
                 metrics = null;
             }
-            
-            // Reset shot sequence for new item
-            resetShotSequence();
             
             // Reset data object
             data = {
