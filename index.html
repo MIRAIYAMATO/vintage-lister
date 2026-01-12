@@ -1681,7 +1681,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.49";
+        const VERSION = "v100.50";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -7791,73 +7791,110 @@
         }
         
         function parseNumbersFromTranscript(text) {
+            console.log('🔢 === PARSING TRANSCRIPT ===');
+            console.log('🔢 Raw transcript:', text);
+            
             const numbers = [];
-            const lower = text.toLowerCase();
+            let processed = text.toLowerCase();
             
-            // Replace common spoken fractions BEFORE tokenizing
-            let processed = lower
-                .replace(/\bpoint five\b/g, '.5')
-                .replace(/\bpoint 5\b/g, '.5')
-                .replace(/\band a half\b/g, '.5')
-                .replace(/\bpoint two five\b/g, '.25')
-                .replace(/\bpoint 25\b/g, '.25')
-                .replace(/\band a quarter\b/g, '.25')
-                .replace(/\bpoint seven five\b/g, '.75')
-                .replace(/\bpoint 75\b/g, '.75');
+            // Step 1: Normalize hyphenated numbers (twenty-two -> twenty two)
+            processed = processed.replace(/-/g, ' ');
             
-            // Remove punctuation except decimal points, then split
-            processed = processed.replace(/[.,!?;:]+(?=\s|$)/g, ' ');
-            const tokens = processed.split(/\s+/).filter(t => t);
+            // Step 2: Replace spoken fractions with decimals
+            processed = processed
+                .replace(/\band a half\b/g, ' .5')
+                .replace(/\bpoint five\b/g, ' .5')
+                .replace(/\bpoint 5\b/g, ' .5')
+                .replace(/\band a quarter\b/g, ' .25')
+                .replace(/\bpoint two five\b/g, ' .25')
+                .replace(/\bpoint 25\b/g, ' .25')
+                .replace(/\bpoint seven five\b/g, ' .75')
+                .replace(/\bpoint 75\b/g, ' .75')
+                .replace(/\bhalf\b/g, ' .5'); // standalone "half" after a number
             
-            console.log('🔢 Parsing tokens:', tokens);
+            // Step 3: Remove filler words and measurement terms that don't affect numbers
+            const fillerWords = [
+                'inches', 'inch', 'is', 'are', 'the', 'and', 'to', 'a', 'an',
+                'neck', 'shoulder', 'sleeve', 'opening', 'bottom', 'top', 'pit',
+                'waist', 'hem', 'length', 'collar', 'cuff', 'width', 'from',
+                'measurement', 'measurements', 'next', 'then', 'okay', 'um', 'uh'
+            ];
             
+            // Remove punctuation and split into tokens
+            processed = processed.replace(/[.,!?;:'"]+/g, ' ');
+            let tokens = processed.split(/\s+/).filter(t => t && !fillerWords.includes(t));
+            
+            console.log('🔢 Cleaned tokens:', tokens);
+            
+            // Step 4: Parse numbers from tokens
             let i = 0;
             while(i < tokens.length) {
-                let token = tokens[i].replace(/[^a-z0-9.-]/g, '');
+                let token = tokens[i];
                 
-                // Check for direct number >= 1 (e.g., "22", "28.5")
-                // Don't pick up standalone fractions like ".5" or "0.5"
+                // Check for direct number (e.g., "22", "28.5", "8")
                 const directNum = parseFloat(token);
                 if(!isNaN(directNum) && directNum >= 1 && directNum < 100) {
+                    // Check if next token is a fraction to add
+                    if(i + 1 < tokens.length) {
+                        const nextVal = parseFloat(tokens[i + 1]);
+                        if(!isNaN(nextVal) && nextVal > 0 && nextVal < 1) {
+                            numbers.push(directNum + nextVal);
+                            console.log('🔢 Number + fraction:', directNum, '+', nextVal, '=', directNum + nextVal);
+                            i += 2;
+                            continue;
+                        }
+                    }
                     numbers.push(directNum);
                     console.log('🔢 Direct number:', directNum);
                     i++;
                     continue;
                 }
                 
-                // Check for word number
+                // Check for word number (e.g., "eight", "twenty")
                 if(wordToNum[token] !== undefined) {
                     let num = wordToNum[token];
+                    let tokensConsumed = 1;
                     
-                    // Check for tens + ones (e.g., "twenty two")
-                    if(num >= 20 && i + 1 < tokens.length) {
-                        const nextToken = tokens[i + 1].replace(/[^a-z0-9.-]/g, '');
+                    // Check for compound number (e.g., "twenty two" -> 22)
+                    if(num >= 20 && num < 100 && i + 1 < tokens.length) {
+                        const nextToken = tokens[i + 1];
                         if(wordToNum[nextToken] !== undefined && wordToNum[nextToken] < 10) {
                             num += wordToNum[nextToken];
-                            i++;
+                            tokensConsumed++;
                         }
                     }
                     
-                    // Check for fraction after (must follow a whole number)
-                    if(i + 1 < tokens.length) {
-                        const nextToken = tokens[i + 1].replace(/[^0-9.-]/g, '');
-                        const fractionVal = parseFloat(nextToken);
+                    // Check for fraction after the number
+                    const fractionIdx = i + tokensConsumed;
+                    if(fractionIdx < tokens.length) {
+                        const fractionToken = tokens[fractionIdx];
+                        const fractionVal = parseFloat(fractionToken);
                         if(!isNaN(fractionVal) && fractionVal > 0 && fractionVal < 1) {
                             num += fractionVal;
-                            i++;
+                            tokensConsumed++;
+                            console.log('🔢 Word number + fraction:', token, '+ fraction =', num);
+                        } else {
+                            console.log('🔢 Word number:', token, '=', num);
                         }
+                    } else {
+                        console.log('🔢 Word number:', token, '=', num);
                     }
                     
+                    // Only add if it's a reasonable measurement (>= 1 inch)
                     if(num >= 1 && num < 100) {
                         numbers.push(num);
-                        console.log('🔢 Word number:', token, '→', num);
                     }
+                    
+                    i += tokensConsumed;
+                    continue;
                 }
                 
+                // Skip unknown token
                 i++;
             }
             
             console.log('🔢 Final parsed numbers:', numbers);
+            console.log('🔢 === END PARSING ===');
             return numbers;
         }
         
@@ -7983,7 +8020,11 @@
             }
             
             if(transcript && transcript !== '(transcription failed)') {
-                resultHTML += `<div style="margin-top:6px;font-size:9px;color:#94a3b8;font-style:italic;border-top:1px dashed #e2e8f0;padding-top:6px;">"${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"</div>`;
+                // Show more of transcript (300 chars instead of 100)
+                const displayTranscript = transcript.length > 300 ? transcript.substring(0, 300) + '...' : transcript;
+                resultHTML += `<div style="margin-top:6px;font-size:9px;color:#94a3b8;font-style:italic;border-top:1px dashed #e2e8f0;padding-top:6px;max-height:60px;overflow-y:auto;">"${displayTranscript}"</div>`;
+                console.log('📝 Full transcript length:', transcript.length, 'chars');
+                console.log('📝 Full transcript:', transcript);
             }
             
             document.getElementById('post-record-section').querySelector('.nested-section').innerHTML = resultHTML;
