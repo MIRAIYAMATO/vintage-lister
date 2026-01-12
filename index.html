@@ -618,6 +618,64 @@
         .debug-toggle { position:fixed; bottom:10px; right:10px; width:40px; height:40px; background:#1a1a1a; border:2px solid #0f0; border-radius:50%; color:#0f0; font-size:18px; cursor:pointer; z-index:99998; display:flex; align-items:center; justify-content:center; }
         .debug-toggle:hover { background:#0f0; color:#000; }
         
+        /* AI-Suggested Visual Indicator */
+        /* Shows which fields were filled by AI (not yet human-confirmed) */
+        .ai-suggested {
+            border: 2px dashed #f59e0b !important;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+            position: relative;
+        }
+        .ai-suggested::after {
+            content: '🤖';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 12px;
+            background: #f59e0b;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .color-item.ai-suggested::after,
+        .card.ai-suggested::after {
+            top: -6px;
+            right: -6px;
+        }
+        
+        /* Modern Fit Display */
+        .modern-fit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .modern-fit-badge .fit-icon {
+            font-size: 16px;
+        }
+        .modern-fit-badge .fit-text {
+            font-weight: 700;
+        }
+        .modern-fit-badge .fit-detail {
+            font-size: 11px;
+            opacity: 0.85;
+        }
+        #modern-fit-display {
+            margin-top: 10px;
+            text-align: center;
+        }
+        #modern-fit-display.hidden {
+            display: none;
+        }
+        
         /* Draft indicator */
         .draft-indicator { position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#f59e0b; color:#000; padding:6px 16px; border-radius:20px; font-size:11px; font-weight:700; z-index:9999; display:none; }
         .draft-indicator.visible { display:block; }
@@ -685,7 +743,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version" id="pin-version">v100.77 Desktop Station</div>
+        <div class="pin-version" id="pin-version">v100.80 Desktop Station</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
@@ -802,12 +860,12 @@
                         <div id="tag-details" class="hidden nested-section">
                             <div class="sub-label">Tag Size (What Tag Reads)</div>
                             <div class="btn-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom:8px;">
-                                <button onclick="setSize('XS', this)" data-value="XS" class="btn btn-secondary size-btn">XS</button>
-                                <button onclick="setSize('S', this)" data-value="S" class="btn btn-secondary size-btn">S</button>
-                                <button onclick="setSize('M', this)" data-value="M" class="btn btn-secondary size-btn">M</button>
-                                <button onclick="setSize('L', this)" data-value="L" class="btn btn-secondary size-btn">L</button>
-                                <button onclick="setSize('XL', this)" data-value="XL" class="btn btn-secondary size-btn">XL</button>
-                                <button onclick="setSize('XXL', this)" data-value="XXL" class="btn btn-secondary size-btn">XXL</button>
+                                <button onclick="updateState('tagSize', 'XS')" data-value="XS" class="btn btn-secondary size-btn">XS</button>
+                                <button onclick="updateState('tagSize', 'S')" data-value="S" class="btn btn-secondary size-btn">S</button>
+                                <button onclick="updateState('tagSize', 'M')" data-value="M" class="btn btn-secondary size-btn">M</button>
+                                <button onclick="updateState('tagSize', 'L')" data-value="L" class="btn btn-secondary size-btn">L</button>
+                                <button onclick="updateState('tagSize', 'XL')" data-value="XL" class="btn btn-secondary size-btn">XL</button>
+                                <button onclick="updateState('tagSize', 'XXL')" data-value="XXL" class="btn btn-secondary size-btn">XXL</button>
                             </div>
                             <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R, OS, 32x30)" onfocus="clearSizeBtns()" oninput="onSizeInput(this)" class="form-input text-sm text-center" style="margin-bottom:8px;">
                             <div class="sub-label">Origin</div>
@@ -859,23 +917,23 @@
                         <div class="section-label"><span id="check-color" class="check-circle">○</span> Color(s)</div>
                         <div class="sub-label" style="margin-bottom:8px;">Tap all that apply</div>
                         <div class="color-grid">
-                            <div class="color-item" onclick="toggleColor('White', this)"><div class="color-swatch" style="background:#ffffff;border:1px solid #ddd;"></div><span>White</span></div>
-                            <div class="color-item" onclick="toggleColor('Cream', this)"><div class="color-swatch" style="background:#fffdd0;border:1px solid #ddd;"></div><span>Cream</span></div>
-                            <div class="color-item" onclick="toggleColor('Tan', this)"><div class="color-swatch" style="background:#d2b48c;"></div><span>Tan</span></div>
-                            <div class="color-item" onclick="toggleColor('Gray', this)"><div class="color-swatch" style="background:#6b7280;"></div><span>Gray</span></div>
-                            <div class="color-item" onclick="toggleColor('Black', this)"><div class="color-swatch" style="background:#1a1a1a;"></div><span>Black</span></div>
+                            <div class="color-item color-btn" data-value="White" onclick="toggleState('colors', 'White')"><div class="color-swatch" style="background:#ffffff;border:1px solid #ddd;"></div><span>White</span></div>
+                            <div class="color-item color-btn" data-value="Cream" onclick="toggleState('colors', 'Cream')"><div class="color-swatch" style="background:#fffdd0;border:1px solid #ddd;"></div><span>Cream</span></div>
+                            <div class="color-item color-btn" data-value="Tan" onclick="toggleState('colors', 'Tan')"><div class="color-swatch" style="background:#d2b48c;"></div><span>Tan</span></div>
+                            <div class="color-item color-btn" data-value="Gray" onclick="toggleState('colors', 'Gray')"><div class="color-swatch" style="background:#6b7280;"></div><span>Gray</span></div>
+                            <div class="color-item color-btn" data-value="Black" onclick="toggleState('colors', 'Black')"><div class="color-swatch" style="background:#1a1a1a;"></div><span>Black</span></div>
                             
-                            <div class="color-item" onclick="toggleColor('Red', this)"><div class="color-swatch" style="background:#dc2626;"></div><span>Red</span></div>
-                            <div class="color-item" onclick="toggleColor('Orange', this)"><div class="color-swatch" style="background:#ea580c;"></div><span>Orange</span></div>
-                            <div class="color-item" onclick="toggleColor('Yellow', this)"><div class="color-swatch" style="background:#facc15;"></div><span>Yellow</span></div>
-                            <div class="color-item" onclick="toggleColor('Green', this)"><div class="color-swatch" style="background:#16a34a;"></div><span>Green</span></div>
-                            <div class="color-item" onclick="toggleColor('Blue', this)"><div class="color-swatch" style="background:#2563eb;"></div><span>Blue</span></div>
+                            <div class="color-item color-btn" data-value="Red" onclick="toggleState('colors', 'Red')"><div class="color-swatch" style="background:#dc2626;"></div><span>Red</span></div>
+                            <div class="color-item color-btn" data-value="Orange" onclick="toggleState('colors', 'Orange')"><div class="color-swatch" style="background:#ea580c;"></div><span>Orange</span></div>
+                            <div class="color-item color-btn" data-value="Yellow" onclick="toggleState('colors', 'Yellow')"><div class="color-swatch" style="background:#facc15;"></div><span>Yellow</span></div>
+                            <div class="color-item color-btn" data-value="Green" onclick="toggleState('colors', 'Green')"><div class="color-swatch" style="background:#16a34a;"></div><span>Green</span></div>
+                            <div class="color-item color-btn" data-value="Blue" onclick="toggleState('colors', 'Blue')"><div class="color-swatch" style="background:#2563eb;"></div><span>Blue</span></div>
                             
-                            <div class="color-item" onclick="toggleColor('Navy', this)"><div class="color-swatch" style="background:#1e3a5f;"></div><span>Navy</span></div>
-                            <div class="color-item" onclick="toggleColor('Purple', this)"><div class="color-swatch" style="background:#7c3aed;"></div><span>Purple</span></div>
-                            <div class="color-item" onclick="toggleColor('Pink', this)"><div class="color-swatch" style="background:#ec4899;"></div><span>Pink</span></div>
-                            <div class="color-item" onclick="toggleColor('Brown', this)"><div class="color-swatch" style="background:#78350f;"></div><span>Brown</span></div>
-                            <div class="color-item" onclick="toggleColor('Multi', this)"><div class="color-swatch" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);"></div><span>Multi</span></div>
+                            <div class="color-item color-btn" data-value="Navy" onclick="toggleState('colors', 'Navy')"><div class="color-swatch" style="background:#1e3a5f;"></div><span>Navy</span></div>
+                            <div class="color-item color-btn" data-value="Purple" onclick="toggleState('colors', 'Purple')"><div class="color-swatch" style="background:#7c3aed;"></div><span>Purple</span></div>
+                            <div class="color-item color-btn" data-value="Pink" onclick="toggleState('colors', 'Pink')"><div class="color-swatch" style="background:#ec4899;"></div><span>Pink</span></div>
+                            <div class="color-item color-btn" data-value="Brown" onclick="toggleState('colors', 'Brown')"><div class="color-swatch" style="background:#78350f;"></div><span>Brown</span></div>
+                            <div class="color-item color-btn" data-value="Multi" onclick="toggleState('colors', 'Multi')"><div class="color-swatch" style="background:linear-gradient(135deg,#ef4444,#f97316,#facc15,#22c55e,#3b82f6,#8b5cf6);"></div><span>Multi</span></div>
                         </div>
                     </div>
                     
@@ -1261,12 +1319,12 @@
                 <div id="step-3" class="step-container">
                     <div class="section-card">
                         <div class="section-label"><span id="check-condition" class="check-circle">○</span> Any Issues?</div>
-                        <button onclick="setClean(this)" id="btn-clean" class="btn btn-secondary" style="width:100%;margin-bottom:10px;padding:14px;">✓ No Defects</button>
+                        <button onclick="setClean()" id="btn-clean" class="btn btn-secondary" style="width:100%;margin-bottom:10px;padding:14px;">✓ No Defects</button>
                         <div class="sub-label">Or tap defect type:</div>
                         <div class="btn-grid btn-grid-3">
-                            <button onclick="toggleDefect('Stain', this)" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">💧</span><span class="label">Stain</span></button>
-                            <button onclick="toggleDefect('Hole', this)" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">🕳️</span><span class="label">Hole</span></button>
-                            <button onclick="toggleDefect('Repair', this)" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">🧵</span><span class="label">Repair</span></button>
+                            <button onclick="toggleState('defectTypes', 'Stain')" data-value="Stain" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">💧</span><span class="label">Stain</span></button>
+                            <button onclick="toggleState('defectTypes', 'Hole')" data-value="Hole" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">🕳️</span><span class="label">Hole</span></button>
+                            <button onclick="toggleState('defectTypes', 'Repair')" data-value="Repair" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">🧵</span><span class="label">Repair</span></button>
                         </div>
                     </div>
                     
@@ -1368,6 +1426,8 @@
                                     <div style="font-size:10px;color:#3b82f6;font-weight:700;margin-bottom:6px;">📏 PARSED MEASUREMENTS</div>
                                     <div id="parsed-list" style="font-size:12px;color:#1e40af;font-family:monospace;"></div>
                                 </div>
+                                <!-- MODERN FIT CALCULATION -->
+                                <div id="modern-fit-display" class="hidden"></div>
                             </div>
                         </div>
                         <div id="post-record-section" class="hidden">
@@ -1587,7 +1647,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.77";
+        const VERSION = "v100.80";
         // ===============================================================
         
         // ============ DEBUG LOGGING SYSTEM ============
@@ -1845,6 +1905,52 @@
         const LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
         // All secrets (n8n URL, OpenAI key, S3 bucket) are now in Lambda environment variables
         
+        // ============ SESSION TOKEN SYSTEM ============
+        // Generated on successful PIN entry, included in all API requests
+        // Provides basic request validation (not true security - backend should validate)
+        let sessionToken = null;
+        let sessionExpiry = null;
+        const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
+        
+        function generateSessionToken() {
+            // Generate a random token
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+            
+            // Add timestamp for basic validation
+            const timestamp = Date.now();
+            sessionToken = `${token}-${timestamp}`;
+            sessionExpiry = timestamp + SESSION_DURATION_MS;
+            
+            console.log('🔐 Session token generated, expires in 8 hours');
+            return sessionToken;
+        }
+        
+        function getSessionToken() {
+            // Check if session is still valid
+            if (!sessionToken || !sessionExpiry || Date.now() > sessionExpiry) {
+                console.warn('🔐 Session expired or missing');
+                return null;
+            }
+            return sessionToken;
+        }
+        
+        function isSessionValid() {
+            return sessionToken && sessionExpiry && Date.now() < sessionExpiry;
+        }
+        
+        // Helper to get auth headers for API requests
+        function getAuthHeaders() {
+            const token = getSessionToken();
+            return {
+                'Content-Type': 'application/json',
+                'x-api-key': APP_PIN,
+                'x-session-token': token || 'none'
+            };
+        }
+        // ================================================
+        
         // Simple HTML escape for user-facing strings (XSS prevention)
         function escapeHtml(str) {
             if (!str) return '';
@@ -1876,7 +1982,8 @@
                 superCategory: 'tops',
                 category: '',
                 tagStatus: '',
-                tagSize: '',
+                tagSize: '',           // What the tag literally says (e.g., "L", "42R")
+                modernFit: '',         // Calculated fit based on measurements (e.g., "Fits like M")
                 origin: '',
                 country: '',
                 gender: '',
@@ -2075,6 +2182,14 @@
                 if (typeof renderMaterialCards === 'function') renderMaterialCards();
             },
             
+            tagSize: (value) => {
+                // Clear text input when button is clicked
+                const sizeInput = document.getElementById('tag-size-input');
+                if (sizeInput && value) {
+                    sizeInput.value = '';
+                }
+            },
+            
             origin: (value) => {
                 // When USA selected, also set country to USA
                 if (value === 'usa') {
@@ -2129,7 +2244,7 @@
         };
         
         // Update state and trigger UI sync
-        function updateState(field, value, skipRender = false) {
+        function updateState(field, value, skipRender = false, isAISuggestion = false) {
             // Handle nested fields (e.g., 'patternTraits.lines')
             if (field.includes('.')) {
                 const parts = field.split('.');
@@ -2144,6 +2259,18 @@
             // PERFORMANCE: Only re-render the specific field's button group
             if (!skipRender) {
                 renderButtonGroup(field);
+            }
+            
+            // VISUAL CONFIDENCE: Mark as AI-suggested or clear the class
+            const selector = BUTTON_GROUPS[field];
+            if (selector) {
+                if (isAISuggestion) {
+                    // Add ai-suggested indicator to selected button
+                    markButtonAsAISuggested(selector, value);
+                } else {
+                    // User interaction - clear ai-suggested from this field's buttons
+                    clearAISuggestedFromGroup(selector);
+                }
             }
             
             // Run field-specific post-update hooks (visibility logic, cascading updates)
@@ -2162,12 +2289,30 @@
             updateValidation();
         }
         
+        // VISUAL CONFIDENCE: Mark a button as AI-suggested
+        function markButtonAsAISuggested(selector, value) {
+            document.querySelectorAll(selector).forEach(btn => {
+                if (btn.dataset.value === value) {
+                    btn.classList.add('ai-suggested');
+                }
+            });
+        }
+        
+        // VISUAL CONFIDENCE: Clear AI-suggested from all buttons in a group
+        function clearAISuggestedFromGroup(selector) {
+            document.querySelectorAll(selector).forEach(btn => {
+                btn.classList.remove('ai-suggested');
+            });
+        }
+        
         // Button group configuration - SINGLE SOURCE OF TRUTH
         const BUTTON_GROUPS = {
             tagStatus: '.tag-btn',
+            tagSize: '.size-btn',          // Added: size buttons
             origin: '.origin-btn',
             country: '.country-btn',
             gender: '.gender-btn',
+            colors: '.color-btn',          // Added: multi-select array
             fade: '.fade-btn',
             sleeveLength: '.sleeve-btn',
             sleeveStyle: '.style-btn',
@@ -2181,11 +2326,64 @@
             elasticCheck: '.elastic-btn',
             wash: '.wash-btn',
             printType: '.print-btn',
-            graphicCategory: '.graphic-cat-btn'
+            graphicCategory: '.graphic-cat-btn',
+            defectTypes: '.defect-type-btn' // Added: multi-select array
         };
+        
+        // Fields that are arrays (multi-select)
+        const ARRAY_FIELDS = ['colors', 'materials', 'defectTypes'];
         
         // Standard countries list for "Other" detection
         const STANDARD_COUNTRIES = ['', 'USA', 'Mexico', 'Honduras', 'China', 'Korea', 'Taiwan', 'Philippines', 'Vietnam', 'Bangladesh'];
+        
+        // Toggle state for multi-select fields (arrays)
+        function toggleState(field, value) {
+            if (!ARRAY_FIELDS.includes(field)) {
+                console.warn(`toggleState called on non-array field: ${field}`);
+                return;
+            }
+            
+            const arr = App.item[field];
+            const idx = arr.indexOf(value);
+            
+            if (idx > -1) {
+                arr.splice(idx, 1); // Remove if exists
+            } else {
+                arr.push(value);    // Add if not exists
+            }
+            
+            // Re-render this field's buttons
+            renderButtonGroup(field);
+            
+            // VISUAL CONFIDENCE: User interaction clears AI-suggested indicator
+            const selector = BUTTON_GROUPS[field];
+            if (selector) {
+                clearAISuggestedFromGroup(selector);
+            }
+            
+            // Handle special cases
+            if (field === 'defectTypes') {
+                // Update hasDefects flag
+                App.item.hasDefects = arr.length > 0;
+                // Update "No Defects" button
+                const cleanBtn = document.getElementById('btn-clean');
+                if (cleanBtn) {
+                    if (arr.length > 0) {
+                        cleanBtn.classList.remove('selected', 'btn-hero');
+                        cleanBtn.classList.add('btn-secondary');
+                    }
+                }
+            }
+            
+            // Debounced auto-save
+            if (App.timers.saveDraft) clearTimeout(App.timers.saveDraft);
+            App.timers.saveDraft = setTimeout(() => {
+                saveDraft();
+                App.timers.saveDraft = null;
+            }, 500);
+            
+            updateValidation();
+        }
         
         // Render a SINGLE button group (scoped for performance)
         function renderButtonGroup(field) {
@@ -2193,17 +2391,20 @@
             if (!selector) return; // Unknown field, skip
             
             const currentValue = App.item[field];
+            const isArrayField = ARRAY_FIELDS.includes(field);
             
             document.querySelectorAll(selector).forEach(btn => {
                 // STRICT: Only use data-value attribute
-                // If missing, button is broken - log warning in dev
                 const btnValue = btn.dataset.value;
                 if (btnValue === undefined) {
                     console.warn(`Button missing data-value: ${btn.outerHTML.slice(0, 100)}...`);
                     return;
                 }
                 
-                const isSelected = (btnValue === currentValue);
+                // Check selection: array.includes() for multi-select, === for single
+                const isSelected = isArrayField 
+                    ? (Array.isArray(currentValue) && currentValue.includes(btnValue))
+                    : (btnValue === currentValue);
                 
                 if (isSelected) {
                     btn.classList.add('selected', 'btn-hero');
@@ -3038,7 +3239,7 @@
             try {
                 fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'n8n',
                         formData: {
@@ -3135,7 +3336,7 @@
             try {
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ sku, files })
                 });
                 
@@ -5130,6 +5331,10 @@
         function checkPin() { 
             if(document.getElementById('pin-input').value===APP_PIN){ 
                 debugLog('PIN correct, logging in...', 'success');
+                
+                // Generate session token for API requests
+                generateSessionToken();
+                
                 try{ 
                     data.photographer=document.getElementById('photographer-select').value; 
                     localStorage.setItem('vl_photographer',data.photographer); 
@@ -7477,12 +7682,14 @@
             updateMeasurementHintsForSleeveStyle(data.sleeveStyle || 'Standard', data.sleeveLength || '');
         }
         
-        // NOTE: setTagStatus removed - replaced by updateState('tagStatus', value) + postUpdateHooks
-        function setSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('tag-size-input').value=''; }
-        function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function onSizeInput(el) { data.tagSize = el.value.trim(); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        // NOTE: setOrigin, setCountry, setGender removed - replaced by updateState() + postUpdateHooks
-        function toggleColor(color, btn) { const idx = data.colors.indexOf(color); if(idx>-1){data.colors.splice(idx,1);btn.classList.remove('selected');} else{data.colors.push(color);btn.classList.add('selected');} updateValidation(); }
+        // NOTE: setTagStatus, setSize removed - replaced by updateState() + postUpdateHooks
+        function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected', 'btn-hero')); }
+        function onSizeInput(el) { 
+            App.item.tagSize = el.value.trim(); 
+            clearSizeBtns(); 
+            renderButtonGroup('tagSize'); 
+        }
+        // NOTE: setOrigin, setCountry, setGender, toggleColor removed - replaced by updateState()/toggleState() + postUpdateHooks
         // NOTE: setFade, setPattern removed - patterns use selectPattern() via card clicks
         function toggleOtherPatterns() { 
             const el = document.getElementById('pattern-others'); 
@@ -7526,9 +7733,22 @@
             document.getElementById('leg-style-help').classList.toggle('hidden');
         }
         
-        // NOTE: setThickness, setLayers, setWash removed - replaced by updateState()
-        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.remove('btn-secondary'); document.getElementById('btn-clean').classList.add('selected','btn-hero'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
-        function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected','btn-hero'); document.getElementById('btn-clean').classList.add('btn-secondary'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null;} updateValidation(); }
+        // NOTE: setThickness, setLayers, setWash, toggleDefect removed - replaced by updateState()/toggleState()
+        function setClean() { 
+            App.item.hasDefects = false; 
+            App.item.defectTypes.length = 0; // Clear array in place
+            
+            // Update "No Defects" button
+            const cleanBtn = document.getElementById('btn-clean');
+            if (cleanBtn) {
+                cleanBtn.classList.remove('btn-secondary');
+                cleanBtn.classList.add('selected', 'btn-hero');
+            }
+            
+            // Re-render defect type buttons (will deselect all)
+            renderButtonGroup('defectTypes');
+            updateValidation(); 
+        }
         
         // FLAG AS UNUSUAL
         function toggleFlagUnusual() { 
@@ -7933,6 +8153,191 @@
             return numbers;
         }
         
+        // ============ SMART LABELLED PARSING ============
+        // Parse measurements by keyword labels instead of strict order
+        // User can say "chest 22, length 28" in any order
+        const MEASUREMENT_KEYWORDS = {
+            // Chest/Pit-to-Pit keywords
+            'chest': 'Pit-to-Pit',
+            'pit': 'Pit-to-Pit',
+            'pit to pit': 'Pit-to-Pit',
+            'bust': 'Pit-to-Pit',
+            
+            // Length keywords
+            'length': 'Length',
+            'total length': 'Length',
+            'body length': 'Length',
+            
+            // Sleeve keywords
+            'sleeve': 'Top Sleeve',
+            'top sleeve': 'Top Sleeve',
+            'bottom sleeve': 'Bottom Sleeve',
+            'sleeve opening': 'Sleeve Opening',
+            'cuff': 'Sleeve Opening',
+            
+            // Shoulder keywords
+            'shoulder': 'Shoulder-to-Shoulder',
+            'shoulder to shoulder': 'Shoulder-to-Shoulder',
+            'shoulders': 'Shoulder-to-Shoulder',
+            
+            // Waist keywords
+            'waist': 'Waist',
+            
+            // Hem keywords
+            'hem': 'Bottom Hem',
+            'bottom hem': 'Bottom Hem',
+            
+            // Neck keywords
+            'neck': 'Neck-to-Shoulder',
+            'neck circumference': 'Neck Circumference',
+            'collar': 'Neck Circumference',
+            'neck to cuff': 'Neck-to-Cuff',
+            
+            // Bottoms keywords
+            'inseam': 'Inseam',
+            'rise': 'Rise',
+            'thigh': 'Thigh',
+            'leg opening': 'Leg Opening',
+            'leg': 'Leg Opening'
+        };
+        
+        function parseLabelledMeasurements(text) {
+            if (!text) return {};
+            
+            const measurements = {};
+            const str = text.toLowerCase();
+            
+            console.log('📏 Labelled parse input:', str.substring(0, 150));
+            
+            // Pattern: keyword followed by number (with optional "is" or ":")
+            // e.g., "chest is 22", "chest 22", "chest: 22", "pit to pit 21 and a half"
+            for (const [keyword, measureName] of Object.entries(MEASUREMENT_KEYWORDS)) {
+                // Build regex to find keyword followed by number
+                const keywordPattern = keyword.replace(/ /g, '\\s+');
+                const regex = new RegExp(
+                    keywordPattern + '\\s*(?:is|:|of)?\\s*' +
+                    '(\\d+(?:\\.\\d+)?|' + Object.keys(wordToNum).join('|') + ')' +
+                    '(?:\\s+(?:and\\s+a\\s+half|point\\s+five|and\\s+a\\s+quarter|point\\s+two\\s+five|point\\s+seven\\s+five))?',
+                    'i'
+                );
+                
+                const match = str.match(regex);
+                if (match) {
+                    let value = parseFloat(match[1]);
+                    if (isNaN(value)) {
+                        value = wordToNum[match[1].toLowerCase()] || 0;
+                    }
+                    
+                    // Check for fractions
+                    if (match[0].includes('half') || match[0].includes('point five')) {
+                        value += 0.5;
+                    } else if (match[0].includes('quarter') || match[0].includes('point two five')) {
+                        value += 0.25;
+                    } else if (match[0].includes('point seven five')) {
+                        value += 0.75;
+                    }
+                    
+                    if (value > 0 && value < 100) {
+                        measurements[measureName] = value;
+                        console.log(`📏 Found: ${measureName} = ${value}`);
+                    }
+                }
+            }
+            
+            return measurements;
+        }
+        
+        // ============ MODERN FIT CALCULATION ============
+        // Calculate approximate modern fit size from chest (pit-to-pit) measurement
+        // These are approximate ranges - vintage sizing runs large
+        const MODERN_FIT_CHART = {
+            // Men's chest measurements (pit-to-pit in inches)
+            men: [
+                { min: 0,    max: 18,   size: 'XS',   label: 'Fits like XS' },
+                { min: 18,   max: 20,   size: 'S',    label: 'Fits like S' },
+                { min: 20,   max: 22,   size: 'M',    label: 'Fits like M' },
+                { min: 22,   max: 24,   size: 'L',    label: 'Fits like L' },
+                { min: 24,   max: 26,   size: 'XL',   label: 'Fits like XL' },
+                { min: 26,   max: 28,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 28,   max: 30,   size: '3XL',  label: 'Fits like 3XL' },
+                { min: 30,   max: 100,  size: '4XL+', label: 'Fits like 4XL+' }
+            ],
+            // Women's chest measurements
+            women: [
+                { min: 0,    max: 16,   size: 'XS',   label: 'Fits like XS' },
+                { min: 16,   max: 18,   size: 'S',    label: 'Fits like S' },
+                { min: 18,   max: 20,   size: 'M',    label: 'Fits like M' },
+                { min: 20,   max: 22,   size: 'L',    label: 'Fits like L' },
+                { min: 22,   max: 24,   size: 'XL',   label: 'Fits like XL' },
+                { min: 24,   max: 26,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 26,   max: 100,  size: '3XL+', label: 'Fits like 3XL+' }
+            ],
+            // Unisex/default (use men's)
+            default: [
+                { min: 0,    max: 18,   size: 'XS',   label: 'Fits like XS' },
+                { min: 18,   max: 20,   size: 'S',    label: 'Fits like S' },
+                { min: 20,   max: 22,   size: 'M',    label: 'Fits like M' },
+                { min: 22,   max: 24,   size: 'L',    label: 'Fits like L' },
+                { min: 24,   max: 26,   size: 'XL',   label: 'Fits like XL' },
+                { min: 26,   max: 28,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 28,   max: 100,  size: '3XL+', label: 'Fits like 3XL+' }
+            ]
+        };
+        
+        function calculateModernFit(chestMeasurement, gender) {
+            if (!chestMeasurement || chestMeasurement <= 0) return null;
+            
+            // Select chart based on gender
+            let chart = MODERN_FIT_CHART.default;
+            if (gender === 'Women' || gender === 'Girls') {
+                chart = MODERN_FIT_CHART.women;
+            } else if (gender === 'Men' || gender === 'Boys') {
+                chart = MODERN_FIT_CHART.men;
+            }
+            
+            // Find matching size range
+            for (const range of chart) {
+                if (chestMeasurement >= range.min && chestMeasurement < range.max) {
+                    return {
+                        size: range.size,
+                        label: range.label,
+                        chest: chestMeasurement
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        // Update modern fit display when measurements change
+        function updateModernFitDisplay() {
+            const measurements = App.item.parsedMeasurements || {};
+            const pitToPit = measurements['Pit-to-Pit'];
+            const gender = App.item.gender;
+            
+            const fitDisplay = document.getElementById('modern-fit-display');
+            if (!fitDisplay) return;
+            
+            if (pitToPit) {
+                const fit = calculateModernFit(pitToPit, gender);
+                if (fit) {
+                    App.item.modernFit = fit.label;
+                    fitDisplay.innerHTML = `
+                        <div class="modern-fit-badge">
+                            <span class="fit-icon">📐</span>
+                            <span class="fit-text">${fit.label}</span>
+                            <span class="fit-detail">(${pitToPit}" chest)</span>
+                        </div>
+                    `;
+                    fitDisplay.classList.remove('hidden');
+                } else {
+                    fitDisplay.classList.add('hidden');
+                }
+            } else {
+                fitDisplay.classList.add('hidden');
+            }
+        }
+        
         // ============ AI VISION ANALYSIS ============
         let aiAnalysisInProgress = false;
         
@@ -7944,18 +8349,14 @@
             const aiToast = showToast('info', '🤖 AI Analyzing Tag...', 'Reading brand, size, materials...', 30000);
             
             try {
-                // Convert blob to base64
-                const base64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(imageBlob);
-                });
+                // CENTER CROP: Extract high-res center for readable text
+                // Instead of resizing (blurs text), we crop the center at full resolution
+                const base64 = await centerCropForTagAI(imageBlob, 2048);
                 
-                // Call Lambda vision endpoint
+                // Call Lambda vision endpoint with session token
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'vision',
                         type: 'tag',
@@ -7987,6 +8388,42 @@
             } finally {
                 aiAnalysisInProgress = false;
             }
+        }
+        
+        // CENTER CROP for tag AI analysis
+        // Instead of resizing (which blurs small text), we crop the center at high resolution
+        // This gives the AI readable text while keeping file size manageable
+        async function centerCropForTagAI(imageBlob, cropSize = 2048) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    const { width, height } = img;
+                    
+                    // Calculate crop region (center of image)
+                    const cropW = Math.min(width, cropSize);
+                    const cropH = Math.min(height, cropSize);
+                    const cropX = Math.max(0, (width - cropW) / 2);
+                    const cropY = Math.max(0, (height - cropH) / 2);
+                    
+                    // Create canvas at crop dimensions (NOT resized)
+                    const canvas = document.createElement('canvas');
+                    canvas.width = cropW;
+                    canvas.height = cropH;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Draw center portion at full resolution
+                    ctx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                    
+                    // Convert to base64 at high quality for text readability
+                    const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+                    console.log(`🤖 Center crop for tag: ${width}x${height} → ${cropW}x${cropH} crop (${Math.round(base64.length/1024)}KB)`);
+                    resolve(base64);
+                    
+                    URL.revokeObjectURL(img.src);
+                };
+                img.onerror = reject;
+                img.src = URL.createObjectURL(imageBlob);
+            });
         }
         
         // ============ AI UI HELPER FUNCTIONS ============
@@ -8028,6 +8465,20 @@
             debugLog(`Applying AI suggestions (${type}): ${JSON.stringify(aiData)}`, 'info');
             let fieldsUpdated = [];
             
+            // HELPER: Apply AI suggestion with visual indicator
+            function aiSetValue(field, value) {
+                updateState(field, value, false, true); // isAISuggestion = true
+            }
+            
+            // HELPER: Mark button as AI-suggested without using updateState
+            function markAI(selector, value) {
+                document.querySelectorAll(selector).forEach(btn => {
+                    if (btn.dataset.value === value || btn.textContent.trim().toUpperCase() === value) {
+                        btn.classList.add('ai-suggested', 'active', 'selected');
+                    }
+                });
+            }
+            
             if (type === 'tag') {
                 // ============ TAG STATUS ============
                 // Determine tag readability status
@@ -8061,11 +8512,8 @@
                         tagStatus = 'has';
                     }
                     
-                    data.tagStatus = tagStatus;
+                    aiSetValue('tagStatus', tagStatus);
                     fieldsUpdated.push('Tag Status: ' + (tagStatus === 'has' ? 'Readable' : tagStatus === 'worn' ? 'Worn/Faded' : 'Missing/Cut'));
-                    
-                    // Update UI using helper (avoids text content trap)
-                    selectButtonByValue('.tag-btn', tagStatus);
                 }
                 
                 // ============ SIZE ============
@@ -8085,16 +8533,8 @@
                     };
                     size = sizeMap[size] || size;
                     
-                    data.tagSize = size;
+                    aiSetValue('tagSize', size);
                     fieldsUpdated.push('Size: ' + size);
-                    
-                    // Update size chips using data-value (avoids text content trap)
-                    document.querySelectorAll('.size-chip, .size-btn').forEach(btn => {
-                        const btnValue = btn.dataset.value || btn.textContent.trim().toUpperCase();
-                        if (btnValue === size) {
-                            btn.classList.add('active', 'selected');
-                        }
-                    });
                 }
                 
                 // ============ GENDER FROM TAG ============
@@ -8117,11 +8557,8 @@
                     }
                     
                     if (gender) {
-                        data.gender = gender;
+                        aiSetValue('gender', gender);
                         fieldsUpdated.push('Gender: ' + gender);
-                        
-                        // Update gender buttons using helper (avoids text content trap)
-                        selectButtonByValue('.gender-btn', gender);
                     }
                 }
                 
@@ -8133,31 +8570,26 @@
                     if (usaVariants.some(v => country.toLowerCase().includes(v))) {
                         // It's USA - set origin to 'usa'
                         if (!data.origin) {
-                            data.origin = 'usa';
-                            data.country = 'USA';
+                            aiSetValue('origin', 'usa');
+                            App.item.country = 'USA'; // Also set country
                             fieldsUpdated.push('Origin: USA Made');
-                            selectButtonByValue('.origin-btn', 'usa');
                         }
                     } else {
                         // It's an import
                         if (!data.origin) {
-                            data.origin = 'import';
-                            const countrySection = document.getElementById('country-section');
-                            if (countrySection) countrySection.classList.remove('hidden');
-                            selectButtonByValue('.origin-btn', 'import');
+                            aiSetValue('origin', 'import');
                         }
                         
-                        data.country = country;
+                        aiSetValue('country', country);
                         fieldsUpdated.push('Country: ' + country);
                         
-                        // Try to find matching country button using onclick value
-                        const countryFound = clickButtonByOnclick('.country-btn', country);
-                        
-                        if (!countryFound) {
+                        // Show other input if not a standard country
+                        if (!STANDARD_COUNTRIES.includes(country)) {
                             const otherInput = document.getElementById('country-other-input');
                             if (otherInput) {
                                 otherInput.classList.remove('hidden');
                                 otherInput.value = country;
+                                otherInput.classList.add('ai-suggested');
                             }
                         }
                     }
@@ -8476,14 +8908,25 @@
                 // Resize image for faster AI analysis (full res still goes to S3)
                 const base64 = await resizeImageForAI(imageBlob, 1024, 0.75);
                 
-                // Call Lambda vision endpoint
+                // CONTEXT INJECTION: Pass existing user selections to prevent AI hallucinations
+                // This tells AI "user already identified this as Women's Sweater, just fill the blanks"
+                const existingContext = {
+                    category: App.item.category || null,
+                    superCategory: App.item.superCategory || null,
+                    gender: App.item.gender || null,
+                    colors: App.item.colors.length > 0 ? App.item.colors : null,
+                    pattern: App.item.pattern || null
+                };
+                
+                // Call Lambda vision endpoint with session token
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'vision',
                         type: 'main',
-                        image: base64
+                        image: base64,
+                        context: existingContext // Pass user's existing selections
                     })
                 });
                 
@@ -8546,9 +8989,7 @@
             try {
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'whisper',
                         audio: base64Audio,
@@ -8701,23 +9142,42 @@
                         // Send to Whisper
                         const transcript = await transcribeWithWhisper(blob);
                         
-                        // Parse numbers from transcript
-                        const numbers = parseNumbersFromTranscript(transcript);
-                        console.log('🎤 Parsed numbers:', numbers);
+                        // SMART PARSING: Try labelled parsing first, then sequential
+                        // Labelled: "chest 22, length 28" (any order)
+                        // Sequential: "22, 28, 25" (in template order)
+                        const labelledMeasurements = parseLabelledMeasurements(transcript);
+                        const sequentialNumbers = parseNumbersFromTranscript(transcript);
                         
-                        // Map numbers to measurement template
+                        console.log('🎤 Labelled measurements:', labelledMeasurements);
+                        console.log('🎤 Sequential numbers:', sequentialNumbers);
+                        
+                        // Get template for this category
                         const template = getCurrentMeasurementTemplate();
-                        numbers.forEach((num, idx) => {
-                            if(idx < template.length) {
-                                parsedMeasurements[template[idx]] = num;
+                        
+                        // Merge: labelled takes priority, then fill gaps with sequential
+                        parsedMeasurements = {...labelledMeasurements};
+                        
+                        // Fill remaining slots with sequential numbers
+                        let seqIdx = 0;
+                        template.forEach(measureName => {
+                            if (!parsedMeasurements[measureName] && seqIdx < sequentialNumbers.length) {
+                                // Only assign if this slot isn't already filled by labelled
+                                parsedMeasurements[measureName] = sequentialNumbers[seqIdx];
+                                seqIdx++;
                             }
                         });
+                        
+                        console.log('🎤 Final merged measurements:', parsedMeasurements);
                         
                         data.parsedMeasurements = {...parsedMeasurements};
                         data.audioTranscript = transcript;
                         
-                        // Show results
-                        showTranscriptionResults(transcript, numbers, template);
+                        // Calculate and update modern fit based on chest measurement
+                        updateModernFitDisplay();
+                        
+                        // Show results - pass measurement count instead of numbers array
+                        const measureCount = Object.keys(parsedMeasurements).length;
+                        showTranscriptionResults(transcript, Object.values(parsedMeasurements), template);
                         
                     } catch(err) {
                         console.error('🎤 Transcription failed:', err);
@@ -9558,7 +10018,7 @@
                 try {
                     const n8nResponse = await fetch(LAMBDA_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify({
                             action: 'n8n',
                             formData: n8nPayload
