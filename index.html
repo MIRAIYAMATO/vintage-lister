@@ -2097,45 +2097,20 @@
         };
         
         // ============ BACKWARD COMPATIBILITY ALIASES ============
-        // These allow existing code to work while we migrate
-        let data = App.item;
-        let stats = App.stats;
+        // Only essential aliases that don't conflict with later declarations
+        let data = App.item;           // Used everywhere for item data
+        let stats = App.stats;          // Statistics tracking
         let currentStep = App.ui.currentStep;
         let photoMode = App.ui.photoMode;
         let currentStream = App.camera.currentStream;
         let saveDraftTimer = App.timers.saveDraft;
-        let mainCameraStream = App.camera.mainStream;
-        let secondaryCameraStream = App.camera.secondaryStream;
-        let camerasInitialized = App.camera.initialized;
-        let selectedDefectLink = App.defects.selectedLink;
-        let selectedFeatureType = App.selection.featureType;
-        let selectedDetailType = App.selection.detailType;
-        let fabricFilters = App.filters.fabric;
-        let materialFilters = App.filters.material;
-        let patternFilters = App.filters.pattern;
-        let tagCutMode = App.ui.tagCutMode;
-        let skuLocked = App.ui.skuLocked;
-        let defectMarkers = App.defects.markers;
-        let pendingMarker = App.defects.pending;
-        let defectMarkingEnabled = App.ui.defectMarkingEnabled;
-        let previewMode = App.ui.previewMode;
-        let previewIndex = App.ui.previewIndex;
-        let cameraConfig = App.camera.config;
-        let mainPhotoPortrait = App.camera.mainPhotoPortrait;
-        let currentZoom = App.camera.currentZoom;
-        let mainCameraId = App.camera.mainId;
-        let secondaryCameraId = App.camera.secondaryId;
-        let activeCameraId = App.camera.activeId;
-        let mainCameraName = App.camera.mainName;
-        let secondaryCameraName = App.camera.secondaryName;
-        let selectedDefectForCloseup = App.defects.selectedForCloseup;
-        let currentDefectSide = App.defects.currentSide;
+        // NOTE: All other variables (mainCameraStream, defectMarkers, etc.)
+        // are declared where they're initialized later in the code
         const DEFECT_COLORS = App.defects.colors;
         const DEFECT_ICONS = App.defects.icons;
         const DEFECT_CROP_SIZE = App.config.defectCropSize;
         const STABILITY_THRESHOLD = App.config.stabilityThreshold;
         const FRAMES_NEEDED = App.config.framesNeeded;
-        // Note: Some vars like timerStart, mediaRecorder, etc. are still declared where used
         // ============================================================
         
         // Shot sequence configuration per category
@@ -2145,8 +2120,6 @@
         // ============ RENDER PATTERN - SINGLE SOURCE OF TRUTH ============
         // All state changes go through updateState() → renderButtonGroups()
         // This eliminates split logic between user clicks, AI, and draft loading
-        
-        let saveDraftTimer = null; // Track debounce timer for cancellation
         
         // Post-update hooks for field-specific side effects (visibility, cascading updates, etc.)
         const postUpdateHooks = {
