@@ -1662,7 +1662,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.59";
+        const VERSION = "v100.60";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -5266,13 +5266,19 @@
                 // Always start camera immediately (no SKU gate blocking)
                 if(mainCameraId) {
                     select.value = mainCameraId;
-                    // For main camera, use aggressive max resolution
-                    await switchCameraMaxRes(mainCameraId);
-                    // Auto-trigger full resolution to ensure max quality
-                    setTimeout(() => {
-                        console.log('📷 Auto-triggering FULL RES on startup...');
-                        forceMaxResolution();
-                    }, 1000);
+                    console.log('📷 Starting main camera...');
+                    try {
+                        // Use regular switchCamera first (more reliable), then force full res
+                        await switchCamera(mainCameraId);
+                        // Auto-trigger full resolution after camera is stable
+                        setTimeout(() => {
+                            console.log('📷 Auto-triggering FULL RES on startup...');
+                            forceMaxResolution();
+                        }, 1500);
+                    } catch(camErr) {
+                        console.error('📷 Failed to start main camera:', camErr);
+                        showToast('error', 'Camera Error', 'Could not start camera');
+                    }
                 } else if(videoDevices.length > 0) {
                     // Fallback to first camera
                     mainCameraId = videoDevices[0].deviceId;
