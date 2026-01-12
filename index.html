@@ -1681,7 +1681,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.54";
+        const VERSION = "v100.57";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -2740,7 +2740,8 @@
             
             // JSON metadata file - COMPLETE data for n8n/backend
             const metadata = {
-                // Core identification
+                // Version & Core identification
+                version: VERSION,
                 sku: sku,
                 timestamp: new Date().toISOString(),
                 photographer: data.photographer,
@@ -7868,6 +7869,8 @@
             const numbers = [];
             let str = text.toLowerCase().replace(/-/g, ' ');
             
+            console.log('🔢 Input:', str.substring(0, 100));
+            
             // Fraction patterns → placeholders (order matters: longer patterns first)
             const fractionMap = [
                 [/\bpoint\s+seven\s+five\b/g, 'FRAC75'],
@@ -7879,26 +7882,34 @@
                 [/\bpoint\s+25\b/g, 'FRAC25'],
                 [/\bpoint\s+5\b/g, 'FRAC5']
             ];
-            fractionMap.forEach(([pattern, placeholder]) => { str = str.replace(pattern, ' ' + placeholder + ' '); });
+            fractionMap.forEach(([pattern, placeholder]) => { 
+                str = str.replace(pattern, ' ' + placeholder.toLowerCase() + ' '); 
+            });
+            
+            console.log('🔢 After fractions:', str.substring(0, 100));
             
             // Remove punctuation and filler words
             str = str.replace(/[.,!?;:'"]+/g, ' ');
             const skip = new Set(['inches','inch','is','are','the','and','to','a','an','neck','shoulder','sleeve',
                 'opening','bottom','top','pit','waist','hem','length','collar','cuff','width','from',
-                'measurement','measurements','next','then','okay','um','uh','about','around','approximately','for','at','of','its',"it's",'that','so']);
+                'measurement','measurements','next','then','okay','um','uh','about','around','approximately',
+                'for','at','of','its',"it's",'that','so','point','five','quarter','half','seven']);
             const tokens = str.split(/\s+/).filter(t => t && !skip.has(t));
+            
+            console.log('🔢 Tokens:', tokens);
             
             // Fraction placeholder → value
             const fracVal = { frac5: 0.5, frac25: 0.25, frac75: 0.75 };
             
             let i = 0;
             while (i < tokens.length) {
-                const tok = tokens[i].toLowerCase();
+                const tok = tokens[i];
                 
                 // Handle standalone fraction (delayed: "eight... point five")
                 if (fracVal[tok] !== undefined) {
                     if (numbers.length > 0 && numbers[numbers.length-1] === Math.floor(numbers[numbers.length-1])) {
                         numbers[numbers.length-1] += fracVal[tok];
+                        console.log('🔢 Attached fraction:', fracVal[tok], '→', numbers[numbers.length-1]);
                     }
                     i++; continue;
                 }
@@ -7912,19 +7923,20 @@
                     
                     // Compound: "twenty two" → 22
                     if (num >= 20 && num < 100 && i+1 < tokens.length) {
-                        const next = tokens[i+1].toLowerCase();
+                        const next = tokens[i+1];
                         if (wordToNum[next] !== undefined && wordToNum[next] < 10) {
                             num += wordToNum[next];
                             advance++;
                         }
                     }
                     
-                    // Immediate fraction: "eight FRAC5" → 8.5
-                    if (i + advance < tokens.length && fracVal[tokens[i+advance].toLowerCase()] !== undefined) {
-                        num += fracVal[tokens[i+advance].toLowerCase()];
+                    // Immediate fraction: "eight frac5" → 8.5
+                    if (i + advance < tokens.length && fracVal[tokens[i+advance]] !== undefined) {
+                        num += fracVal[tokens[i+advance]];
                         advance++;
                     }
                     
+                    console.log('🔢 Number:', tok, '→', num);
                     numbers.push(num);
                     i += advance;
                 } else {
@@ -7932,7 +7944,7 @@
                 }
             }
             
-            console.log('🔢 Parsed:', text.substring(0,80) + '...', '→', numbers);
+            console.log('🔢 Final:', numbers);
             return numbers;
         }
         
@@ -8079,9 +8091,6 @@
             if (fieldsUpdated.length > 0) {
                 console.log('🤖 Fields auto-filled:', fieldsUpdated);
             }
-            
-            // Refresh form state
-            updateProgressIndicators();
         }
         
         // Send audio to Whisper via Lambda proxy (keeps API key secure)
