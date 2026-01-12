@@ -645,6 +645,37 @@
             right: -6px;
         }
         
+        /* Modern Fit Display */
+        .modern-fit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .modern-fit-badge .fit-icon {
+            font-size: 16px;
+        }
+        .modern-fit-badge .fit-text {
+            font-weight: 700;
+        }
+        .modern-fit-badge .fit-detail {
+            font-size: 11px;
+            opacity: 0.85;
+        }
+        #modern-fit-display {
+            margin-top: 10px;
+            text-align: center;
+        }
+        #modern-fit-display.hidden {
+            display: none;
+        }
+        
         /* Draft indicator */
         .draft-indicator { position:fixed; top:10px; left:50%; transform:translateX(-50%); background:#f59e0b; color:#000; padding:6px 16px; border-radius:20px; font-size:11px; font-weight:700; z-index:9999; display:none; }
         .draft-indicator.visible { display:block; }
@@ -712,7 +743,7 @@
             </select>
             <button onclick="checkPin()" class="pin-btn">START LISTING →</button>
         </div>
-        <div class="pin-version" id="pin-version">v100.79 Desktop Station</div>
+        <div class="pin-version" id="pin-version">v100.80 Desktop Station</div>
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
@@ -1395,6 +1426,8 @@
                                     <div style="font-size:10px;color:#3b82f6;font-weight:700;margin-bottom:6px;">📏 PARSED MEASUREMENTS</div>
                                     <div id="parsed-list" style="font-size:12px;color:#1e40af;font-family:monospace;"></div>
                                 </div>
+                                <!-- MODERN FIT CALCULATION -->
+                                <div id="modern-fit-display" class="hidden"></div>
                             </div>
                         </div>
                         <div id="post-record-section" class="hidden">
@@ -1614,7 +1647,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.79";
+        const VERSION = "v100.80";
         // ===============================================================
         
         // ============ DEBUG LOGGING SYSTEM ============
@@ -1872,6 +1905,52 @@
         const LAMBDA_URL = "https://qy9whwr6af.execute-api.us-east-2.amazonaws.com/default/vintagelister-presign";
         // All secrets (n8n URL, OpenAI key, S3 bucket) are now in Lambda environment variables
         
+        // ============ SESSION TOKEN SYSTEM ============
+        // Generated on successful PIN entry, included in all API requests
+        // Provides basic request validation (not true security - backend should validate)
+        let sessionToken = null;
+        let sessionExpiry = null;
+        const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
+        
+        function generateSessionToken() {
+            // Generate a random token
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            const token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+            
+            // Add timestamp for basic validation
+            const timestamp = Date.now();
+            sessionToken = `${token}-${timestamp}`;
+            sessionExpiry = timestamp + SESSION_DURATION_MS;
+            
+            console.log('🔐 Session token generated, expires in 8 hours');
+            return sessionToken;
+        }
+        
+        function getSessionToken() {
+            // Check if session is still valid
+            if (!sessionToken || !sessionExpiry || Date.now() > sessionExpiry) {
+                console.warn('🔐 Session expired or missing');
+                return null;
+            }
+            return sessionToken;
+        }
+        
+        function isSessionValid() {
+            return sessionToken && sessionExpiry && Date.now() < sessionExpiry;
+        }
+        
+        // Helper to get auth headers for API requests
+        function getAuthHeaders() {
+            const token = getSessionToken();
+            return {
+                'Content-Type': 'application/json',
+                'x-api-key': APP_PIN,
+                'x-session-token': token || 'none'
+            };
+        }
+        // ================================================
+        
         // Simple HTML escape for user-facing strings (XSS prevention)
         function escapeHtml(str) {
             if (!str) return '';
@@ -1903,7 +1982,8 @@
                 superCategory: 'tops',
                 category: '',
                 tagStatus: '',
-                tagSize: '',
+                tagSize: '',           // What the tag literally says (e.g., "L", "42R")
+                modernFit: '',         // Calculated fit based on measurements (e.g., "Fits like M")
                 origin: '',
                 country: '',
                 gender: '',
@@ -3159,7 +3239,7 @@
             try {
                 fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'n8n',
                         formData: {
@@ -3256,7 +3336,7 @@
             try {
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({ sku, files })
                 });
                 
@@ -5251,6 +5331,10 @@
         function checkPin() { 
             if(document.getElementById('pin-input').value===APP_PIN){ 
                 debugLog('PIN correct, logging in...', 'success');
+                
+                // Generate session token for API requests
+                generateSessionToken();
+                
                 try{ 
                     data.photographer=document.getElementById('photographer-select').value; 
                     localStorage.setItem('vl_photographer',data.photographer); 
@@ -8069,6 +8153,191 @@
             return numbers;
         }
         
+        // ============ SMART LABELLED PARSING ============
+        // Parse measurements by keyword labels instead of strict order
+        // User can say "chest 22, length 28" in any order
+        const MEASUREMENT_KEYWORDS = {
+            // Chest/Pit-to-Pit keywords
+            'chest': 'Pit-to-Pit',
+            'pit': 'Pit-to-Pit',
+            'pit to pit': 'Pit-to-Pit',
+            'bust': 'Pit-to-Pit',
+            
+            // Length keywords
+            'length': 'Length',
+            'total length': 'Length',
+            'body length': 'Length',
+            
+            // Sleeve keywords
+            'sleeve': 'Top Sleeve',
+            'top sleeve': 'Top Sleeve',
+            'bottom sleeve': 'Bottom Sleeve',
+            'sleeve opening': 'Sleeve Opening',
+            'cuff': 'Sleeve Opening',
+            
+            // Shoulder keywords
+            'shoulder': 'Shoulder-to-Shoulder',
+            'shoulder to shoulder': 'Shoulder-to-Shoulder',
+            'shoulders': 'Shoulder-to-Shoulder',
+            
+            // Waist keywords
+            'waist': 'Waist',
+            
+            // Hem keywords
+            'hem': 'Bottom Hem',
+            'bottom hem': 'Bottom Hem',
+            
+            // Neck keywords
+            'neck': 'Neck-to-Shoulder',
+            'neck circumference': 'Neck Circumference',
+            'collar': 'Neck Circumference',
+            'neck to cuff': 'Neck-to-Cuff',
+            
+            // Bottoms keywords
+            'inseam': 'Inseam',
+            'rise': 'Rise',
+            'thigh': 'Thigh',
+            'leg opening': 'Leg Opening',
+            'leg': 'Leg Opening'
+        };
+        
+        function parseLabelledMeasurements(text) {
+            if (!text) return {};
+            
+            const measurements = {};
+            const str = text.toLowerCase();
+            
+            console.log('📏 Labelled parse input:', str.substring(0, 150));
+            
+            // Pattern: keyword followed by number (with optional "is" or ":")
+            // e.g., "chest is 22", "chest 22", "chest: 22", "pit to pit 21 and a half"
+            for (const [keyword, measureName] of Object.entries(MEASUREMENT_KEYWORDS)) {
+                // Build regex to find keyword followed by number
+                const keywordPattern = keyword.replace(/ /g, '\\s+');
+                const regex = new RegExp(
+                    keywordPattern + '\\s*(?:is|:|of)?\\s*' +
+                    '(\\d+(?:\\.\\d+)?|' + Object.keys(wordToNum).join('|') + ')' +
+                    '(?:\\s+(?:and\\s+a\\s+half|point\\s+five|and\\s+a\\s+quarter|point\\s+two\\s+five|point\\s+seven\\s+five))?',
+                    'i'
+                );
+                
+                const match = str.match(regex);
+                if (match) {
+                    let value = parseFloat(match[1]);
+                    if (isNaN(value)) {
+                        value = wordToNum[match[1].toLowerCase()] || 0;
+                    }
+                    
+                    // Check for fractions
+                    if (match[0].includes('half') || match[0].includes('point five')) {
+                        value += 0.5;
+                    } else if (match[0].includes('quarter') || match[0].includes('point two five')) {
+                        value += 0.25;
+                    } else if (match[0].includes('point seven five')) {
+                        value += 0.75;
+                    }
+                    
+                    if (value > 0 && value < 100) {
+                        measurements[measureName] = value;
+                        console.log(`📏 Found: ${measureName} = ${value}`);
+                    }
+                }
+            }
+            
+            return measurements;
+        }
+        
+        // ============ MODERN FIT CALCULATION ============
+        // Calculate approximate modern fit size from chest (pit-to-pit) measurement
+        // These are approximate ranges - vintage sizing runs large
+        const MODERN_FIT_CHART = {
+            // Men's chest measurements (pit-to-pit in inches)
+            men: [
+                { min: 0,    max: 18,   size: 'XS',   label: 'Fits like XS' },
+                { min: 18,   max: 20,   size: 'S',    label: 'Fits like S' },
+                { min: 20,   max: 22,   size: 'M',    label: 'Fits like M' },
+                { min: 22,   max: 24,   size: 'L',    label: 'Fits like L' },
+                { min: 24,   max: 26,   size: 'XL',   label: 'Fits like XL' },
+                { min: 26,   max: 28,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 28,   max: 30,   size: '3XL',  label: 'Fits like 3XL' },
+                { min: 30,   max: 100,  size: '4XL+', label: 'Fits like 4XL+' }
+            ],
+            // Women's chest measurements
+            women: [
+                { min: 0,    max: 16,   size: 'XS',   label: 'Fits like XS' },
+                { min: 16,   max: 18,   size: 'S',    label: 'Fits like S' },
+                { min: 18,   max: 20,   size: 'M',    label: 'Fits like M' },
+                { min: 20,   max: 22,   size: 'L',    label: 'Fits like L' },
+                { min: 22,   max: 24,   size: 'XL',   label: 'Fits like XL' },
+                { min: 24,   max: 26,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 26,   max: 100,  size: '3XL+', label: 'Fits like 3XL+' }
+            ],
+            // Unisex/default (use men's)
+            default: [
+                { min: 0,    max: 18,   size: 'XS',   label: 'Fits like XS' },
+                { min: 18,   max: 20,   size: 'S',    label: 'Fits like S' },
+                { min: 20,   max: 22,   size: 'M',    label: 'Fits like M' },
+                { min: 22,   max: 24,   size: 'L',    label: 'Fits like L' },
+                { min: 24,   max: 26,   size: 'XL',   label: 'Fits like XL' },
+                { min: 26,   max: 28,   size: 'XXL',  label: 'Fits like XXL' },
+                { min: 28,   max: 100,  size: '3XL+', label: 'Fits like 3XL+' }
+            ]
+        };
+        
+        function calculateModernFit(chestMeasurement, gender) {
+            if (!chestMeasurement || chestMeasurement <= 0) return null;
+            
+            // Select chart based on gender
+            let chart = MODERN_FIT_CHART.default;
+            if (gender === 'Women' || gender === 'Girls') {
+                chart = MODERN_FIT_CHART.women;
+            } else if (gender === 'Men' || gender === 'Boys') {
+                chart = MODERN_FIT_CHART.men;
+            }
+            
+            // Find matching size range
+            for (const range of chart) {
+                if (chestMeasurement >= range.min && chestMeasurement < range.max) {
+                    return {
+                        size: range.size,
+                        label: range.label,
+                        chest: chestMeasurement
+                    };
+                }
+            }
+            
+            return null;
+        }
+        
+        // Update modern fit display when measurements change
+        function updateModernFitDisplay() {
+            const measurements = App.item.parsedMeasurements || {};
+            const pitToPit = measurements['Pit-to-Pit'];
+            const gender = App.item.gender;
+            
+            const fitDisplay = document.getElementById('modern-fit-display');
+            if (!fitDisplay) return;
+            
+            if (pitToPit) {
+                const fit = calculateModernFit(pitToPit, gender);
+                if (fit) {
+                    App.item.modernFit = fit.label;
+                    fitDisplay.innerHTML = `
+                        <div class="modern-fit-badge">
+                            <span class="fit-icon">📐</span>
+                            <span class="fit-text">${fit.label}</span>
+                            <span class="fit-detail">(${pitToPit}" chest)</span>
+                        </div>
+                    `;
+                    fitDisplay.classList.remove('hidden');
+                } else {
+                    fitDisplay.classList.add('hidden');
+                }
+            } else {
+                fitDisplay.classList.add('hidden');
+            }
+        }
+        
         // ============ AI VISION ANALYSIS ============
         let aiAnalysisInProgress = false;
         
@@ -8084,13 +8353,10 @@
                 // Instead of resizing (blurs text), we crop the center at full resolution
                 const base64 = await centerCropForTagAI(imageBlob, 2048);
                 
-                // Call Lambda vision endpoint with x-api-key for security
+                // Call Lambda vision endpoint with session token
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'x-api-key': APP_PIN // Basic API key protection
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'vision',
                         type: 'tag',
@@ -8652,13 +8918,10 @@
                     pattern: App.item.pattern || null
                 };
                 
-                // Call Lambda vision endpoint with x-api-key for security
+                // Call Lambda vision endpoint with session token
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'x-api-key': APP_PIN // Basic API key protection
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'vision',
                         type: 'main',
@@ -8726,9 +8989,7 @@
             try {
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: getAuthHeaders(),
                     body: JSON.stringify({
                         action: 'whisper',
                         audio: base64Audio,
@@ -8881,23 +9142,42 @@
                         // Send to Whisper
                         const transcript = await transcribeWithWhisper(blob);
                         
-                        // Parse numbers from transcript
-                        const numbers = parseNumbersFromTranscript(transcript);
-                        console.log('🎤 Parsed numbers:', numbers);
+                        // SMART PARSING: Try labelled parsing first, then sequential
+                        // Labelled: "chest 22, length 28" (any order)
+                        // Sequential: "22, 28, 25" (in template order)
+                        const labelledMeasurements = parseLabelledMeasurements(transcript);
+                        const sequentialNumbers = parseNumbersFromTranscript(transcript);
                         
-                        // Map numbers to measurement template
+                        console.log('🎤 Labelled measurements:', labelledMeasurements);
+                        console.log('🎤 Sequential numbers:', sequentialNumbers);
+                        
+                        // Get template for this category
                         const template = getCurrentMeasurementTemplate();
-                        numbers.forEach((num, idx) => {
-                            if(idx < template.length) {
-                                parsedMeasurements[template[idx]] = num;
+                        
+                        // Merge: labelled takes priority, then fill gaps with sequential
+                        parsedMeasurements = {...labelledMeasurements};
+                        
+                        // Fill remaining slots with sequential numbers
+                        let seqIdx = 0;
+                        template.forEach(measureName => {
+                            if (!parsedMeasurements[measureName] && seqIdx < sequentialNumbers.length) {
+                                // Only assign if this slot isn't already filled by labelled
+                                parsedMeasurements[measureName] = sequentialNumbers[seqIdx];
+                                seqIdx++;
                             }
                         });
+                        
+                        console.log('🎤 Final merged measurements:', parsedMeasurements);
                         
                         data.parsedMeasurements = {...parsedMeasurements};
                         data.audioTranscript = transcript;
                         
-                        // Show results
-                        showTranscriptionResults(transcript, numbers, template);
+                        // Calculate and update modern fit based on chest measurement
+                        updateModernFitDisplay();
+                        
+                        // Show results - pass measurement count instead of numbers array
+                        const measureCount = Object.keys(parsedMeasurements).length;
+                        showTranscriptionResults(transcript, Object.values(parsedMeasurements), template);
                         
                     } catch(err) {
                         console.error('🎤 Transcription failed:', err);
@@ -9738,7 +10018,7 @@
                 try {
                     const n8nResponse = await fetch(LAMBDA_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify({
                             action: 'n8n',
                             formData: n8nPayload
