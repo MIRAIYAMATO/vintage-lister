@@ -1681,7 +1681,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.50";
+        const VERSION = "v100.54";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -2738,28 +2738,41 @@
                 });
             }
             
-            // JSON metadata file
+            // JSON metadata file - COMPLETE data for n8n/backend
             const metadata = {
+                // Core identification
                 sku: sku,
                 timestamp: new Date().toISOString(),
-                category: data.category,
+                photographer: data.photographer,
+                flagged: data.flagged,
+                
+                // Category info
                 superCategory: data.superCategory,
+                category: data.category,
+                gender: data.gender,
+                
+                // Tag info
                 tagStatus: data.tagStatus,
                 tagSize: data.tagSize,
                 origin: data.origin,
                 country: data.country,
-                gender: data.gender,
+                
+                // Colors & pattern
                 colors: data.colors,
                 fade: data.fade,
                 pattern: data.pattern,
                 patternTraits: data.patternTraits,
                 printType: data.printType,
                 graphicCategory: data.graphicCategory,
+                
+                // Fabric & materials
                 fabricType: data.fabricType,
                 fabricTraits: data.fabricTraits,
                 wash: data.wash,
                 materials: data.materials,
                 materialTraits: data.materialTraits,
+                
+                // Construction details
                 sleeveLength: data.sleeveLength,
                 sleeveStyle: data.sleeveStyle,
                 cutoffType: data.cutoffType,
@@ -2769,28 +2782,82 @@
                 rise: data.rise,
                 thickness: data.thickness,
                 layers: data.layers,
+                elasticCheck: data.elasticCheck,
+                
+                // Condition & defects
                 hasDefects: data.hasDefects,
                 defectTypes: data.defectTypes,
-                flagged: data.flagged,
-                elasticCheck: data.elasticCheck,
+                
+                // Weight
                 weightLb: data.weightLb,
                 weightOz: data.weightOz,
-                photographer: data.photographer,
+                weightTotal: data.weightLb + (data.weightOz / 16), // Total in lbs
+                
+                // Measurements (audio)
                 audioDuration: data.audioDuration,
+                audioMimeType: data.audioMimeType,
                 audioTranscript: data.audioTranscript || '',
                 parsedMeasurements: data.parsedMeasurements || {},
-                mainPhotoCount: data.mainPhotos.length,
-                tagPhotoCount: data.tagPhotos.length,
-                defectPhotoCount: data.defectPhotos.length,
-                defectCloseupPhotoCount: data.defectCloseupPhotos.length,
-                featurePhotoCount: data.featuresPhotos.length,
+                
+                // Photo counts
+                photoCount: {
+                    main: data.mainPhotos.length,
+                    tag: data.tagPhotos.length,
+                    defect: data.defectPhotos.length,
+                    defectCloseup: data.defectCloseupPhotos.length,
+                    feature: data.featuresPhotos.length,
+                    total: data.mainPhotos.length + data.tagPhotos.length + data.defectPhotos.length + 
+                           data.defectCloseupPhotos.length + data.featuresPhotos.length
+                },
+                
+                // Main photos with defect markers
                 mainPhotos: data.mainPhotos.map((p, i) => ({
+                    filename: `${sku}_${p.shotId || 'main_' + String(i+1).padStart(2,'0')}.jpg`,
                     shotId: p.shotId || `main_${String(i+1).padStart(2,'0')}`,
                     width: p.width,
                     height: p.height,
                     isPortrait: p.isPortrait || false,
-                    defects: p.defects || [],
+                    defects: (p.defects || []).map(d => ({
+                        type: d.type,
+                        x: d.x,
+                        y: d.y
+                    })),
                     defectSide: p.defectSide || null
+                })),
+                
+                // Tag photos
+                tagPhotos: data.tagPhotos.map((p, i) => ({
+                    filename: `${sku}_tag_${String(i+1).padStart(2,'0')}.jpg`,
+                    width: p.width,
+                    height: p.height
+                })),
+                
+                // Auto-cropped defect photos
+                defectPhotos: data.defectPhotos.map((p, i) => ({
+                    filename: `${sku}_defect_${p.defectType || 'crop'}_crop_${String(i+1).padStart(2,'0')}.jpg`,
+                    defectType: p.defectType || 'unknown',
+                    sourcePhoto: p.sourcePhotoIndex,
+                    cropRegion: p.cropRegion || null
+                })),
+                
+                // Manual defect closeup photos
+                defectCloseupPhotos: data.defectCloseupPhotos.map((p, i) => ({
+                    filename: `${sku}_defect_closeup_${p.linkedDefect?.type || 'unknown'}_${String(i+1).padStart(2,'0')}.jpg`,
+                    linkedDefect: p.linkedDefect ? {
+                        type: p.linkedDefect.type,
+                        photoIndex: p.linkedDefect.photoIndex,
+                        defectIndex: p.linkedDefect.defectIndex
+                    } : null,
+                    width: p.width,
+                    height: p.height
+                })),
+                
+                // Feature photos
+                featurePhotos: data.featuresPhotos.map((p, i) => ({
+                    filename: `${sku}_feature_${(p.featureType || 'detail').toLowerCase().replace(/\s+/g, '-')}_${String(i+1).padStart(2,'0')}.jpg`,
+                    featureType: p.featureType || 'detail',
+                    width: p.width,
+                    height: p.height
                 }))
             };
             
@@ -6031,6 +6098,11 @@
                             savePhotoToFolder(blob, filename);
                         }
                         showToast('success', `Tag Photo ${data.tagPhotos.length}`, `${canvas.width}×${canvas.height}`, 1500);
+                        
+                        // AI Analysis - analyze first tag photo
+                        if(data.tagPhotos.length === 1) {
+                            analyzeTagWithAI(blob);
+                        }
                     }
                     else if(photoMode === 'defect-closeup') {
                         // Add linked defect info from visual picker
@@ -7791,111 +7863,225 @@
         }
         
         function parseNumbersFromTranscript(text) {
-            console.log('🔢 === PARSING TRANSCRIPT ===');
-            console.log('🔢 Raw transcript:', text);
+            if (!text) return [];
             
             const numbers = [];
-            let processed = text.toLowerCase();
+            let str = text.toLowerCase().replace(/-/g, ' ');
             
-            // Step 1: Normalize hyphenated numbers (twenty-two -> twenty two)
-            processed = processed.replace(/-/g, ' ');
-            
-            // Step 2: Replace spoken fractions with decimals
-            processed = processed
-                .replace(/\band a half\b/g, ' .5')
-                .replace(/\bpoint five\b/g, ' .5')
-                .replace(/\bpoint 5\b/g, ' .5')
-                .replace(/\band a quarter\b/g, ' .25')
-                .replace(/\bpoint two five\b/g, ' .25')
-                .replace(/\bpoint 25\b/g, ' .25')
-                .replace(/\bpoint seven five\b/g, ' .75')
-                .replace(/\bpoint 75\b/g, ' .75')
-                .replace(/\bhalf\b/g, ' .5'); // standalone "half" after a number
-            
-            // Step 3: Remove filler words and measurement terms that don't affect numbers
-            const fillerWords = [
-                'inches', 'inch', 'is', 'are', 'the', 'and', 'to', 'a', 'an',
-                'neck', 'shoulder', 'sleeve', 'opening', 'bottom', 'top', 'pit',
-                'waist', 'hem', 'length', 'collar', 'cuff', 'width', 'from',
-                'measurement', 'measurements', 'next', 'then', 'okay', 'um', 'uh'
+            // Fraction patterns → placeholders (order matters: longer patterns first)
+            const fractionMap = [
+                [/\bpoint\s+seven\s+five\b/g, 'FRAC75'],
+                [/\bpoint\s+two\s+five\b/g, 'FRAC25'],
+                [/\band\s+a\s+quarter\b/g, 'FRAC25'],
+                [/\bpoint\s+five\b/g, 'FRAC5'],
+                [/\band\s+a\s+half\b/g, 'FRAC5'],
+                [/\bpoint\s+75\b/g, 'FRAC75'],
+                [/\bpoint\s+25\b/g, 'FRAC25'],
+                [/\bpoint\s+5\b/g, 'FRAC5']
             ];
+            fractionMap.forEach(([pattern, placeholder]) => { str = str.replace(pattern, ' ' + placeholder + ' '); });
             
-            // Remove punctuation and split into tokens
-            processed = processed.replace(/[.,!?;:'"]+/g, ' ');
-            let tokens = processed.split(/\s+/).filter(t => t && !fillerWords.includes(t));
+            // Remove punctuation and filler words
+            str = str.replace(/[.,!?;:'"]+/g, ' ');
+            const skip = new Set(['inches','inch','is','are','the','and','to','a','an','neck','shoulder','sleeve',
+                'opening','bottom','top','pit','waist','hem','length','collar','cuff','width','from',
+                'measurement','measurements','next','then','okay','um','uh','about','around','approximately','for','at','of','its',"it's",'that','so']);
+            const tokens = str.split(/\s+/).filter(t => t && !skip.has(t));
             
-            console.log('🔢 Cleaned tokens:', tokens);
+            // Fraction placeholder → value
+            const fracVal = { frac5: 0.5, frac25: 0.25, frac75: 0.75 };
             
-            // Step 4: Parse numbers from tokens
             let i = 0;
-            while(i < tokens.length) {
-                let token = tokens[i];
+            while (i < tokens.length) {
+                const tok = tokens[i].toLowerCase();
                 
-                // Check for direct number (e.g., "22", "28.5", "8")
-                const directNum = parseFloat(token);
-                if(!isNaN(directNum) && directNum >= 1 && directNum < 100) {
-                    // Check if next token is a fraction to add
-                    if(i + 1 < tokens.length) {
-                        const nextVal = parseFloat(tokens[i + 1]);
-                        if(!isNaN(nextVal) && nextVal > 0 && nextVal < 1) {
-                            numbers.push(directNum + nextVal);
-                            console.log('🔢 Number + fraction:', directNum, '+', nextVal, '=', directNum + nextVal);
-                            i += 2;
-                            continue;
+                // Handle standalone fraction (delayed: "eight... point five")
+                if (fracVal[tok] !== undefined) {
+                    if (numbers.length > 0 && numbers[numbers.length-1] === Math.floor(numbers[numbers.length-1])) {
+                        numbers[numbers.length-1] += fracVal[tok];
+                    }
+                    i++; continue;
+                }
+                
+                // Parse number (direct or word)
+                let num = parseFloat(tok);
+                if (isNaN(num) && wordToNum[tok] !== undefined) num = wordToNum[tok];
+                
+                if (!isNaN(num) && num >= 1 && num < 100) {
+                    let advance = 1;
+                    
+                    // Compound: "twenty two" → 22
+                    if (num >= 20 && num < 100 && i+1 < tokens.length) {
+                        const next = tokens[i+1].toLowerCase();
+                        if (wordToNum[next] !== undefined && wordToNum[next] < 10) {
+                            num += wordToNum[next];
+                            advance++;
                         }
                     }
-                    numbers.push(directNum);
-                    console.log('🔢 Direct number:', directNum);
+                    
+                    // Immediate fraction: "eight FRAC5" → 8.5
+                    if (i + advance < tokens.length && fracVal[tokens[i+advance].toLowerCase()] !== undefined) {
+                        num += fracVal[tokens[i+advance].toLowerCase()];
+                        advance++;
+                    }
+                    
+                    numbers.push(num);
+                    i += advance;
+                } else {
                     i++;
-                    continue;
                 }
-                
-                // Check for word number (e.g., "eight", "twenty")
-                if(wordToNum[token] !== undefined) {
-                    let num = wordToNum[token];
-                    let tokensConsumed = 1;
-                    
-                    // Check for compound number (e.g., "twenty two" -> 22)
-                    if(num >= 20 && num < 100 && i + 1 < tokens.length) {
-                        const nextToken = tokens[i + 1];
-                        if(wordToNum[nextToken] !== undefined && wordToNum[nextToken] < 10) {
-                            num += wordToNum[nextToken];
-                            tokensConsumed++;
-                        }
-                    }
-                    
-                    // Check for fraction after the number
-                    const fractionIdx = i + tokensConsumed;
-                    if(fractionIdx < tokens.length) {
-                        const fractionToken = tokens[fractionIdx];
-                        const fractionVal = parseFloat(fractionToken);
-                        if(!isNaN(fractionVal) && fractionVal > 0 && fractionVal < 1) {
-                            num += fractionVal;
-                            tokensConsumed++;
-                            console.log('🔢 Word number + fraction:', token, '+ fraction =', num);
-                        } else {
-                            console.log('🔢 Word number:', token, '=', num);
-                        }
-                    } else {
-                        console.log('🔢 Word number:', token, '=', num);
-                    }
-                    
-                    // Only add if it's a reasonable measurement (>= 1 inch)
-                    if(num >= 1 && num < 100) {
-                        numbers.push(num);
-                    }
-                    
-                    i += tokensConsumed;
-                    continue;
-                }
-                
-                // Skip unknown token
-                i++;
             }
             
-            console.log('🔢 Final parsed numbers:', numbers);
-            console.log('🔢 === END PARSING ===');
+            console.log('🔢 Parsed:', text.substring(0,80) + '...', '→', numbers);
             return numbers;
+        }
+        
+        // ============ AI VISION ANALYSIS ============
+        let aiAnalysisInProgress = false;
+        
+        async function analyzeTagWithAI(imageBlob) {
+            if (aiAnalysisInProgress) return;
+            aiAnalysisInProgress = true;
+            
+            console.log('🤖 Starting AI tag analysis...');
+            const aiToast = showToast('info', '🤖 AI Analyzing Tag...', 'Reading brand, size, materials...', 30000);
+            
+            try {
+                // Convert blob to base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(imageBlob);
+                });
+                
+                // Call Lambda vision endpoint
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'vision',
+                        type: 'tag',
+                        image: base64
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('🤖 AI response:', result);
+                
+                aiToast.remove();
+                
+                if (result.success && result.data) {
+                    applyAISuggestions(result.data, 'tag');
+                    showToast('success', '🤖 AI Analysis Complete', 'Fields auto-filled from tag', 3000);
+                } else {
+                    console.warn('🤖 AI analysis failed:', result.error);
+                    showToast('warning', '🤖 AI Analysis', 'Could not read tag clearly', 2500);
+                }
+            } catch (err) {
+                console.error('🤖 AI analysis error:', err);
+                aiToast.remove();
+                showToast('error', '🤖 AI Error', err.message, 2500);
+            } finally {
+                aiAnalysisInProgress = false;
+            }
+        }
+        
+        function applyAISuggestions(aiData, type) {
+            console.log('🤖 Applying AI suggestions:', aiData);
+            let fieldsUpdated = [];
+            
+            if (type === 'tag') {
+                // Size
+                if (aiData.size && !data.tagSize) {
+                    data.tagSize = aiData.size;
+                    fieldsUpdated.push('Size: ' + aiData.size);
+                    // Update UI
+                    document.querySelectorAll('#tag-size-options .chip-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.textContent.trim() === aiData.size);
+                    });
+                }
+                
+                // Country
+                if (aiData.country && !data.country) {
+                    data.country = aiData.country;
+                    fieldsUpdated.push('Country: ' + aiData.country);
+                    // Update origin dropdown
+                    const countrySelect = document.getElementById('country-select');
+                    if (countrySelect) {
+                        countrySelect.value = aiData.country;
+                        // Trigger change event
+                        countrySelect.dispatchEvent(new Event('change'));
+                    }
+                }
+                
+                // Materials
+                if (aiData.materials && aiData.materials.length > 0 && data.materials.length === 0) {
+                    const materialNames = aiData.materials.map(m => m.material);
+                    data.materials = materialNames;
+                    fieldsUpdated.push('Materials: ' + materialNames.join(', '));
+                    // Update material chips
+                    document.querySelectorAll('#material-options .chip-btn').forEach(btn => {
+                        const mat = btn.textContent.trim();
+                        if (materialNames.includes(mat)) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Tag condition → tagStatus
+                if (aiData.tagCondition) {
+                    const conditionMap = {
+                        'excellent': 'Present',
+                        'good': 'Present',
+                        'faded': 'Faded',
+                        'damaged': 'Faded',
+                        'partial': 'Faded'
+                    };
+                    const status = conditionMap[aiData.tagCondition] || 'Present';
+                    if (!data.tagStatus) {
+                        data.tagStatus = status;
+                        fieldsUpdated.push('Tag: ' + status);
+                        document.querySelectorAll('#tag-status-options .chip-btn').forEach(btn => {
+                            btn.classList.toggle('active', btn.textContent.trim() === status);
+                        });
+                    }
+                }
+                
+                // Vintage indicators → origin
+                if (aiData.vintageIndicators && aiData.vintageIndicators.length > 0) {
+                    const indicators = aiData.vintageIndicators.map(v => v.toLowerCase());
+                    if (indicators.some(v => v.includes('union') || v.includes('made in usa') || v.includes('single stitch'))) {
+                        if (!data.origin) {
+                            data.origin = 'Vintage';
+                            fieldsUpdated.push('Origin: Vintage');
+                            document.querySelectorAll('#origin-options .chip-btn').forEach(btn => {
+                                btn.classList.toggle('active', btn.textContent.trim() === 'Vintage');
+                            });
+                        }
+                    }
+                }
+                
+                // Estimated era - just log for now
+                if (aiData.estimatedEra) {
+                    console.log('🤖 AI estimated era:', aiData.estimatedEra);
+                    fieldsUpdated.push('Era: ~' + aiData.estimatedEra);
+                }
+                
+                // Brand - log for reference (not a form field currently)
+                if (aiData.brand) {
+                    console.log('🤖 AI detected brand:', aiData.brand);
+                    fieldsUpdated.push('Brand: ' + aiData.brand);
+                }
+            }
+            
+            // Log what was updated
+            if (fieldsUpdated.length > 0) {
+                console.log('🤖 Fields auto-filled:', fieldsUpdated);
+            }
+            
+            // Refresh form state
+            updateProgressIndicators();
         }
         
         // Send audio to Whisper via Lambda proxy (keeps API key secure)
