@@ -139,10 +139,7 @@
         .btn-tertiary { background: white; color: var(--color-text-muted); border: 1px solid var(--color-border); }
         .btn-tertiary:hover { background: var(--color-background); }
         .btn-tertiary.selected { border: 2px solid var(--color-primary) !important; background: var(--color-primary) !important; color: white !important; }
-        /* btn-default = light blue with dashed border (suggested/default option) */
-        .btn-default { background: #e0f2fe !important; color: #0369a1 !important; border: 2px dashed #7dd3fc !important; }
-        .btn-default:hover { background: #bae6fd !important; }
-        .btn-default.selected { border: 2px solid var(--color-primary) !important; background: var(--color-primary) !important; color: white !important; }
+        /* btn-hero = selected state */
         /* btn-hero = solid blue (confirmed selection) */
         .btn-hero { background: var(--color-primary); color: white !important; border: 2px solid var(--color-primary-dark) !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .btn-hero:hover { background: var(--color-primary-dark); }
@@ -173,8 +170,6 @@
         /* Category buttons */
         .cat-hero { padding: 16px; font-size: 15px; font-weight: 700; border-radius: 8px; border: 2px solid var(--color-border); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 8px; background: white; color: var(--color-text); transition: all 0.15s; }
         .cat-hero:hover { background: var(--color-background); border-color: var(--color-primary); }
-        .cat-hero.cat-default { background: #e0f2fe; color: #0369a1; border: 2px dashed #7dd3fc; }
-        .cat-hero.cat-default:hover { background: #bae6fd; }
         .cat-hero.selected { background: var(--color-primary) !important; color: white !important; border: 2px solid var(--color-primary) !important; box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
         .cat-secondary { background: white; color: var(--color-text); border: 2px solid var(--color-border); padding: 12px; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; }
         .cat-secondary:hover { background: var(--color-background); border-color: var(--color-primary); }
@@ -711,57 +706,6 @@
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
-    <div class="sku-gate hidden" id="sku-gate">
-        <div class="sku-gate-card">
-            <!-- Version Badge -->
-            <div class="sku-gate-version" id="sku-gate-version"></div>
-            
-            <!-- Default Entry View -->
-            <div id="sku-gate-entry">
-                <div class="sku-gate-icon">🏷️</div>
-                <div class="sku-gate-title">Scan SKU to Start</div>
-                <div class="sku-gate-subtitle">Every item begins with a SKU scan</div>
-                <div class="sku-gate-input-row">
-                    <input type="text" id="sku-gate-input" class="sku-gate-input" placeholder="SKU" 
-                        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                        oninput="onSkuGateInput()" onkeydown="handleSkuGateKeydown(event)">
-                    <button class="sku-gate-scan-btn" onclick="activateSkuGateScan()" title="Scan with camera">📷</button>
-                </div>
-                <div class="sku-gate-hint">Type manually or scan barcode with <kbd>📷</kbd> camera</div>
-                <div class="sku-gate-status" id="sku-gate-status"></div>
-            </div>
-            
-            <!-- Camera Preview View (shown when scanning) -->
-            <div id="sku-gate-camera" class="hidden">
-                <div class="sku-gate-title" style="margin-bottom:12px;">📷 Scanning...</div>
-                <div class="sku-gate-camera-container">
-                    <video id="sku-gate-video" autoplay playsinline muted></video>
-                    <div class="sku-gate-scan-overlay">
-                        <div class="scan-target"></div>
-                    </div>
-                    <!-- Stabilizer Indicator -->
-                    <div class="sku-gate-stabilizer" id="sku-gate-stabilizer">
-                        <div class="sku-gate-stabilizer-dot" id="sku-gate-stabilizer-dot"></div>
-                        <span id="sku-gate-stabilizer-text">HOLD STEADY</span>
-                    </div>
-                    <!-- Error Overlay -->
-                    <div id="sku-gate-error" class="hidden" style="position:absolute;inset:0;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;">
-                        <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-                        <div style="font-size:16px;font-weight:600;color:#ef4444;margin-bottom:8px;">No Camera Detected</div>
-                        <div style="font-size:13px;color:#64748b;text-align:center;padding:0 20px;">Close Logi Tune or other camera apps<br>then try again, or type SKU manually</div>
-                    </div>
-                </div>
-                <div class="sku-gate-camera-hint">Center barcode in the frame</div>
-                <div id="scanner-status" style="font-size:10px;color:#22c55e;margin-bottom:8px;"></div>
-                <input type="text" id="sku-gate-scan-input" class="sku-gate-input" placeholder="Waiting for scan..." 
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-                    oninput="onSkuGateScanInput()" onkeydown="handleSkuGateScanKeydown(event)"
-                    style="margin-bottom:12px; font-size:18px; height:50px;">
-                <button onclick="cancelSkuGateScan()" class="sku-gate-cancel-btn">✕ Cancel</button>
-            </div>
-        </div>
-    </div>
-    
     <div class="flash-overlay" id="flash-overlay"></div>
     
     <!-- PHOTO PREVIEW MODAL -->
@@ -835,6 +779,19 @@
             <div class="step-area">
                 <!-- STEP 1: TAG -->
                 <div id="step-1" class="step-container active">
+                    <!-- SKU Input - First thing in Step 1 -->
+                    <div class="section-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:2px solid var(--color-primary);">
+                        <div class="section-label" style="color:var(--color-primary);"><span id="check-sku" class="check-circle">○</span> SKU</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <input type="text" id="sku-input" placeholder="Scan or type SKU..." 
+                                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                                oninput="onSkuInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();onSkuInput();}"
+                                style="flex:1;padding:12px 16px;font-size:18px;font-family:monospace;font-weight:700;text-align:center;border:2px solid var(--color-border);border-radius:10px;transition:var(--transition-fast);">
+                            <button onclick="focusSkuInput()" style="padding:12px 16px;background:var(--color-dark);color:white;border:none;border-radius:10px;font-size:18px;cursor:pointer;" title="Focus for barcode scanner">🔍</button>
+                        </div>
+                        <div id="sku-status" style="margin-top:8px;font-size:12px;color:var(--color-text-muted);text-align:center;"></div>
+                    </div>
+                    
                     <div class="section-card">
                         <div class="section-label"><span id="check-category" class="check-circle">○</span> What is it?</div>
                         <div class="btn-grid btn-grid-3" style="margin-bottom:12px;">
@@ -847,7 +804,7 @@
                     
                     <div class="section-card">
                         <div class="section-label"><span id="check-tag" class="check-circle">○</span> Tag Info</div>
-                        <button onclick="setTagStatus('has', this)" class="btn btn-default tag-btn" style="width:100%;margin-bottom:8px;">✓ TAG READABLE</button>
+                        <button onclick="setTagStatus('has', this)" class="btn btn-secondary tag-btn" style="width:100%;margin-bottom:8px;">✓ TAG READABLE</button>
                         <div class="btn-grid btn-grid-2">
                             <button onclick="setTagStatus('worn', this)" class="btn btn-secondary tag-btn">👀 Worn/Faded</button>
                             <button onclick="setTagStatus('none', this)" class="btn btn-secondary tag-btn">✂️ Missing/Cut</button>
@@ -872,7 +829,7 @@
                             <input type="text" id="tag-size-input" placeholder="Or Type (e.g. 42R, OS, 32x30)" onfocus="clearSizeBtns()" oninput="onSizeInput(this)" class="form-input text-sm text-center" style="margin-bottom:8px;">
                             <div class="sub-label">Origin</div>
                             <div class="btn-grid btn-grid-2" style="margin-bottom:8px;">
-                                <button onclick="setOrigin('usa', this)" class="btn btn-default origin-btn"><img src="https://flagcdn.com/w20/us.png" width="20" height="15" alt="US" style="vertical-align:middle;margin-right:4px;">USA MADE</button>
+                                <button onclick="setOrigin('usa', this)" class="btn btn-secondary origin-btn"><img src="https://flagcdn.com/w20/us.png" width="20" height="15" alt="US" style="vertical-align:middle;margin-right:4px;">USA MADE</button>
                                 <button onclick="setOrigin('import', this)" class="btn btn-secondary origin-btn">🌍 Import</button>
                             </div>
                             <div id="country-section" class="hidden">
@@ -943,7 +900,7 @@
                     <div class="section-card">
                         <div class="section-label"><span id="check-fade" class="check-circle">○</span> Fade Level</div>
                         <div class="btn-grid btn-grid-3">
-                            <button onclick="setFade('None', this)" class="btn btn-default fade-btn">None</button>
+                            <button onclick="setFade('None', this)" class="btn btn-secondary fade-btn">None</button>
                             <button onclick="setFade('Light', this)" class="btn btn-secondary fade-btn">Light</button>
                             <button onclick="setFade('Heavy', this)" class="btn btn-secondary fade-btn">Heavy</button>
                         </div>
@@ -1055,7 +1012,7 @@
                             <div class="btn-grid btn-grid-4">
                                 <button onclick="setWash('Light', this)" class="btn btn-secondary wash-btn">Light</button>
                                 <button onclick="setWash('Medium', this)" class="btn btn-secondary wash-btn">Medium</button>
-                                <button onclick="setWash('Dark', this)" class="btn btn-default wash-btn">Dark</button>
+                                <button onclick="setWash('Dark', this)" class="btn btn-secondary wash-btn">Dark</button>
                                 <button onclick="setWash('Raw', this)" class="btn btn-secondary wash-btn">Raw</button>
                                 <button onclick="setWash('Acid', this)" class="btn btn-secondary wash-btn">Acid</button>
                                 <button onclick="setWash('Stone', this)" class="btn btn-secondary wash-btn">Stone</button>
@@ -1168,7 +1125,7 @@
                         <div id="tops-construction">
                             <div class="sub-label">Sleeve Length</div>
                             <div class="btn-grid btn-grid-4" style="margin-bottom:10px;">
-                                <button onclick="setSleeve('Short', this)" class="btn btn-default sleeve-btn">Short</button>
+                                <button onclick="setSleeve('Short', this)" class="btn btn-secondary sleeve-btn">Short</button>
                                 <button onclick="setSleeve('Long', this)" class="btn btn-secondary sleeve-btn">Long</button>
                                 <button onclick="setSleeve('3/4', this)" class="btn btn-secondary sleeve-btn">3/4</button>
                                 <button onclick="setSleeve('None', this)" class="btn btn-secondary sleeve-btn">None</button>
@@ -1176,7 +1133,7 @@
                             <div id="sleeve-style-section">
                                 <div class="sub-label">Sleeve Style</div>
                                 <div class="btn-grid btn-grid-3" style="margin-bottom:10px;">
-                                    <button onclick="setSleeveStyle('Standard', this)" class="btn btn-default style-btn">Standard</button>
+                                    <button onclick="setSleeveStyle('Standard', this)" class="btn btn-secondary style-btn">Standard</button>
                                     <button onclick="setSleeveStyle('Raglan', this)" class="btn btn-secondary style-btn">Raglan</button>
                                     <button onclick="setSleeveStyle('Dolman', this)" class="btn btn-secondary style-btn">Dolman</button>
                                 </div>
@@ -1216,14 +1173,14 @@
                                 <div class="sub-label">Stitch Type</div>
                                 <div class="btn-grid btn-grid-2">
                                     <button onclick="setStitch('Single', this)" class="btn btn-secondary stitch-btn">Single Stitch</button>
-                                    <button onclick="setStitch('Double', this)" class="btn btn-default stitch-btn">Double Stitch</button>
+                                    <button onclick="setStitch('Double', this)" class="btn btn-secondary stitch-btn">Double Stitch</button>
                                 </div>
                             </div>
                             <div id="body-construction-section">
                                 <div class="sub-label">Body Construction</div>
                                 <div class="btn-grid btn-grid-2">
                                     <button onclick="setBodyConstruction('Tubular', this)" class="btn btn-secondary body-btn">🔵 Tubular</button>
-                                    <button onclick="setBodyConstruction('Side Seam', this)" class="btn btn-default body-btn">Side Seam</button>
+                                    <button onclick="setBodyConstruction('Side Seam', this)" class="btn btn-secondary body-btn">Side Seam</button>
                                 </div>
                             </div>
                         </div>
@@ -1232,7 +1189,7 @@
                         <div id="bottoms-construction" class="hidden">
                             <div class="sub-label">Leg Style / Cut</div>
                             <div class="btn-grid btn-grid-4" style="margin-bottom:8px;">
-                                <button onclick="setLegStyle('Straight', this)" class="btn btn-default leg-btn">Straight</button>
+                                <button onclick="setLegStyle('Straight', this)" class="btn btn-secondary leg-btn">Straight</button>
                                 <button onclick="setLegStyle('Bootcut', this)" class="btn btn-secondary leg-btn">Bootcut</button>
                                 <button onclick="setLegStyle('Relaxed', this)" class="btn btn-secondary leg-btn">Relaxed</button>
                                 <button onclick="setLegStyle('Tapered', this)" class="btn btn-secondary leg-btn">Tapered</button>
@@ -1288,7 +1245,7 @@
                             <div class="sub-label" style="margin-top:10px;">Rise</div>
                             <div class="btn-grid btn-grid-3">
                                 <button onclick="setRise('Low', this)" class="btn btn-secondary rise-btn">Low Rise</button>
-                                <button onclick="setRise('Mid', this)" class="btn btn-default rise-btn">Mid Rise</button>
+                                <button onclick="setRise('Mid', this)" class="btn btn-secondary rise-btn">Mid Rise</button>
                                 <button onclick="setRise('High', this)" class="btn btn-secondary rise-btn">High Rise</button>
                             </div>
                         </div>
@@ -1300,12 +1257,12 @@
                         <div class="btn-grid btn-grid-4" style="margin-bottom:10px;">
                             <button onclick="setThickness('Paper', this)" class="btn btn-secondary thickness-btn">Paper</button>
                             <button onclick="setThickness('Light', this)" class="btn btn-secondary thickness-btn">Light</button>
-                            <button onclick="setThickness('Standard', this)" class="btn btn-default thickness-btn">Standard</button>
+                            <button onclick="setThickness('Standard', this)" class="btn btn-secondary thickness-btn">Standard</button>
                             <button onclick="setThickness('Heavy', this)" class="btn btn-secondary thickness-btn">Heavy</button>
                         </div>
                         <div class="sub-label">Layers</div>
                         <div class="btn-grid btn-grid-3">
-                            <button onclick="setLayers('Single', this)" class="btn btn-default layers-btn">Single</button>
+                            <button onclick="setLayers('Single', this)" class="btn btn-secondary layers-btn">Single</button>
                             <button onclick="setLayers('Reversible', this)" class="btn btn-secondary layers-btn">Reversible</button>
                             <button onclick="setLayers('Lined', this)" class="btn btn-secondary layers-btn">Lined</button>
                         </div>
@@ -1321,7 +1278,7 @@
                 <div id="step-3" class="step-container">
                     <div class="section-card">
                         <div class="section-label"><span id="check-condition" class="check-circle">○</span> Any Issues?</div>
-                        <button onclick="setClean(this)" id="btn-clean" class="btn btn-default" style="width:100%;margin-bottom:10px;padding:14px;">✓ No Defects</button>
+                        <button onclick="setClean(this)" id="btn-clean" class="btn btn-secondary" style="width:100%;margin-bottom:10px;padding:14px;">✓ No Defects</button>
                         <div class="sub-label">Or tap defect type:</div>
                         <div class="btn-grid btn-grid-3">
                             <button onclick="toggleDefect('Stain', this)" class="btn btn-secondary defect-type-btn defect-card"><span class="emoji">💧</span><span class="label">Stain</span></button>
@@ -1439,21 +1396,10 @@
                         </div>
                     </div>
                     
-                    <div class="section-card">
-                        <div class="section-label"><span id="check-sku" class="check-circle">○</span> SKU</div>
-                        <!-- Locked SKU Display (shown after SKU gate) -->
-                        <div id="sku-locked-display" class="hidden" style="display:flex;align-items:center;gap:12px;">
-                            <div style="flex:1;padding:14px;background:#f0fdf4;border:2px solid #22c55e;border-radius:10px;font-family:monospace;font-size:20px;font-weight:700;color:#16a34a;text-align:center;" id="sku-display-value"></div>
-                            <button onclick="unlockSku()" style="padding:10px 14px;background:#f1f5f9;border:none;border-radius:8px;font-size:11px;color:#64748b;cursor:pointer;" title="Edit SKU">✏️ Edit</button>
-                        </div>
-                        <!-- Manual SKU Input (hidden after SKU gate, shown if editing) -->
-                        <div id="sku-manual-input" class="hidden">
-                            <div class="sku-row">
-                                <input type="text" id="sku-input" class="form-input" placeholder="Scan or type SKU..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="onSkuInput()" onkeydown="handleSkuKeydown(event)" style="font-size:18px;font-family:monospace;">
-                                <button onclick="activateSkuScan()" class="scan-btn" title="Scan with C922X camera">📷</button>
-                            </div>
-                            <div id="sku-status" style="font-size:10px;color:var(--color-text-muted);margin-top:4px;"></div>
-                            <div id="sku-camera-status" style="font-size:10px;color:#16a34a;margin-top:4px;display:none;">📷 C922X active - scan barcode now</div>
+                    <div class="section-card" style="padding:12px 16px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-size:12px;font-weight:600;color:var(--color-text-muted);">SKU:</span>
+                            <span id="sku-display-step3" style="font-family:monospace;font-size:16px;font-weight:700;color:var(--color-primary);">—</span>
                         </div>
                     </div>
                     
@@ -1662,7 +1608,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.60";
+        const VERSION = "v100.64";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -2641,9 +2587,15 @@
             const sku = data.sku;
             const files = [];
             
+            // Count already uploaded main photos
+            const alreadyUploaded = data.mainPhotos.filter(p => p.s3Uploaded).length;
+            const needsUpload = data.mainPhotos.filter(p => !p.s3Uploaded).length;
+            
             console.log('📦 Building S3 file list for SKU:', sku);
             console.log('📦 Data state:', {
                 mainPhotos: data.mainPhotos.length,
+                mainPhotosAlreadyUploaded: alreadyUploaded,
+                mainPhotosNeedUpload: needsUpload,
                 tagPhotos: data.tagPhotos.length,
                 defectPhotos: data.defectPhotos.length,
                 defectCloseupPhotos: data.defectCloseupPhotos.length,
@@ -2651,13 +2603,21 @@
                 hasAudio: !!data.audioMeasure
             });
             
-            // Main photos - use shot sequence names
+            // Main photos - skip already uploaded, use fullResBlob if available
             data.mainPhotos.forEach((photo, i) => {
+                // Skip if already uploaded to S3
+                if (photo.s3Uploaded) {
+                    console.log(`📦 Skipping main photo ${i+1} - already uploaded to S3`);
+                    return;
+                }
+                
                 const shotName = photo.shotId || `main_${String(i+1).padStart(2,'0')}`;
+                // Use fullResBlob if available (not yet uploaded), otherwise compressed blob
+                const blobToUpload = photo.fullResBlob || photo.blob;
                 files.push({
                     name: `${sku}_${shotName}.jpg`,
                     folder: 'main',
-                    blob: photo.blob
+                    blob: blobToUpload
                 });
             });
             
@@ -4543,43 +4503,31 @@
         }
         function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
         
-        // === SKU GATE FUNCTIONS ===
+        // === SKU FUNCTIONS ===
         let skuLocked = false;
         
+        // Legacy function - now just focuses SKU input in Step 1
         function showSkuGate() {
-            console.log('📋 showSkuGate called');
-            document.getElementById('sku-gate').classList.remove('hidden');
-            document.getElementById('sku-gate-input').value = '';
-            document.getElementById('sku-gate-input').classList.remove('valid');
-            document.getElementById('sku-gate-status').textContent = '';
+            console.log('📋 showSkuGate called - focusing Step 1 SKU input');
             skuLocked = false;
-            
-            // Reset to entry view (hide camera view)
-            document.getElementById('sku-gate-entry').classList.remove('hidden');
-            document.getElementById('sku-gate-camera').classList.add('hidden');
-            
-            // Stop barcode scanning, stabilizer and camera stream
-            stopSkuGateBarcodeScanning();
-            stopSkuGateStabilizer();
-            if(skuGateStream) {
-                skuGateStream.getTracks().forEach(t => t.stop());
-                skuGateStream = null;
-            }
-            
-            // Focus input after a brief delay
-            setTimeout(() => document.getElementById('sku-gate-input').focus(), 100);
+            goToStep(1);
+            setTimeout(() => {
+                const skuInput = document.getElementById('sku-input');
+                if(skuInput) {
+                    skuInput.value = '';
+                    skuInput.style.borderColor = 'var(--color-border)';
+                    skuInput.style.background = '';
+                    skuInput.focus();
+                }
+                document.getElementById('check-sku').innerHTML = '○';
+                document.getElementById('check-sku').classList.remove('complete');
+                document.getElementById('sku-status').textContent = '';
+            }, 100);
         }
         
+        // Legacy function - no longer needed
         function hideSkuGate() {
-            document.getElementById('sku-gate').classList.add('hidden');
-            
-            // Stop barcode scanning, stabilizer and camera stream
-            stopSkuGateBarcodeScanning();
-            stopSkuGateStabilizer();
-            if(skuGateStream) {
-                skuGateStream.getTracks().forEach(t => t.stop());
-                skuGateStream = null;
-            }
+            // No-op - SKU gate removed
         }
         
         function onSkuGateInput() {
@@ -5093,51 +5041,47 @@
             initMetrics();
             trackStabilizerWaitStart(); // Start tracking stabilizer wait time
             
-            // Stop SKU gate barcode scanning, stabilizer and camera
-            stopSkuGateBarcodeScanning();
-            stopSkuGateStabilizer();
-            if(skuGateStream) {
-                skuGateStream.getTracks().forEach(t => t.stop());
-                skuGateStream = null;
-            }
-            
-            // Hide SKU gate
-            hideSkuGate();
-            
             // Update locked badge in progress bar
             document.getElementById('sku-locked-badge').classList.remove('hidden');
             document.getElementById('sku-locked-value').textContent = value;
             
-            // Update SKU section in Step 3
-            document.getElementById('sku-locked-display').classList.remove('hidden');
-            document.getElementById('sku-locked-display').style.display = 'flex';
-            document.getElementById('sku-display-value').textContent = value;
-            document.getElementById('sku-manual-input').classList.add('hidden');
-            document.getElementById('sku-input').value = value;
+            // Update SKU input in Step 1
+            const skuInput = document.getElementById('sku-input');
+            if(skuInput) {
+                skuInput.value = value;
+                skuInput.style.borderColor = 'var(--color-success)';
+                skuInput.style.background = '#f0fdf4';
+            }
+            
+            // Update Step 3 display
+            const step3Display = document.getElementById('sku-display-step3');
+            if(step3Display) step3Display.textContent = value;
             
             // Mark SKU as complete
             document.getElementById('check-sku').innerHTML = '✓';
             document.getElementById('check-sku').classList.add('complete');
+            document.getElementById('sku-status').textContent = '✓ SKU set: ' + value;
+            document.getElementById('sku-status').style.color = 'var(--color-success)';
             
             // Stop barcode scanning if active
             stopBarcodeScanning();
             
-            // Switch back to main camera mode
-            setPhotoMode('main');
-            
-            // IMPORTANT: Go to Step 1 to start the workflow fresh
-            goToStep(1);
-            
             // Start timer for new item
             startTimer();
             
-            showToast('success', 'SKU Locked', `Item: ${value}`, 2000);
+            showToast('success', 'SKU Set', `Item: ${value}`, 2000);
             updateValidation();
         }
         
         function unlockSku() {
-            // Allow editing the SKU
-            document.getElementById('sku-locked-display').classList.add('hidden');
+            // Allow editing the SKU - just focus the input
+            const skuInput = document.getElementById('sku-input');
+            if(skuInput) {
+                skuInput.focus();
+                skuInput.select();
+            }
+            skuLocked = false;
+        }
             document.getElementById('sku-locked-display').style.display = 'none';
             document.getElementById('sku-manual-input').classList.remove('hidden');
             document.getElementById('sku-input').focus();
@@ -5146,16 +5090,57 @@
         
         // Override onSkuInput to update locked state
         function onSkuInput() { 
-            const val = document.getElementById('sku-input').value.trim();
+            const input = document.getElementById('sku-input');
+            const val = input ? input.value.trim() : '';
             data.sku = val;
             
+            // Update check circle in Step 1
+            const checkSku = document.getElementById('check-sku');
+            if(checkSku) {
+                if(val && val.length >= 3) {
+                    checkSku.innerHTML = '✓';
+                    checkSku.classList.add('complete');
+                    if(input) {
+                        input.style.borderColor = 'var(--color-success)';
+                        input.style.background = '#f0fdf4';
+                    }
+                    document.getElementById('sku-status').textContent = '✓ SKU set: ' + val;
+                    document.getElementById('sku-status').style.color = 'var(--color-success)';
+                } else {
+                    checkSku.innerHTML = '○';
+                    checkSku.classList.remove('complete');
+                    if(input) {
+                        input.style.borderColor = 'var(--color-border)';
+                        input.style.background = '';
+                    }
+                    document.getElementById('sku-status').textContent = val ? 'SKU too short (min 3 chars)' : '';
+                    document.getElementById('sku-status').style.color = 'var(--color-text-muted)';
+                }
+            }
+            
+            // Update locked badge in header
             if(val) {
-                // Update locked badge
                 document.getElementById('sku-locked-badge').classList.remove('hidden');
                 document.getElementById('sku-locked-value').textContent = val;
+            } else {
+                document.getElementById('sku-locked-badge').classList.add('hidden');
+            }
+            
+            // Update Step 3 display
+            const step3Display = document.getElementById('sku-display-step3');
+            if(step3Display) {
+                step3Display.textContent = val || '—';
             }
             
             updateValidation();
+        }
+        
+        function focusSkuInput() {
+            const input = document.getElementById('sku-input');
+            if(input) {
+                input.focus();
+                input.select();
+            }
         }
         
         function goToStep(step) { 
@@ -6201,7 +6186,7 @@
             console.log(`📸 MAIN: ${sourceW}x${sourceH} → ${mainCanvas.width}x${mainCanvas.height} (flip:${isFlipped}, hwRot:${isRotated}, portrait:${mainPhotoPortrait})`);
             
             // Save main photo with defect markers
-            mainCanvas.toBlob(mainBlob => {
+            mainCanvas.toBlob(async (fullResBlob) => {
                 // Deep copy defect markers to store with this photo
                 const photoDefects = defectMarkers.map((m, idx) => ({
                     ...m,
@@ -6209,16 +6194,29 @@
                     globalIndex: idx + 1 // 1-based index for display
                 }));
                 
+                // Generate filename for S3
+                const shotId = getCurrentShotId();
+                const photoIndex = data.mainPhotos.length + 1;
+                const filename = generatePhotoFilename(shotId || 'main', photoIndex);
+                
+                // Compress for memory storage (keeps browser fast)
+                // Full 48MP → ~2K preview (2048px max dimension)
+                const compressedBlob = await compressImageForMemory(fullResBlob, 2048, 0.75);
+                
                 const mainPhoto = { 
-                    blob: mainBlob, 
-                    url: URL.createObjectURL(mainBlob), 
+                    blob: compressedBlob, // Compressed for memory
+                    fullResBlob: fullResBlob, // Keep full res for S3 upload (if immediate fails)
+                    url: URL.createObjectURL(compressedBlob), 
                     width: mainCanvas.width, 
                     height: mainCanvas.height,
                     isPortrait: mainPhotoPortrait,
                     defects: photoDefects, // Store defects with the photo
                     defectSide: pendingDefectSide || null, // 'front', 'back', or null
                     // Track shot sequence for S3 naming
-                    shotId: getCurrentShotId()
+                    shotId: shotId,
+                    filename: filename,
+                    s3Key: null, // Will be set after upload
+                    s3Uploaded: false
                 };
                 data.mainPhotos.push(mainPhoto);
                 
@@ -6230,12 +6228,23 @@
                 
                 // Auto-save to folder if selected
                 if(saveDirectoryHandle) {
-                    const filename = generatePhotoFilename(mainPhoto.shotId || 'main', data.mainPhotos.length);
-                    savePhotoToFolder(mainBlob, filename);
+                    savePhotoToFolder(fullResBlob, filename); // Save full res locally
                 }
                 
-                const sizeMB = (mainBlob.size / 1024 / 1024).toFixed(2);
-                console.log(`📸 MAIN: ${mainCanvas.width}×${mainCanvas.height} | ${sizeMB}MB`);
+                const fullSizeMB = (fullResBlob.size / 1024 / 1024).toFixed(2);
+                const compSizeMB = (compressedBlob.size / 1024 / 1024).toFixed(2);
+                console.log(`📸 MAIN: ${mainCanvas.width}×${mainCanvas.height} | Full: ${fullSizeMB}MB → Memory: ${compSizeMB}MB`);
+                
+                // Upload full res to S3 immediately (background, non-blocking)
+                uploadMainPhotoToS3Immediately(fullResBlob, filename).then(s3Key => {
+                    if (s3Key) {
+                        mainPhoto.s3Key = s3Key;
+                        mainPhoto.s3Uploaded = true;
+                        // Clear full res blob from memory after successful upload
+                        mainPhoto.fullResBlob = null;
+                        console.log(`💾 Cleared full res blob from memory after S3 upload`);
+                    }
+                });
                 
                 // If we have defect markers, create crops and annotated version
                 if(defectMarkers.length > 0) {
@@ -6249,9 +6258,9 @@
                 updatePhotoGrids();
                 updateValidation();
                 
-                // AI Analysis - analyze first main photo
+                // AI Analysis - analyze first main photo (use compressed for speed)
                 if(data.mainPhotos.length === 1) {
-                    analyzeMainPhotoWithAI(mainBlob);
+                    analyzeMainPhotoWithAI(compressedBlob);
                 }
             }, 'image/jpeg', 0.95);
         }
@@ -7128,13 +7137,13 @@
             if(isBottoms) {
                 data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = ''; data.bodyConstruction = '';
                 document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn, .body-btn').forEach(b => { 
-                    b.classList.remove('selected','btn-hero','btn-default'); 
+                    b.classList.remove('selected','btn-hero'); 
                     b.classList.add('btn-secondary'); 
                 });
             } else {
                 data.legStyle = ''; data.rise = '';
                 document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { 
-                    b.classList.remove('selected','btn-hero','btn-default'); 
+                    b.classList.remove('selected','btn-hero'); 
                     b.classList.add('btn-secondary'); 
                 });
             }
@@ -7150,10 +7159,9 @@
         }
         function setCategory(cat, btn) { 
             data.category = cat; 
-            // Remove selected AND default from ALL category buttons
+            // Remove selected from ALL category buttons
             document.querySelectorAll('.cat-btn').forEach(b => { 
                 b.classList.remove('selected'); 
-                b.classList.remove('cat-default'); 
             }); 
             // Add selected to clicked button
             btn.classList.add('selected'); 
@@ -7182,68 +7190,22 @@
         
         // QA FIX: Dynamic sleeve defaults based on category
         function updateSleeveDefaults(cat) {
-            // Reset all sleeve buttons to secondary (remove any defaults)
+            // Reset all sleeve buttons to secondary
             document.querySelectorAll('.sleeve-btn').forEach(b => {
-                b.classList.remove('btn-default');
                 if(!b.classList.contains('selected')) {
                     b.classList.add('btn-secondary');
                 }
             });
-            
-            // Determine correct default based on category
-            let defaultSleeve = 'Short'; // fallback
-            
-            // Long sleeves default
-            const longSleeveCategories = ['Sweatshirt', 'Hoodie', 'Sweater', 'Cardigan', 'Button Shirt', 'Blouse', 'Tunic', 'Jacket', 'Coat'];
-            // Short sleeves default
-            const shortSleeveCategories = ['T-Shirt', 'Polo', 'Jersey'];
-            // None (sleeveless) default
-            const noSleeveCategories = ['Tank Top', 'Vest'];
-            
-            if(longSleeveCategories.includes(cat)) {
-                defaultSleeve = 'Long';
-            } else if(shortSleeveCategories.includes(cat)) {
-                defaultSleeve = 'Short';
-            } else if(noSleeveCategories.includes(cat)) {
-                defaultSleeve = 'None';
-            }
-            
-            // Apply default styling to correct button (only if nothing selected yet)
-            if(!data.sleeveLength) {
-                document.querySelectorAll('.sleeve-btn').forEach(b => {
-                    if(b.textContent.trim() === defaultSleeve || 
-                       (defaultSleeve === 'None' && b.textContent.trim() === 'None')) {
-                        b.classList.remove('btn-secondary');
-                        b.classList.add('btn-default');
-                    }
-                });
-            }
         }
         
         // QA FIX: Dynamic stitch defaults based on category
         function updateStitchDefaults(cat) {
             // Reset stitch buttons
             document.querySelectorAll('.stitch-btn').forEach(b => {
-                b.classList.remove('btn-default');
                 if(!b.classList.contains('selected')) {
                     b.classList.add('btn-secondary');
                 }
             });
-            
-            // T-Shirts: Single stitch is the vintage indicator (pre-1990s)
-            // But Double stitch is more common overall
-            // Keep Double as default for most, but could be Single for T-Shirt if vintage-focused
-            let defaultStitch = 'Double';
-            
-            // Apply default (only if nothing selected yet)
-            if(!data.stitch) {
-                document.querySelectorAll('.stitch-btn').forEach(b => {
-                    if(b.textContent.includes(defaultStitch)) {
-                        b.classList.remove('btn-secondary');
-                        b.classList.add('btn-default');
-                    }
-                });
-            }
         }
         
         // QA FIX: Dynamic leg style defaults based on bottoms category
@@ -7252,32 +7214,12 @@
             const bottomsCategories = ['Jeans', 'Pants', 'Shorts', 'Sweatpants'];
             if(!bottomsCategories.includes(cat)) return;
             
-            // Reset all leg buttons to secondary (remove any defaults)
+            // Reset all leg buttons to secondary
             document.querySelectorAll('.leg-btn').forEach(b => {
-                b.classList.remove('btn-default');
                 if(!b.classList.contains('selected')) {
                     b.classList.add('btn-secondary');
                 }
             });
-            
-            // Determine correct default based on category
-            let defaultLeg = 'Straight'; // fallback for Jeans, Pants
-            
-            if(cat === 'Sweatpants') {
-                defaultLeg = 'Straight'; // or could be 'Jogger' for modern sweats
-            } else if(cat === 'Shorts') {
-                defaultLeg = 'Relaxed'; // most shorts are relaxed fit
-            }
-            
-            // Apply default styling to correct button (only if nothing selected yet)
-            if(!data.legStyle) {
-                document.querySelectorAll('.leg-btn').forEach(b => {
-                    if(b.textContent.trim() === defaultLeg) {
-                        b.classList.remove('btn-secondary');
-                        b.classList.add('btn-default');
-                    }
-                });
-            }
         }
         
         function updateMeasurementHints(cat) {
@@ -7305,11 +7247,11 @@
         function setTagStatus(status, btn) { 
             data.tagStatus = status; 
             document.querySelectorAll('.tag-btn').forEach(b => { 
-                b.classList.remove('selected','btn-hero','btn-default'); 
+                b.classList.remove('selected','btn-hero'); 
                 b.classList.add('btn-secondary'); 
             }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
             document.getElementById('tag-details').classList.toggle('hidden', status !== 'has'); 
             document.getElementById('material-tag-warning').classList.toggle('hidden', status === 'has'); 
             
@@ -7354,7 +7296,7 @@
         function setSize(size, btn) { data.tagSize = size; document.querySelectorAll('.size-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('tag-size-input').value=''; }
         function clearSizeBtns() { document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
         function onSizeInput(el) { data.tagSize = el.value.trim(); document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected')); }
-        function setOrigin(origin, btn) { data.origin = origin; document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); document.getElementById('country-section').classList.toggle('hidden', origin !== 'import'); if(origin==='usa')data.country='USA'; }
+        function setOrigin(origin, btn) { data.origin = origin; document.querySelectorAll('.origin-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); document.getElementById('country-section').classList.toggle('hidden', origin !== 'import'); if(origin==='usa')data.country='USA'; }
         function setCountry(country, btn) { 
             document.querySelectorAll('.country-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); 
@@ -7370,12 +7312,12 @@
         function onCountryOtherInput() { data.country = document.getElementById('country-other-input').value.trim(); }
         function setGender(gender, btn) { data.gender = gender; document.querySelectorAll('.gender-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function toggleColor(color, btn) { const idx = data.colors.indexOf(color); if(idx>-1){data.colors.splice(idx,1);btn.classList.remove('selected');} else{data.colors.push(color);btn.classList.add('selected');} updateValidation(); }
-        function setFade(fade, btn) { data.fade = fade; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
+        function setFade(fade, btn) { data.fade = fade; document.querySelectorAll('.fade-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
         function setPattern(pattern, btn) { 
             data.pattern = pattern; 
-            document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            document.querySelectorAll('.pattern-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
             // Show/hide print type and graphic category sections for Graphic
             const showGraphicOptions = (pattern === 'Graphic');
             document.getElementById('print-type-section').classList.toggle('hidden', !showGraphicOptions);
@@ -7396,9 +7338,9 @@
         function setGraphicCategory(cat, btn) { data.graphicCategory = cat; document.querySelectorAll('.graphic-cat-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function setSleeve(length, btn) { 
             data.sleeveLength = length; 
-            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            document.querySelectorAll('.sleeve-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
             // Hide sleeve style when None
             document.getElementById('sleeve-style-section').classList.toggle('hidden', length==='None'); 
             // Show cutoff section for T-Shirts when sleeveless
@@ -7415,9 +7357,9 @@
         function setCutoff(type, btn) { data.cutoffType = type; document.querySelectorAll('.cutoff-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         function setSleeveStyle(style, btn) { 
             data.sleeveStyle = style; 
-            document.querySelectorAll('.style-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            document.querySelectorAll('.style-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
             // Show/hide measurement notice for Raglan/Dolman
             const notice = document.getElementById('sleeve-measurement-notice');
             if(notice) notice.classList.toggle('hidden', style === 'Standard');
@@ -7452,32 +7394,32 @@
             if(outerRag) outerRag.classList.toggle('hidden', !isRaglanDolman || isSleeveless);
             if(outerSleeveless) outerSleeveless.classList.toggle('hidden', !isSleeveless);
         }
-        function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
-        function setBodyConstruction(type, btn) { data.bodyConstruction = type; document.querySelectorAll('.body-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
+        function setStitch(stitch, btn) { data.stitch = stitch; document.querySelectorAll('.stitch-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setBodyConstruction(type, btn) { data.bodyConstruction = type; document.querySelectorAll('.body-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
         
         // BOTTOMS: Leg Style Functions
         function setLegStyle(style, btn) { 
             data.legStyle = style; 
-            document.querySelectorAll('.leg-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            document.querySelectorAll('.leg-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
             updateValidation(); 
         }
         function setRise(rise, btn) { 
             data.rise = rise; 
-            document.querySelectorAll('.rise-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); 
+            document.querySelectorAll('.rise-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); 
             btn.classList.add('selected','btn-hero'); 
-            btn.classList.remove('btn-secondary','btn-default'); 
+            btn.classList.remove('btn-secondary'); 
         }
         function toggleLegStyleHelp() {
             document.getElementById('leg-style-help').classList.toggle('hidden');
         }
         
-        function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
-        function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); updateValidation(); }
-        function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-hero','btn-default'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary','btn-default'); }
-        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.remove('btn-default','btn-secondary'); document.getElementById('btn-clean').classList.add('selected','btn-hero'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
-        function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected','btn-hero','btn-default'); document.getElementById('btn-clean').classList.add('btn-secondary'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null; document.getElementById('btn-clean').classList.remove('btn-secondary'); document.getElementById('btn-clean').classList.add('btn-default');} updateValidation(); }
+        function setThickness(thickness, btn) { data.thickness = thickness; document.querySelectorAll('.thickness-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
+        function setLayers(layers, btn) { data.layers = layers; document.querySelectorAll('.layers-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); updateValidation(); }
+        function setWash(wash, btn) { data.wash = wash; document.querySelectorAll('.wash-btn').forEach(b => { b.classList.remove('selected','btn-hero'); b.classList.add('btn-secondary'); }); btn.classList.add('selected','btn-hero'); btn.classList.remove('btn-secondary'); }
+        function setClean(btn) { data.hasDefects = false; data.defectTypes = []; document.getElementById('btn-clean').classList.remove('btn-secondary'); document.getElementById('btn-clean').classList.add('selected','btn-hero'); document.querySelectorAll('.defect-type-btn').forEach(b => b.classList.remove('selected')); updateValidation(); }
+        function toggleDefect(type, btn) { document.getElementById('btn-clean').classList.remove('selected','btn-hero'); document.getElementById('btn-clean').classList.add('btn-secondary'); data.hasDefects = true; const idx = data.defectTypes.indexOf(type); if(idx>-1){data.defectTypes.splice(idx,1);btn.classList.remove('selected');} else{data.defectTypes.push(type);btn.classList.add('selected');} if(data.defectTypes.length===0){data.hasDefects=null;} updateValidation(); }
         
         // FLAG AS UNUSUAL
         function toggleFlagUnusual() { 
@@ -7542,22 +7484,6 @@
             const skuInput = document.getElementById('sku-input');
             skuInput.value = '';
             skuInput.focus();
-        }
-        
-        function onSkuInput() {
-            const skuInput = document.getElementById('sku-input');
-            data.sku = skuInput.value.trim();
-            
-            // Update SKU badge in progress bar
-            const skuBadge = document.getElementById('sku-badge');
-            if(data.sku) {
-                skuBadge.textContent = 'SKU: ' + data.sku;
-                skuBadge.classList.add('visible');
-            } else {
-                skuBadge.classList.remove('visible');
-            }
-            
-            updateValidation();
         }
         
         function handleSkuKeydown(event) {
@@ -8137,6 +8063,122 @@
             updateValidation();
         }
         
+        // Resize image for AI analysis (keeps full res for S3)
+        async function resizeImageForAI(imageBlob, maxDimension = 1024, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    
+                    // Calculate new dimensions maintaining aspect ratio
+                    if (width > height && width > maxDimension) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else if (height > maxDimension) {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                    
+                    // Create canvas and resize
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to base64
+                    const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+                    console.log(`🤖 Resized image for AI: ${img.width}x${img.height} → ${width}x${height} (${Math.round(base64.length/1024)}KB)`);
+                    resolve(base64);
+                };
+                img.onerror = reject;
+                img.src = URL.createObjectURL(imageBlob);
+            });
+        }
+        
+        // Compress image for memory storage (returns blob, not base64)
+        // Full res goes to S3, compressed version stays in RAM
+        async function compressImageForMemory(imageBlob, maxDimension = 2048, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    const originalWidth = width;
+                    const originalHeight = height;
+                    
+                    // Calculate new dimensions maintaining aspect ratio
+                    if (width > height && width > maxDimension) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else if (height > maxDimension) {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                    
+                    // Create canvas and resize
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to blob
+                    canvas.toBlob(compressedBlob => {
+                        const origSizeMB = (imageBlob.size / 1024 / 1024).toFixed(2);
+                        const newSizeMB = (compressedBlob.size / 1024 / 1024).toFixed(2);
+                        console.log(`💾 Memory optimization: ${originalWidth}x${originalHeight} (${origSizeMB}MB) → ${width}x${height} (${newSizeMB}MB)`);
+                        resolve(compressedBlob);
+                    }, 'image/jpeg', quality);
+                };
+                img.onerror = reject;
+                img.src = URL.createObjectURL(imageBlob);
+            });
+        }
+        
+        // Upload single main photo to S3 immediately (background upload)
+        async function uploadMainPhotoToS3Immediately(fullResBlob, filename) {
+            if (!data.sku) {
+                console.warn('⚠️ No SKU set, skipping immediate S3 upload');
+                return null;
+            }
+            
+            try {
+                console.log(`⬆️ Immediate S3 upload: ${filename}`);
+                
+                // Get presigned URL for this single file
+                const fileInfo = { name: filename, folder: 'main' };
+                const presignResult = await getPresignedUrls(data.sku, [fileInfo]);
+                
+                if (!presignResult.urls) {
+                    throw new Error('No presigned URL returned');
+                }
+                
+                // Find the URL (key format: {sku}/main/{filename})
+                const s3Key = `${data.sku}/main/${filename}`;
+                const presignedUrl = presignResult.urls[s3Key];
+                
+                if (!presignedUrl) {
+                    console.error('❌ No presigned URL for key:', s3Key);
+                    console.error('Available keys:', Object.keys(presignResult.urls));
+                    throw new Error('Presigned URL not found');
+                }
+                
+                // Upload
+                await uploadToS3(presignedUrl, fullResBlob, filename);
+                console.log(`✅ Immediate S3 upload complete: ${filename}`);
+                
+                return s3Key;
+            } catch (err) {
+                console.error(`❌ Immediate S3 upload failed for ${filename}:`, err);
+                showToast('warning', 'S3 Upload', 'Photo will be uploaded on submit', 2000);
+                return null;
+            }
+        }
+        
         async function analyzeMainPhotoWithAI(imageBlob) {
             if (aiAnalysisInProgress) return;
             aiAnalysisInProgress = true;
@@ -8145,13 +8187,8 @@
             const aiToast = showToast('info', '🤖 AI Analyzing Photo...', 'Detecting category, colors, pattern...', 30000);
             
             try {
-                // Convert blob to base64
-                const base64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(imageBlob);
-                });
+                // Resize image for faster AI analysis (full res still goes to S3)
+                const base64 = await resizeImageForAI(imageBlob, 1024, 0.75);
                 
                 // Call Lambda vision endpoint
                 const response = await fetch(LAMBDA_URL, {
@@ -9548,25 +9585,35 @@
             document.getElementById('flag-btn').querySelector('span:last-of-type').textContent = 'FLAG AS UNUSUAL';
             
             // === HANDLE SKU STATE ===
+            const skuInput = document.getElementById('sku-input');
+            const step3Display = document.getElementById('sku-display-step3');
+            
             if(keepSku && preservedSku) {
                 document.getElementById('sku-locked-badge').classList.remove('hidden');
                 document.getElementById('sku-locked-value').textContent = preservedSku;
-                document.getElementById('sku-locked-display').classList.remove('hidden');
-                document.getElementById('sku-locked-display').style.display = 'flex';
-                document.getElementById('sku-display-value').textContent = preservedSku;
-                document.getElementById('sku-manual-input').classList.add('hidden');
+                if(skuInput) {
+                    skuInput.value = preservedSku;
+                    skuInput.style.borderColor = 'var(--color-success)';
+                    skuInput.style.background = '#f0fdf4';
+                }
+                if(step3Display) step3Display.textContent = preservedSku;
                 document.getElementById('check-sku').innerHTML = '✓';
                 document.getElementById('check-sku').classList.add('complete');
+                document.getElementById('sku-status').textContent = '✓ SKU set: ' + preservedSku;
+                document.getElementById('sku-status').style.color = 'var(--color-success)';
             } else {
                 document.getElementById('sku-locked-badge').classList.add('hidden');
                 document.getElementById('sku-locked-value').textContent = '';
-                document.getElementById('sku-locked-display').classList.add('hidden');
-                document.getElementById('sku-manual-input').classList.add('hidden');
+                if(skuInput) {
+                    skuInput.value = '';
+                    skuInput.style.borderColor = 'var(--color-border)';
+                    skuInput.style.background = '';
+                }
+                if(step3Display) step3Display.textContent = '—';
                 document.getElementById('check-sku').innerHTML = '○';
                 document.getElementById('check-sku').classList.remove('complete');
+                document.getElementById('sku-status').textContent = '';
             }
-            document.getElementById('sku-status').textContent = '';
-            document.getElementById('sku-camera-status').style.display = 'none';
             
             // === RENDER/UPDATE ===
             renderSubCategories('tops'); 
@@ -9604,15 +9651,12 @@
                 }
             }
             
-            // Show SKU gate after reset (unless keeping SKU with valid value)
-            if(!keepSku) {
-                console.log('🔄 Showing SKU gate after reset');
-                showSkuGate();
-            } else if(!preservedSku) {
-                console.log('🔄 Showing SKU gate - no preserved SKU');
-                showSkuGate();
-            } else {
-                console.log('🔄 Keeping SKU:', preservedSku);
+            // Focus SKU input after reset (unless keeping SKU)
+            if(!keepSku || !preservedSku) {
+                setTimeout(() => {
+                    const skuInput = document.getElementById('sku-input');
+                    if(skuInput) skuInput.focus();
+                }, 100);
             }
         }
         
