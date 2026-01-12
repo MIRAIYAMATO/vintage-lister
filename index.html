@@ -427,18 +427,6 @@
         .stat-value { font-size: 20px; font-weight: 800; }
         .stat-label { font-size: 9px; color: var(--color-text-muted); text-transform: uppercase; }
         
-        .reset-btn { padding: 6px 12px; background: var(--color-error); color: white; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; transition: var(--transition-fast); }
-        .reset-btn:hover { background: var(--color-error-dark); }
-        .reset-btn:active { transform: scale(0.97); }
-        
-        /* Reset Dropdown Menu */
-        .reset-dropdown { position: relative; display: inline-block; }
-        .reset-menu { position: absolute; top: 100%; right: 0; margin-top: 4px; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.25); min-width: 180px; z-index: 1000; display: none; overflow: hidden; }
-        .reset-menu.visible { display: block; }
-        .reset-menu button { display: block; width: 100%; padding: 12px 16px; background: white; border: none; text-align: left; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--color-text); }
-        .reset-menu button:hover { background: #f1f5f9; }
-        .reset-menu button:first-child { color: var(--color-primary); }
-        .reset-menu button:last-child { color: var(--color-error); }
         .fullres-btn { background: var(--color-success); color: white; padding: 3px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; border: none; cursor: pointer; transition: var(--transition-fast); }
         .fullres-btn:hover { background: var(--color-success-dark); }
         .fullres-btn:active { transform: scale(0.97); }
@@ -723,7 +711,7 @@
     </div>
     
     <!-- SKU GATE: Must scan SKU before starting -->
-    <div class="sku-gate" id="sku-gate">
+    <div class="sku-gate hidden" id="sku-gate">
         <div class="sku-gate-card">
             <!-- Version Badge -->
             <div class="sku-gate-version" id="sku-gate-version"></div>
@@ -831,13 +819,6 @@
                 <div style="display:flex;align-items:center;gap:6px;">
                     <span id="photographer-badge" class="photographer-badge" onclick="showPinScreen()">P02</span>
                     <span class="version-badge" id="header-version">...</span>
-                    <div class="reset-dropdown" id="reset-dropdown">
-                        <button class="reset-btn" onclick="toggleResetMenu()" title="Reset options">↻</button>
-                        <div class="reset-menu" id="reset-menu">
-                            <button onclick="resetForm(true); hideResetMenu();">🔄 Reset (Keep SKU)</button>
-                            <button onclick="resetForm(false); hideResetMenu();" style="border-top:1px solid #e2e8f0;">🗑️ Full Reset (New SKU)</button>
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -1681,7 +1662,7 @@
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <script>
         // ============ VERSION - UPDATE THIS ONE PLACE ONLY ============
-        const VERSION = "v100.57";
+        const VERSION = "v100.59";
         // ===============================================================
         
         const APP_PIN = "1234"; // Local UI lock only - not a security feature
@@ -3945,66 +3926,75 @@
         }
 
         const categoryConfig = {
-            tops: { heroes: ['T-Shirt', 'Sweatshirt', 'Hoodie'], others: ['Sweater', 'Button Shirt', 'Polo', 'Jersey', 'Tank Top', 'Cardigan', 'Blouse', 'Tunic'] },
+            tops: { heroes: ['T-Shirt', 'Sweatshirt', 'Hoodie'], others: ['Sweater', 'Button Shirt', 'Flannel', 'Polo', 'Jersey', 'Tank Top', 'Cardigan', 'Henley'] },
             bottoms: { heroes: ['Jeans', 'Pants'], others: ['Shorts', 'Sweatpants'] },
             outer: { heroes: ['Jacket', 'Coat'], others: ['Vest'] }
         };
-        const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
+        const catEmojis = { 'T-Shirt':'👕', 'Sweatshirt':'🏋️', 'Hoodie':'🧥', 'Sweater':'🧶', 'Button Shirt':'👔', 'Flannel':'🪵', 'Polo':'🏌️', 'Jersey':'🏀', 'Tank Top':'🩱', 'Cardigan':'🧥', 'Henley':'👕', 'Jeans':'👖', 'Pants':'👖', 'Shorts':'🩳', 'Sweatpants':'🏃', 'Jacket':'🧥', 'Coat':'🧥', 'Vest':'🦺', 'Blouse':'👚', 'Tunic':'👗' };
         
         // V99.45: fabricDB with full traits (stretch, surface, interior)
         // surface: smooth, ridged, diagonal, rough/textured
         const fabricDB = {
             // TOPS - Per eBay PDF fabric types
             "T-Shirt": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tee fabric. Stretchy, smooth both sides." },
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tee fabric. Stretchy, smooth both sides." },
                 { name:"Jersey", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Athletic tee. Soccer, Nike Dri-Fit style." },
                 { name:"Rayon", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Silky, drapey. 80s/90s soft tees." },
                 { name:"Woven", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Rigid like dress shirt. Rare for tees." },
                 { name:"Mesh", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"See-through with tiny holes. Athletic." }
             ],
             "Sweatshirt": [
-                { name:"Fleece", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside, smooth outside. 90% of sweats." },
+                { name:"Fleece", priority:1, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside, smooth outside. 90% of sweats." },
                 { name:"French Terry", priority:2, traits:{stretch:"high",surface:"smooth",interior:"loops"}, desc:"Tiny loops inside. Lighter, summer weight." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Sweater-like. Smooth both sides." },
                 { name:"Jersey", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Thin like a thick t-shirt." }
             ],
             "Hoodie": [
-                { name:"Fleece", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside, smooth outside. Most common." },
+                { name:"Fleece", priority:1, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside, smooth outside. Most common." },
                 { name:"French Terry", priority:2, traits:{stretch:"high",surface:"smooth",interior:"loops"}, desc:"Tiny loops inside. Lighter weight." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Sweater-like hoodie." },
                 { name:"Jersey", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Thin, lightweight hoodie." }
             ],
             "Sweater": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard sweater. Stretchy yarn loops visible." },
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard sweater. Stretchy yarn loops visible." },
                 { name:"Crochet", priority:2, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Open holes, handmade look." },
                 { name:"Jersey", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Thin, lightweight sweater." }
             ],
             "Cardigan": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard cardigan with buttons/open front." },
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard cardigan with buttons/open front." },
                 { name:"Crochet", priority:2, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Open holes, handmade look." },
                 { name:"Jersey", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Thin, lightweight." }
             ],
             "Button Shirt": [
-                { name:"Woven", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Dress shirt fabric. Rigid, no stretch." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Dress shirt fabric. Rigid, no stretch." },
                 { name:"Poplin", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Crisp dress shirt. Fine weave." },
                 { name:"Chambray", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Looks like light denim but softer." },
                 { name:"Denim", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean material. Western/work shirt." },
                 { name:"Flannel", priority:2, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy inside. Often plaid." },
                 { name:"Corduroy", priority:3, traits:{stretch:"none",surface:"ridged",interior:"smooth"}, desc:"Vertical ridges you can feel & see." }
             ],
+            "Flannel": [
+                { name:"Flannel", priority:1, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy inside. Classic plaid flannel." },
+                { name:"Woven", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Thinner flannel-style shirt." }
+            ],
+            "Henley": [
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard henley. Stretchy like a tee." },
+                { name:"Jersey", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Athletic henley. Soft & stretchy." },
+                { name:"Waffle", priority:2, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Thermal henley. Grid texture." }
+            ],
             "Polo": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard polo. Stretchy with textured surface." },
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Standard polo. Stretchy with textured surface." },
                 { name:"Jersey", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"T-shirt-like polo. Smoother." },
                 { name:"Woven", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Dress polo. Rigid like button shirt." }
             ],
             "Tank Top": [
-                { name:"Jersey", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tank. Soft & stretchy." },
+                { name:"Jersey", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Standard tank. Soft & stretchy." },
                 { name:"Knit", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Same as Jersey." },
                 { name:"Rayon", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Silky, drapey feel." },
                 { name:"Mesh", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"See-through athletic. Tiny holes." }
             ],
             "Blouse": [
-                { name:"Woven", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard blouse. Rigid fabric." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard blouse. Rigid fabric." },
                 { name:"Chiffon", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Sheer, flowy. You can see through it." },
                 { name:"Satin", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, silky smooth." },
                 { name:"Crepe", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Slightly bumpy/crinkly texture." },
@@ -4012,24 +4002,24 @@
                 { name:"Georgette", priority:3, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Sheer crepe. Slightly rough feel." }
             ],
             "Tunic": [
-                { name:"Woven", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard tunic fabric." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard tunic fabric." },
                 { name:"Rayon", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Drapey, soft, silky feel." },
                 { name:"Knit", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy tunic." },
                 { name:"Crepe", priority:3, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Slightly bumpy texture." },
                 { name:"Gauze", priority:3, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Very lightweight, airy, breathable." }
             ],
             "Jersey": [
-                { name:"Mesh", priority:1, default:true, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Tiny holes. Most sports jerseys." },
+                { name:"Mesh", priority:1, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Tiny holes. Most sports jerseys." },
                 { name:"Jersey", priority:2, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Smooth. Baseball/hockey style." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Heavier, vintage style." }
             ],
             // BOTTOMS
             "Jeans": [
-                { name:"Denim", priority:1, default:true, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Standard jean material. Diagonal weave." },
+                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Standard jean material. Diagonal weave." },
                 { name:"Selvage", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Premium. Red/white line on inside cuff edge." }
             ],
             "Pants": [
-                { name:"Woven", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Dress pants. Smooth, rigid." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Dress pants. Smooth, rigid." },
                 { name:"Twill", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Chinos, khakis. Diagonal weave pattern." },
                 { name:"Corduroy", priority:2, traits:{stretch:"none",surface:"ridged",interior:"smooth"}, desc:"Vertical ridges you can feel & see." },
                 { name:"Canvas", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy, thick. Carhartt/workwear." },
@@ -4037,20 +4027,20 @@
                 { name:"Ponte", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy dress pant. Thick legging-like." }
             ],
             "Shorts": [
-                { name:"Woven", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard shorts. No stretch." },
+                { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Standard shorts. No stretch." },
                 { name:"Twill", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Cotton shorts. Diagonal weave." },
                 { name:"Canvas", priority:2, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy, thick cotton." },
                 { name:"Denim", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean shorts, cutoffs." },
                 { name:"Mesh", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Athletic shorts. See-through holes." }
             ],
             "Sweatpants": [
-                { name:"Fleece", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside. Standard sweats." },
+                { name:"Fleece", priority:1, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside. Standard sweats." },
                 { name:"French Terry", priority:2, traits:{stretch:"high",surface:"smooth",interior:"loops"}, desc:"Tiny loops inside. Lighter." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Smooth both sides. Jogger style." }
             ],
             // OUTER - Per eBay PDF fabric types (NO materials like Nylon)
             "Jacket": [
-                { name:"Denim", priority:1, default:true, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material. Trucker style." },
+                { name:"Denim", priority:1, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean jacket material. Trucker style." },
                 { name:"Canvas", priority:1, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Heavy cotton. Work jacket, Carhartt, chore coat." },
                 { name:"Leather", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Animal hide. Motorcycle, A-2/G-1 flight, cafe racer." },
                 { name:"Satin", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Shiny, silky. Starter jackets, varsity sleeves, bomber." },
@@ -4060,7 +4050,7 @@
                 { name:"Softshell", priority:3, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy outdoor tech jacket." }
             ],
             "Coat": [
-                { name:"Tweed", priority:1, default:true, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Professor/country style." },
+                { name:"Tweed", priority:1, traits:{stretch:"none",surface:"rough",interior:"smooth"}, desc:"Rough, speckled wool blend. Professor/country style." },
                 { name:"Woven", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Classic overcoat, peacoat. Dress coat." },
                 { name:"Velvet", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Soft, plush. Luxe vintage look." },
                 { name:"Shearling", priority:2, traits:{stretch:"none",surface:"smooth",interior:"fuzzy"}, desc:"Wool/fur lined inside. Rancher style." },
@@ -4068,14 +4058,14 @@
                 { name:"Taffeta", priority:3, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Crisp, shiny. Formal evening coat." }
             ],
             "Vest": [
-                { name:"Quilted", priority:1, default:true, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Puffy, insulated sections." },
+                { name:"Quilted", priority:1, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Puffer vest. Puffy, insulated sections." },
                 { name:"Fleece", priority:1, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Soft, fuzzy. Patagonia style." },
                 { name:"Denim", priority:2, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean vest, cut-off sleeves." },
                 { name:"Leather", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Motorcycle vest, biker style." },
                 { name:"Knit", priority:3, traits:{stretch:"high",surface:"rough",interior:"smooth"}, desc:"Sweater vest." }
             ],
             "default": [
-                { name:"Knit", priority:1, default:true, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy, like t-shirt material." },
+                { name:"Knit", priority:1, traits:{stretch:"high",surface:"smooth",interior:"smooth"}, desc:"Stretchy, like t-shirt material." },
                 { name:"Woven", priority:2, traits:{stretch:"none",surface:"smooth",interior:"smooth"}, desc:"Rigid, no stretch. Like dress shirt." },
                 { name:"Fleece", priority:2, traits:{stretch:"high",surface:"smooth",interior:"fuzzy"}, desc:"Fuzzy inside." },
                 { name:"Denim", priority:3, traits:{stretch:"none",surface:"diagonal",interior:"smooth"}, desc:"Jean material." }
@@ -4085,26 +4075,26 @@
         const materialDB = {
             // TOPS
             "T-Shirt": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Cool, soft." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Cool, soft." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic. Slight sheen." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Silky, drapey." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic, athletic." },
                 { name:"Acrylic", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic wool-like." }
             ],
             "Sweatshirt": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Most common." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Most common." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Acrylic", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic." },
                 { name:"Wool", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Rare, warm." }
             ],
             "Hoodie": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Most common." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Most common." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Tech fleece." },
                 { name:"Acrylic", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." }
             ],
             "Sweater": [
-                { name:"Wool", priority:1, default:true, traits:{temp:"warm",shine:"matte"}, desc:"Classic. Warm." },
+                { name:"Wool", priority:1, traits:{temp:"warm",shine:"matte"}, desc:"Classic. Warm." },
                 { name:"Acrylic", priority:1, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic wool." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Lightweight." },
                 { name:"Cashmere", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Luxury. Ultra soft." },
@@ -4112,7 +4102,7 @@
                 { name:"Alpaca", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Soft, warm." }
             ],
             "Cardigan": [
-                { name:"Wool", priority:1, default:true, traits:{temp:"warm",shine:"matte"}, desc:"Classic cardigan." },
+                { name:"Wool", priority:1, traits:{temp:"warm",shine:"matte"}, desc:"Classic cardigan." },
                 { name:"Acrylic", priority:1, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic wool." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Lightweight." },
                 { name:"Cashmere", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Luxury." },
@@ -4120,7 +4110,7 @@
                 { name:"Alpaca", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Soft, warm." }
             ],
             "Button Shirt": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Crisp." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Crisp." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Wrinkle-free." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Silky, drapey." },
                 { name:"Linen", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Cool, wrinkles." },
@@ -4128,43 +4118,53 @@
                 { name:"Silk", priority:3, traits:{temp:"cool",shine:"sheen"}, desc:"Luxury. Shiny." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Disco era." }
             ],
+            "Flannel": [
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Classic cotton flannel." },
+                { name:"Wool", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Warm wool flannel." },
+                { name:"Polyester", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic blend." }
+            ],
+            "Henley": [
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural. Soft." },
+                { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic henley." },
+                { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Silky feel." }
+            ],
             "Polo": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Classic polo." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Classic polo." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Acrylic", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic." }
             ],
             "Tank Top": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Classic tank." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Classic tank." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Silky." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." }
             ],
             "Blouse": [
-                { name:"Polyester", priority:1, default:true, traits:{temp:"warm",shine:"sheen"}, desc:"Most common vintage." },
+                { name:"Polyester", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Most common vintage." },
                 { name:"Rayon", priority:1, traits:{temp:"cool",shine:"sheen"}, desc:"Silky, drapey." },
                 { name:"Silk", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Luxury." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"70s-80s." }
             ],
             "Tunic": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Drapey." },
                 { name:"Linen", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Breathable." },
                 { name:"Wool", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Warm." }
             ],
             "Jersey": [
-                { name:"Polyester", priority:1, default:true, traits:{temp:"warm",shine:"sheen"}, desc:"Most athletic." },
+                { name:"Polyester", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Most athletic." },
                 { name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Mesh jerseys." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Vintage baseball." },
                 { name:"Rayon", priority:3, traits:{temp:"cool",shine:"sheen"}, desc:"Old school." }
             ],
             // BOTTOMS
             "Jeans": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"100% denim." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"100% denim." },
                 { name:"Polyester", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Rare blend." }
             ],
             "Pants": [
-                { name:"Polyester", priority:1, default:true, traits:{temp:"warm",shine:"sheen"}, desc:"Dress pants." },
+                { name:"Polyester", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Dress pants." },
                 { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Chinos." },
                 { name:"Wool", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Dress wool." },
                 { name:"Rayon", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Drapey." },
@@ -4172,20 +4172,20 @@
                 { name:"Canvas", priority:3, traits:{temp:"cool",shine:"matte"}, desc:"Workwear." }
             ],
             "Shorts": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Cotton shorts." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Cotton shorts." },
                 { name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic/swim." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Canvas", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Heavy duty." },
                 { name:"Rayon", priority:3, traits:{temp:"cool",shine:"sheen"}, desc:"Drapey." }
             ],
             "Sweatpants": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Classic sweats." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Classic sweats." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Acrylic", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Synthetic." }
             ],
             // OUTER
             "Jacket": [
-                { name:"Nylon", priority:1, default:true, traits:{temp:"warm",shine:"sheen"}, desc:"Windbreaker." },
+                { name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Windbreaker." },
                 { name:"Polyester", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Athletic." },
                 { name:"Canvas", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Work jacket." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Denim/canvas." },
@@ -4193,7 +4193,7 @@
                 { name:"Wool", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Varsity." }
             ],
             "Coat": [
-                { name:"Wool", priority:1, default:true, traits:{temp:"warm",shine:"matte"}, desc:"Dress coat." },
+                { name:"Wool", priority:1, traits:{temp:"warm",shine:"matte"}, desc:"Dress coat." },
                 { name:"Leather", priority:2, traits:{temp:"cool",shine:"sheen"}, desc:"Trench, long." },
                 { name:"Nylon", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Puffer." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Down fill." },
@@ -4201,13 +4201,13 @@
                 { name:"Fur", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Real/faux fur." }
             ],
             "Vest": [
-                { name:"Nylon", priority:1, default:true, traits:{temp:"warm",shine:"sheen"}, desc:"Puffer." },
+                { name:"Nylon", priority:1, traits:{temp:"warm",shine:"sheen"}, desc:"Puffer." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Fleece." },
                 { name:"Cotton", priority:2, traits:{temp:"cool",shine:"matte"}, desc:"Denim." },
                 { name:"Wool", priority:3, traits:{temp:"warm",shine:"matte"}, desc:"Sweater vest." }
             ],
             "default": [
-                { name:"Cotton", priority:1, default:true, traits:{temp:"cool",shine:"matte"}, desc:"Natural fiber." },
+                { name:"Cotton", priority:1, traits:{temp:"cool",shine:"matte"}, desc:"Natural fiber." },
                 { name:"Polyester", priority:2, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic." },
                 { name:"Wool", priority:2, traits:{temp:"warm",shine:"matte"}, desc:"Warm, natural." },
                 { name:"Nylon", priority:3, traits:{temp:"warm",shine:"sheen"}, desc:"Synthetic." }
@@ -4219,7 +4219,7 @@
         // shapes: none, dots, curved (flowers/paisley), geometric, blobs (irregular)
         // method: woven (part of fabric), printed (on surface), stitched (embroidered)
         const patternDB = [
-            { name:"Solid", priority:1, default:true, traits:{lines:"none",shapes:"none",method:"woven"}, desc:"One color only. No pattern.", examples:"Plain tee, blank shirt" },
+            { name:"Solid", priority:1, traits:{lines:"none",shapes:"none",method:"woven"}, desc:"One color only. No pattern.", examples:"Plain tee, blank shirt" },
             { name:"Graphic", priority:1, traits:{lines:"none",shapes:"any",method:"printed"}, desc:"Image/text printed on fabric.", examples:"Band tee, logo shirt, artwork" },
             { name:"Striped", priority:2, traits:{lines:"stripes",shapes:"none",method:"woven"}, desc:"Parallel lines in one direction.", examples:"Sailor stripe, pinstripe, rugby stripe" },
             { name:"Color Block", priority:2, traits:{lines:"none",shapes:"geometric",method:"woven"}, desc:"Large solid color sections sewn together.", examples:"90s windbreaker, panel tee" },
@@ -4266,6 +4266,22 @@
                     { location: "Side seam", desc: "Hip area, left or right side", icon: "📍" }
                 ],
                 tips: "Western shirts often have multiple small tags. Dress shirts may have tags at the bottom placket."
+            },
+            "Flannel": {
+                primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
+                secondary: [
+                    { location: "Inside yoke", desc: "Below the collar seam, inside the back", icon: "📍" },
+                    { location: "Side seam", desc: "Hip area, left or right side", icon: "📍" }
+                ],
+                tips: "Flannel shirts often have tags in the same locations as button-up shirts."
+            },
+            "Henley": {
+                primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
+                secondary: [
+                    { location: "Left side seam", desc: "Hip/waist area on the left side", icon: "📍" },
+                    { location: "Bottom hem (inside)", desc: "Inside the bottom hem", icon: "📍" }
+                ],
+                tips: "Similar to t-shirts. Check neck first, then side seams."
             },
             "Sweatshirt": {
                 primary: { location: "Back of neck", desc: "Inside the collar, center back", icon: "👔" },
@@ -4526,31 +4542,6 @@
             } 
         }
         function showPinScreen() { document.getElementById('pin-screen').classList.remove('hidden'); document.getElementById('pin-input').value=''; document.getElementById('pin-input').focus(); }
-        
-        // Reset Menu Functions
-        function toggleResetMenu() {
-            const menu = document.getElementById('reset-menu');
-            menu.classList.toggle('visible');
-            
-            // Close menu when clicking outside
-            if(menu.classList.contains('visible')) {
-                setTimeout(() => {
-                    document.addEventListener('click', closeResetMenuOnClickOutside);
-                }, 10);
-            }
-        }
-        
-        function hideResetMenu() {
-            document.getElementById('reset-menu').classList.remove('visible');
-            document.removeEventListener('click', closeResetMenuOnClickOutside);
-        }
-        
-        function closeResetMenuOnClickOutside(e) {
-            const dropdown = document.getElementById('reset-dropdown');
-            if(!dropdown.contains(e.target)) {
-                hideResetMenu();
-            }
-        }
         
         // === SKU GATE FUNCTIONS ===
         let skuLocked = false;
@@ -5272,12 +5263,8 @@
                     }
                 });
                 
-                // Only start camera if SKU gate is NOT visible (SKU already locked)
-                const skuGateVisible = !document.getElementById('sku-gate').classList.contains('hidden');
-                
-                if(skuGateVisible) {
-                    console.log('📷 SKU Gate visible - NOT starting camera yet');
-                } else if(mainCameraId) {
+                // Always start camera immediately (no SKU gate blocking)
+                if(mainCameraId) {
                     select.value = mainCameraId;
                     // For main camera, use aggressive max resolution
                     await switchCameraMaxRes(mainCameraId);
@@ -6255,6 +6242,11 @@
                 
                 updatePhotoGrids();
                 updateValidation();
+                
+                // AI Analysis - analyze first main photo
+                if(data.mainPhotos.length === 1) {
+                    analyzeMainPhotoWithAI(mainBlob);
+                }
             }, 'image/jpeg', 0.95);
         }
         
@@ -7126,84 +7118,29 @@
             document.getElementById('tops-construction').classList.toggle('hidden', isBottoms);
             document.getElementById('bottoms-construction').classList.toggle('hidden', !isBottoms);
             
-            // Clear construction data when switching and restore defaults
+            // Clear construction data when switching
             if(isBottoms) {
                 data.sleeveLength = ''; data.sleeveStyle = ''; data.stitch = ''; data.cutoffType = ''; data.bodyConstruction = '';
                 document.querySelectorAll('.sleeve-btn, .style-btn, .stitch-btn, .body-btn').forEach(b => { 
                     b.classList.remove('selected','btn-hero','btn-default'); 
                     b.classList.add('btn-secondary'); 
                 });
-                // Restore bottoms defaults
-                restoreBottomsDefaults();
             } else {
                 data.legStyle = ''; data.rise = '';
                 document.querySelectorAll('.leg-btn, .rise-btn').forEach(b => { 
                     b.classList.remove('selected','btn-hero','btn-default'); 
                     b.classList.add('btn-secondary'); 
                 });
-                // Restore tops defaults
-                restoreTopsDefaults();
             }
             
             renderSubCategories(cat); 
             updateValidation(); 
         }
         
-        // Restore default styling for tops construction fields
-        function restoreTopsDefaults() {
-            // Sleeve: Short is default for T-Shirt (first category shown)
-            document.querySelectorAll('.sleeve-btn').forEach(b => {
-                if(b.textContent.trim() === 'Short') {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-            // Sleeve Style: Standard
-            document.querySelectorAll('.style-btn').forEach(b => {
-                if(b.textContent.trim() === 'Standard') {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-            // Stitch: Double
-            document.querySelectorAll('.stitch-btn').forEach(b => {
-                if(b.textContent.includes('Double')) {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-            // Body Construction: Side Seam (default)
-            document.querySelectorAll('.body-btn').forEach(b => {
-                if(b.textContent.includes('Side Seam')) {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-        }
-        
-        // Restore default styling for bottoms construction fields
-        function restoreBottomsDefaults() {
-            // Leg Style: Straight
-            document.querySelectorAll('.leg-btn').forEach(b => {
-                if(b.textContent.trim() === 'Straight') {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-            // Rise: Mid Rise
-            document.querySelectorAll('.rise-btn').forEach(b => {
-                if(b.textContent.includes('Mid')) {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-default');
-                }
-            });
-        }
         function renderSubCategories(superCat) { 
             const config = categoryConfig[superCat]; 
             const container = document.getElementById('sub-categories'); 
-            // Only show default style on hero if no category is selected
-            const heroClass = data.category ? 'cat-hero cat-btn' : 'cat-hero cat-btn cat-default';
-            container.innerHTML = `<button onclick="setCategory('${config.heroes[0]}', this)" class="${heroClass}"><span style="font-size:20px;">${catEmojis[config.heroes[0]]||'👕'}</span> ${config.heroes[0].toUpperCase()}</button><div class="btn-grid btn-grid-2" style="margin-bottom:8px;">${config.heroes.slice(1).map(c=>`<button onclick="setCategory('${c}', this)" class="cat-secondary cat-btn"><span>${catEmojis[c]||'👕'}</span> ${c}</button>`).join('')}</div><div class="btn-grid btn-grid-4">${config.others.map(c=>`<button onclick="setCategory('${c}', this)" class="cat-other cat-btn">${c}</button>`).join('')}</div>`; 
+            container.innerHTML = `<button onclick="setCategory('${config.heroes[0]}', this)" class="cat-hero cat-btn"><span style="font-size:20px;">${catEmojis[config.heroes[0]]||'👕'}</span> ${config.heroes[0].toUpperCase()}</button><div class="btn-grid btn-grid-2" style="margin-bottom:8px;">${config.heroes.slice(1).map(c=>`<button onclick="setCategory('${c}', this)" class="cat-secondary cat-btn"><span>${catEmojis[c]||'👕'}</span> ${c}</button>`).join('')}</div><div class="btn-grid btn-grid-4">${config.others.map(c=>`<button onclick="setCategory('${c}', this)" class="cat-other cat-btn">${c}</button>`).join('')}</div>`; 
         }
         function setCategory(cat, btn) { 
             data.category = cat; 
@@ -7985,7 +7922,12 @@
                 
                 if (result.success && result.data) {
                     applyAISuggestions(result.data, 'tag');
-                    showToast('success', '🤖 AI Analysis Complete', 'Fields auto-filled from tag', 3000);
+                    const provider = result.provider === 'gemini' ? '(Gemini)' : '(Claude)';
+                    showToast('success', `🤖 AI Analysis Complete ${provider}`, 'Fields auto-filled from tag', 3000);
+                } else if (result.flagForManualReview) {
+                    console.warn('🤖 AI flagged for manual review:', result.details);
+                    showToast('warning', '🤖 AI Unavailable', 'Please fill in tag info manually', 3000);
+                    data.flagged = true; // Flag item for review
                 } else {
                     console.warn('🤖 AI analysis failed:', result.error);
                     showToast('warning', '🤖 AI Analysis', 'Could not read tag clearly', 2500);
@@ -8087,9 +8029,158 @@
                 }
             }
             
+            // Main photo analysis
+            if (type === 'main') {
+                // Category
+                if (aiData.category && !data.category) {
+                    data.category = aiData.category;
+                    fieldsUpdated.push('Category: ' + aiData.category);
+                    // Update category buttons
+                    document.querySelectorAll('.cat-btn').forEach(btn => {
+                        const btnText = btn.textContent.replace(/[^\w\s-]/g, '').trim();
+                        if (btnText.toUpperCase() === aiData.category.toUpperCase()) {
+                            btn.click(); // Trigger the setCategory function
+                        }
+                    });
+                }
+                
+                // Super Category
+                if (aiData.superCategory && !data.superCategory) {
+                    data.superCategory = aiData.superCategory;
+                    fieldsUpdated.push('SuperCategory: ' + aiData.superCategory);
+                }
+                
+                // Colors
+                if (aiData.colors && aiData.colors.length > 0 && data.colors.length === 0) {
+                    data.colors = aiData.colors;
+                    fieldsUpdated.push('Colors: ' + aiData.colors.join(', '));
+                    // Update color chips
+                    document.querySelectorAll('#color-options .chip-btn').forEach(btn => {
+                        const colorText = btn.textContent.trim();
+                        if (aiData.colors.includes(colorText)) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Pattern
+                if (aiData.pattern && !data.pattern) {
+                    data.pattern = aiData.pattern;
+                    fieldsUpdated.push('Pattern: ' + aiData.pattern);
+                    document.querySelectorAll('.pattern-btn').forEach(btn => {
+                        if (btn.textContent.trim() === aiData.pattern) {
+                            btn.click();
+                        }
+                    });
+                }
+                
+                // Fabric Type
+                if (aiData.fabricType && !data.fabricType) {
+                    data.fabricType = aiData.fabricType;
+                    fieldsUpdated.push('Fabric: ' + aiData.fabricType);
+                }
+                
+                // Sleeve Length
+                if (aiData.sleeveLength && !data.sleeveLength) {
+                    data.sleeveLength = aiData.sleeveLength;
+                    fieldsUpdated.push('Sleeve: ' + aiData.sleeveLength);
+                    document.querySelectorAll('.sleeve-btn').forEach(btn => {
+                        if (btn.textContent.trim() === aiData.sleeveLength) {
+                            btn.click();
+                        }
+                    });
+                }
+                
+                // Sleeve Style
+                if (aiData.sleeveStyle && !data.sleeveStyle) {
+                    data.sleeveStyle = aiData.sleeveStyle;
+                    fieldsUpdated.push('Sleeve Style: ' + aiData.sleeveStyle);
+                }
+                
+                // Gender
+                if (aiData.gender && !data.gender) {
+                    const genderMap = { 'mens': 'Mens', 'womens': 'Womens', 'unisex': 'Unisex' };
+                    data.gender = genderMap[aiData.gender] || aiData.gender;
+                    fieldsUpdated.push('Gender: ' + data.gender);
+                }
+                
+                // Print Type
+                if (aiData.printType && !data.printType) {
+                    data.printType = aiData.printType;
+                    fieldsUpdated.push('Print: ' + aiData.printType);
+                }
+                
+                // Graphic Category
+                if (aiData.graphicCategory && !data.graphicCategory) {
+                    data.graphicCategory = aiData.graphicCategory;
+                    fieldsUpdated.push('Graphic: ' + aiData.graphicCategory);
+                }
+                
+                // Visible Defects - just log for now
+                if (aiData.visibleDefects && aiData.visibleDefects.length > 0) {
+                    console.log('🤖 AI detected potential defects:', aiData.visibleDefects);
+                    fieldsUpdated.push('Defects detected: ' + aiData.visibleDefects.join(', '));
+                }
+            }
+            
             // Log what was updated
             if (fieldsUpdated.length > 0) {
                 console.log('🤖 Fields auto-filled:', fieldsUpdated);
+            }
+            
+            updateValidation();
+        }
+        
+        async function analyzeMainPhotoWithAI(imageBlob) {
+            if (aiAnalysisInProgress) return;
+            aiAnalysisInProgress = true;
+            
+            console.log('🤖 Starting AI main photo analysis...');
+            const aiToast = showToast('info', '🤖 AI Analyzing Photo...', 'Detecting category, colors, pattern...', 30000);
+            
+            try {
+                // Convert blob to base64
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(imageBlob);
+                });
+                
+                // Call Lambda vision endpoint
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'vision',
+                        type: 'main',
+                        image: base64
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('🤖 AI main photo response:', result);
+                
+                aiToast.remove();
+                
+                if (result.success && result.data) {
+                    applyAISuggestions(result.data, 'main');
+                    const provider = result.provider === 'gemini' ? '(Gemini)' : '(Claude)';
+                    showToast('success', `🤖 AI Analysis Complete ${provider}`, 'Fields auto-filled from photo', 3000);
+                } else if (result.flagForManualReview) {
+                    console.warn('🤖 AI flagged for manual review:', result.details);
+                    showToast('warning', '🤖 AI Unavailable', 'Please fill in fields manually', 3000);
+                    data.flagged = true; // Flag item for review
+                } else {
+                    console.warn('🤖 AI main photo analysis failed:', result.error);
+                    showToast('warning', '🤖 AI Analysis', 'Could not analyze photo clearly', 2500);
+                }
+            } catch (err) {
+                console.error('🤖 AI main photo analysis error:', err);
+                aiToast.remove();
+                showToast('error', '🤖 AI Error', err.message, 2500);
+            } finally {
+                aiAnalysisInProgress = false;
             }
         }
         
@@ -8962,12 +9053,10 @@
             // CRITICAL: Store SKU before any async operations
             const submittedSku = data.sku;
             
-            // Disable submit button AND reset button during upload to prevent data corruption
+            // Disable submit button during upload to prevent data corruption
             const submitBtn = document.getElementById('submit-btn');
-            const resetBtn = document.querySelector('.reset-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'UPLOADING...';
-            if(resetBtn) resetBtn.disabled = true;
             
             // Show uploading toast
             const uploadToast = showToast('info', '⬆️ Uploading to S3...', 'Starting upload', 120000);
@@ -9166,10 +9255,9 @@
                 }
                 showToast('error', 'Upload Failed', err.message);
                 
-                // Re-enable submit and reset buttons
+                // Re-enable submit button
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'SUBMIT ✓';
-                if(resetBtn) resetBtn.disabled = false;
                 
                 // Fall back to local save only
                 if(saveDirectoryHandle) {
