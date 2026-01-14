@@ -326,8 +326,9 @@
             </div>
             
             <div class="btn-row">
-                <button class="btn btn-primary" onclick="takeSnapshot('test')">📸 Take Test Photo</button>
-                <button class="btn btn-success" onclick="downloadSnapshot()">💾 Save Photo</button>
+                <button class="btn btn-primary" onclick="takeSnapshot('test')">📸 Test Photo</button>
+                <button class="btn btn-secondary" onclick="downloadSnapshot()">💾 Save 4K</button>
+                <button class="btn btn-success" onclick="downloadFullRes()">📸 Save FULL 48MP</button>
             </div>
             
             <div class="instructions">
@@ -508,6 +509,9 @@
                 
                 showStatus(`Camera started: ${settings.width}x${settings.height}`, 'success');
                 
+                // Check full resolution photo capabilities
+                checkPhotoCapabilities();
+                
             } catch (err) {
                 showStatus('Error starting camera: ' + err.message, 'error');
             }
@@ -633,6 +637,79 @@
             link.download = `camera-test-${Date.now()}.jpg`;
             link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.click();
+        }
+        
+        // Try to capture at FULL resolution using ImageCapture API
+        async function downloadFullRes() {
+            if (!videoTrack) {
+                showStatus('No camera selected', 'error');
+                return;
+            }
+            
+            try {
+                showStatus('Capturing full resolution...', '');
+                
+                const imageCapture = new ImageCapture(videoTrack);
+                
+                // Get photo capabilities
+                const photoCapabilities = await imageCapture.getPhotoCapabilities();
+                console.log('Photo capabilities:', photoCapabilities);
+                
+                // Request maximum resolution
+                const photoSettings = {
+                    imageWidth: photoCapabilities.imageWidth.max,
+                    imageHeight: photoCapabilities.imageHeight.max
+                };
+                
+                console.log('Requesting:', photoSettings);
+                
+                // Take the photo
+                const blob = await imageCapture.takePhoto(photoSettings);
+                
+                // Get actual dimensions
+                const img = new Image();
+                img.onload = () => {
+                    showStatus(`Full res captured: ${img.width} x ${img.height} (${(blob.size/1024/1024).toFixed(2)} MB)`, 'success');
+                    URL.revokeObjectURL(img.src);
+                };
+                img.src = URL.createObjectURL(blob);
+                
+                // Download it
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.download = `camera-FULLRES-${Date.now()}.jpg`;
+                link.href = url;
+                link.click();
+                
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                
+            } catch (err) {
+                console.error('Full res capture failed:', err);
+                showStatus('Full res failed: ' + err.message + ' - falling back to 4K', 'error');
+                // Fallback to regular capture
+                downloadSnapshot();
+            }
+        }
+        
+        // Check photo capabilities when camera starts
+        async function checkPhotoCapabilities() {
+            if (!videoTrack) return;
+            
+            try {
+                const imageCapture = new ImageCapture(videoTrack);
+                const caps = await imageCapture.getPhotoCapabilities();
+                console.log('Photo capabilities:', caps);
+                
+                const maxRes = `${caps.imageWidth.max} x ${caps.imageHeight.max}`;
+                const megapixels = (caps.imageWidth.max * caps.imageHeight.max / 1000000).toFixed(1);
+                
+                document.getElementById('capabilities').innerHTML += 
+                    `<br><strong>📸 Max Photo Resolution:</strong><br>` +
+                    `<div class="supported">${maxRes} (${megapixels} MP)</div>`;
+                    
+            } catch (err) {
+                console.log('Could not get photo capabilities:', err);
+            }
         }
         
         function resetDefaults() {
