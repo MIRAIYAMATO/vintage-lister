@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.2</title>
+    <title>VintageLister Browser v2.3</title>
     <style>
         :root {
-            /* v100 Color Scheme */
             --color-primary: #3b82f6;
             --color-primary-dark: #2563eb;
             --color-primary-light: #dbeafe;
@@ -25,8 +24,6 @@
             --color-dark-lighter: #334155;
             --color-purple: #7c3aed;
             --color-cyan: #0891b2;
-            
-            --radius-sm: 6px;
             --radius-md: 8px;
             --radius-lg: 10px;
         }
@@ -43,12 +40,12 @@
         /* LAYOUT */
         .desktop-layout {
             display: grid;
-            grid-template-columns: 380px 1fr 300px;
+            grid-template-columns: 340px 1fr 300px;
             height: 100vh;
             overflow: hidden;
         }
         
-        /* LEFT PANEL - Form */
+        /* LEFT PANEL */
         .form-panel {
             background: var(--color-surface);
             display: flex;
@@ -56,7 +53,7 @@
             overflow: hidden;
         }
         
-        /* FLOATING TIMER */
+        /* TIMER HEADER */
         .floating-timer {
             background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
             color: white;
@@ -64,39 +61,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
         }
         
-        .timer-main {
-            font-size: 28px;
-            font-weight: 800;
-            font-family: monospace;
-        }
-        
-        .timer-stats {
-            text-align: right;
-            font-size: 11px;
-        }
-        
-        .timer-label {
-            font-size: 10px;
-            opacity: 0.7;
-        }
-        
-        .version-badge {
-            background: rgba(0,0,0,0.3);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
-        }
+        .timer-main { font-size: 28px; font-weight: 800; font-family: monospace; }
+        .timer-stats { text-align: right; font-size: 11px; }
+        .version-badge { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
         
         /* FORM CONTENT */
-        .form-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
+        .form-content { flex: 1; overflow-y: auto; padding: 16px; }
         
         .section-card {
             background: var(--color-background);
@@ -117,8 +89,7 @@
         }
         
         .check-circle {
-            width: 20px;
-            height: 20px;
+            width: 20px; height: 20px;
             border-radius: 50%;
             background: var(--color-border);
             color: #999;
@@ -127,157 +98,116 @@
             justify-content: center;
             font-size: 11px;
         }
-        
-        .check-circle.complete {
-            background: var(--color-success);
-            color: white;
-        }
+        .check-circle.complete { background: var(--color-success); color: white; }
         
         /* SKU Input */
-        .sku-input-row {
-            display: flex;
-            gap: 8px;
-        }
-        
+        .sku-input-row { display: flex; gap: 8px; }
         .sku-input {
-            flex: 1;
-            padding: 12px;
+            flex: 1; padding: 12px;
             border: 2px solid var(--color-border);
             border-radius: var(--radius-md);
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 16px; font-weight: 600;
         }
-        
-        .sku-input:focus {
-            outline: none;
-            border-color: var(--color-primary);
-        }
-        
+        .sku-input:focus { outline: none; border-color: var(--color-primary); }
         .sku-display {
             padding: 12px;
             background: var(--color-success);
             color: white;
             border-radius: var(--radius-md);
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 16px; font-weight: 700;
             text-align: center;
             display: none;
         }
-        
-        .sku-display.visible {
-            display: block;
-        }
+        .sku-display.visible { display: block; }
         
         /* Buttons */
         .btn {
             padding: 10px 16px;
             border-radius: var(--radius-md);
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 13px; font-weight: 600;
             cursor: pointer;
             border: 2px solid transparent;
             transition: all 0.15s;
         }
-        
         .btn:active { transform: scale(0.97); }
-        
-        .btn-primary {
-            background: var(--color-primary);
-            color: white;
-            border-color: var(--color-primary-dark);
-        }
-        
+        .btn-primary { background: var(--color-primary); color: white; border-color: var(--color-primary-dark); }
         .btn-primary:hover { background: var(--color-primary-dark); }
-        
-        .btn-success {
-            background: var(--color-success);
-            color: white;
-        }
-        
+        .btn-success { background: var(--color-success); color: white; }
         .btn-success:hover { background: var(--color-success-dark); }
-        
-        .btn-secondary {
-            background: white;
-            color: var(--color-text);
-            border: 2px solid var(--color-border);
-        }
-        
-        .btn-secondary:hover { background: var(--color-background); }
         
         /* Camera Select */
         .camera-select {
-            width: 100%;
-            padding: 10px;
+            width: 100%; padding: 10px;
             border: 2px solid var(--color-border);
             border-radius: var(--radius-md);
             font-size: 13px;
+            margin-bottom: 8px;
         }
-        
         .camera-select:focus { outline: none; border-color: var(--color-primary); }
         
-        /* Mode Buttons */
-        .mode-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        /* MODE BUTTONS - 3 modes */
+        .mode-buttons { display: flex; flex-direction: column; gap: 8px; }
         
         .mode-btn {
-            flex: 1;
-            min-width: calc(50% - 4px);
-            padding: 12px;
-            border: 2px solid var(--color-border);
-            border-radius: var(--radius-md);
+            padding: 16px;
+            border: 3px solid var(--color-border);
+            border-radius: 12px;
             background: white;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            gap: 12px;
             transition: all 0.15s;
         }
+        .mode-btn:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+        .mode-btn.active { border-color: var(--color-primary); background: var(--color-primary); color: white; }
+        .mode-btn.active[data-mode="main"] { background: var(--color-primary); border-color: var(--color-primary-dark); }
+        .mode-btn.active[data-mode="closeup"] { background: var(--color-purple); border-color: #6d28d9; }
+        .mode-btn.active[data-mode="handheld"] { background: var(--color-warning); border-color: var(--color-warning-dark); }
         
-        .mode-btn:hover { border-color: var(--color-primary); }
+        .mode-icon { font-size: 28px; }
+        .mode-info { flex: 1; }
+        .mode-name { font-size: 16px; font-weight: 700; }
+        .mode-desc { font-size: 11px; opacity: 0.8; }
+        .mode-count { font-size: 20px; font-weight: 700; opacity: 0.9; }
         
-        .mode-btn.active {
-            background: var(--color-primary);
+        /* AI Status */
+        .ai-status {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            border-radius: 10px;
+            padding: 12px;
             color: white;
-            border-color: var(--color-primary);
         }
-        
-        .mode-btn.active[data-mode="main"] { background: var(--color-primary); }
-        .mode-btn.active[data-mode="tag"] { background: var(--color-primary); }
-        .mode-btn.active[data-mode="defects"] { background: var(--color-error); border-color: var(--color-error); }
-        .mode-btn.active[data-mode="features"] { background: var(--color-purple); border-color: var(--color-purple); }
-        .mode-btn.active[data-mode="weight"] { background: var(--color-cyan); border-color: var(--color-cyan); }
-        
-        .mode-icon { font-size: 18px; }
-        .mode-count { margin-left: auto; opacity: 0.7; font-size: 11px; }
+        .ai-status-title { font-size: 11px; font-weight: 700; opacity: 0.7; margin-bottom: 8px; }
+        .ai-status-chain { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        .ai-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .ai-badge.claude { background: #d97706; }
+        .ai-badge.openai { background: #059669; }
+        .ai-badge.gemini { background: #7c3aed; }
+        .ai-badge.manual { background: #64748b; }
+        .ai-badge.active { box-shadow: 0 0 0 2px white; }
+        .ai-arrow { color: #64748b; font-size: 10px; }
         
         /* Complete Button */
-        .complete-section {
-            padding: 16px;
-            border-top: 1px solid var(--color-border);
-        }
-        
+        .complete-section { padding: 16px; border-top: 1px solid var(--color-border); }
         .complete-btn {
-            width: 100%;
-            padding: 16px;
+            width: 100%; padding: 16px;
             background: linear-gradient(135deg, var(--color-success), var(--color-success-dark));
-            color: white;
-            border: none;
+            color: white; border: none;
             border-radius: var(--radius-lg);
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 16px; font-weight: 700;
             cursor: pointer;
             transition: all 0.15s;
         }
-        
         .complete-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(34,197,94,0.4); }
         .complete-btn:disabled { background: var(--color-border); cursor: not-allowed; transform: none; box-shadow: none; }
         
-        /* CENTER - Camera Panel */
+        /* CENTER - Camera */
         .camera-panel {
             background: #000;
             display: flex;
@@ -294,51 +224,29 @@
             gap: 12px;
             z-index: 10;
         }
-        
-        .camera-indicator {
-            background: var(--color-primary);
-            color: white;
+        .camera-mode-badge {
             padding: 6px 12px;
             border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        
-        .camera-resolution {
-            color: var(--color-success);
             font-size: 12px;
-            font-family: monospace;
+            font-weight: 700;
+            color: white;
         }
-        
+        .camera-mode-badge.main { background: var(--color-primary); }
+        .camera-mode-badge.closeup { background: var(--color-purple); }
+        .camera-mode-badge.handheld { background: var(--color-warning); }
+        .camera-resolution { color: var(--color-success); font-size: 12px; font-family: monospace; }
         .fullres-btn {
             padding: 6px 12px;
             background: var(--color-warning);
-            color: white;
-            border: none;
+            color: white; border: none;
             border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
+            font-size: 11px; font-weight: 700;
             cursor: pointer;
         }
-        
         .fullres-btn:hover { background: var(--color-warning-dark); }
-        
-        .camera-status {
-            margin-left: auto;
-            font-size: 12px;
-            color: var(--color-success);
-        }
-        
-        .camera-status::before {
-            content: '●';
-            margin-right: 6px;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        .camera-status { margin-left: auto; font-size: 12px; color: var(--color-success); }
+        .camera-status::before { content: '●'; margin-right: 6px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         
         /* Camera View */
         .camera-view {
@@ -349,199 +257,38 @@
             position: relative;
             overflow: hidden;
         }
-        
-        #camera-video {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-        
-        .camera-placeholder {
-            color: #666;
-            text-align: center;
-        }
-        
+        #camera-video { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .camera-placeholder { color: #666; text-align: center; }
         .camera-placeholder-icon { font-size: 64px; margin-bottom: 16px; }
         
-        /* Defect Markers Layer */
-        .defect-markers-layer {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 5;
-        }
-        
-        .defect-markers-layer.active {
-            pointer-events: auto;
-            cursor: crosshair;
-        }
-        
-        .defect-marker {
-            position: absolute;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            cursor: pointer;
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 700;
-            color: white;
-            border: 3px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
-            transition: transform 0.15s ease;
-        }
-        
-        .defect-marker:hover { transform: translate(-50%, -50%) scale(1.2); }
-        
-        .defect-marker.stain { background: #eab308; }
-        .defect-marker.hole { background: #3b82f6; }
-        .defect-marker.tear { background: #ec4899; }
-        .defect-marker.fade { background: #a855f7; }
-        .defect-marker.repair { background: #f97316; }
-        .defect-marker.other { background: #64748b; }
-        
-        .defect-marker-delete {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 20px;
-            height: 20px;
-            background: #ef4444;
-            border-radius: 50%;
-            border: 2px solid white;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.15s;
-            cursor: pointer;
-        }
-        
-        .defect-marker:hover .defect-marker-delete { opacity: 1; }
-        
-        /* Defect Popup */
-        .defect-popup {
-            position: fixed;
-            z-index: 10000;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            padding: 12px;
-            display: none;
-            max-width: 320px;
-        }
-        
-        .defect-popup.visible { display: block; }
-        
-        .defect-popup-title {
-            font-size: 11px;
-            font-weight: 700;
-            color: #64748b;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-        
-        .defect-popup-btns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-        }
-        
-        .defect-popup-btn {
-            padding: 10px 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            min-width: 75px;
-            transition: transform 0.1s;
-        }
-        
-        .defect-popup-btn:hover { transform: scale(1.05); }
-        .defect-popup-btn:active { transform: scale(0.95); }
-        
-        .defect-popup-btn.stain { background: #fef9c3; color: #a16207; border: 2px solid #eab308; }
-        .defect-popup-btn.hole { background: #dbeafe; color: #1d4ed8; border: 2px solid #3b82f6; }
-        .defect-popup-btn.tear { background: #fce7f3; color: #be185d; border: 2px solid #ec4899; }
-        .defect-popup-btn.fade { background: #f3e8ff; color: #7c3aed; border: 2px solid #a855f7; }
-        .defect-popup-btn.repair { background: #ffedd5; color: #c2410c; border: 2px solid #f97316; }
-        .defect-popup-btn.other { background: #f1f5f9; color: #475569; border: 2px solid #64748b; }
-        
-        .defect-popup-btn span:first-child { font-size: 20px; }
-        
-        .defect-popup-cancel {
-            width: 100%;
-            margin-top: 8px;
-            padding: 8px;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 11px;
-            color: #64748b;
-            cursor: pointer;
-        }
-        
-        .defect-popup-cancel:hover { background: #e2e8f0; }
-        
-        /* Defect Mode Banner */
-        .defect-mode-banner {
-            position: absolute;
-            bottom: 130px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 10;
-            display: none;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .defect-mode-banner.visible { display: flex; }
-        .defect-mode-banner .marker-count { background: #3b82f6; padding: 2px 8px; border-radius: 10px; }
-        
-        /* Hint Banner */
-        .hint-banner {
+        /* Blur Warning */
+        .blur-warning {
             position: absolute;
             top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
+            background: rgba(239, 68, 68, 0.9);
             color: white;
             padding: 10px 20px;
             border-radius: 10px;
-            font-size: 13px;
-            z-index: 10;
+            font-size: 14px;
+            font-weight: 600;
+            display: none;
+            z-index: 20;
         }
+        .blur-warning.visible { display: block; }
         
         /* Camera Footer */
         .camera-footer {
             background: var(--color-dark);
-            padding: 12px;
+            padding: 16px;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
+            gap: 20px;
         }
-        
         .shutter-btn {
-            width: 64px;
-            height: 64px;
+            width: 72px; height: 72px;
             border-radius: 50%;
             background: white;
             border: 4px solid #666;
@@ -549,33 +296,20 @@
             transition: all 0.1s;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        
         .shutter-btn:hover { transform: scale(1.05); }
         .shutter-btn:active { transform: scale(0.95); background: #ddd; }
+        .shutter-hint { font-size: 11px; color: #888; text-align: center; }
+        .shutter-hint kbd { background: #444; color: white; padding: 2px 6px; border-radius: 4px; }
         
-        .shutter-hint {
-            font-size: 11px;
-            color: #888;
-        }
-        
-        .shutter-hint kbd {
-            background: #444;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        
-        /* Flash Overlay */
+        /* Flash */
         .flash-overlay {
-            position: absolute;
-            inset: 0;
+            position: absolute; inset: 0;
             background: white;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.05s;
             z-index: 100;
         }
-        
         .flash-overlay.flash { opacity: 1; }
         
         /* RIGHT PANEL - Photos */
@@ -586,23 +320,14 @@
             border-left: 1px solid var(--color-border);
         }
         
-        .photos-section {
-            margin-bottom: 16px;
-        }
-        
+        .photos-section { margin-bottom: 16px; }
         .photos-section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 8px;
         }
-        
-        .photos-section-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--color-text);
-        }
-        
+        .photos-section-title { font-size: 12px; font-weight: 700; color: var(--color-text); }
         .photos-section-count {
             font-size: 11px;
             background: var(--color-border);
@@ -611,12 +336,7 @@
             color: var(--color-text-muted);
         }
         
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-        }
-        
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         .photo-thumb {
             aspect-ratio: 1;
             background: white;
@@ -626,56 +346,52 @@
             position: relative;
             border: 2px solid var(--color-border);
         }
-        
         .photo-thumb:hover { border-color: var(--color-primary); }
-        
-        .photo-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-thumb .photo-label {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            font-size: 9px;
+            padding: 2px 4px;
+            text-align: center;
+            font-weight: 600;
         }
-        
         .photo-thumb .delete-btn {
             position: absolute;
-            top: 2px;
-            right: 2px;
-            width: 18px;
-            height: 18px;
+            top: 2px; right: 2px;
+            width: 18px; height: 18px;
             background: var(--color-error);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            font-size: 10px;
+            border: none; border-radius: 50%;
+            color: white; font-size: 10px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.15s;
         }
-        
         .photo-thumb:hover .delete-btn { opacity: 1; }
-        
-        .photo-placeholder {
-            aspect-ratio: 1;
-            background: white;
-            border: 2px dashed var(--color-border);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--color-text-muted);
-            font-size: 18px;
+        .photo-thumb.blur-detected { border-color: var(--color-error); }
+        .photo-thumb.blur-detected::after {
+            content: '⚠️ BLUR';
+            position: absolute;
+            top: 2px; left: 2px;
+            background: var(--color-error);
+            color: white;
+            font-size: 8px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-weight: 700;
         }
         
         /* TOAST */
         .toast-container {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 20px; right: 20px;
             z-index: 9999;
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
-        
         .toast {
             background: var(--color-dark);
             color: white;
@@ -686,26 +402,20 @@
             align-items: center;
             gap: 12px;
             animation: slideIn 0.3s ease;
+            max-width: 350px;
         }
-        
         .toast.success { background: linear-gradient(135deg, #059669, #047857); }
         .toast.error { background: linear-gradient(135deg, #dc2626, #b91c1c); }
         .toast.warning { background: linear-gradient(135deg, #d97706, #b45309); }
         .toast.info { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-        
         .toast-icon { font-size: 18px; }
         .toast-message { font-size: 13px; }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
         
         /* PROCESSING OVERLAY */
         .processing-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.85);
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.9);
             display: none;
             align-items: center;
             justify-content: center;
@@ -713,42 +423,47 @@
             flex-direction: column;
             gap: 20px;
         }
-        
         .processing-overlay.active { display: flex; }
-        
         .processing-spinner {
-            width: 50px;
-            height: 50px;
+            width: 60px; height: 60px;
             border: 4px solid #333;
             border-top-color: var(--color-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        .processing-text { color: white; font-size: 16px; }
+        .processing-text { color: white; font-size: 18px; font-weight: 600; }
+        .processing-subtext { color: #888; font-size: 13px; }
+        .processing-progress {
+            width: 300px; height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .processing-progress-bar {
+            height: 100%;
+            background: var(--color-primary);
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
     <div class="desktop-layout">
-        <!-- LEFT PANEL - Form -->
+        <!-- LEFT PANEL -->
         <div class="form-panel">
-            <!-- Timer Header -->
             <div class="floating-timer">
                 <div>
                     <div class="timer-main" id="timer-display">0:00</div>
-                    <div class="timer-label">ITEM TIME</div>
+                    <div style="font-size:10px; opacity:0.7;">ITEM TIME</div>
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.2</div>
+                    <div class="version-badge">v2.3</div>
                 </div>
             </div>
             
-            <!-- Form Content -->
             <div class="form-content">
-                <!-- SKU Section -->
+                <!-- SKU -->
                 <div class="section-card">
                     <div class="section-label">
                         <span class="check-circle" id="check-sku">○</span>
@@ -761,114 +476,101 @@
                     <div class="sku-display" id="sku-display"></div>
                 </div>
                 
-                <!-- Camera Section -->
+                <!-- Camera -->
                 <div class="section-card">
                     <div class="section-label">
                         <span class="check-circle" id="check-camera">○</span>
                         📷 Camera
                     </div>
-                    <select class="camera-select" id="camera-select" onchange="switchCamera(this.value)">
-                        <option value="">Select Camera...</option>
+                    <select class="camera-select" id="camera-select-main" onchange="switchCamera('main', this.value)">
+                        <option value="">Main Camera (Tripod)...</option>
+                    </select>
+                    <select class="camera-select" id="camera-select-handheld" onchange="switchCamera('handheld', this.value)">
+                        <option value="">Handheld Camera...</option>
                     </select>
                 </div>
                 
-                <!-- Photo Mode Section -->
+                <!-- Photo Mode - 3 modes -->
                 <div class="section-card">
-                    <div class="section-label">
-                        📸 Photo Mode
-                    </div>
+                    <div class="section-label">📸 Photo Mode</div>
                     <div class="mode-buttons">
                         <button class="mode-btn active" data-mode="main" onclick="setMode('main')">
                             <span class="mode-icon">📦</span>
-                            MAIN
-                            <span class="mode-count" id="count-main">0/4</span>
+                            <div class="mode-info">
+                                <div class="mode-name">MAIN</div>
+                                <div class="mode-desc">Tripod overhead • Flat-lay & T-pose</div>
+                            </div>
+                            <span class="mode-count" id="count-main">0</span>
                         </button>
-                        <button class="mode-btn" data-mode="tag" onclick="setMode('tag')">
-                            <span class="mode-icon">🏷️</span>
-                            TAG
-                            <span class="mode-count" id="count-tag">0</span>
+                        <button class="mode-btn" data-mode="closeup" onclick="setMode('closeup')">
+                            <span class="mode-icon">🔍</span>
+                            <div class="mode-info">
+                                <div class="mode-name">CLOSE-UP</div>
+                                <div class="mode-desc">Tripod macro • Tags, defects, details</div>
+                            </div>
+                            <span class="mode-count" id="count-closeup">0</span>
                         </button>
-                        <button class="mode-btn" data-mode="defects" onclick="setMode('defects')">
-                            <span class="mode-icon">🔴</span>
-                            DEFECTS
-                            <span class="mode-count" id="count-defects">0</span>
-                        </button>
-                        <button class="mode-btn" data-mode="features" onclick="setMode('features')">
-                            <span class="mode-icon">✨</span>
-                            FEATURES
-                            <span class="mode-count" id="count-features">0</span>
-                        </button>
-                        <button class="mode-btn" data-mode="weight" onclick="setMode('weight')" style="flex-basis: 100%;">
-                            <span class="mode-icon">⚖️</span>
-                            WEIGHT
-                            <span class="mode-count" id="count-weight">0/1</span>
+                        <button class="mode-btn" data-mode="handheld" onclick="setMode('handheld')">
+                            <span class="mode-icon">✋</span>
+                            <div class="mode-info">
+                                <div class="mode-name">HANDHELD</div>
+                                <div class="mode-desc">Freestanding • Scale, angles, details</div>
+                            </div>
+                            <span class="mode-count" id="count-handheld">0</span>
                         </button>
                     </div>
                 </div>
                 
-                <!-- Auto-Crop Section -->
+                <!-- AI Status -->
                 <div class="section-card">
-                    <div class="section-label">
-                        ✂️ Auto-Crop (Green Background)
-                    </div>
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-                        <input type="checkbox" id="autocrop-enabled" checked style="width:18px; height:18px;">
-                        Enable auto-crop on complete
-                    </label>
-                    <div style="font-size:11px; color:var(--color-text-muted); margin-top:6px;">
-                        Automatically detects green turf and crops main photos
+                    <div class="ai-status">
+                        <div class="ai-status-title">🤖 AI PROCESSING (on Complete)</div>
+                        <div class="ai-status-chain">
+                            <span class="ai-badge claude active">CLAUDE</span>
+                            <span class="ai-arrow">→</span>
+                            <span class="ai-badge openai">OPENAI</span>
+                            <span class="ai-arrow">→</span>
+                            <span class="ai-badge gemini">GEMINI</span>
+                            <span class="ai-arrow">→</span>
+                            <span class="ai-badge manual">MANUAL</span>
+                        </div>
+                        <div style="font-size:10px; margin-top:8px; opacity:0.7;">
+                            Auto-classify • Rotate • Crop • Quality check
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Complete Section -->
+            <!-- Complete -->
             <div class="complete-section">
                 <button class="complete-btn" id="complete-btn" onclick="completeItem()" disabled>
-                    ✓ COMPLETE ITEM
+                    🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.2</span>
+                    VintageLister Browser <span id="version-footer">v2.3</span>
                 </div>
             </div>
         </div>
         
-        <!-- CENTER - Camera Panel -->
+        <!-- CENTER - Camera -->
         <div class="camera-panel">
-            <!-- Camera Header -->
             <div class="camera-header">
-                <span class="camera-indicator" id="camera-indicator">📷 4K</span>
+                <span class="camera-mode-badge main" id="camera-mode-badge">MAIN</span>
                 <span class="camera-resolution" id="camera-resolution">--</span>
                 <button class="fullres-btn" onclick="forceMaxResolution()">FULL RES</button>
                 <span class="camera-status" id="camera-status" style="display:none;">LIVE</span>
             </div>
             
-            <!-- Camera View -->
             <div class="camera-view" id="camera-view">
                 <div class="camera-placeholder" id="camera-placeholder">
                     <div class="camera-placeholder-icon">📷</div>
-                    <div>Select a camera to begin</div>
-                    <div style="font-size:12px; margin-top:8px; color:#555;">Supports up to 4K (4096×2160)</div>
+                    <div>Select a camera to start</div>
                 </div>
-                
                 <video id="camera-video" autoplay playsinline style="display:none;"></video>
-                
-                <!-- Defect Markers Layer -->
-                <div class="defect-markers-layer" id="defect-markers-layer" onclick="handleDefectClick(event)"></div>
-                
-                <!-- Hint Banner -->
-                <div class="hint-banner" id="hint-banner">Take front flat-lay photo (1 of 4)</div>
-                
-                <!-- Defect Mode Banner -->
-                <div class="defect-mode-banner" id="defect-mode-banner">
-                    🎯 Click to mark defects
-                    <span class="marker-count" id="marker-count">0</span>
-                </div>
-                
-                <!-- Flash Overlay -->
+                <div class="blur-warning" id="blur-warning">⚠️ Image may be blurry - hold steady</div>
                 <div class="flash-overlay" id="flash-overlay"></div>
             </div>
             
-            <!-- Camera Footer -->
             <div class="camera-footer">
                 <div style="text-align:center;">
                     <button class="shutter-btn" id="shutter-btn" onclick="capturePhoto()"></button>
@@ -881,98 +583,52 @@
         <div class="photos-panel">
             <div class="photos-section">
                 <div class="photos-section-header">
-                    <span class="photos-section-title">📦 Main Photos</span>
-                    <span class="photos-section-count" id="main-photos-count">0/4</span>
+                    <span class="photos-section-title">📷 All Photos</span>
+                    <span class="photos-section-count" id="total-count">0</span>
                 </div>
-                <div class="photo-grid" id="main-photos-grid"></div>
+                <div style="font-size:11px; color:var(--color-text-muted); margin-bottom:10px;">
+                    AI will classify & organize on Complete
+                </div>
+                <div class="photo-grid" id="photos-grid"></div>
             </div>
             
-            <div class="photos-section">
+            <div class="photos-section" id="classified-section" style="display:none;">
                 <div class="photos-section-header">
-                    <span class="photos-section-title">🏷️ Tag Photos</span>
-                    <span class="photos-section-count" id="tag-photos-count">0</span>
+                    <span class="photos-section-title">✅ Classified Photos</span>
                 </div>
-                <div class="photo-grid" id="tag-photos-grid"></div>
-            </div>
-            
-            <div class="photos-section">
-                <div class="photos-section-header">
-                    <span class="photos-section-title">🔴 Defect Photos</span>
-                    <span class="photos-section-count" id="defect-photos-count">0</span>
-                </div>
-                <div class="photo-grid" id="defect-photos-grid"></div>
-            </div>
-            
-            <div class="photos-section">
-                <div class="photos-section-header">
-                    <span class="photos-section-title">✨ Feature Photos</span>
-                    <span class="photos-section-count" id="feature-photos-count">0</span>
-                </div>
-                <div class="photo-grid" id="feature-photos-grid"></div>
-            </div>
-            
-            <div class="photos-section">
-                <div class="photos-section-header">
-                    <span class="photos-section-title">⚖️ Weight</span>
-                    <span class="photos-section-count" id="weight-photos-count">0/1</span>
-                </div>
-                <div class="photo-grid" id="weight-photos-grid"></div>
+                <div id="classified-results"></div>
             </div>
         </div>
     </div>
     
-    <!-- Defect Type Popup -->
-    <div id="defect-popup" class="defect-popup" onclick="event.stopPropagation()">
-        <div class="defect-popup-title">WHAT TYPE OF DEFECT?</div>
-        <div class="defect-popup-btns">
-            <button class="defect-popup-btn stain" onclick="event.stopPropagation(); confirmDefectMarker('stain')">
-                <span>💧</span>
-                <span>Stain</span>
-            </button>
-            <button class="defect-popup-btn hole" onclick="event.stopPropagation(); confirmDefectMarker('hole')">
-                <span>🕳️</span>
-                <span>Hole</span>
-            </button>
-            <button class="defect-popup-btn tear" onclick="event.stopPropagation(); confirmDefectMarker('tear')">
-                <span>📐</span>
-                <span>Tear</span>
-            </button>
-            <button class="defect-popup-btn fade" onclick="event.stopPropagation(); confirmDefectMarker('fade')">
-                <span>🌫️</span>
-                <span>Fade</span>
-            </button>
-            <button class="defect-popup-btn repair" onclick="event.stopPropagation(); confirmDefectMarker('repair')">
-                <span>🧵</span>
-                <span>Repair</span>
-            </button>
-            <button class="defect-popup-btn other" onclick="event.stopPropagation(); confirmDefectMarker('other')">
-                <span>❓</span>
-                <span>Other</span>
-            </button>
-        </div>
-        <button class="defect-popup-cancel" onclick="event.stopPropagation(); cancelDefectMarker()">Cancel</button>
-    </div>
-    
-    <!-- Toast Container -->
+    <!-- Toast -->
     <div class="toast-container" id="toast-container"></div>
     
-    <!-- Processing Overlay -->
+    <!-- Processing -->
     <div class="processing-overlay" id="processing-overlay">
         <div class="processing-spinner"></div>
         <div class="processing-text" id="processing-text">Processing...</div>
+        <div class="processing-subtext" id="processing-subtext"></div>
+        <div class="processing-progress">
+            <div class="processing-progress-bar" id="processing-progress" style="width:0%"></div>
+        </div>
     </div>
 
     <script>
         // ============================================
         // VERSION INFO
         // ============================================
-        const VERSION = '2.2';
+        const VERSION = '2.3';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
-            '2.2': 'Fixed camera init to match v100 - high res hints, virtual camera filter, no auto-start',
+            '2.3': 'New 3-mode system (Main/Close-up/Handheld), AI integration via Lambda, smart crop & classify',
+            '2.2': 'Fixed camera init to match v100 - high res hints, virtual camera filter',
             '2.1': 'Added AbortError handling, improved camera error messages, versioning system',
             '2.0': 'Initial browser version with v100 color scheme and defect handling'
         };
+        
+        // Lambda endpoint (secure - API keys stored in Lambda env vars)
+        const LAMBDA_URL = 'https://i745n2nibsrhx7ivc7w6mf7cgy0caatc.lambda-url.us-east-2.on.aws/';
         
         // ============================================
         // STATE
@@ -981,183 +637,93 @@
         let currentSKU = '';
         let currentStream = null;
         let activeCameraId = null;
+        let cameraIds = { main: null, handheld: null };
         
-        // Photos
-        let photos = {
-            main: [],
-            tag: [],
-            defects: [],
-            features: [],
-            weight: null
-        };
-        
-        // Defect markers (v100 style)
-        let defectMarkers = [];
-        let pendingMarker = null;
-        let defectMarkingEnabled = false;
+        // All photos go in one array - AI classifies them later
+        let photos = []; // { blob, url, width, height, mode, timestamp }
         
         // Timer
         let itemStartTime = null;
         let timerInterval = null;
         let itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
         
-        // Auto-crop config
-        const CROP_CONFIG = {
-            greenHue: { min: 30, max: 90 },
-            greenSat: { min: 30, max: 255 },
-            greenVal: { min: 5, max: 255 },
-            padding: 0.10
-        };
+        // AI fallback tracking
+        let currentAI = 'claude';
+        const AI_ORDER = ['claude', 'openai', 'gemini', 'manual'];
         
         // ============================================
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
-            // Log version info
             console.log(`%c VintageLister Browser v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
-            console.log(`📅 Build date: ${VERSION_DATE}`);
-            console.log(`📝 Changes: ${CHANGELOG[VERSION]}`);
+            console.log(`📅 ${VERSION_DATE} | ${CHANGELOG[VERSION]}`);
             
-            // Update version badge in UI
             document.querySelector('.version-badge').textContent = `v${VERSION}`;
             document.getElementById('version-footer').textContent = `v${VERSION}`;
             document.title = `VintageLister Browser v${VERSION}`;
-            
-            initKeyboard();
-            updateUI();
             document.getElementById('stat-today').textContent = itemsToday;
             
-            // Close defect popup on outside click
-            document.addEventListener('click', () => {
-                document.getElementById('defect-popup').classList.remove('visible');
-            });
-            
-            // Try to access cameras
             initCamera();
+            initKeyboard();
+            updateUI();
         });
         
         async function initCamera() {
-            console.log('📷 Initializing camera system...');
-            console.log('📷 Protocol:', window.location.protocol);
-            console.log('📷 Secure context:', window.isSecureContext);
+            console.log('📷 Initializing cameras...');
             
-            // Check if mediaDevices is available
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.error('📷 mediaDevices not available');
-                showCameraError('Camera API not available', 'Try using Chrome or Edge browser');
+                showCameraError('Camera API not available', 'Use Chrome or Edge');
                 return;
             }
             
             try {
-                // IMPORTANT: Request permission with HIGH resolution hint (matches v100)
-                // This prevents Chrome from caching low resolution
-                console.log('📷 Requesting camera permission with high resolution hint...');
+                console.log('📷 Requesting permission with high-res hint...');
                 const permStream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        width: { ideal: 3840 }, 
-                        height: { ideal: 2160 } 
-                    }
+                    video: { width: { ideal: 3840 }, height: { ideal: 2160 } }
                 });
-                
-                console.log('📷 Permission granted!');
-                
-                // Stop permission stream immediately
                 permStream.getTracks().forEach(t => t.stop());
-                
-                // Wait for camera to fully release (important for avoiding AbortError!)
                 await new Promise(r => setTimeout(r, 300));
                 
-                // Now enumerate devices
-                console.log('📷 Enumerating devices...');
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                
-                // Filter out virtual cameras (matches v100)
                 const videoDevices = devices.filter(d => {
                     if (d.kind !== 'videoinput') return false;
                     const label = (d.label || '').toLowerCase();
-                    const virtualCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs', 'camo'];
-                    return !virtualCameras.some(v => label.includes(v));
+                    const virtual = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
+                    return !virtual.some(v => label.includes(v));
                 });
                 
-                console.log(`📷 Found ${videoDevices.length} camera(s) (virtual filtered):`);
-                videoDevices.forEach((d, i) => console.log(`  ${i+1}. ${d.label || 'Unknown'}`));
+                console.log(`📷 Found ${videoDevices.length} camera(s)`);
                 
-                const select = document.getElementById('camera-select');
-                select.innerHTML = '<option value="">Select Camera...</option>';
+                const mainSelect = document.getElementById('camera-select-main');
+                const handheldSelect = document.getElementById('camera-select-handheld');
                 
-                if (videoDevices.length === 0) {
-                    showCameraError('No cameras found', 'Make sure a camera is connected');
-                    return;
+                mainSelect.innerHTML = '<option value="">Main Camera (Tripod)...</option>';
+                handheldSelect.innerHTML = '<option value="">Handheld Camera...</option>';
+                
+                videoDevices.forEach((d, i) => {
+                    const label = d.label || `Camera ${i+1}`;
+                    mainSelect.add(new Option(label, d.deviceId));
+                    handheldSelect.add(new Option(label, d.deviceId));
+                    console.log(`  ${i+1}. ${label}`);
+                });
+                
+                if (videoDevices.length > 0) {
+                    showToast('success', `Found ${videoDevices.length} camera(s)`);
                 }
-                
-                videoDevices.forEach((device, i) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.textContent = device.label || `Camera ${i + 1}`;
-                    select.appendChild(option);
-                });
-                
-                showToast('success', `Found ${videoDevices.length} camera(s)`);
-                
-                // Update placeholder - camera ready but NOT started yet
-                document.getElementById('camera-placeholder').innerHTML = `
-                    <div class="camera-placeholder-icon">📷</div>
-                    <div>Select a camera above to start</div>
-                    <div style="font-size:12px; margin-top:8px; color:#22c55e;">✓ ${videoDevices.length} camera(s) available</div>
-                `;
-                
-                // NOTE: Don't auto-start camera - wait for user selection
-                // This avoids camera lock conflicts
                 
             } catch (err) {
-                console.error('📷 Camera error:', err.name, err.message);
-                
-                let title = 'Camera access denied';
-                let help = 'Click the button below to retry';
-                
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    title = 'Camera permission denied';
-                    help = 'Click the camera/lock icon in the address bar and allow access, then click Retry';
-                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                    title = 'No camera found';
-                    help = 'Make sure a camera is connected to your computer';
-                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                    title = 'Camera is busy';
-                    help = 'Close other apps that might be using the camera (Zoom, Teams, etc.)';
-                } else if (err.name === 'AbortError') {
-                    title = 'Camera timeout';
-                    help = 'The camera took too long to start. This usually means another app is using it. Close Zoom, Teams, OBS, Discord, or the Python VintageLister, then click Retry.';
-                } else if (err.name === 'OverconstrainedError') {
-                    title = 'Camera constraints error';
-                    help = 'Try a different camera';
-                } else if (err.name === 'SecurityError') {
-                    title = 'Security error';
-                    help = 'Try opening this page via localhost or HTTPS';
-                }
-                
-                showCameraError(title, help);
+                console.error('📷 Error:', err);
+                showCameraError(err.name, err.message);
             }
         }
         
-        function showCameraError(title, help) {
-            showToast('error', title);
-            
+        function showCameraError(title, message) {
             document.getElementById('camera-placeholder').innerHTML = `
                 <div class="camera-placeholder-icon">🚫</div>
-                <div style="color:#ef4444; font-weight:600; font-size:16px;">${title}</div>
-                <div style="font-size:13px; margin-top:8px; color:#888; max-width:300px; line-height:1.5;">${help}</div>
-                <button onclick="initCamera()" style="margin-top:20px; padding:12px 24px; background:#3b82f6; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;">
-                    🔄 Retry Camera Access
-                </button>
-                <div style="font-size:11px; margin-top:16px; color:#666; max-width:280px;">
-                    <strong>Troubleshooting:</strong><br>
-                    • Check browser permissions (camera icon in address bar)<br>
-                    • Close other apps using the camera<br>
-                    • Try refreshing the page
-                </div>
+                <div style="color:#ef4444; font-weight:600;">${title}</div>
+                <div style="font-size:12px; color:#888; margin-top:8px;">${message}</div>
+                <button onclick="initCamera()" style="margin-top:16px; padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:8px; cursor:pointer;">🔄 Retry</button>
             `;
-            
-            document.getElementById('camera-select').innerHTML = '<option value="">⚠️ Camera not available</option>';
         }
         
         function initKeyboard() {
@@ -1166,13 +732,31 @@
                     e.preventDefault();
                     capturePhoto();
                 }
+                if (e.key === '1') setMode('main');
+                if (e.key === '2') setMode('closeup');
+                if (e.key === '3') setMode('handheld');
             });
         }
         
         // ============================================
-        // CAMERA FUNCTIONS
+        // CAMERA
         // ============================================
-        async function switchCamera(deviceId) {
+        async function switchCamera(type, deviceId) {
+            if (!deviceId) return;
+            
+            cameraIds[type] = deviceId;
+            
+            // If current mode matches camera type, switch to it
+            if ((type === 'main' && (currentMode === 'main' || currentMode === 'closeup')) ||
+                (type === 'handheld' && currentMode === 'handheld')) {
+                await startCamera(deviceId);
+            }
+            
+            document.getElementById('check-camera').textContent = '✓';
+            document.getElementById('check-camera').classList.add('complete');
+        }
+        
+        async function startCamera(deviceId) {
             if (!deviceId) return;
             
             try {
@@ -1193,24 +777,18 @@
                 const video = document.getElementById('camera-video');
                 video.srcObject = currentStream;
                 video.style.display = 'block';
-                
                 document.getElementById('camera-placeholder').style.display = 'none';
                 document.getElementById('camera-status').style.display = 'block';
-                document.getElementById('check-camera').textContent = '✓';
-                document.getElementById('check-camera').classList.add('complete');
                 
                 video.onloadedmetadata = () => {
-                    const w = video.videoWidth;
-                    const h = video.videoHeight;
+                    const w = video.videoWidth, h = video.videoHeight;
                     document.getElementById('camera-resolution').textContent = `${w}×${h}`;
-                    
-                    if (w >= 3800) showToast('success', `4K: ${w}×${h}`);
-                    else if (w >= 1900) showToast('info', `1080p: ${w}×${h}`);
+                    document.getElementById('camera-resolution').style.color = w >= 3800 ? '#22c55e' : w >= 1900 ? '#3b82f6' : '#f59e0b';
                 };
                 
             } catch (err) {
-                console.error('Camera switch error:', err);
-                showToast('error', 'Camera error');
+                console.error('Camera error:', err);
+                showToast('error', `Camera: ${err.message}`);
             }
         }
         
@@ -1221,49 +799,38 @@
             }
             
             try {
-                if (currentStream) {
-                    currentStream.getTracks().forEach(t => t.stop());
-                }
-                
-                await new Promise(r => setTimeout(r, 500));
+                if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+                await new Promise(r => setTimeout(r, 300));
                 
                 let maxW = 1920, maxH = 1080;
                 try {
-                    const tempStream = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: { exact: activeCameraId } }
-                    });
-                    const caps = tempStream.getVideoTracks()[0].getCapabilities();
+                    const temp = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: activeCameraId } } });
+                    const caps = temp.getVideoTracks()[0].getCapabilities();
                     if (caps.width?.max) maxW = caps.width.max;
                     if (caps.height?.max) maxH = caps.height.max;
-                    tempStream.getTracks().forEach(t => t.stop());
-                    await new Promise(r => setTimeout(r, 300));
-                } catch (e) {}
+                    temp.getTracks().forEach(t => t.stop());
+                    await new Promise(r => setTimeout(r, 200));
+                } catch(e) {}
                 
                 currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: activeCameraId },
-                        width: { ideal: maxW },
-                        height: { ideal: maxH }
-                    }
+                    video: { deviceId: { exact: activeCameraId }, width: { ideal: maxW }, height: { ideal: maxH } }
                 });
                 
                 const video = document.getElementById('camera-video');
                 video.srcObject = currentStream;
                 
                 video.onloadedmetadata = () => {
-                    const w = video.videoWidth;
-                    const h = video.videoHeight;
+                    const w = video.videoWidth, h = video.videoHeight;
                     document.getElementById('camera-resolution').textContent = `${w}×${h}`;
-                    showToast('success', `Max Resolution: ${w}×${h}`);
+                    showToast('success', `Max res: ${w}×${h}`);
                 };
-                
             } catch (err) {
                 showToast('error', 'Failed to set max resolution');
             }
         }
         
         // ============================================
-        // MODE FUNCTIONS
+        // MODE
         // ============================================
         function setMode(mode) {
             currentMode = mode;
@@ -1272,157 +839,20 @@
                 btn.classList.toggle('active', btn.dataset.mode === mode);
             });
             
-            // Defect marking
-            const layer = document.getElementById('defect-markers-layer');
-            const banner = document.getElementById('defect-mode-banner');
+            const badge = document.getElementById('camera-mode-badge');
+            badge.className = `camera-mode-badge ${mode}`;
+            badge.textContent = mode.toUpperCase();
             
-            if (mode === 'main') {
-                defectMarkingEnabled = true;
-                layer.classList.add('active');
-                banner.classList.add('visible');
-                renderDefectMarkers();
-            } else {
-                defectMarkingEnabled = false;
-                layer.classList.remove('active');
-                banner.classList.remove('visible');
+            // Switch camera based on mode
+            if (mode === 'handheld' && cameraIds.handheld) {
+                startCamera(cameraIds.handheld);
+            } else if ((mode === 'main' || mode === 'closeup') && cameraIds.main) {
+                startCamera(cameraIds.main);
             }
-            
-            updateHint();
-        }
-        
-        function updateHint() {
-            const hints = {
-                main: ['Take front flat-lay (1/4)', 'Take front T-pose (2/4)', 'Take back flat-lay (3/4)', 'Take back T-pose (4/4)', '✓ Main complete!'],
-                tag: 'Capture tag/label photos',
-                defects: 'Capture defect closeup photos',
-                features: 'Capture feature detail photos',
-                weight: photos.weight ? '✓ Weight captured' : 'Capture scale display'
-            };
-            
-            let hint = '';
-            if (currentMode === 'main') {
-                hint = hints.main[Math.min(photos.main.length, 4)];
-            } else {
-                hint = hints[currentMode];
-            }
-            
-            document.getElementById('hint-banner').textContent = hint;
         }
         
         // ============================================
-        // DEFECT HANDLING (v100 style)
-        // ============================================
-        function handleDefectClick(event) {
-            if (!defectMarkingEnabled) return;
-            if (event.target.closest('.defect-marker')) return;
-            
-            const video = document.getElementById('camera-video');
-            const layer = document.getElementById('defect-markers-layer');
-            
-            if (!video || !layer) return;
-            
-            const rect = layer.getBoundingClientRect();
-            const videoW = video.videoWidth || 1920;
-            const videoH = video.videoHeight || 1080;
-            
-            // Calculate displayed video area (object-fit: contain)
-            const containerW = rect.width;
-            const containerH = rect.height;
-            const videoAspect = videoW / videoH;
-            const containerAspect = containerW / containerH;
-            
-            let displayedW, displayedH, offsetX, offsetY;
-            
-            if (videoAspect > containerAspect) {
-                displayedW = containerW;
-                displayedH = containerW / videoAspect;
-                offsetX = 0;
-                offsetY = (containerH - displayedH) / 2;
-            } else {
-                displayedH = containerH;
-                displayedW = containerH * videoAspect;
-                offsetX = (containerW - displayedW) / 2;
-                offsetY = 0;
-            }
-            
-            const clickX = event.clientX - rect.left;
-            const clickY = event.clientY - rect.top;
-            
-            // Check if click is within video area
-            if (clickX < offsetX || clickX > offsetX + displayedW ||
-                clickY < offsetY || clickY > offsetY + displayedH) {
-                return;
-            }
-            
-            // Calculate percentage position
-            const x = ((clickX - offsetX) / displayedW) * 100;
-            const y = ((clickY - offsetY) / displayedH) * 100;
-            
-            pendingMarker = { x, y };
-            
-            // Show popup
-            const popup = document.getElementById('defect-popup');
-            popup.style.left = Math.min(event.clientX, window.innerWidth - 320) + 'px';
-            popup.style.top = Math.min(event.clientY - 80, window.innerHeight - 250) + 'px';
-            popup.classList.add('visible');
-        }
-        
-        function confirmDefectMarker(type) {
-            if (!pendingMarker) return;
-            
-            const marker = {
-                id: Date.now(),
-                x: pendingMarker.x,
-                y: pendingMarker.y,
-                type: type
-            };
-            
-            defectMarkers.push(marker);
-            pendingMarker = null;
-            
-            document.getElementById('defect-popup').classList.remove('visible');
-            
-            renderDefectMarkers();
-            updateMarkerCount();
-            showToast('success', `${type.charAt(0).toUpperCase() + type.slice(1)} marked`);
-        }
-        
-        function cancelDefectMarker() {
-            pendingMarker = null;
-            document.getElementById('defect-popup').classList.remove('visible');
-        }
-        
-        function removeDefectMarker(id) {
-            defectMarkers = defectMarkers.filter(m => m.id !== id);
-            renderDefectMarkers();
-            updateMarkerCount();
-        }
-        
-        function renderDefectMarkers() {
-            const layer = document.getElementById('defect-markers-layer');
-            layer.querySelectorAll('.defect-marker').forEach(m => m.remove());
-            
-            defectMarkers.forEach((marker, idx) => {
-                const el = document.createElement('div');
-                el.className = `defect-marker ${marker.type}`;
-                el.style.left = marker.x + '%';
-                el.style.top = marker.y + '%';
-                el.innerHTML = `
-                    ${idx + 1}
-                    <div class="defect-marker-delete" onclick="event.stopPropagation(); removeDefectMarker(${marker.id})">✕</div>
-                `;
-                el.onclick = (e) => e.stopPropagation();
-                layer.appendChild(el);
-            });
-        }
-        
-        function updateMarkerCount() {
-            document.getElementById('marker-count').textContent = defectMarkers.length;
-            document.getElementById('count-defects').textContent = defectMarkers.length;
-        }
-        
-        // ============================================
-        // PHOTO CAPTURE
+        // CAPTURE
         // ============================================
         function capturePhoto() {
             const video = document.getElementById('camera-video');
@@ -1430,7 +860,6 @@
                 showToast('warning', 'No camera active');
                 return;
             }
-            
             if (!currentSKU) {
                 showToast('warning', 'Start an item first');
                 return;
@@ -1449,33 +878,18 @@
             
             canvas.toBlob(blob => {
                 const photo = {
+                    id: Date.now(),
                     blob,
                     url: URL.createObjectURL(blob),
                     width: canvas.width,
-                    height: canvas.height
+                    height: canvas.height,
+                    mode: currentMode,
+                    timestamp: new Date().toISOString()
                 };
                 
-                switch (currentMode) {
-                    case 'main':
-                        if (photos.main.length < 4) photos.main.push(photo);
-                        break;
-                    case 'tag':
-                        photos.tag.push(photo);
-                        break;
-                    case 'defects':
-                        photos.defects.push(photo);
-                        break;
-                    case 'features':
-                        photos.features.push(photo);
-                        break;
-                    case 'weight':
-                        photos.weight = photo;
-                        break;
-                }
-                
+                photos.push(photo);
                 updateUI();
-                updateHint();
-                showToast('success', `Captured ${currentMode}`);
+                showToast('success', `Captured (${currentMode})`);
                 
             }, 'image/jpeg', 0.95);
         }
@@ -1492,7 +906,9 @@
                 return;
             }
             
-            resetPhotos();
+            // Reset
+            photos.forEach(p => URL.revokeObjectURL(p.url));
+            photos = [];
             
             currentSKU = sku;
             itemStartTime = Date.now();
@@ -1506,150 +922,146 @@
             document.getElementById('check-sku').textContent = '✓';
             document.getElementById('check-sku').classList.add('complete');
             
-            setMode('main');
             updateUI();
-            
             showToast('success', `Started: ${sku}`);
         }
         
-        function resetPhotos() {
-            photos.main.forEach(p => URL.revokeObjectURL(p.url));
-            photos.tag.forEach(p => URL.revokeObjectURL(p.url));
-            photos.defects.forEach(p => URL.revokeObjectURL(p.url));
-            photos.features.forEach(p => URL.revokeObjectURL(p.url));
-            if (photos.weight) URL.revokeObjectURL(photos.weight.url);
-            
-            photos = { main: [], tag: [], defects: [], features: [], weight: null };
-            defectMarkers = [];
-        }
-        
         async function completeItem() {
-            if (!currentSKU || photos.main.length === 0) return;
+            if (!currentSKU || photos.length === 0) return;
             
-            showProcessing('Auto-cropping photos...');
+            showProcessing('Starting AI processing...', '', 0);
             
             try {
-                // Auto-crop
-                if (document.getElementById('autocrop-enabled').checked) {
-                    for (let i = 0; i < photos.main.length; i++) {
-                        setProcessingText(`Auto-cropping ${i + 1}/${photos.main.length}...`);
-                        photos.main[i] = await autoCropPhoto(photos.main[i]);
-                    }
+                const processed = [];
+                
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
+                    const progress = ((i + 1) / photos.length) * 100;
+                    
+                    setProcessing(`Processing photo ${i+1}/${photos.length}`, 'Classifying & cropping...', progress);
+                    
+                    // Process with AI
+                    const result = await processPhotoWithAI(photo);
+                    processed.push(result);
+                    
+                    // Update photo with AI results
+                    photo.aiResult = result;
                 }
                 
-                setProcessingText('Downloading...');
-                await downloadPhotos();
+                setProcessing('Finalizing...', 'Preparing downloads', 100);
                 
+                // Download processed photos
+                await downloadProcessedPhotos(processed);
+                
+                // Update stats
                 itemsToday++;
                 localStorage.setItem('vl_items_today', itemsToday.toString());
                 document.getElementById('stat-today').textContent = itemsToday;
                 
                 hideProcessing();
-                showToast('success', `Complete: ${currentSKU}`);
+                showToast('success', `Complete: ${currentSKU} (${photos.length} photos)`);
                 
+                // Reset
                 resetItem();
                 
             } catch (err) {
+                console.error('Complete error:', err);
                 hideProcessing();
-                showToast('error', 'Error completing item');
+                showToast('error', `Error: ${err.message}`);
             }
         }
         
-        async function downloadPhotos() {
-            const download = (photo, name) => {
-                const a = document.createElement('a');
-                a.href = photo.url;
-                a.download = name;
-                a.click();
-            };
+        async function processPhotoWithAI(photo) {
+            // Convert blob to base64
+            const base64 = await blobToBase64(photo.blob);
             
-            photos.main.forEach((p, i) => download(p, `${currentSKU}_main_${String(i+1).padStart(2,'0')}.jpg`));
-            await new Promise(r => setTimeout(r, 300));
-            photos.tag.forEach((p, i) => download(p, `${currentSKU}_tag_${String(i+1).padStart(2,'0')}.jpg`));
-            photos.defects.forEach((p, i) => download(p, `${currentSKU}_defect_${String(i+1).padStart(2,'0')}.jpg`));
-            photos.features.forEach((p, i) => download(p, `${currentSKU}_feature_${String(i+1).padStart(2,'0')}.jpg`));
-            if (photos.weight) download(photos.weight, `${currentSKU}_weight.jpg`);
+            // Try AI chain
+            for (const ai of AI_ORDER) {
+                if (ai === 'manual') {
+                    // Manual fallback - return original with defaults
+                    return {
+                        success: false,
+                        ai: 'manual',
+                        classification: guessClassification(photo.mode),
+                        processedBlob: photo.blob,
+                        processedUrl: photo.url,
+                        rotation: 0,
+                        quality: 'unknown'
+                    };
+                }
+                
+                try {
+                    updateAIBadge(ai);
+                    const aiResult = await callLambdaAI(ai, base64, photo);
+                    
+                    if (aiResult.success) {
+                        // Apply rotation and crop locally using Canvas
+                        const processed = await applyRotationAndCrop(photo, aiResult);
+                        
+                        return {
+                            ...aiResult,
+                            processedBlob: processed.blob,
+                            processedUrl: processed.url
+                        };
+                    }
+                } catch (err) {
+                    console.warn(`${ai} failed:`, err.message);
+                }
+            }
+            
+            // Should never reach here
+            return { success: false, ai: 'manual', classification: 'unknown', processedBlob: photo.blob, processedUrl: photo.url };
         }
         
-        function resetItem() {
-            resetPhotos();
-            currentSKU = '';
-            itemStartTime = null;
-            defectMarkers = [];
-            
-            if (timerInterval) clearInterval(timerInterval);
-            
-            document.getElementById('sku-input').value = '';
-            document.getElementById('sku-input-row').style.display = 'flex';
-            document.getElementById('sku-display').classList.remove('visible');
-            document.getElementById('check-sku').textContent = '○';
-            document.getElementById('check-sku').classList.remove('complete');
-            document.getElementById('timer-display').textContent = '0:00';
-            
-            setMode('main');
-            renderDefectMarkers();
-            updateUI();
-        }
-        
-        // ============================================
-        // AUTO-CROP
-        // ============================================
-        async function autoCropPhoto(photo) {
+        async function applyRotationAndCrop(photo, aiResult) {
             return new Promise((resolve) => {
                 const img = new Image();
                 img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
+                    const rotation = aiResult.rotation || 0;
+                    const crop = aiResult.crop || { x: 0, y: 0, width: 100, height: 100 };
                     
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
+                    // Create canvas for processing
+                    let canvas = document.createElement('canvas');
+                    let ctx = canvas.getContext('2d');
                     
-                    let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
-                    let garmentPixels = 0;
-                    
-                    for (let y = 0; y < canvas.height; y++) {
-                        for (let x = 0; x < canvas.width; x++) {
-                            const i = (y * canvas.width + x) * 4;
-                            const hsv = rgbToHsv(data[i], data[i+1], data[i+2]);
-                            
-                            const isGreen = hsv.h >= CROP_CONFIG.greenHue.min && hsv.h <= CROP_CONFIG.greenHue.max &&
-                                           hsv.s >= CROP_CONFIG.greenSat.min && hsv.v >= CROP_CONFIG.greenVal.min;
-                            
-                            if (!isGreen) {
-                                garmentPixels++;
-                                minX = Math.min(minX, x);
-                                maxX = Math.max(maxX, x);
-                                minY = Math.min(minY, y);
-                                maxY = Math.max(maxY, y);
-                            }
-                        }
+                    // Step 1: Rotate if needed
+                    if (rotation !== 0) {
+                        const radians = (rotation * Math.PI) / 180;
+                        
+                        // Calculate new dimensions after rotation
+                        const sin = Math.abs(Math.sin(radians));
+                        const cos = Math.abs(Math.cos(radians));
+                        const newW = img.width * cos + img.height * sin;
+                        const newH = img.width * sin + img.height * cos;
+                        
+                        canvas.width = newW;
+                        canvas.height = newH;
+                        
+                        ctx.translate(newW / 2, newH / 2);
+                        ctx.rotate(radians);
+                        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+                    } else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
                     }
                     
-                    const garmentPercent = (garmentPixels / (canvas.width * canvas.height)) * 100;
-                    if (garmentPercent > 90 || garmentPercent < 5) {
-                        resolve(photo);
-                        return;
-                    }
+                    // Step 2: Crop based on AI bounding box
+                    const cropX = Math.round((crop.x / 100) * canvas.width);
+                    const cropY = Math.round((crop.y / 100) * canvas.height);
+                    const cropW = Math.round((crop.width / 100) * canvas.width);
+                    const cropH = Math.round((crop.height / 100) * canvas.height);
                     
-                    const gW = maxX - minX;
-                    const gH = maxY - minY;
-                    const padX = Math.round(gW * CROP_CONFIG.padding);
-                    const padY = Math.round(gH * CROP_CONFIG.padding);
+                    // Create final cropped canvas
+                    const finalCanvas = document.createElement('canvas');
+                    const finalCtx = finalCanvas.getContext('2d');
+                    finalCanvas.width = cropW;
+                    finalCanvas.height = cropH;
                     
-                    const cropX = Math.max(0, minX - padX);
-                    const cropY = Math.max(0, minY - padY);
-                    const cropW = Math.min(canvas.width - cropX, gW + padX * 2);
-                    const cropH = Math.min(canvas.height - cropY, gH + padY * 2);
+                    finalCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
                     
-                    const cropCanvas = document.createElement('canvas');
-                    cropCanvas.width = cropW;
-                    cropCanvas.height = cropH;
-                    cropCanvas.getContext('2d').drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-                    
-                    cropCanvas.toBlob(blob => {
+                    // Convert to blob
+                    finalCanvas.toBlob(blob => {
                         resolve({
                             blob,
                             url: URL.createObjectURL(blob),
@@ -1662,85 +1074,172 @@
             });
         }
         
-        function rgbToHsv(r, g, b) {
-            r /= 255; g /= 255; b /= 255;
-            const max = Math.max(r, g, b), min = Math.min(r, g, b);
-            const d = max - min;
-            let h, s, v = max;
-            s = max === 0 ? 0 : d / max;
-            if (max === min) {
-                h = 0;
-            } else {
-                switch (max) {
-                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                    case g: h = (b - r) / d + 2; break;
-                    case b: h = (r - g) / d + 4; break;
-                }
-                h /= 6;
+        async function callLambdaAI(aiProvider, base64, photo) {
+            const response = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'process_photo',
+                    provider: aiProvider,
+                    image: base64,
+                    mode: photo.mode,
+                    sku: currentSKU
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-            return { h: Math.round(h * 180), s: Math.round(s * 255), v: Math.round(v * 255) };
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            return {
+                success: true,
+                ai: aiProvider,
+                classification: data.classification, // main_flat, main_tpose, tag, weight, defect, etc.
+                croppedImage: data.croppedImage, // base64 of cropped image
+                rotation: data.rotation || 0,
+                quality: data.quality || 'good', // good, blurry, dark
+                confidence: data.confidence || 0.8
+            };
+        }
+        
+        function guessClassification(mode) {
+            // Simple fallback classification based on capture mode
+            const map = {
+                main: 'main',
+                closeup: 'detail',
+                handheld: 'other'
+            };
+            return map[mode] || 'other';
+        }
+        
+        function updateAIBadge(activeAI) {
+            document.querySelectorAll('.ai-badge').forEach(badge => {
+                badge.classList.toggle('active', badge.classList.contains(activeAI));
+            });
+        }
+        
+        async function downloadProcessedPhotos(processed) {
+            // Group by classification
+            const grouped = {};
+            processed.forEach((p, i) => {
+                const type = p.classification || 'other';
+                // Simplify classification for filename
+                const simpleType = type.split('_')[0]; // main_flat_front -> main
+                if (!grouped[simpleType]) grouped[simpleType] = [];
+                grouped[simpleType].push(p);
+            });
+            
+            // Download each
+            for (const [type, items] of Object.entries(grouped)) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    const filename = `${currentSKU}_${type}_${String(i+1).padStart(2,'0')}.jpg`;
+                    
+                    // Use processed blob (rotated + cropped)
+                    if (item.processedBlob) {
+                        downloadBlob(item.processedBlob, filename);
+                    } else if (item.processedUrl) {
+                        // Fetch URL and download
+                        const response = await fetch(item.processedUrl);
+                        const blob = await response.blob();
+                        downloadBlob(blob, filename);
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 150));
+                }
+            }
+            
+            // Show summary
+            const summary = Object.entries(grouped).map(([k, v]) => `${v.length} ${k}`).join(', ');
+            console.log(`📦 Downloaded: ${summary}`);
+        }
+        
+        function downloadBase64(base64, filename) {
+            const a = document.createElement('a');
+            a.href = `data:image/jpeg;base64,${base64}`;
+            a.download = filename;
+            a.click();
+        }
+        
+        function downloadBlob(blob, filename) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+        
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        
+        function resetItem() {
+            photos.forEach(p => URL.revokeObjectURL(p.url));
+            photos = [];
+            currentSKU = '';
+            itemStartTime = null;
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            document.getElementById('sku-input').value = '';
+            document.getElementById('sku-input-row').style.display = 'flex';
+            document.getElementById('sku-display').classList.remove('visible');
+            document.getElementById('check-sku').textContent = '○';
+            document.getElementById('check-sku').classList.remove('complete');
+            document.getElementById('timer-display').textContent = '0:00';
+            
+            updateUI();
         }
         
         // ============================================
-        // UI UPDATES
+        // UI
         // ============================================
         function updateUI() {
-            // Counts
-            document.getElementById('count-main').textContent = `${photos.main.length}/4`;
-            document.getElementById('count-tag').textContent = photos.tag.length;
-            document.getElementById('count-features').textContent = photos.features.length;
-            document.getElementById('count-weight').textContent = photos.weight ? '1/1' : '0/1';
+            // Counts by mode
+            const counts = { main: 0, closeup: 0, handheld: 0 };
+            photos.forEach(p => counts[p.mode]++);
             
-            document.getElementById('main-photos-count').textContent = `${photos.main.length}/4`;
-            document.getElementById('tag-photos-count').textContent = photos.tag.length;
-            document.getElementById('defect-photos-count').textContent = photos.defects.length;
-            document.getElementById('feature-photos-count').textContent = photos.features.length;
-            document.getElementById('weight-photos-count').textContent = photos.weight ? '1/1' : '0/1';
+            document.getElementById('count-main').textContent = counts.main;
+            document.getElementById('count-closeup').textContent = counts.closeup;
+            document.getElementById('count-handheld').textContent = counts.handheld;
+            document.getElementById('total-count').textContent = photos.length;
             
-            // Grids
-            updatePhotoGrid('main-photos-grid', photos.main, 4);
-            updatePhotoGrid('tag-photos-grid', photos.tag);
-            updatePhotoGrid('defect-photos-grid', photos.defects);
-            updatePhotoGrid('feature-photos-grid', photos.features);
-            updatePhotoGrid('weight-photos-grid', photos.weight ? [photos.weight] : []);
-            
-            // Complete button
-            document.getElementById('complete-btn').disabled = !currentSKU || photos.main.length === 0;
-        }
-        
-        function updatePhotoGrid(gridId, photoArray, placeholders = 0) {
-            const grid = document.getElementById(gridId);
+            // Photo grid
+            const grid = document.getElementById('photos-grid');
             grid.innerHTML = '';
             
-            photoArray.forEach((photo, i) => {
+            photos.forEach((photo, i) => {
                 const thumb = document.createElement('div');
                 thumb.className = 'photo-thumb';
                 thumb.innerHTML = `
                     <img src="${photo.url}">
-                    <button class="delete-btn" onclick="deletePhoto('${gridId}', ${i})">×</button>
+                    <div class="photo-label">${photo.mode.toUpperCase()}</div>
+                    <button class="delete-btn" onclick="deletePhoto(${i})">×</button>
                 `;
                 grid.appendChild(thumb);
             });
             
-            for (let i = photoArray.length; i < placeholders; i++) {
-                const ph = document.createElement('div');
-                ph.className = 'photo-placeholder';
-                ph.textContent = i + 1;
-                grid.appendChild(ph);
-            }
+            // Complete button
+            document.getElementById('complete-btn').disabled = !currentSKU || photos.length === 0;
         }
         
-        function deletePhoto(gridId, index) {
-            const type = gridId.replace('-photos-grid', '');
-            if (type === 'weight') {
-                URL.revokeObjectURL(photos.weight.url);
-                photos.weight = null;
-            } else {
-                URL.revokeObjectURL(photos[type][index].url);
-                photos[type].splice(index, 1);
-            }
+        function deletePhoto(index) {
+            URL.revokeObjectURL(photos[index].url);
+            photos.splice(index, 1);
             updateUI();
-            updateHint();
         }
         
         function updateTimer() {
@@ -1757,11 +1256,9 @@
         function showToast(type, message) {
             const container = document.getElementById('toast-container');
             const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
-            
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span class="toast-message">${message}</span>`;
-            
             container.appendChild(toast);
             setTimeout(() => {
                 toast.style.animation = 'slideIn 0.3s ease reverse';
@@ -1769,13 +1266,17 @@
             }, 3000);
         }
         
-        function showProcessing(text) {
+        function showProcessing(text, subtext, progress) {
             document.getElementById('processing-text').textContent = text;
+            document.getElementById('processing-subtext').textContent = subtext || '';
+            document.getElementById('processing-progress').style.width = `${progress || 0}%`;
             document.getElementById('processing-overlay').classList.add('active');
         }
         
-        function setProcessingText(text) {
+        function setProcessing(text, subtext, progress) {
             document.getElementById('processing-text').textContent = text;
+            document.getElementById('processing-subtext').textContent = subtext || '';
+            document.getElementById('processing-progress').style.width = `${progress || 0}%`;
         }
         
         function hideProcessing() {
