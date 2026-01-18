@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.5</title>
+    <title>VintageLister Browser v2.6</title>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -520,8 +520,9 @@
             padding: 16px 20px;
             border-top: 1px solid var(--color-border);
             display: flex;
-            justify-content: flex-end;
+            justify-content: center;
             gap: 12px;
+            background: var(--color-background);
         }
         
         /* TOAST */
@@ -577,6 +578,48 @@
         .processing-subtext { color: #888; font-size: 13px; }
         .processing-progress { width: 300px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
         .processing-progress-bar { height: 100%; background: var(--color-primary); transition: width 0.3s; }
+        
+        /* BARCODE SCANNER */
+        .barcode-scanner-container {
+            position: relative;
+            background: #000;
+            aspect-ratio: 4/3;
+        }
+        #barcode-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .barcode-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .barcode-target {
+            width: 70%;
+            height: 40%;
+            border: 3px solid var(--color-warning);
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+        }
+        .barcode-status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .barcode-status.success {
+            background: var(--color-success);
+        }
     </style>
 </head>
 <body>
@@ -593,7 +636,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.5</div>
+                    <div class="version-badge">v2.6</div>
                 </div>
             </div>
             
@@ -606,6 +649,7 @@
                     </div>
                     <div class="sku-input-row" id="sku-input-row">
                         <input type="text" class="sku-input" id="sku-input" placeholder="Scan or type SKU...">
+                        <button class="btn btn-primary" onclick="openBarcodeScanner()" title="Scan Barcode">📷</button>
                         <button class="btn btn-success" onclick="startNewItem()">START</button>
                     </div>
                     <div class="sku-display" id="sku-display"></div>
@@ -671,7 +715,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.5</span>
+                    VintageLister Browser <span id="version-footer">v2.6</span>
                 </div>
             </div>
         </div>
@@ -773,10 +817,43 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Barcode Scanner Camera -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--color-border);">
+                    <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px;">📷 Barcode Scanner Camera</div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <select class="camera-setup-select" id="select-barcode" style="flex: 1; margin-bottom: 0;">
+                            <option value="">Select camera for SKU scanning...</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="testBarcodeScanner()">Test Scanner</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn" style="background:#f1f5f9;" onclick="closeSettings()">Cancel</button>
                 <button class="btn btn-success" onclick="saveSettings()">✓ Save & Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- BARCODE SCANNER MODAL -->
+    <div class="modal-overlay" id="barcode-modal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header" style="background: var(--color-warning);">
+                <span class="modal-title">📷 Scan Barcode</span>
+                <button class="modal-close" onclick="closeBarcodeScanner()">✕</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="barcode-scanner-container">
+                    <video id="barcode-video" autoplay playsinline></video>
+                    <div class="barcode-overlay">
+                        <div class="barcode-target"></div>
+                    </div>
+                    <div class="barcode-status" id="barcode-status">Point camera at barcode...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" style="background:#f1f5f9;" onclick="closeBarcodeScanner()">Cancel</button>
             </div>
         </div>
     </div>
@@ -798,9 +875,10 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '2.5';
+        const VERSION = '2.6';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
+            '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
             '2.5': 'Fixed camera view resizing, proper aspect ratio, responsive layout',
             '2.4': '3 cameras with settings modal, live previews, localStorage persistence',
             '2.3': 'AI integration, 3-mode system',
@@ -823,11 +901,17 @@
         let cameraConfig = {
             main: { deviceId: null, label: '' },
             closeup: { deviceId: null, label: '' },
-            handheld: { deviceId: null, label: '' }
+            handheld: { deviceId: null, label: '' },
+            barcode: { deviceId: null, label: '' }
         };
         
         // Preview streams for settings modal
         let previewStreams = { main: null, closeup: null, handheld: null };
+        
+        // Barcode scanner
+        let barcodeStream = null;
+        let barcodeDetector = null;
+        let barcodeScanInterval = null;
         
         // Photos
         let photos = [];
@@ -897,6 +981,7 @@
         function populateCameraSelects() {
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
+                if (!select) return;
                 select.innerHTML = '<option value="">Select camera...</option>';
                 
                 availableCameras.forEach((cam, i) => {
@@ -911,6 +996,21 @@
                     select.value = cameraConfig[mode].deviceId;
                 }
             });
+            
+            // Also populate barcode scanner dropdown
+            const barcodeSelect = document.getElementById('select-barcode');
+            if (barcodeSelect) {
+                barcodeSelect.innerHTML = '<option value="">Select camera for SKU scanning...</option>';
+                availableCameras.forEach((cam, i) => {
+                    const option = document.createElement('option');
+                    option.value = cam.deviceId;
+                    option.textContent = cam.label || `Camera ${i + 1}`;
+                    barcodeSelect.appendChild(option);
+                });
+                if (cameraConfig.barcode.deviceId) {
+                    barcodeSelect.value = cameraConfig.barcode.deviceId;
+                }
+            }
         }
         
         function loadCameraConfig() {
@@ -958,9 +1058,27 @@
         // ============================================
         // SETTINGS MODAL
         // ============================================
-        function openSettings() {
+        async function openSettings() {
+            // Stop main camera stream first to free up device
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
             document.getElementById('settings-modal').classList.add('active');
+            
+            // Re-enumerate cameras to get fresh list
+            await enumerateCameras();
             populateCameraSelects();
+            
+            // If cameras were previously configured, show their previews
+            for (const mode of ['main', 'closeup', 'handheld']) {
+                if (cameraConfig[mode].deviceId) {
+                    const select = document.getElementById(`select-${mode}`);
+                    select.value = cameraConfig[mode].deviceId;
+                    // Don't auto-preview - let user click to preview
+                }
+            }
         }
         
         function closeSettings() {
@@ -1028,11 +1146,126 @@
                 cameraConfig[mode] = { deviceId: deviceId || null, label };
             });
             
+            // Save barcode camera selection
+            const barcodeSelect = document.getElementById('select-barcode');
+            if (barcodeSelect) {
+                const deviceId = barcodeSelect.value;
+                const label = barcodeSelect.options[barcodeSelect.selectedIndex]?.textContent || '';
+                cameraConfig.barcode = { deviceId: deviceId || null, label };
+            }
+            
             saveCameraConfig();
             closeSettings();
             autoConnectCameras();
             
             showToast('success', 'Camera settings saved!');
+        }
+        
+        function testBarcodeScanner() {
+            closeSettings();
+            setTimeout(() => openBarcodeScanner(), 300);
+        }
+        
+        // ============================================
+        // BARCODE SCANNER
+        // ============================================
+        async function openBarcodeScanner() {
+            if (!cameraConfig.barcode.deviceId) {
+                showToast('warning', 'Set up barcode camera in Settings first');
+                openSettings();
+                return;
+            }
+            
+            // Stop main camera to free up devices
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            document.getElementById('barcode-modal').classList.add('active');
+            document.getElementById('barcode-status').textContent = 'Starting camera...';
+            document.getElementById('barcode-status').classList.remove('success');
+            
+            try {
+                barcodeStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: { exact: cameraConfig.barcode.deviceId },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                const video = document.getElementById('barcode-video');
+                video.srcObject = barcodeStream;
+                
+                await video.play();
+                
+                document.getElementById('barcode-status').textContent = 'Point camera at barcode...';
+                
+                // Check if BarcodeDetector is supported
+                if ('BarcodeDetector' in window) {
+                    barcodeDetector = new BarcodeDetector({
+                        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code']
+                    });
+                    startBarcodeDetection(video);
+                } else {
+                    document.getElementById('barcode-status').textContent = 'Barcode API not supported - type SKU manually';
+                    console.warn('BarcodeDetector not supported in this browser');
+                }
+                
+            } catch (err) {
+                console.error('Barcode camera error:', err);
+                document.getElementById('barcode-status').textContent = `Error: ${err.message}`;
+            }
+        }
+        
+        function startBarcodeDetection(video) {
+            barcodeScanInterval = setInterval(async () => {
+                if (!barcodeDetector || !barcodeStream) return;
+                
+                try {
+                    const barcodes = await barcodeDetector.detect(video);
+                    
+                    if (barcodes.length > 0) {
+                        const code = barcodes[0].rawValue;
+                        console.log('📷 Barcode detected:', code);
+                        
+                        // Show success
+                        document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
+                        document.getElementById('barcode-status').classList.add('success');
+                        
+                        // Fill in SKU
+                        document.getElementById('sku-input').value = code;
+                        
+                        // Close after short delay
+                        setTimeout(() => {
+                            closeBarcodeScanner();
+                            showToast('success', `SKU scanned: ${code}`);
+                        }, 500);
+                    }
+                } catch (err) {
+                    // Ignore detection errors
+                }
+            }, 200);
+        }
+        
+        function closeBarcodeScanner() {
+            if (barcodeScanInterval) {
+                clearInterval(barcodeScanInterval);
+                barcodeScanInterval = null;
+            }
+            
+            if (barcodeStream) {
+                barcodeStream.getTracks().forEach(t => t.stop());
+                barcodeStream = null;
+            }
+            
+            document.getElementById('barcode-modal').classList.remove('active');
+            
+            // Restart main camera
+            if (cameraConfig[currentMode].deviceId) {
+                startCameraForMode(currentMode);
+            }
         }
         
         // ============================================
