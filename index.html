@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.1</title>
+    <title>VintageLister Browser v2.2</title>
     <style>
         :root {
             /* v100 Color Scheme */
@@ -742,7 +742,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.1</div>
+                    <div class="version-badge">v2.2</div>
                 </div>
             </div>
             
@@ -827,7 +827,7 @@
                     ✓ COMPLETE ITEM
                 </button>
                 <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.1</span>
+                    VintageLister Browser <span id="version-footer">v2.2</span>
                 </div>
             </div>
         </div>
@@ -966,10 +966,11 @@
         // ============================================
         // VERSION INFO
         // ============================================
-        const VERSION = '2.1';
+        const VERSION = '2.2';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
-            '2.1': 'Added AbortError handling, improved camera error messages',
+            '2.2': 'Fixed camera init to match v100 - high res hints, virtual camera filter, no auto-start',
+            '2.1': 'Added AbortError handling, improved camera error messages, versioning system',
             '2.0': 'Initial browser version with v100 color scheme and defect handling'
         };
         
@@ -1036,40 +1037,49 @@
         });
         
         async function initCamera() {
-            console.log('🎥 Initializing camera...');
-            console.log('🎥 Protocol:', window.location.protocol);
-            console.log('🎥 Secure context:', window.isSecureContext);
+            console.log('📷 Initializing camera system...');
+            console.log('📷 Protocol:', window.location.protocol);
+            console.log('📷 Secure context:', window.isSecureContext);
             
             // Check if mediaDevices is available
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.error('🎥 mediaDevices not available');
+                console.error('📷 mediaDevices not available');
                 showCameraError('Camera API not available', 'Try using Chrome or Edge browser');
                 return;
             }
             
             try {
-                console.log('🎥 Requesting camera permission...');
-                
-                // Request camera access
-                const permStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: true,
-                    audio: false 
+                // IMPORTANT: Request permission with HIGH resolution hint (matches v100)
+                // This prevents Chrome from caching low resolution
+                console.log('📷 Requesting camera permission with high resolution hint...');
+                const permStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: { ideal: 3840 }, 
+                        height: { ideal: 2160 } 
+                    }
                 });
                 
-                console.log('🎥 Permission granted!');
+                console.log('📷 Permission granted!');
                 
-                // Stop the permission stream
+                // Stop permission stream immediately
                 permStream.getTracks().forEach(t => t.stop());
                 
-                // Small delay to release camera
+                // Wait for camera to fully release (important for avoiding AbortError!)
                 await new Promise(r => setTimeout(r, 300));
                 
                 // Now enumerate devices
-                console.log('🎥 Enumerating devices...');
+                console.log('📷 Enumerating devices...');
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(d => d.kind === 'videoinput');
                 
-                console.log('🎥 Found cameras:', videoDevices.length);
+                // Filter out virtual cameras (matches v100)
+                const videoDevices = devices.filter(d => {
+                    if (d.kind !== 'videoinput') return false;
+                    const label = (d.label || '').toLowerCase();
+                    const virtualCameras = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera', 'xsplit', 'streamlabs', 'camo'];
+                    return !virtualCameras.some(v => label.includes(v));
+                });
+                
+                console.log(`📷 Found ${videoDevices.length} camera(s) (virtual filtered):`);
                 videoDevices.forEach((d, i) => console.log(`  ${i+1}. ${d.label || 'Unknown'}`));
                 
                 const select = document.getElementById('camera-select');
@@ -1089,21 +1099,18 @@
                 
                 showToast('success', `Found ${videoDevices.length} camera(s)`);
                 
-                // Update placeholder to show ready state
+                // Update placeholder - camera ready but NOT started yet
                 document.getElementById('camera-placeholder').innerHTML = `
                     <div class="camera-placeholder-icon">📷</div>
-                    <div>Select a camera above</div>
-                    <div style="font-size:12px; margin-top:8px; color:#22c55e;">✓ Camera access granted</div>
+                    <div>Select a camera above to start</div>
+                    <div style="font-size:12px; margin-top:8px; color:#22c55e;">✓ ${videoDevices.length} camera(s) available</div>
                 `;
                 
-                // Auto-select if only one camera
-                if (videoDevices.length === 1) {
-                    select.value = videoDevices[0].deviceId;
-                    await switchCamera(videoDevices[0].deviceId);
-                }
+                // NOTE: Don't auto-start camera - wait for user selection
+                // This avoids camera lock conflicts
                 
             } catch (err) {
-                console.error('🎥 Camera error:', err.name, err.message);
+                console.error('📷 Camera error:', err.name, err.message);
                 
                 let title = 'Camera access denied';
                 let help = 'Click the button below to retry';
