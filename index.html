@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.6</title>
+    <title>VintageLister Browser v2.7</title>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -620,6 +620,134 @@
         .barcode-status.success {
             background: var(--color-success);
         }
+        
+        /* MEASUREMENT SECTION */
+        .measure-category {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            background: var(--color-background);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        .measure-category-icon { font-size: 18px; }
+        .measure-category.detected { background: #dbeafe; }
+        .measure-category.detected .measure-category-icon { color: var(--color-primary); }
+        
+        .measure-hints {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: var(--radius-md);
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .measure-hints-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin-bottom: 6px;
+        }
+        .measure-hints-list {
+            font-size: 10px;
+            color: var(--color-primary);
+            line-height: 1.6;
+        }
+        .measure-hints-list .hint-item {
+            display: flex;
+            gap: 6px;
+        }
+        .measure-hints-list .hint-num {
+            font-weight: 700;
+            min-width: 16px;
+        }
+        
+        .record-btn {
+            width: 100%;
+            padding: 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s;
+        }
+        .record-btn:hover { background: #dc2626; }
+        .record-btn.recording {
+            background: #dc2626;
+            animation: pulse-red 1s infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+        .record-icon { font-size: 24px; }
+        
+        .recorded-badge {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: var(--radius-md);
+            padding: 10px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .recorded-check {
+            color: #16a34a;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .recorded-duration {
+            color: #22c55e;
+            font-family: monospace;
+            font-size: 18px;
+        }
+        
+        .transcript-status {
+            font-size: 11px;
+            color: var(--color-text-muted);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .transcript-status.processing { color: var(--color-primary); }
+        .transcript-status.success { color: var(--color-success); }
+        .transcript-status.error { color: var(--color-error); }
+        
+        .measurements-parsed {
+            background: var(--color-background);
+            border-radius: var(--radius-md);
+            padding: 10px;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+        .measurement-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .measurement-item:last-child { border-bottom: none; }
+        .measurement-item.filled { color: var(--color-success); }
+        .measurement-item.empty { color: var(--color-text-muted); }
+        .measurement-value { font-weight: 600; font-family: monospace; }
+        
+        .re-record-btn {
+            width: 100%;
+            padding: 8px;
+            background: none;
+            border: none;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .re-record-btn:hover { color: var(--color-text); }
     </style>
 </head>
 <body>
@@ -636,7 +764,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.6</div>
+                    <div class="version-badge">v2.7</div>
                 </div>
             </div>
             
@@ -707,6 +835,45 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- MEASUREMENTS -->
+                <div class="section-card">
+                    <div class="section-label">
+                        <span class="check-circle" id="check-measure">○</span>
+                        🎤 Measurements
+                    </div>
+                    
+                    <!-- Category Detection -->
+                    <div id="measure-category" class="measure-category">
+                        <span class="measure-category-icon">❓</span>
+                        <span class="measure-category-text">Take a MAIN photo to detect category</span>
+                    </div>
+                    
+                    <!-- Measurement Hints (shown after category detected) -->
+                    <div id="measure-hints" class="measure-hints hidden">
+                        <div class="measure-hints-title">📏 Measurement Order:</div>
+                        <div id="measure-hints-list" class="measure-hints-list"></div>
+                    </div>
+                    
+                    <!-- Record Section -->
+                    <div id="record-section">
+                        <button id="record-btn" class="record-btn" onclick="toggleRecording()">
+                            <span class="record-icon">🎤</span>
+                            <span class="record-text">TAP TO RECORD</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Post-Record Section -->
+                    <div id="post-record-section" class="hidden">
+                        <div class="recorded-badge">
+                            <div class="recorded-check">✓ RECORDED</div>
+                            <div class="recorded-duration" id="recording-duration">0:00</div>
+                        </div>
+                        <div id="transcript-status" class="transcript-status"></div>
+                        <div id="measurements-parsed" class="measurements-parsed hidden"></div>
+                        <button class="re-record-btn" onclick="reRecord()">Re-record</button>
+                    </div>
+                </div>
             </div>
             
             <!-- Complete -->
@@ -715,7 +882,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.6</span>
+                    VintageLister Browser <span id="version-footer">v2.7</span>
                 </div>
             </div>
         </div>
@@ -875,9 +1042,10 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '2.6';
+        const VERSION = '2.7';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
+            '2.7': 'Added voice measurements with Whisper transcription, category detection, measurement templates',
             '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
             '2.5': 'Fixed camera view resizing, proper aspect ratio, responsive layout',
             '2.4': '3 cameras with settings modal, live previews, localStorage persistence',
@@ -888,6 +1056,77 @@
         };
         
         const LAMBDA_URL = 'https://i745n2nibsrhx7ivc7w6mf7cgy0caatc.lambda-url.us-east-2.on.aws/';
+        
+        // ============================================
+        // MEASUREMENT TEMPLATES
+        // ============================================
+        const MEASUREMENT_TEMPLATES = {
+            // TOPS
+            'tops-standard': [
+                'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
+                'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            'tops-raglan': [
+                'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
+                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            'tops-sleeveless': [
+                'Neck-to-Shoulder', 'Shoulder-to-Shoulder', 'Pit-to-Pit',
+                'Waist', 'Bottom Hem', 'Length'
+            ],
+            
+            // BUTTON SHIRTS (adds Neck Circumference)
+            'button-standard': [
+                'Neck Circumference', 'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening',
+                'Bottom Sleeve', 'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            'button-raglan': [
+                'Neck Circumference', 'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
+                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            'button-sleeveless': [
+                'Neck Circumference', 'Neck-to-Shoulder', 'Shoulder-to-Shoulder',
+                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            
+            // BOTTOMS
+            'bottoms-pants': [
+                'Waist', 'Rise', 'Inseam', 'Thigh', 'Knee', 'Leg Opening', 'Total Length'
+            ],
+            'bottoms-shorts': [
+                'Waist', 'Rise', 'Inseam', 'Thigh', 'Leg Opening'
+            ],
+            
+            // OUTER
+            'outer-standard': [
+                'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
+                'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+            'outer-raglan': [
+                'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
+                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            ],
+        };
+        
+        // Keywords for parsing voice measurements
+        const MEASUREMENT_KEYWORDS = {
+            'neck': 'Neck Circumference', 'collar': 'Neck Circumference',
+            'neck to shoulder': 'Neck-to-Shoulder', 'neck shoulder': 'Neck-to-Shoulder',
+            'shoulder': 'Shoulder-to-Shoulder', 'shoulders': 'Shoulder-to-Shoulder',
+            'top sleeve': 'Top Sleeve', 'sleeve': 'Top Sleeve', 'upper sleeve': 'Top Sleeve',
+            'sleeve opening': 'Sleeve Opening', 'cuff': 'Sleeve Opening',
+            'bottom sleeve': 'Bottom Sleeve', 'lower sleeve': 'Bottom Sleeve',
+            'neck to cuff': 'Neck-to-Cuff',
+            'pit': 'Pit-to-Pit', 'pit to pit': 'Pit-to-Pit', 'chest': 'Pit-to-Pit',
+            'waist': 'Waist',
+            'bottom': 'Bottom Hem', 'hem': 'Bottom Hem', 'bottom hem': 'Bottom Hem',
+            'length': 'Length', 'total length': 'Total Length',
+            'rise': 'Rise',
+            'inseam': 'Inseam',
+            'thigh': 'Thigh',
+            'knee': 'Knee',
+            'leg opening': 'Leg Opening', 'leg': 'Leg Opening'
+        };
         
         // ============================================
         // STATE
@@ -923,6 +1162,16 @@
         
         // AI
         const AI_ORDER = ['claude', 'openai', 'gemini', 'manual'];
+        
+        // Measurements
+        let detectedCategory = null; // e.g., 'tops-standard', 'bottoms-pants'
+        let currentTemplate = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingStart = null;
+        let recordingInterval = null;
+        let audioBlob = null;
+        let parsedMeasurements = {};
         
         // ============================================
         // INITIALIZATION
@@ -1269,6 +1518,236 @@
         }
         
         // ============================================
+        // MEASUREMENTS
+        // ============================================
+        async function detectCategoryFromPhoto(photoBlob) {
+            // Send first MAIN photo to AI for category detection
+            const base64 = await blobToBase64(photoBlob);
+            
+            try {
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'detect_category',
+                        image: base64
+                    })
+                });
+                
+                if (!response.ok) throw new Error('API error');
+                
+                const data = await response.json();
+                if (data.category) {
+                    setDetectedCategory(data.category, data.sleeveStyle || 'standard');
+                }
+            } catch (err) {
+                console.error('Category detection error:', err);
+            }
+        }
+        
+        function setDetectedCategory(category, sleeveStyle) {
+            // Determine template key
+            let templateKey;
+            if (category === 'tops' || category === 'T-Shirt' || category === 'Sweatshirt' || category === 'Hoodie') {
+                templateKey = `tops-${sleeveStyle}`;
+            } else if (category === 'Button Shirt' || category === 'Flannel') {
+                templateKey = `button-${sleeveStyle}`;
+            } else if (category === 'Jeans' || category === 'Pants' || category === 'bottoms') {
+                templateKey = 'bottoms-pants';
+            } else if (category === 'Shorts') {
+                templateKey = 'bottoms-shorts';
+            } else if (category === 'Jacket' || category === 'Coat' || category === 'outer') {
+                templateKey = `outer-${sleeveStyle}`;
+            } else {
+                templateKey = 'tops-standard'; // Default
+            }
+            
+            detectedCategory = templateKey;
+            currentTemplate = MEASUREMENT_TEMPLATES[templateKey] || MEASUREMENT_TEMPLATES['tops-standard'];
+            
+            // Update UI
+            const categoryEl = document.getElementById('measure-category');
+            categoryEl.classList.add('detected');
+            categoryEl.innerHTML = `
+                <span class="measure-category-icon">✓</span>
+                <span class="measure-category-text"><strong>${category}</strong> detected - ${currentTemplate.length} measurements</span>
+            `;
+            
+            // Show measurement hints
+            const hintsEl = document.getElementById('measure-hints');
+            hintsEl.classList.remove('hidden');
+            
+            const listEl = document.getElementById('measure-hints-list');
+            listEl.innerHTML = currentTemplate.map((m, i) => 
+                `<div class="hint-item"><span class="hint-num">${i+1}.</span> ${m}</div>`
+            ).join('');
+            
+            console.log(`📏 Category detected: ${category} → ${templateKey} (${currentTemplate.length} measurements)`);
+        }
+        
+        async function toggleRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                stopRecording();
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                
+                mediaRecorder.onstop = async () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(t => t.stop());
+                    
+                    // Transcribe
+                    await transcribeAudio(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                recordingStart = Date.now();
+                
+                const btn = document.getElementById('record-btn');
+                btn.innerHTML = '<span class="record-icon">⏹️</span><span class="record-text">RECORDING...</span>';
+                btn.classList.add('recording');
+                
+                recordingInterval = setInterval(updateRecordingTime, 1000);
+                
+            } catch (err) {
+                showToast('error', 'Microphone access denied');
+                console.error('Microphone error:', err);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                clearInterval(recordingInterval);
+                
+                const duration = Math.floor((Date.now() - recordingStart) / 1000);
+                document.getElementById('recording-duration').textContent = formatRecordingTime(duration);
+                
+                document.getElementById('record-section').classList.add('hidden');
+                document.getElementById('post-record-section').classList.remove('hidden');
+                document.getElementById('transcript-status').textContent = '🔄 Transcribing...';
+                document.getElementById('transcript-status').className = 'transcript-status processing';
+                
+                document.getElementById('check-measure').textContent = '✓';
+                document.getElementById('check-measure').classList.add('complete');
+            }
+        }
+        
+        function updateRecordingTime() {
+            const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
+            document.querySelector('.record-text').textContent = `RECORDING ${formatRecordingTime(elapsed)}`;
+        }
+        
+        function formatRecordingTime(s) {
+            return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+        }
+        
+        async function transcribeAudio(blob) {
+            try {
+                const base64 = await blobToBase64(blob);
+                
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'transcribe',
+                        audio: base64
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Transcription failed');
+                
+                const data = await response.json();
+                
+                if (data.transcript) {
+                    document.getElementById('transcript-status').textContent = '✓ Transcribed';
+                    document.getElementById('transcript-status').className = 'transcript-status success';
+                    
+                    // Parse measurements
+                    parseMeasurements(data.transcript);
+                } else {
+                    throw new Error(data.error || 'No transcript');
+                }
+                
+            } catch (err) {
+                console.error('Transcription error:', err);
+                document.getElementById('transcript-status').textContent = '❌ Transcription failed - measurements saved as audio';
+                document.getElementById('transcript-status').className = 'transcript-status error';
+            }
+        }
+        
+        function parseMeasurements(transcript) {
+            if (!currentTemplate) return;
+            
+            parsedMeasurements = {};
+            const text = transcript.toLowerCase();
+            
+            // Extract numbers from transcript
+            const numbers = text.match(/\d+\.?\d*/g) || [];
+            
+            // Try keyword matching first
+            for (const [keyword, fieldName] of Object.entries(MEASUREMENT_KEYWORDS)) {
+                if (!currentTemplate.includes(fieldName)) continue;
+                
+                const regex = new RegExp(keyword + '[\\s:]*([\\d.]+)', 'i');
+                const match = text.match(regex);
+                if (match) {
+                    parsedMeasurements[fieldName] = parseFloat(match[1]);
+                }
+            }
+            
+            // Fill remaining with sequential numbers
+            let numIndex = 0;
+            for (const field of currentTemplate) {
+                if (!parsedMeasurements[field] && numIndex < numbers.length) {
+                    parsedMeasurements[field] = parseFloat(numbers[numIndex++]);
+                }
+            }
+            
+            // Display parsed measurements
+            displayParsedMeasurements();
+        }
+        
+        function displayParsedMeasurements() {
+            if (!currentTemplate) return;
+            
+            const container = document.getElementById('measurements-parsed');
+            container.classList.remove('hidden');
+            
+            container.innerHTML = currentTemplate.map(field => {
+                const value = parsedMeasurements[field];
+                const filled = value !== undefined;
+                return `
+                    <div class="measurement-item ${filled ? 'filled' : 'empty'}">
+                        <span>${field}</span>
+                        <span class="measurement-value">${filled ? value + '"' : '--'}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function reRecord() {
+            audioBlob = null;
+            parsedMeasurements = {};
+            
+            document.getElementById('record-section').classList.remove('hidden');
+            document.getElementById('post-record-section').classList.add('hidden');
+            document.getElementById('measurements-parsed').classList.add('hidden');
+            
+            const btn = document.getElementById('record-btn');
+            btn.innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
+            btn.classList.remove('recording');
+            
+            document.getElementById('check-measure').textContent = '○';
+            document.getElementById('check-measure').classList.remove('complete');
+        }
+        // ============================================
         // CAMERA
         // ============================================
         async function startCameraForMode(mode) {
@@ -1360,6 +1839,8 @@
             canvas.getContext('2d').drawImage(video, 0, 0);
             
             canvas.toBlob(blob => {
+                const isFirstMainPhoto = currentMode === 'main' && !photos.some(p => p.mode === 'main');
+                
                 photos.push({
                     id: Date.now(),
                     blob,
@@ -1371,6 +1852,11 @@
                 
                 updateUI();
                 showToast('success', `Captured (${currentMode})`);
+                
+                // Detect category from first MAIN photo
+                if (isFirstMainPhoto && !detectedCategory) {
+                    detectCategoryFromPhoto(blob);
+                }
             }, 'image/jpeg', 0.95);
         }
         
@@ -1556,12 +2042,33 @@
             currentSKU = '';
             if (timerInterval) clearInterval(timerInterval);
             
+            // Reset measurements
+            detectedCategory = null;
+            currentTemplate = null;
+            audioBlob = null;
+            parsedMeasurements = {};
+            
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-input-row').style.display = 'flex';
             document.getElementById('sku-display').classList.remove('visible');
             document.getElementById('check-sku').textContent = '○';
             document.getElementById('check-sku').classList.remove('complete');
             document.getElementById('timer-display').textContent = '0:00';
+            
+            // Reset measurement UI
+            document.getElementById('measure-category').classList.remove('detected');
+            document.getElementById('measure-category').innerHTML = `
+                <span class="measure-category-icon">❓</span>
+                <span class="measure-category-text">Take a MAIN photo to detect category</span>
+            `;
+            document.getElementById('measure-hints').classList.add('hidden');
+            document.getElementById('record-section').classList.remove('hidden');
+            document.getElementById('post-record-section').classList.add('hidden');
+            document.getElementById('measurements-parsed').classList.add('hidden');
+            document.getElementById('record-btn').innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('check-measure').textContent = '○';
+            document.getElementById('check-measure').classList.remove('complete');
             
             updateUI();
         }
