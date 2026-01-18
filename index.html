@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister - Browser Edition</title>
+    <title>VintageLister Browser v2.1</title>
     <style>
         :root {
             /* v100 Color Scheme */
@@ -742,7 +742,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">BROWSER v2</div>
+                    <div class="version-badge">v2.1</div>
                 </div>
             </div>
             
@@ -826,6 +826,9 @@
                 <button class="complete-btn" id="complete-btn" onclick="completeItem()" disabled>
                     ✓ COMPLETE ITEM
                 </button>
+                <div style="text-align:center; margin-top:10px; font-size:10px; color:var(--color-text-muted);">
+                    VintageLister Browser <span id="version-footer">v2.1</span>
+                </div>
             </div>
         </div>
         
@@ -961,6 +964,16 @@
 
     <script>
         // ============================================
+        // VERSION INFO
+        // ============================================
+        const VERSION = '2.1';
+        const VERSION_DATE = '2025-01-18';
+        const CHANGELOG = {
+            '2.1': 'Added AbortError handling, improved camera error messages',
+            '2.0': 'Initial browser version with v100 color scheme and defect handling'
+        };
+        
+        // ============================================
         // STATE
         // ============================================
         let currentMode = 'main';
@@ -999,7 +1012,16 @@
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
-            initCamera();
+            // Log version info
+            console.log(`%c VintageLister Browser v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
+            console.log(`📅 Build date: ${VERSION_DATE}`);
+            console.log(`📝 Changes: ${CHANGELOG[VERSION]}`);
+            
+            // Update version badge in UI
+            document.querySelector('.version-badge').textContent = `v${VERSION}`;
+            document.getElementById('version-footer').textContent = `v${VERSION}`;
+            document.title = `VintageLister Browser v${VERSION}`;
+            
             initKeyboard();
             updateUI();
             document.getElementById('stat-today').textContent = itemsToday;
@@ -1008,18 +1030,55 @@
             document.addEventListener('click', () => {
                 document.getElementById('defect-popup').classList.remove('visible');
             });
+            
+            // Try to access cameras
+            initCamera();
         });
         
         async function initCamera() {
+            console.log('🎥 Initializing camera...');
+            console.log('🎥 Protocol:', window.location.protocol);
+            console.log('🎥 Secure context:', window.isSecureContext);
+            
+            // Check if mediaDevices is available
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('🎥 mediaDevices not available');
+                showCameraError('Camera API not available', 'Try using Chrome or Edge browser');
+                return;
+            }
+            
             try {
-                const permStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                console.log('🎥 Requesting camera permission...');
+                
+                // Request camera access
+                const permStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true,
+                    audio: false 
+                });
+                
+                console.log('🎥 Permission granted!');
+                
+                // Stop the permission stream
                 permStream.getTracks().forEach(t => t.stop());
                 
+                // Small delay to release camera
+                await new Promise(r => setTimeout(r, 300));
+                
+                // Now enumerate devices
+                console.log('🎥 Enumerating devices...');
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(d => d.kind === 'videoinput');
                 
+                console.log('🎥 Found cameras:', videoDevices.length);
+                videoDevices.forEach((d, i) => console.log(`  ${i+1}. ${d.label || 'Unknown'}`));
+                
                 const select = document.getElementById('camera-select');
                 select.innerHTML = '<option value="">Select Camera...</option>';
+                
+                if (videoDevices.length === 0) {
+                    showCameraError('No cameras found', 'Make sure a camera is connected');
+                    return;
+                }
                 
                 videoDevices.forEach((device, i) => {
                     const option = document.createElement('option');
@@ -1028,15 +1087,70 @@
                     select.appendChild(option);
                 });
                 
+                showToast('success', `Found ${videoDevices.length} camera(s)`);
+                
+                // Update placeholder to show ready state
+                document.getElementById('camera-placeholder').innerHTML = `
+                    <div class="camera-placeholder-icon">📷</div>
+                    <div>Select a camera above</div>
+                    <div style="font-size:12px; margin-top:8px; color:#22c55e;">✓ Camera access granted</div>
+                `;
+                
+                // Auto-select if only one camera
                 if (videoDevices.length === 1) {
                     select.value = videoDevices[0].deviceId;
-                    switchCamera(videoDevices[0].deviceId);
+                    await switchCamera(videoDevices[0].deviceId);
                 }
                 
             } catch (err) {
-                console.error('Camera init error:', err);
-                showToast('error', 'Camera access denied');
+                console.error('🎥 Camera error:', err.name, err.message);
+                
+                let title = 'Camera access denied';
+                let help = 'Click the button below to retry';
+                
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    title = 'Camera permission denied';
+                    help = 'Click the camera/lock icon in the address bar and allow access, then click Retry';
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    title = 'No camera found';
+                    help = 'Make sure a camera is connected to your computer';
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    title = 'Camera is busy';
+                    help = 'Close other apps that might be using the camera (Zoom, Teams, etc.)';
+                } else if (err.name === 'AbortError') {
+                    title = 'Camera timeout';
+                    help = 'The camera took too long to start. This usually means another app is using it. Close Zoom, Teams, OBS, Discord, or the Python VintageLister, then click Retry.';
+                } else if (err.name === 'OverconstrainedError') {
+                    title = 'Camera constraints error';
+                    help = 'Try a different camera';
+                } else if (err.name === 'SecurityError') {
+                    title = 'Security error';
+                    help = 'Try opening this page via localhost or HTTPS';
+                }
+                
+                showCameraError(title, help);
             }
+        }
+        
+        function showCameraError(title, help) {
+            showToast('error', title);
+            
+            document.getElementById('camera-placeholder').innerHTML = `
+                <div class="camera-placeholder-icon">🚫</div>
+                <div style="color:#ef4444; font-weight:600; font-size:16px;">${title}</div>
+                <div style="font-size:13px; margin-top:8px; color:#888; max-width:300px; line-height:1.5;">${help}</div>
+                <button onclick="initCamera()" style="margin-top:20px; padding:12px 24px; background:#3b82f6; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px;">
+                    🔄 Retry Camera Access
+                </button>
+                <div style="font-size:11px; margin-top:16px; color:#666; max-width:280px;">
+                    <strong>Troubleshooting:</strong><br>
+                    • Check browser permissions (camera icon in address bar)<br>
+                    • Close other apps using the camera<br>
+                    • Try refreshing the page
+                </div>
+            `;
+            
+            document.getElementById('camera-select').innerHTML = '<option value="">⚠️ Camera not available</option>';
         }
         
         function initKeyboard() {
