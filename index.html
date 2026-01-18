@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.7</title>
+    <title>VintageLister Browser v2.7.1</title>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -764,7 +764,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.7</div>
+                    <div class="version-badge">v2.7.1</div>
                 </div>
             </div>
             
@@ -882,7 +882,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.7</span>
+                    VintageLister Browser <span id="version-footer">v2.7.1</span>
                 </div>
             </div>
         </div>
@@ -1042,9 +1042,10 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '2.7';
+        const VERSION = '2.7.1';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
+            '2.7.1': 'Fixed camera config null reference errors',
             '2.7': 'Added voice measurements with Whisper transcription, category detection, measurement templates',
             '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
             '2.5': 'Fixed camera view resizing, proper aspect ratio, responsive layout',
@@ -1228,12 +1229,15 @@
         }
         
         function populateCameraSelects() {
+            // Filter out any undefined/null cameras
+            const validCameras = availableCameras.filter(cam => cam && cam.deviceId);
+            
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
                 if (!select) return;
                 select.innerHTML = '<option value="">Select camera...</option>';
                 
-                availableCameras.forEach((cam, i) => {
+                validCameras.forEach((cam, i) => {
                     const option = document.createElement('option');
                     option.value = cam.deviceId;
                     option.textContent = cam.label || `Camera ${i + 1}`;
@@ -1241,7 +1245,7 @@
                 });
                 
                 // Set saved value
-                if (cameraConfig[mode].deviceId) {
+                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
                     select.value = cameraConfig[mode].deviceId;
                 }
             });
@@ -1250,13 +1254,13 @@
             const barcodeSelect = document.getElementById('select-barcode');
             if (barcodeSelect) {
                 barcodeSelect.innerHTML = '<option value="">Select camera for SKU scanning...</option>';
-                availableCameras.forEach((cam, i) => {
+                validCameras.forEach((cam, i) => {
                     const option = document.createElement('option');
                     option.value = cam.deviceId;
                     option.textContent = cam.label || `Camera ${i + 1}`;
                     barcodeSelect.appendChild(option);
                 });
-                if (cameraConfig.barcode.deviceId) {
+                if (cameraConfig.barcode && cameraConfig.barcode.deviceId) {
                     barcodeSelect.value = cameraConfig.barcode.deviceId;
                 }
             }
@@ -1266,9 +1270,18 @@
             const saved = localStorage.getItem('vl_camera_config');
             if (saved) {
                 try {
-                    cameraConfig = JSON.parse(saved);
+                    const loaded = JSON.parse(saved);
+                    // Merge with defaults to ensure all keys exist
+                    cameraConfig = {
+                        main: loaded.main || { deviceId: null, label: '' },
+                        closeup: loaded.closeup || { deviceId: null, label: '' },
+                        handheld: loaded.handheld || { deviceId: null, label: '' },
+                        barcode: loaded.barcode || { deviceId: null, label: '' }
+                    };
                     console.log('📷 Loaded camera config:', cameraConfig);
-                } catch (e) {}
+                } catch (e) {
+                    console.error('📷 Error loading camera config:', e);
+                }
             }
         }
         
@@ -1283,7 +1296,9 @@
             // Update UI status indicators
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const statusEl = document.getElementById(`status-${mode}`);
-                if (cameraConfig[mode].deviceId) {
+                if (!statusEl) return;
+                
+                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
                     statusEl.textContent = '✓ Ready';
                     statusEl.classList.remove('not-set');
                 } else {
@@ -1293,7 +1308,9 @@
             });
             
             // Check if any camera is configured
-            const hasCamera = cameraConfig.main.deviceId || cameraConfig.closeup.deviceId || cameraConfig.handheld.deviceId;
+            const hasCamera = (cameraConfig.main && cameraConfig.main.deviceId) || 
+                              (cameraConfig.closeup && cameraConfig.closeup.deviceId) || 
+                              (cameraConfig.handheld && cameraConfig.handheld.deviceId);
             
             if (hasCamera) {
                 document.getElementById('settings-btn').classList.remove('needs-setup');
@@ -1322,9 +1339,9 @@
             
             // If cameras were previously configured, show their previews
             for (const mode of ['main', 'closeup', 'handheld']) {
-                if (cameraConfig[mode].deviceId) {
+                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
                     const select = document.getElementById(`select-${mode}`);
-                    select.value = cameraConfig[mode].deviceId;
+                    if (select) select.value = cameraConfig[mode].deviceId;
                     // Don't auto-preview - let user click to preview
                 }
             }
@@ -1512,7 +1529,7 @@
             document.getElementById('barcode-modal').classList.remove('active');
             
             // Restart main camera
-            if (cameraConfig[currentMode].deviceId) {
+            if (cameraConfig[currentMode] && cameraConfig[currentMode].deviceId) {
                 startCameraForMode(currentMode);
             }
         }
@@ -1753,7 +1770,7 @@
         async function startCameraForMode(mode) {
             const config = cameraConfig[mode];
             
-            if (!config.deviceId) {
+            if (!config || !config.deviceId) {
                 document.getElementById('camera-video').style.display = 'none';
                 document.getElementById('camera-placeholder').style.display = 'flex';
                 document.getElementById('camera-placeholder').innerHTML = `
