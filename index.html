@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.7.5</title>
+    <title>VintageLister Browser v2.7.6</title>
     <!-- QuaggaJS for barcode scanning fallback -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
@@ -799,7 +799,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.7.5</div>
+                    <div class="version-badge">v2.7.6</div>
                 </div>
             </div>
             
@@ -917,7 +917,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.7.5</span>
+                    VintageLister Browser <span id="version-footer">v2.7.6</span>
                 </div>
             </div>
         </div>
@@ -1077,9 +1077,10 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '2.7.5';
+        const VERSION = '2.7.6';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
+            '2.7.6': 'Expanded photo classifications (pants inside-out, single stitch, Talon zipper, etc.)',
             '2.7.5': 'QuaggaJS barcode library, fixed SKU button layout, improved camera detection',
             '2.7.4': 'Fixed measurement button spacing, horizontal record button, cleaner parsed display',
             '2.7.3': 'Capped resolution at 4K for browser compatibility',
@@ -2221,9 +2222,10 @@
         }
         
         async function downloadPhotos(processed) {
+            // Group by full classification for better organization
             const grouped = {};
             processed.forEach(p => {
-                const type = (p.classification || 'other').split('_')[0];
+                const type = p.classification || 'other';
                 if (!grouped[type]) grouped[type] = [];
                 grouped[type].push(p);
             });
@@ -2232,10 +2234,20 @@
                 for (let i = 0; i < items.length; i++) {
                     const a = document.createElement('a');
                     a.href = items[i].url || URL.createObjectURL(items[i].blob);
+                    // Use full classification in filename
                     a.download = `${currentSKU}_${type}_${String(i+1).padStart(2,'0')}.jpg`;
                     a.click();
                     await new Promise(r => setTimeout(r, 150));
                 }
+            }
+            
+            // Also save vintage indicators if any found
+            const indicators = processed
+                .filter(p => p.vintage_indicators && p.vintage_indicators.length > 0)
+                .map(p => ({ classification: p.classification, indicators: p.vintage_indicators }));
+            
+            if (indicators.length > 0) {
+                console.log('🏷️ Vintage indicators found:', indicators);
             }
         }
         
