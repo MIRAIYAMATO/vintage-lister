@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.7.1</title>
+    <title>VintageLister Browser v2.7.5</title>
+    <!-- QuaggaJS for barcode scanning fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         :root {
             --color-primary: #3b82f6;
@@ -113,21 +115,21 @@
         }
         
         /* FORM CONTENT */
-        .form-content { flex: 1; overflow-y: auto; padding: 16px; }
+        .form-content { flex: 1; overflow-y: auto; padding: 12px; }
         
         .section-card {
             background: var(--color-background);
             border: 1px solid var(--color-border);
             border-radius: var(--radius-lg);
-            padding: 14px;
-            margin-bottom: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
         }
         
         .section-label {
             font-size: 12px;
             font-weight: 700;
             color: var(--color-text);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -146,14 +148,35 @@
         .check-circle.complete { background: var(--color-success); color: white; }
         
         /* SKU Input */
-        .sku-input-row { display: flex; gap: 8px; }
+        .sku-input-row { 
+            display: flex; 
+            gap: 6px; 
+            align-items: stretch;
+        }
         .sku-input {
-            flex: 1; padding: 12px;
+            flex: 1;
+            min-width: 0; /* Allow shrinking */
+            padding: 10px;
             border: 2px solid var(--color-border);
             border-radius: var(--radius-md);
-            font-size: 16px; font-weight: 600;
+            font-size: 14px; 
+            font-weight: 600;
         }
         .sku-input:focus { outline: none; border-color: var(--color-primary); }
+        .sku-btn {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .sku-btn-scan { background: var(--color-primary); color: white; }
+        .sku-btn-scan:hover { background: var(--color-primary-dark); }
+        .sku-btn-start { background: var(--color-success); color: white; }
+        .sku-btn-start:hover { background: var(--color-success-dark); }
         .sku-display {
             padding: 12px;
             background: var(--color-success);
@@ -626,13 +649,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px;
+            padding: 8px;
             background: var(--color-background);
             border-radius: var(--radius-md);
-            margin-bottom: 10px;
-            font-size: 12px;
+            margin-bottom: 8px;
+            font-size: 11px;
         }
-        .measure-category-icon { font-size: 18px; }
+        .measure-category-icon { font-size: 16px; }
         .measure-category.detected { background: #dbeafe; }
         .measure-category.detected .measure-category-icon { color: var(--color-primary); }
         
@@ -640,43 +663,47 @@
             background: #eff6ff;
             border: 1px solid #bfdbfe;
             border-radius: var(--radius-md);
-            padding: 10px;
-            margin-bottom: 10px;
+            padding: 8px;
+            margin-bottom: 8px;
         }
         .measure-hints-title {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: var(--color-primary);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .measure-hints-list {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--color-primary);
-            line-height: 1.6;
+            line-height: 1.5;
         }
         .measure-hints-list .hint-item {
             display: flex;
-            gap: 6px;
+            gap: 4px;
         }
         .measure-hints-list .hint-num {
             font-weight: 700;
-            min-width: 16px;
+            min-width: 14px;
+        }
+        
+        #record-section {
+            margin-top: 8px;
         }
         
         .record-btn {
             width: 100%;
-            padding: 16px;
+            padding: 14px 12px;
             background: #ef4444;
             color: white;
             border: none;
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-md);
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 4px;
+            justify-content: center;
+            gap: 8px;
             transition: all 0.15s;
         }
         .record-btn:hover { background: #dc2626; }
@@ -686,9 +713,13 @@
         }
         @keyframes pulse-red {
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
         }
-        .record-icon { font-size: 24px; }
+        .record-icon { font-size: 18px; }
+        
+        #post-record-section {
+            margin-top: 8px;
+        }
         
         .recorded-badge {
             background: #f0fdf4;
@@ -696,54 +727,58 @@
             border-radius: var(--radius-md);
             padding: 10px;
             text-align: center;
-            margin-bottom: 8px;
         }
         .recorded-check {
             color: #16a34a;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
         }
         .recorded-duration {
             color: #22c55e;
             font-family: monospace;
             font-size: 18px;
+            margin-top: 2px;
         }
         
         .transcript-status {
             font-size: 11px;
             color: var(--color-text-muted);
             text-align: center;
-            margin-bottom: 8px;
+            padding: 6px 0;
         }
         .transcript-status.processing { color: var(--color-primary); }
         .transcript-status.success { color: var(--color-success); }
         .transcript-status.error { color: var(--color-error); }
         
         .measurements-parsed {
-            background: var(--color-background);
+            background: white;
+            border: 1px solid var(--color-border);
             border-radius: var(--radius-md);
-            padding: 10px;
+            padding: 8px 10px;
             font-size: 11px;
-            margin-bottom: 8px;
         }
         .measurement-item {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 4px 0;
             border-bottom: 1px solid var(--color-border);
         }
         .measurement-item:last-child { border-bottom: none; }
         .measurement-item.filled { color: var(--color-success); }
+        .measurement-item.filled .measurement-value { color: var(--color-success); }
         .measurement-item.empty { color: var(--color-text-muted); }
-        .measurement-value { font-weight: 600; font-family: monospace; }
+        .measurement-name { flex: 1; }
+        .measurement-value { font-weight: 700; font-family: monospace; min-width: 40px; text-align: right; }
         
         .re-record-btn {
             width: 100%;
             padding: 8px;
+            margin-top: 6px;
             background: none;
             border: none;
             color: var(--color-text-muted);
-            font-size: 12px;
+            font-size: 11px;
             text-decoration: underline;
             cursor: pointer;
         }
@@ -764,7 +799,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.7.1</div>
+                    <div class="version-badge">v2.7.5</div>
                 </div>
             </div>
             
@@ -777,8 +812,8 @@
                     </div>
                     <div class="sku-input-row" id="sku-input-row">
                         <input type="text" class="sku-input" id="sku-input" placeholder="Scan or type SKU...">
-                        <button class="btn btn-primary" onclick="openBarcodeScanner()" title="Scan Barcode">📷</button>
-                        <button class="btn btn-success" onclick="startNewItem()">START</button>
+                        <button class="sku-btn sku-btn-scan" onclick="openBarcodeScanner()" title="Scan Barcode">📷</button>
+                        <button class="sku-btn sku-btn-start" onclick="startNewItem()">START</button>
                     </div>
                     <div class="sku-display" id="sku-display"></div>
                 </div>
@@ -882,7 +917,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.7.1</span>
+                    VintageLister Browser <span id="version-footer">v2.7.5</span>
                 </div>
             </div>
         </div>
@@ -1042,9 +1077,13 @@
         // ============================================
         // VERSION
         // ============================================
-        const VERSION = '2.7.1';
+        const VERSION = '2.7.5';
         const VERSION_DATE = '2025-01-18';
         const CHANGELOG = {
+            '2.7.5': 'QuaggaJS barcode library, fixed SKU button layout, improved camera detection',
+            '2.7.4': 'Fixed measurement button spacing, horizontal record button, cleaner parsed display',
+            '2.7.3': 'Capped resolution at 4K for browser compatibility',
+            '2.7.2': 'Higher resolution support, tighter UI spacing, faster barcode scanner',
             '2.7.1': 'Fixed camera config null reference errors',
             '2.7': 'Added voice measurements with Whisper transcription, category detection, measurement templates',
             '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
@@ -1202,22 +1241,30 @@
         
         async function enumerateCameras() {
             try {
-                // Request permission with high-res hint
+                // First, try to get permission with a simple request
+                console.log('📷 Requesting camera permission...');
                 const permStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 3840 }, height: { ideal: 2160 } }
+                    video: true  // Simple request first
                 });
                 permStream.getTracks().forEach(t => t.stop());
                 await new Promise(r => setTimeout(r, 300));
                 
+                // Now enumerate all devices
                 const devices = await navigator.mediaDevices.enumerateDevices();
+                console.log('📷 All devices:', devices);
+                
+                // Filter to video inputs only, exclude virtual cameras
+                const virtual = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
                 availableCameras = devices.filter(d => {
                     if (d.kind !== 'videoinput') return false;
+                    if (!d.deviceId) return false;
                     const label = (d.label || '').toLowerCase();
-                    const virtual = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
-                    return !virtual.some(v => label.includes(v));
+                    const isVirtual = virtual.some(v => label.includes(v));
+                    if (isVirtual) console.log(`📷 Skipping virtual camera: ${d.label}`);
+                    return !isVirtual;
                 });
                 
-                console.log(`📷 Found ${availableCameras.length} cameras`);
+                console.log(`📷 Found ${availableCameras.length} cameras:`, availableCameras.map(c => c.label));
                 
                 // Populate settings dropdowns
                 populateCameraSelects();
@@ -1433,10 +1480,12 @@
         }
         
         // ============================================
-        // BARCODE SCANNER
+        // BARCODE SCANNER (QuaggaJS)
         // ============================================
+        let barcodeScanning = false;
+        
         async function openBarcodeScanner() {
-            if (!cameraConfig.barcode.deviceId) {
+            if (!cameraConfig.barcode || !cameraConfig.barcode.deviceId) {
                 showToast('warning', 'Set up barcode camera in Settings first');
                 openSettings();
                 return;
@@ -1449,73 +1498,157 @@
             }
             
             document.getElementById('barcode-modal').classList.add('active');
-            document.getElementById('barcode-status').textContent = 'Starting camera...';
+            document.getElementById('barcode-status').textContent = 'Starting scanner...';
             document.getElementById('barcode-status').classList.remove('success');
             
+            // Use QuaggaJS for barcode scanning
+            if (typeof Quagga !== 'undefined') {
+                startQuaggaScanner();
+            } else {
+                // Fallback to native BarcodeDetector if QuaggaJS not loaded
+                startNativeBarcodeScanner();
+            }
+        }
+        
+        function startQuaggaScanner() {
+            const videoContainer = document.getElementById('barcode-video').parentElement;
+            
+            // Hide the video element, Quagga will create its own
+            document.getElementById('barcode-video').style.display = 'none';
+            
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: videoContainer,
+                    constraints: {
+                        deviceId: cameraConfig.barcode.deviceId,
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: [
+                        "code_128_reader",
+                        "ean_reader",
+                        "ean_8_reader",
+                        "upc_reader",
+                        "upc_e_reader",
+                        "code_39_reader"
+                    ]
+                },
+                locate: true,
+                locator: {
+                    halfSample: true,
+                    patchSize: "medium"
+                }
+            }, function(err) {
+                if (err) {
+                    console.error('Quagga init error:', err);
+                    document.getElementById('barcode-status').textContent = 'Scanner error - type SKU manually';
+                    return;
+                }
+                
+                console.log('📷 Quagga initialized');
+                document.getElementById('barcode-status').textContent = 'Point camera at barcode...';
+                barcodeScanning = true;
+                Quagga.start();
+            });
+            
+            Quagga.onDetected(function(result) {
+                if (!barcodeScanning) return;
+                
+                const code = result.codeResult.code;
+                console.log('📷 Barcode detected:', code);
+                
+                barcodeScanning = false;
+                Quagga.stop();
+                
+                // Show success
+                document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
+                document.getElementById('barcode-status').classList.add('success');
+                
+                // Fill in SKU
+                document.getElementById('sku-input').value = code;
+                
+                // Close after short delay
+                setTimeout(() => {
+                    closeBarcodeScanner();
+                    showToast('success', `SKU scanned: ${code}`);
+                }, 400);
+            });
+        }
+        
+        async function startNativeBarcodeScanner() {
             try {
                 barcodeStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         deviceId: { exact: cameraConfig.barcode.deviceId },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
                     }
                 });
                 
                 const video = document.getElementById('barcode-video');
+                video.style.display = 'block';
                 video.srcObject = barcodeStream;
-                
                 await video.play();
                 
                 document.getElementById('barcode-status').textContent = 'Point camera at barcode...';
                 
-                // Check if BarcodeDetector is supported
                 if ('BarcodeDetector' in window) {
                     barcodeDetector = new BarcodeDetector({
-                        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'qr_code']
+                        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
                     });
-                    startBarcodeDetection(video);
+                    barcodeScanning = true;
+                    scanBarcodeNative(video);
                 } else {
-                    document.getElementById('barcode-status').textContent = 'Barcode API not supported - type SKU manually';
-                    console.warn('BarcodeDetector not supported in this browser');
+                    document.getElementById('barcode-status').textContent = 'Scanner not available - type SKU manually';
                 }
-                
             } catch (err) {
-                console.error('Barcode camera error:', err);
+                console.error('Native barcode scanner error:', err);
                 document.getElementById('barcode-status').textContent = `Error: ${err.message}`;
             }
         }
         
-        function startBarcodeDetection(video) {
-            barcodeScanInterval = setInterval(async () => {
-                if (!barcodeDetector || !barcodeStream) return;
+        async function scanBarcodeNative(video) {
+            if (!barcodeScanning || !barcodeDetector || !barcodeStream) return;
+            
+            try {
+                const barcodes = await barcodeDetector.detect(video);
                 
-                try {
-                    const barcodes = await barcodeDetector.detect(video);
+                if (barcodes.length > 0) {
+                    const code = barcodes[0].rawValue;
+                    console.log('📷 Barcode detected:', code);
                     
-                    if (barcodes.length > 0) {
-                        const code = barcodes[0].rawValue;
-                        console.log('📷 Barcode detected:', code);
-                        
-                        // Show success
-                        document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
-                        document.getElementById('barcode-status').classList.add('success');
-                        
-                        // Fill in SKU
-                        document.getElementById('sku-input').value = code;
-                        
-                        // Close after short delay
-                        setTimeout(() => {
-                            closeBarcodeScanner();
-                            showToast('success', `SKU scanned: ${code}`);
-                        }, 500);
-                    }
-                } catch (err) {
-                    // Ignore detection errors
+                    barcodeScanning = false;
+                    
+                    document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
+                    document.getElementById('barcode-status').classList.add('success');
+                    document.getElementById('sku-input').value = code;
+                    
+                    setTimeout(() => {
+                        closeBarcodeScanner();
+                        showToast('success', `SKU scanned: ${code}`);
+                    }, 400);
+                    return;
                 }
-            }, 200);
+            } catch (err) { }
+            
+            if (barcodeScanning) {
+                requestAnimationFrame(() => scanBarcodeNative(video));
+            }
         }
         
         function closeBarcodeScanner() {
+            barcodeScanning = false;
+            
+            // Stop Quagga if running
+            if (typeof Quagga !== 'undefined') {
+                try { Quagga.stop(); } catch(e) {}
+            }
+            
             if (barcodeScanInterval) {
                 clearInterval(barcodeScanInterval);
                 barcodeScanInterval = null;
@@ -1525,6 +1658,13 @@
                 barcodeStream.getTracks().forEach(t => t.stop());
                 barcodeStream = null;
             }
+            
+            // Show video element again (in case Quagga hid it)
+            document.getElementById('barcode-video').style.display = 'block';
+            
+            // Remove any Quagga-created elements
+            const quaggaCanvas = document.querySelector('#barcode-video + canvas');
+            if (quaggaCanvas) quaggaCanvas.remove();
             
             document.getElementById('barcode-modal').classList.remove('active');
             
@@ -1737,15 +1877,10 @@
             const container = document.getElementById('measurements-parsed');
             container.classList.remove('hidden');
             
-            container.innerHTML = currentTemplate.map(field => {
+            container.innerHTML = currentTemplate.map((field, index) => {
                 const value = parsedMeasurements[field];
                 const filled = value !== undefined;
-                return `
-                    <div class="measurement-item ${filled ? 'filled' : 'empty'}">
-                        <span>${field}</span>
-                        <span class="measurement-value">${filled ? value + '"' : '--'}</span>
-                    </div>
-                `;
+                return `<div class="measurement-item ${filled ? 'filled' : 'empty'}"><span class="measurement-name">${index + 1}. ${field}</span><span class="measurement-value">${filled ? value + '"' : '--'}</span></div>`;
             }).join('');
         }
         
@@ -1767,6 +1902,15 @@
         // ============================================
         // CAMERA
         // ============================================
+        
+        // Resolution presets (4K max for browser compatibility)
+        const RESOLUTION_PRESETS = [
+            { w: 4096, h: 2160, name: '4K DCI' },   // Max for browsers
+            { w: 3840, h: 2160, name: '4K UHD' },
+            { w: 2560, h: 1440, name: '1440p' },
+            { w: 1920, h: 1080, name: '1080p' }
+        ];
+        
         async function startCameraForMode(mode) {
             const config = cameraConfig[mode];
             
@@ -1783,11 +1927,54 @@
                 return;
             }
             
-            try {
-                if (currentStream) {
-                    currentStream.getTracks().forEach(t => t.stop());
+            // Stop existing stream
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+            
+            const video = document.getElementById('camera-video');
+            document.getElementById('camera-resolution').textContent = '...';
+            
+            // Try each resolution from highest to lowest
+            for (const res of RESOLUTION_PRESETS) {
+                try {
+                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
+                    
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: config.deviceId },
+                            width: { exact: res.w },
+                            height: { exact: res.h }
+                        }
+                    });
+                    
+                    const track = currentStream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    console.log(`✅ Got ${settings.width}x${settings.height}`);
+                    
+                    video.srcObject = currentStream;
+                    video.style.display = 'block';
+                    document.getElementById('camera-placeholder').style.display = 'none';
+                    document.getElementById('camera-name').textContent = config.label;
+                    
+                    video.onloadedmetadata = () => {
+                        const w = video.videoWidth, h = video.videoHeight;
+                        const resEl = document.getElementById('camera-resolution');
+                        resEl.textContent = `${w}×${h}`;
+                        resEl.style.color = w >= 3840 ? '#22c55e' : w >= 1920 ? '#3b82f6' : '#f59e0b';
+                    };
+                    
+                    return; // Success!
+                    
+                } catch (e) {
+                    console.log(`❌ ${res.name} not supported`);
                 }
-                
+            }
+            
+            // Fallback to ideal constraints if exact fails
+            try {
+                console.log('📷 Falling back to ideal constraints...');
                 currentStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         deviceId: { exact: config.deviceId },
@@ -1796,7 +1983,6 @@
                     }
                 });
                 
-                const video = document.getElementById('camera-video');
                 video.srcObject = currentStream;
                 video.style.display = 'block';
                 document.getElementById('camera-placeholder').style.display = 'none';
