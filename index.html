@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.8.0</title>
-    <!-- QuaggaJS for barcode scanning fallback -->
+    <title>VintageLister Browser v2.8.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        /* ============================================
-           CSS VARIABLES
-           ============================================ */
         :root {
             --color-primary: #3b82f6;
             --color-primary-dark: #2563eb;
@@ -31,9 +27,6 @@
             --radius-lg: 12px;
         }
         
-        /* ============================================
-           BASE STYLES
-           ============================================ */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         html, body {
@@ -43,12 +36,8 @@
             overflow: hidden;
         }
         
-        /* Utility Classes */
         .hidden { display: none !important; }
         
-        /* ============================================
-           LAYOUT
-           ============================================ */
         .desktop-layout {
             display: grid;
             grid-template-columns: 320px minmax(400px, 1fr) 280px;
@@ -57,37 +46,20 @@
         }
         
         @media (max-width: 1200px) {
-            .desktop-layout {
-                grid-template-columns: 280px minmax(300px, 1fr) 240px;
-            }
+            .desktop-layout { grid-template-columns: 280px minmax(300px, 1fr) 240px; }
         }
         
         @media (max-width: 900px) {
-            .desktop-layout {
-                grid-template-columns: 280px 1fr;
-            }
+            .desktop-layout { grid-template-columns: 280px 1fr; }
             .photos-panel {
-                position: fixed;
-                right: 0;
-                top: 0;
-                bottom: 0;
-                width: 280px;
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-                z-index: 500;
-                box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+                position: fixed; right: 0; top: 0; bottom: 0; width: 280px;
+                transform: translateX(100%); transition: transform 0.3s ease;
+                z-index: 500; box-shadow: -4px 0 20px rgba(0,0,0,0.3);
             }
-            .photos-panel.visible {
-                transform: translateX(0);
-            }
-            .photos-toggle {
-                display: flex !important;
-            }
+            .photos-panel.visible { transform: translateX(0); }
+            .photos-toggle { display: flex !important; }
         }
         
-        /* ============================================
-           LEFT PANEL
-           ============================================ */
         .form-panel {
             background: var(--color-surface);
             display: flex;
@@ -95,7 +67,6 @@
             overflow: hidden;
         }
         
-        /* Timer Header */
         .floating-timer {
             background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
             color: white;
@@ -113,34 +84,18 @@
         
         .settings-btn {
             background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
+            border: none; color: white;
             width: 36px; height: 36px;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.15s;
+            border-radius: 8px; font-size: 18px;
+            cursor: pointer; transition: all 0.15s;
         }
         .settings-btn:hover { background: rgba(255,255,255,0.3); }
-        .settings-btn.needs-setup { 
-            background: var(--color-error); 
-            animation: pulse-attention 2s infinite;
-        }
+        .settings-btn.needs-setup { background: var(--color-error); animation: pulse-attention 2s infinite; }
         
-        @keyframes pulse-attention {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
+        @keyframes pulse-attention { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
         
-        .version-badge { 
-            background: rgba(0,0,0,0.3); 
-            padding: 4px 8px; 
-            border-radius: 4px; 
-            font-size: 10px; 
-            font-weight: 600; 
-        }
+        .version-badge { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
         
-        /* Form Content */
         .form-content { flex: 1; overflow-y: auto; padding: 12px; }
         
         .section-card {
@@ -152,55 +107,30 @@
         }
         
         .section-label {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--color-text);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            font-size: 12px; font-weight: 700; color: var(--color-text);
+            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
         }
         
         .check-circle {
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            background: var(--color-border);
-            color: #999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--color-border); color: #999;
+            display: flex; align-items: center; justify-content: center; font-size: 11px;
         }
         .check-circle.complete { background: var(--color-success); color: white; }
         
-        /* ============================================
-           SKU INPUT
-           ============================================ */
-        .sku-input-row { 
-            display: flex; 
-            gap: 6px; 
-            align-items: stretch;
-        }
+        .sku-input-row { display: flex; gap: 6px; align-items: stretch; }
         .sku-input {
-            flex: 1;
-            min-width: 0;
-            padding: 10px;
+            flex: 1; min-width: 0; padding: 10px;
             border: 2px solid var(--color-border);
             border-radius: var(--radius-md);
-            font-size: 14px; 
-            font-weight: 600;
+            font-size: 14px; font-weight: 600;
         }
         .sku-input:focus { outline: none; border-color: var(--color-primary); }
         
         .sku-btn {
-            padding: 10px 12px;
-            border-radius: var(--radius-md);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            white-space: nowrap;
-            flex-shrink: 0;
+            padding: 10px 12px; border-radius: var(--radius-md);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            border: none; white-space: nowrap; flex-shrink: 0;
         }
         .sku-btn-scan { background: var(--color-primary); color: white; }
         .sku-btn-scan:hover { background: var(--color-primary-dark); }
@@ -208,41 +138,23 @@
         .sku-btn-start:hover { background: var(--color-success-dark); }
         
         .sku-display {
-            padding: 12px;
-            background: var(--color-success);
-            color: white;
-            border-radius: var(--radius-md);
-            font-size: 16px; 
-            font-weight: 700;
-            text-align: center;
-            display: none;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.15s;
+            padding: 12px; background: var(--color-success); color: white;
+            border-radius: var(--radius-md); font-size: 16px; font-weight: 700;
+            text-align: center; display: none; cursor: pointer;
+            position: relative; transition: all 0.15s;
         }
         .sku-display.visible { display: block; }
         .sku-display:hover { background: var(--color-success-dark); }
         .sku-display::after {
-            content: '✕ Cancel';
-            position: absolute;
-            right: 12px;
-            font-size: 11px;
-            opacity: 0;
-            transition: opacity 0.15s;
+            content: '✕ Cancel'; position: absolute; right: 12px;
+            font-size: 11px; opacity: 0; transition: opacity 0.15s;
         }
         .sku-display:hover::after { opacity: 0.8; }
         
-        /* ============================================
-           BUTTONS
-           ============================================ */
         .btn {
-            padding: 10px 16px;
-            border-radius: var(--radius-md);
-            font-size: 13px; 
-            font-weight: 600;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.15s;
+            padding: 10px 16px; border-radius: var(--radius-md);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            border: 2px solid transparent; transition: all 0.15s;
         }
         .btn:active { transform: scale(0.97); }
         .btn-success { background: var(--color-success); color: white; }
@@ -252,21 +164,13 @@
         .btn-error { background: var(--color-error); color: white; }
         .btn-error:hover { background: var(--color-error-dark); }
         
-        /* ============================================
-           MODE BUTTONS
-           ============================================ */
         .mode-buttons { display: flex; flex-direction: column; gap: 8px; }
         
         .mode-btn {
-            padding: 14px;
-            border: 3px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            background: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: all 0.15s;
+            padding: 14px; border: 3px solid var(--color-border);
+            border-radius: var(--radius-lg); background: white;
+            cursor: pointer; display: flex; align-items: center;
+            gap: 12px; transition: all 0.15s;
         }
         .mode-btn:hover { border-color: var(--color-primary); }
         .mode-btn.active { border-color: var(--color-primary); background: var(--color-primary); color: white; }
@@ -279,85 +183,79 @@
         .mode-name { font-size: 14px; font-weight: 700; }
         .mode-desc { font-size: 10px; opacity: 0.7; }
         .mode-count { font-size: 18px; font-weight: 700; }
-        .mode-camera-status {
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: var(--color-success);
-            color: white;
-        }
+        .mode-camera-status { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--color-success); color: white; }
         .mode-camera-status.not-set { background: var(--color-error); }
         
-        /* ============================================
-           AI STATUS
-           ============================================ */
+        /* Photo Type Selector */
+        .photo-type-row {
+            display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;
+        }
+        .photo-type-btn {
+            padding: 4px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 600;
+            border: 1px solid var(--color-border);
+            background: white; cursor: pointer;
+            transition: all 0.1s;
+        }
+        .photo-type-btn:hover { border-color: var(--color-primary); }
+        .photo-type-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+        
         .ai-status {
             background: linear-gradient(135deg, #1e1b4b, #312e81);
-            border-radius: 10px;
-            padding: 12px;
-            color: white;
+            border-radius: 10px; padding: 12px; color: white;
         }
         .ai-status-title { font-size: 10px; font-weight: 700; opacity: 0.7; margin-bottom: 6px; }
         .ai-status-chain { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
         .ai-badge { padding: 3px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; }
-        .ai-badge.claude { background: #d97706; }
-        .ai-badge.openai { background: #059669; }
         .ai-badge.gemini { background: #7c3aed; }
-        .ai-badge.manual { background: #64748b; }
+        .ai-badge.claude { background: #d97706; }
+        .ai-badge.s3 { background: #059669; }
         .ai-badge.active { box-shadow: 0 0 0 2px white; }
         .ai-arrow { color: #64748b; font-size: 8px; }
         
-        /* ============================================
-           COMPLETE SECTION
-           ============================================ */
+        /* Save Location */
+        .save-location {
+            background: #f0fdf4; border: 1px solid #86efac;
+            border-radius: var(--radius-md); padding: 8px;
+            margin-top: 8px; font-size: 11px;
+        }
+        .save-location.not-set { background: #fef2f2; border-color: #fca5a5; }
+        .save-location-label { font-weight: 700; margin-bottom: 4px; }
+        .save-location-path { 
+            font-family: monospace; font-size: 10px;
+            color: var(--color-text-muted); word-break: break-all;
+        }
+        .save-location-btn {
+            margin-top: 6px; padding: 4px 8px;
+            background: var(--color-primary); color: white;
+            border: none; border-radius: 4px;
+            font-size: 10px; cursor: pointer;
+        }
+        .save-location-btn:hover { background: var(--color-primary-dark); }
+        
         .complete-section { padding: 16px; border-top: 1px solid var(--color-border); }
         
         .complete-btn {
-            width: 100%; 
-            padding: 14px;
+            width: 100%; padding: 14px;
             background: linear-gradient(135deg, var(--color-success), var(--color-success-dark));
-            color: white; 
-            border: none;
-            border-radius: var(--radius-lg);
-            font-size: 15px; 
-            font-weight: 700;
-            cursor: pointer;
+            color: white; border: none; border-radius: var(--radius-lg);
+            font-size: 15px; font-weight: 700; cursor: pointer;
         }
-        .complete-btn:hover:not(:disabled) { 
-            transform: translateY(-2px); 
-            box-shadow: 0 4px 12px rgba(34,197,94,0.4); 
-        }
+        .complete-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(34,197,94,0.4); }
         .complete-btn:disabled { background: var(--color-border); cursor: not-allowed; }
         
-        /* ============================================
-           CENTER - CAMERA PANEL
-           ============================================ */
         .camera-panel {
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            min-width: 0;
-            overflow: hidden;
+            background: #000; display: flex; flex-direction: column;
+            position: relative; min-width: 0; overflow: hidden;
         }
         
         .camera-header {
-            background: rgba(0,0,0,0.8);
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 10;
-            flex-shrink: 0;
+            background: rgba(0,0,0,0.8); padding: 10px 16px;
+            display: flex; align-items: center; gap: 12px;
+            z-index: 10; flex-shrink: 0;
         }
         
-        .camera-mode-badge {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 700;
-            color: white;
-        }
+        .camera-mode-badge { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; color: white; }
         .camera-mode-badge.main { background: var(--color-primary); }
         .camera-mode-badge.closeup { background: var(--color-purple); }
         .camera-mode-badge.handheld { background: var(--color-warning); }
@@ -365,74 +263,35 @@
         .camera-resolution { color: var(--color-success); font-size: 12px; font-family: monospace; }
         .camera-name { color: #888; font-size: 11px; flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        /* Photos Toggle Button (tablet/mobile) */
         .photos-toggle {
-            display: none;
-            background: var(--color-primary);
-            border: none;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            gap: 4px;
-            align-items: center;
+            display: none; background: var(--color-primary); border: none;
+            color: white; padding: 6px 10px; border-radius: 6px;
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            gap: 4px; align-items: center;
         }
         .photos-toggle:hover { background: var(--color-primary-dark); }
         
-        /* Camera View */
         .camera-view {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-            background: #000;
-            min-height: 0;
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden; background: #000; min-height: 0;
         }
         .camera-view-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            position: relative; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
         }
-        #camera-video {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            transition: opacity 0.15s ease;
-        }
-        .camera-placeholder { 
-            color: #666; 
-            text-align: center; 
-            padding: 40px;
-            position: absolute;
-            z-index: 1;
-        }
+        #camera-video { max-width: 100%; max-height: 100%; object-fit: contain; transition: opacity 0.15s ease; }
+        .camera-placeholder { color: #666; text-align: center; padding: 40px; position: absolute; z-index: 1; }
         .camera-placeholder-icon { font-size: 64px; margin-bottom: 16px; }
         
-        /* Camera Footer */
         .camera-footer {
-            background: var(--color-dark);
-            padding: 16px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-shrink: 0;
-            border-top: 1px solid #333;
+            background: var(--color-dark); padding: 16px;
+            display: flex; justify-content: center; align-items: center;
+            flex-shrink: 0; border-top: 1px solid #333;
         }
         .shutter-btn {
-            width: 72px; height: 72px;
-            border-radius: 50%;
-            background: white;
-            border: 4px solid #666;
-            cursor: pointer;
-            transition: all 0.1s;
+            width: 72px; height: 72px; border-radius: 50%;
+            background: white; border: 4px solid #666;
+            cursor: pointer; transition: all 0.1s;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         .shutter-btn:hover { transform: scale(1.05); }
@@ -441,42 +300,22 @@
         .shutter-hint { font-size: 11px; color: #888; text-align: center; margin-top: 8px; }
         .shutter-hint kbd { background: #444; color: white; padding: 2px 6px; border-radius: 4px; }
         
-        /* Flash Overlay */
         .flash-overlay {
-            position: absolute; 
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 100;
+            position: absolute; inset: 0; background: white;
+            opacity: 0; pointer-events: none; z-index: 100;
         }
         .flash-overlay.flash { opacity: 1; transition: opacity 0.05s; }
         
-        /* ============================================
-           RIGHT PANEL - PHOTOS
-           ============================================ */
         .photos-panel {
-            background: var(--color-background);
-            overflow-y: auto;
-            padding: 16px;
-            border-left: 1px solid var(--color-border);
+            background: var(--color-background); overflow-y: auto;
+            padding: 16px; border-left: 1px solid var(--color-border);
         }
         
-        .photos-panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
+        .photos-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         
         .photos-close {
-            display: none;
-            background: var(--color-border);
-            border: none;
-            width: 28px; height: 28px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
+            display: none; background: var(--color-border); border: none;
+            width: 28px; height: 28px; border-radius: 6px; font-size: 16px; cursor: pointer;
         }
         .photos-close:hover { background: var(--color-text-muted); color: white; }
         
@@ -485,137 +324,79 @@
         }
         
         .photos-section { margin-bottom: 16px; }
-        .photos-section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
+        .photos-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .photos-section-title { font-size: 12px; font-weight: 700; }
-        .photos-section-count {
-            font-size: 11px;
-            background: var(--color-border);
-            padding: 2px 8px;
-            border-radius: 10px;
-        }
+        .photos-section-count { font-size: 11px; background: var(--color-border); padding: 2px 8px; border-radius: 10px; }
         
         .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         .photo-thumb {
-            aspect-ratio: 1;
-            background: white;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-            border: 2px solid var(--color-border);
-            cursor: pointer;
+            aspect-ratio: 1; background: white; border-radius: 6px;
+            overflow: hidden; position: relative;
+            border: 2px solid var(--color-border); cursor: pointer;
         }
         .photo-thumb:hover { border-color: var(--color-primary); }
         .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .photo-thumb .photo-label {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            font-size: 8px;
-            padding: 2px;
-            text-align: center;
-            font-weight: 600;
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.7); color: white;
+            font-size: 8px; padding: 2px; text-align: center; font-weight: 600;
+        }
+        .photo-thumb .photo-folder {
+            position: absolute; top: 2px; left: 2px;
+            background: var(--color-primary); color: white;
+            font-size: 7px; padding: 1px 4px; border-radius: 3px; font-weight: 600;
         }
         .photo-thumb .delete-btn {
-            position: absolute;
-            top: 2px; right: 2px;
-            width: 16px; height: 16px;
-            background: var(--color-error);
-            border: none; 
-            border-radius: 50%;
-            color: white; 
-            font-size: 10px;
-            cursor: pointer;
-            opacity: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: 2px; right: 2px;
+            width: 16px; height: 16px; background: var(--color-error);
+            border: none; border-radius: 50%; color: white;
+            font-size: 10px; cursor: pointer; opacity: 0;
+            display: flex; align-items: center; justify-content: center;
         }
         .photo-thumb:hover .delete-btn { opacity: 1; }
         
-        /* ============================================
-           MODALS
-           ============================================ */
         .modal-overlay {
-            position: fixed; 
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
         }
         .modal-overlay.active { display: flex; }
         
         .modal {
-            background: white;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 900px;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
+            background: white; border-radius: 16px; width: 90%;
+            max-width: 900px; max-height: 90vh; overflow: hidden;
+            display: flex; flex-direction: column;
         }
         
         .modal-header {
-            background: var(--color-primary);
-            color: white;
-            padding: 16px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: var(--color-primary); color: white;
+            padding: 16px 20px; display: flex;
+            justify-content: space-between; align-items: center;
         }
         .modal-title { font-size: 18px; font-weight: 700; }
         .modal-close {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
+            background: rgba(255,255,255,0.2); border: none;
+            color: white; width: 32px; height: 32px;
+            border-radius: 8px; font-size: 18px; cursor: pointer;
         }
         .modal-close:hover { background: rgba(255,255,255,0.3); }
         
-        .modal-body {
-            padding: 20px;
-            overflow-y: auto;
-            flex: 1;
-        }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
         
         .modal-footer {
-            padding: 16px 20px;
-            border-top: 1px solid var(--color-border);
-            display: flex;
-            justify-content: center;
-            gap: 12px;
+            padding: 16px 20px; border-top: 1px solid var(--color-border);
+            display: flex; justify-content: center; gap: 12px;
             background: var(--color-background);
         }
         
-        /* Camera Setup Grid */
-        .camera-setup-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-        }
+        .camera-setup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
         
         @media (max-width: 800px) {
-            .camera-setup-grid {
-                grid-template-columns: 1fr;
-            }
+            .camera-setup-grid { grid-template-columns: 1fr; }
         }
         
         .camera-setup-card {
             border: 2px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            padding: 12px;
-            text-align: center;
+            border-radius: var(--radius-lg); padding: 12px; text-align: center;
         }
         .camera-setup-card.main { border-color: var(--color-primary); }
         .camera-setup-card.closeup { border-color: var(--color-purple); }
@@ -626,72 +407,39 @@
         .camera-setup-desc { font-size: 10px; color: var(--color-text-muted); margin-bottom: 12px; }
         
         .camera-setup-select {
-            width: 100%;
-            padding: 8px;
+            width: 100%; padding: 8px;
             border: 2px solid var(--color-border);
-            border-radius: var(--radius-md);
-            font-size: 12px;
-            margin-bottom: 12px;
+            border-radius: var(--radius-md); font-size: 12px; margin-bottom: 12px;
         }
         .camera-setup-select:focus { outline: none; border-color: var(--color-primary); }
         
         .camera-preview-container {
-            background: #000;
-            border-radius: var(--radius-md);
-            aspect-ratio: 4/3;
-            overflow: hidden;
-            position: relative;
+            background: #000; border-radius: var(--radius-md);
+            aspect-ratio: 4/3; overflow: hidden; position: relative;
         }
-        .camera-preview-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .camera-preview-video { width: 100%; height: 100%; object-fit: cover; }
         .camera-preview-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #666;
-            font-size: 12px;
+            width: 100%; height: 100%; display: flex;
+            align-items: center; justify-content: center;
+            color: #666; font-size: 12px;
         }
         .camera-preview-status {
-            position: absolute;
-            bottom: 8px;
-            left: 8px;
-            right: 8px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            text-align: center;
+            position: absolute; bottom: 8px; left: 8px; right: 8px;
+            background: rgba(0,0,0,0.7); color: white;
+            padding: 4px 8px; border-radius: 4px; font-size: 10px; text-align: center;
         }
         .camera-preview-status.connected { background: var(--color-success); }
         
-        /* ============================================
-           TOAST NOTIFICATIONS
-           ============================================ */
         .toast-container {
-            position: fixed;
-            top: 20px; right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            display: flex; flex-direction: column; gap: 10px;
         }
         .toast {
-            background: var(--color-dark);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 10px;
+            background: var(--color-dark); color: white;
+            padding: 12px 16px; border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: slideIn 0.3s ease;
-            max-width: 320px;
+            display: flex; align-items: center; gap: 10px;
+            animation: slideIn 0.3s ease; max-width: 320px;
         }
         .toast.success { background: linear-gradient(135deg, #059669, #047857); }
         .toast.error { background: linear-gradient(135deg, #dc2626, #b91c1c); }
@@ -701,27 +449,16 @@
         .toast-message { font-size: 13px; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
         
-        /* ============================================
-           PROCESSING OVERLAY
-           ============================================ */
         .processing-overlay {
-            position: fixed; 
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            flex-direction: column;
-            gap: 20px;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            display: none; align-items: center; justify-content: center;
+            z-index: 2000; flex-direction: column; gap: 20px;
         }
         .processing-overlay.active { display: flex; }
         .processing-spinner {
-            width: 60px; height: 60px;
-            border: 4px solid #333;
+            width: 60px; height: 60px; border: 4px solid #333;
             border-top-color: var(--color-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            border-radius: 50%; animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .processing-text { color: white; font-size: 18px; font-weight: 600; }
@@ -729,115 +466,52 @@
         .processing-progress { width: 300px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
         .processing-progress-bar { height: 100%; background: var(--color-primary); transition: width 0.3s; }
         
-        /* ============================================
-           BARCODE SCANNER
-           ============================================ */
-        .barcode-scanner-container {
-            position: relative;
-            background: #000;
-            aspect-ratio: 4/3;
-        }
-        #barcode-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .barcode-scanner-container { position: relative; background: #000; aspect-ratio: 4/3; }
+        #barcode-video { width: 100%; height: 100%; object-fit: cover; }
         .barcode-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
+            position: absolute; inset: 0; display: flex;
+            align-items: center; justify-content: center; pointer-events: none;
         }
         .barcode-target {
-            width: 70%;
-            height: 40%;
-            border: 3px solid var(--color-warning);
-            border-radius: 12px;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            width: 70%; height: 40%; border: 3px solid var(--color-warning);
+            border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
         }
         .barcode-status {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white;
+            padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600;
         }
         .barcode-status.success { background: var(--color-success); }
         
-        /* ============================================
-           MEASUREMENT SECTION
-           ============================================ */
         .measure-category {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px;
-            background: var(--color-background);
-            border-radius: var(--radius-md);
-            margin-bottom: 8px;
-            font-size: 11px;
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px; background: var(--color-background);
+            border-radius: var(--radius-md); margin-bottom: 8px; font-size: 11px;
         }
         .measure-category-icon { font-size: 16px; }
         .measure-category.detected { background: #dbeafe; }
         .measure-category.detected .measure-category-icon { color: var(--color-primary); }
         
         .measure-hints {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            border-radius: var(--radius-md);
-            padding: 8px;
-            margin-bottom: 8px;
+            background: #eff6ff; border: 1px solid #bfdbfe;
+            border-radius: var(--radius-md); padding: 8px; margin-bottom: 8px;
         }
-        .measure-hints-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--color-primary);
-            margin-bottom: 4px;
-        }
-        .measure-hints-list {
-            font-size: 9px;
-            color: var(--color-primary);
-            line-height: 1.5;
-        }
-        .measure-hints-list .hint-item {
-            display: flex;
-            gap: 4px;
-        }
-        .measure-hints-list .hint-num {
-            font-weight: 700;
-            min-width: 14px;
-        }
+        .measure-hints-title { font-size: 10px; font-weight: 700; color: var(--color-primary); margin-bottom: 4px; }
+        .measure-hints-list { font-size: 9px; color: var(--color-primary); line-height: 1.5; }
+        .measure-hints-list .hint-item { display: flex; gap: 4px; }
+        .measure-hints-list .hint-num { font-weight: 700; min-width: 14px; }
         
         #record-section { margin-top: 8px; }
         
         .record-btn {
-            width: 100%;
-            padding: 14px 12px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.15s;
+            width: 100%; padding: 14px 12px;
+            background: #ef4444; color: white; border: none;
+            border-radius: var(--radius-md); font-size: 14px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center;
+            justify-content: center; gap: 8px; transition: all 0.15s;
         }
         .record-btn:hover { background: #dc2626; }
-        .record-btn.recording {
-            background: #dc2626;
-            animation: pulse-red 1s infinite;
-        }
+        .record-btn.recording { background: #dc2626; animation: pulse-red 1s infinite; }
         @keyframes pulse-red {
             0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
             50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
@@ -847,47 +521,24 @@
         #post-record-section { margin-top: 8px; }
         
         .recorded-badge {
-            background: #f0fdf4;
-            border: 1px solid #86efac;
-            border-radius: var(--radius-md);
-            padding: 10px;
-            text-align: center;
+            background: #f0fdf4; border: 1px solid #86efac;
+            border-radius: var(--radius-md); padding: 10px; text-align: center;
         }
-        .recorded-check {
-            color: #16a34a;
-            font-weight: 700;
-            font-size: 13px;
-        }
-        .recorded-duration {
-            color: #22c55e;
-            font-family: monospace;
-            font-size: 18px;
-            margin-top: 2px;
-        }
+        .recorded-check { color: #16a34a; font-weight: 700; font-size: 13px; }
+        .recorded-duration { color: #22c55e; font-family: monospace; font-size: 18px; margin-top: 2px; }
         
-        .transcript-status {
-            font-size: 11px;
-            color: var(--color-text-muted);
-            text-align: center;
-            padding: 6px 0;
-        }
+        .transcript-status { font-size: 11px; color: var(--color-text-muted); text-align: center; padding: 6px 0; }
         .transcript-status.processing { color: var(--color-primary); }
         .transcript-status.success { color: var(--color-success); }
         .transcript-status.error { color: var(--color-error); }
         
         .measurements-parsed {
-            background: white;
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: 8px 10px;
-            font-size: 11px;
+            background: white; border: 1px solid var(--color-border);
+            border-radius: var(--radius-md); padding: 8px 10px; font-size: 11px;
         }
         .measurement-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-            border-bottom: 1px solid var(--color-border);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 0; border-bottom: 1px solid var(--color-border);
         }
         .measurement-item:last-child { border-bottom: none; }
         .measurement-item.filled { color: var(--color-success); }
@@ -897,15 +548,9 @@
         .measurement-value { font-weight: 700; font-family: monospace; min-width: 40px; text-align: right; }
         
         .re-record-btn {
-            width: 100%;
-            padding: 8px;
-            margin-top: 6px;
-            background: none;
-            border: none;
-            color: var(--color-text-muted);
-            font-size: 11px;
-            text-decoration: underline;
-            cursor: pointer;
+            width: 100%; padding: 8px; margin-top: 6px;
+            background: none; border: none; color: var(--color-text-muted);
+            font-size: 11px; text-decoration: underline; cursor: pointer;
         }
         .re-record-btn:hover { color: var(--color-text); }
     </style>
@@ -924,7 +569,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.8.0</div>
+                    <div class="version-badge">v2.8.2</div>
                 </div>
             </div>
             
@@ -945,7 +590,7 @@
                 
                 <!-- Photo Mode -->
                 <div class="section-card">
-                    <div class="section-label">📸 Photo Mode</div>
+                    <div class="section-label">📸 Photo Mode & Type</div>
                     <div class="mode-buttons">
                         <button class="mode-btn active" data-mode="main" onclick="setMode('main')">
                             <span class="mode-icon">📦</span>
@@ -960,7 +605,7 @@
                             <span class="mode-icon">🔍</span>
                             <div class="mode-info">
                                 <div class="mode-name">CLOSE-UP</div>
-                                <div class="mode-desc">Tripod macro • Tags, defects, details</div>
+                                <div class="mode-desc">Tags, defects, features</div>
                             </div>
                             <span class="mode-camera-status not-set" id="status-closeup">No camera</span>
                             <span class="mode-count" id="count-closeup">0</span>
@@ -969,30 +614,42 @@
                             <span class="mode-icon">✋</span>
                             <div class="mode-info">
                                 <div class="mode-name">HANDHELD</div>
-                                <div class="mode-desc">Freestanding • Scale, angles</div>
+                                <div class="mode-desc">Scale, angles, details</div>
                             </div>
                             <span class="mode-camera-status not-set" id="status-handheld">No camera</span>
                             <span class="mode-count" id="count-handheld">0</span>
                         </button>
                     </div>
+                    
+                    <!-- Photo Type Quick Select -->
+                    <div id="photo-type-section" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--color-border);">
+                        <div style="font-size: 10px; font-weight: 600; margin-bottom: 6px; color: var(--color-text-muted);">
+                            📂 Save to folder: <span id="current-folder" style="color: var(--color-primary);">main</span>
+                        </div>
+                        <div class="photo-type-row" id="photo-type-buttons">
+                            <!-- Populated dynamically based on mode -->
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- AI Status -->
+                <!-- AI & Save Status -->
                 <div class="section-card">
                     <div class="ai-status">
-                        <div class="ai-status-title">🤖 AI PROCESSING (on Complete)</div>
+                        <div class="ai-status-title">🤖 AI + STORAGE</div>
                         <div class="ai-status-chain">
-                            <span class="ai-badge claude active">CLAUDE</span>
-                            <span class="ai-arrow">→</span>
-                            <span class="ai-badge openai">OPENAI</span>
-                            <span class="ai-arrow">→</span>
                             <span class="ai-badge gemini">GEMINI</span>
                             <span class="ai-arrow">→</span>
-                            <span class="ai-badge manual">MANUAL</span>
+                            <span class="ai-badge claude">CLAUDE</span>
+                            <span class="ai-arrow">+</span>
+                            <span class="ai-badge s3">S3</span>
                         </div>
-                        <div style="font-size:9px; margin-top:6px; opacity:0.6;">
-                            Auto: Classify • Rotate • Crop • Quality
-                        </div>
+                    </div>
+                    
+                    <!-- Save Location -->
+                    <div id="save-location" class="save-location not-set">
+                        <div class="save-location-label">💾 Save Location</div>
+                        <div class="save-location-path" id="save-path">Not set - click to choose folder</div>
+                        <button class="save-location-btn" onclick="chooseSaveFolder()">📁 Choose Folder</button>
                     </div>
                 </div>
                 
@@ -1003,19 +660,16 @@
                         🎤 Measurements
                     </div>
                     
-                    <!-- Category Detection -->
                     <div id="measure-category" class="measure-category">
                         <span class="measure-category-icon">❓</span>
                         <span class="measure-category-text">Take a MAIN photo to detect category</span>
                     </div>
                     
-                    <!-- Measurement Hints -->
                     <div id="measure-hints" class="measure-hints hidden">
                         <div class="measure-hints-title">📏 Measurement Order:</div>
                         <div id="measure-hints-list" class="measure-hints-list"></div>
                     </div>
                     
-                    <!-- Record Section -->
                     <div id="record-section">
                         <button id="record-btn" class="record-btn" onclick="toggleRecording()">
                             <span class="record-icon">🎤</span>
@@ -1023,7 +677,6 @@
                         </button>
                     </div>
                     
-                    <!-- Post-Record Section -->
                     <div id="post-record-section" class="hidden">
                         <div class="recorded-badge">
                             <div class="recorded-check">✓ RECORDED</div>
@@ -1039,10 +692,10 @@
             <!-- Complete -->
             <div class="complete-section">
                 <button class="complete-btn" id="complete-btn" onclick="completeItem()" disabled>
-                    🤖 COMPLETE + AI PROCESS
+                    ✅ COMPLETE & SAVE
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.8.0</span>
+                    Saves to folder + uploads to S3
                 </div>
             </div>
         </div>
@@ -1089,7 +742,7 @@
                     <span class="photos-section-count" id="total-count">0</span>
                 </div>
                 <div style="font-size:10px; color:var(--color-text-muted); margin-bottom:10px;">
-                    AI will classify & organize on Complete
+                    Photos saved to folders on complete
                 </div>
                 <div class="photo-grid" id="photos-grid"></div>
             </div>
@@ -1105,60 +758,56 @@
             </div>
             <div class="modal-body">
                 <div class="camera-setup-grid">
-                    <!-- MAIN Camera -->
                     <div class="camera-setup-card main">
                         <div class="camera-setup-icon">📦</div>
                         <div class="camera-setup-title">MAIN Camera</div>
-                        <div class="camera-setup-desc">Tripod overhead for flat-lay & T-pose</div>
+                        <div class="camera-setup-desc">Tripod overhead for flat-lay</div>
                         <select class="camera-setup-select" id="select-main" onchange="previewCamera('main', this.value)">
                             <option value="">Select camera...</option>
                         </select>
                         <div class="camera-preview-container">
                             <video class="camera-preview-video" id="preview-main" autoplay playsinline style="display:none;"></video>
-                            <div class="camera-preview-placeholder" id="placeholder-main">Select a camera to preview</div>
+                            <div class="camera-preview-placeholder" id="placeholder-main">Select a camera</div>
                             <div class="camera-preview-status" id="status-preview-main"></div>
                         </div>
                     </div>
                     
-                    <!-- CLOSE-UP Camera -->
                     <div class="camera-setup-card closeup">
                         <div class="camera-setup-icon">🔍</div>
                         <div class="camera-setup-title">CLOSE-UP Camera</div>
-                        <div class="camera-setup-desc">Tripod macro for tags, defects, details</div>
+                        <div class="camera-setup-desc">Macro for tags, details</div>
                         <select class="camera-setup-select" id="select-closeup" onchange="previewCamera('closeup', this.value)">
                             <option value="">Select camera...</option>
                         </select>
                         <div class="camera-preview-container">
                             <video class="camera-preview-video" id="preview-closeup" autoplay playsinline style="display:none;"></video>
-                            <div class="camera-preview-placeholder" id="placeholder-closeup">Select a camera to preview</div>
+                            <div class="camera-preview-placeholder" id="placeholder-closeup">Select a camera</div>
                             <div class="camera-preview-status" id="status-preview-closeup"></div>
                         </div>
                     </div>
                     
-                    <!-- HANDHELD Camera -->
                     <div class="camera-setup-card handheld">
                         <div class="camera-setup-icon">✋</div>
                         <div class="camera-setup-title">HANDHELD Camera</div>
-                        <div class="camera-setup-desc">Freestanding for scale, angles</div>
+                        <div class="camera-setup-desc">Freestanding for scale</div>
                         <select class="camera-setup-select" id="select-handheld" onchange="previewCamera('handheld', this.value)">
                             <option value="">Select camera...</option>
                         </select>
                         <div class="camera-preview-container">
                             <video class="camera-preview-video" id="preview-handheld" autoplay playsinline style="display:none;"></video>
-                            <div class="camera-preview-placeholder" id="placeholder-handheld">Select a camera to preview</div>
+                            <div class="camera-preview-placeholder" id="placeholder-handheld">Select a camera</div>
                             <div class="camera-preview-status" id="status-preview-handheld"></div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Barcode Scanner Camera -->
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--color-border);">
                     <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px;">📷 Barcode Scanner Camera</div>
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <select class="camera-setup-select" id="select-barcode" style="flex: 1; margin-bottom: 0;">
-                            <option value="">Select camera for SKU scanning...</option>
+                            <option value="">Select camera...</option>
                         </select>
-                        <button class="btn btn-primary" onclick="testBarcodeScanner()">Test Scanner</button>
+                        <button class="btn btn-primary" onclick="testBarcodeScanner()">Test</button>
                     </div>
                 </div>
             </div>
@@ -1179,9 +828,7 @@
             <div class="modal-body" style="padding: 0;">
                 <div class="barcode-scanner-container">
                     <video id="barcode-video" autoplay playsinline></video>
-                    <div class="barcode-overlay">
-                        <div class="barcode-target"></div>
-                    </div>
+                    <div class="barcode-overlay"><div class="barcode-target"></div></div>
                     <div class="barcode-status" id="barcode-status">Point camera at barcode...</div>
                 </div>
             </div>
@@ -1199,26 +846,21 @@
                 <button class="modal-close" onclick="closeConfirmCancel()">✕</button>
             </div>
             <div class="modal-body" style="text-align: center;">
-                <p style="margin-bottom: 12px;">Are you sure you want to cancel this item?</p>
+                <p style="margin-bottom: 12px;">Are you sure you want to cancel?</p>
                 <p style="font-size: 13px; color: var(--color-text-muted);">
                     SKU: <strong id="cancel-sku-display"></strong><br>
                     Photos: <strong id="cancel-photo-count"></strong>
                 </p>
-                <p style="font-size: 12px; color: var(--color-error); margin-top: 12px;">
-                    This will discard all photos and measurements.
-                </p>
             </div>
             <div class="modal-footer">
                 <button class="btn" style="background:#f1f5f9;" onclick="closeConfirmCancel()">Keep Working</button>
-                <button class="btn btn-error" onclick="cancelItem()">Yes, Cancel Item</button>
+                <button class="btn btn-error" onclick="cancelItem()">Yes, Cancel</button>
             </div>
         </div>
     </div>
     
-    <!-- Toast -->
     <div class="toast-container" id="toast-container"></div>
     
-    <!-- Processing -->
     <div class="processing-overlay" id="processing-overlay">
         <div class="processing-spinner"></div>
         <div class="processing-text" id="processing-text">Processing...</div>
@@ -1232,120 +874,74 @@
         // ============================================
         // CONSTANTS
         // ============================================
-        const VERSION = '2.8.0';
-        const VERSION_DATE = '2025-01-19';
-        const CHANGELOG = {
-            '2.8.0': 'Bug fixes: .hidden CSS, image error handling, cancel item, daily counter reset, tablet responsive',
-            '2.7.6': 'Expanded photo classifications (pants inside-out, single stitch, Talon zipper, etc.)',
-            '2.7.5': 'QuaggaJS barcode library, fixed SKU button layout, improved camera detection',
-            '2.7.4': 'Fixed measurement button spacing, horizontal record button, cleaner parsed display',
-            '2.7.3': 'Capped resolution at 4K for browser compatibility',
-            '2.7.2': 'Higher resolution support, tighter UI spacing, faster barcode scanner',
-            '2.7.1': 'Fixed camera config null reference errors',
-            '2.7': 'Added voice measurements with Whisper transcription, category detection, measurement templates',
-            '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
-            '2.5': 'Fixed camera view resizing, proper aspect ratio, responsive layout',
-            '2.4': '3 cameras with settings modal, live previews, localStorage persistence',
-            '2.3': 'AI integration, 3-mode system'
-        };
+        const VERSION = '2.8.2';
+        const LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         
-        const LAMBDA_URL = 'https://i745n2nibsrhx7ivc7w6mf7cgy0caatc.lambda-url.us-east-2.on.aws/';
+        // Folder structure matching your setup
+        const FOLDERS = ['main', 'tag', 'defects', 'features', 'weight', 'data'];
         
-        const RESOLUTION_PRESETS = [
-            { w: 4096, h: 2160, name: '4K DCI' },
-            { w: 3840, h: 2160, name: '4K UHD' },
-            { w: 2560, h: 1440, name: '1440p' },
-            { w: 1920, h: 1080, name: '1080p' }
-        ];
-        
-        const AI_ORDER = ['claude', 'openai', 'gemini', 'manual'];
-        
-        // ============================================
-        // MEASUREMENT TEMPLATES
-        // ============================================
-        const MEASUREMENT_TEMPLATES = {
-            'tops-standard': [
-                'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
-                'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+        // Photo type options per mode
+        const PHOTO_TYPES = {
+            main: [
+                { id: 'main', label: 'Main', folder: 'main' },
+                { id: 'front', label: 'Front', folder: 'main' },
+                { id: 'back', label: 'Back', folder: 'main' },
+                { id: 'inside', label: 'Inside', folder: 'main' },
+                { id: 'tpose', label: 'T-Pose', folder: 'main' }
             ],
-            'tops-raglan': [
-                'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
-                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            closeup: [
+                { id: 'tag_brand', label: 'Brand Tag', folder: 'tag' },
+                { id: 'tag_size', label: 'Size Tag', folder: 'tag' },
+                { id: 'tag_care', label: 'Care Tag', folder: 'tag' },
+                { id: 'tag_origin', label: 'Made In', folder: 'tag' },
+                { id: 'defect', label: 'Defect', folder: 'defects' },
+                { id: 'stain', label: 'Stain', folder: 'defects' },
+                { id: 'hole', label: 'Hole', folder: 'defects' },
+                { id: 'wear', label: 'Wear', folder: 'defects' },
+                { id: 'feature', label: 'Feature', folder: 'features' },
+                { id: 'detail', label: 'Detail', folder: 'features' },
+                { id: 'zipper', label: 'Zipper', folder: 'features' },
+                { id: 'button', label: 'Button', folder: 'features' },
+                { id: 'print', label: 'Print', folder: 'features' }
             ],
-            'tops-sleeveless': [
-                'Neck-to-Shoulder', 'Shoulder-to-Shoulder', 'Pit-to-Pit',
-                'Waist', 'Bottom Hem', 'Length'
-            ],
-            'button-standard': [
-                'Neck Circumference', 'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening',
-                'Bottom Sleeve', 'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
-            ],
-            'button-raglan': [
-                'Neck Circumference', 'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
-                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
-            ],
-            'button-sleeveless': [
-                'Neck Circumference', 'Neck-to-Shoulder', 'Shoulder-to-Shoulder',
-                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
-            ],
-            'bottoms-pants': [
-                'Waist', 'Rise', 'Inseam', 'Thigh', 'Knee', 'Leg Opening', 'Total Length'
-            ],
-            'bottoms-shorts': [
-                'Waist', 'Rise', 'Inseam', 'Thigh', 'Leg Opening'
-            ],
-            'outer-standard': [
-                'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
-                'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
-            ],
-            'outer-raglan': [
-                'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
-                'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
+            handheld: [
+                { id: 'scale', label: 'Scale/Weight', folder: 'weight' },
+                { id: 'angle', label: 'Angle', folder: 'features' },
+                { id: 'detail', label: 'Detail', folder: 'features' },
+                { id: 'defect', label: 'Defect', folder: 'defects' }
             ]
         };
         
-        const MEASUREMENT_KEYWORDS = {
-            'neck': 'Neck Circumference', 
-            'collar': 'Neck Circumference',
-            'neck to shoulder': 'Neck-to-Shoulder', 
-            'neck shoulder': 'Neck-to-Shoulder',
-            'shoulder': 'Shoulder-to-Shoulder', 
-            'shoulders': 'Shoulder-to-Shoulder',
-            'top sleeve': 'Top Sleeve', 
-            'sleeve': 'Top Sleeve', 
-            'upper sleeve': 'Top Sleeve',
-            'sleeve opening': 'Sleeve Opening', 
-            'cuff': 'Sleeve Opening',
-            'bottom sleeve': 'Bottom Sleeve', 
-            'lower sleeve': 'Bottom Sleeve',
-            'neck to cuff': 'Neck-to-Cuff',
-            'pit': 'Pit-to-Pit', 
-            'pit to pit': 'Pit-to-Pit', 
-            'chest': 'Pit-to-Pit',
-            'waist': 'Waist',
-            'bottom': 'Bottom Hem', 
-            'hem': 'Bottom Hem', 
-            'bottom hem': 'Bottom Hem',
-            'length': 'Length', 
-            'total length': 'Total Length',
-            'rise': 'Rise',
-            'inseam': 'Inseam',
-            'thigh': 'Thigh',
-            'knee': 'Knee',
-            'leg opening': 'Leg Opening', 
-            'leg': 'Leg Opening'
+        const RESOLUTION_PRESETS = [
+            { w: 4096, h: 2160 }, { w: 3840, h: 2160 },
+            { w: 2560, h: 1440 }, { w: 1920, h: 1080 }
+        ];
+        
+        const MEASUREMENT_TEMPLATES = {
+            'tops-standard': ['Pit-to-Pit', 'Length', 'Shoulder', 'Sleeve'],
+            'bottoms-pants': ['Waist', 'Rise', 'Inseam', 'Thigh', 'Leg Opening'],
+            'bottoms-shorts': ['Waist', 'Rise', 'Inseam', 'Leg Opening'],
+            'outer-standard': ['Pit-to-Pit', 'Length', 'Shoulder', 'Sleeve']
+        };
+        
+        const CATEGORY_MAP = {
+            'T-Shirt': 'tops-standard', 'Polo': 'tops-standard', 'Sweater': 'tops-standard',
+            'Sweatshirt': 'tops-standard', 'Hoodie': 'tops-standard', 'Jersey': 'tops-standard',
+            'Button Shirt': 'tops-standard', 'Jacket': 'outer-standard', 'Coat': 'outer-standard',
+            'Jeans': 'bottoms-pants', 'Pants': 'bottoms-pants', 'Shorts': 'bottoms-shorts'
         };
         
         // ============================================
         // STATE
         // ============================================
         let currentMode = 'main';
+        let currentPhotoType = PHOTO_TYPES.main[0];
         let currentSKU = '';
         let currentStream = null;
         let availableCameras = [];
         let photos = [];
+        let saveDirectoryHandle = null; // File System Access API
         
-        // Camera config
         let cameraConfig = {
             main: { deviceId: null, label: '' },
             closeup: { deviceId: null, label: '' },
@@ -1353,194 +949,269 @@
             barcode: { deviceId: null, label: '' }
         };
         
-        // Preview streams
         let previewStreams = { main: null, closeup: null, handheld: null };
-        
-        // Barcode
-        let barcodeStream = null;
-        let barcodeDetector = null;
-        let barcodeScanning = false;
-        
-        // Timer
-        let itemStartTime = null;
-        let timerInterval = null;
-        
-        // Measurements
-        let detectedCategory = null;
-        let currentTemplate = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let recordingStart = null;
-        let recordingInterval = null;
-        let audioBlob = null;
+        let barcodeStream = null, barcodeScanning = false;
+        let itemStartTime = null, timerInterval = null;
+        let detectedCategory = null, currentTemplate = null;
+        let mediaRecorder = null, audioChunks = [], audioBlob = null;
+        let recordingStart = null, recordingInterval = null;
         let parsedMeasurements = {};
         
         // ============================================
         // INITIALIZATION
         // ============================================
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log(`%c VintageLister Browser v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
-            console.log(`📅 ${VERSION_DATE} | ${CHANGELOG[VERSION]}`);
+            console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
             
-            // Set version displays
-            document.querySelector('.version-badge').textContent = `v${VERSION}`;
-            document.getElementById('version-footer').textContent = `v${VERSION}`;
-            
-            // Initialize daily counter (with date check)
             initDailyCounter();
-            
-            // Load saved camera config
             loadCameraConfig();
-            
-            // Enumerate cameras
+            loadSaveLocation();
             await enumerateCameras();
             
-            // Auto-connect if config exists
-            if (hasCameraConfigured()) {
-                await autoConnectCameras();
-            }
+            if (hasCameraConfigured()) await autoConnectCameras();
             
-            // Initialize keyboard shortcuts
+            updatePhotoTypeButtons();
             initKeyboard();
-            
-            // Update UI
             updateUI();
         });
         
         function initDailyCounter() {
             const savedDate = localStorage.getItem('vl_items_date');
             const today = new Date().toDateString();
-            
             if (savedDate !== today) {
-                // New day - reset counter
                 localStorage.setItem('vl_items_date', today);
                 localStorage.setItem('vl_items_today', '0');
             }
-            
-            const itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
-            document.getElementById('stat-today').textContent = itemsToday;
+            document.getElementById('stat-today').textContent = localStorage.getItem('vl_items_today') || '0';
         }
         
         function incrementDailyCounter() {
-            let itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
-            itemsToday++;
-            localStorage.setItem('vl_items_today', itemsToday.toString());
-            document.getElementById('stat-today').textContent = itemsToday;
+            let count = parseInt(localStorage.getItem('vl_items_today') || '0') + 1;
+            localStorage.setItem('vl_items_today', count.toString());
+            document.getElementById('stat-today').textContent = count;
         }
         
         function hasCameraConfigured() {
-            return (cameraConfig.main?.deviceId || 
-                    cameraConfig.closeup?.deviceId || 
-                    cameraConfig.handheld?.deviceId);
+            return cameraConfig.main?.deviceId || cameraConfig.closeup?.deviceId || cameraConfig.handheld?.deviceId;
         }
         
         // ============================================
-        // CAMERA ENUMERATION
+        // FILE SYSTEM ACCESS API - Save Location
+        // ============================================
+        async function chooseSaveFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                showToast('warning', 'Folder picker not supported. Use Chrome/Edge.');
+                return;
+            }
+            
+            try {
+                saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                
+                // Save permission
+                localStorage.setItem('vl_save_folder_name', saveDirectoryHandle.name);
+                
+                updateSaveLocationUI();
+                showToast('success', `Save folder: ${saveDirectoryHandle.name}`);
+                
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Folder picker error:', err);
+                    showToast('error', 'Could not access folder');
+                }
+            }
+        }
+        
+        function loadSaveLocation() {
+            const savedName = localStorage.getItem('vl_save_folder_name');
+            if (savedName) {
+                document.getElementById('save-path').textContent = `Last used: ${savedName} (click to reselect)`;
+            }
+        }
+        
+        function updateSaveLocationUI() {
+            const el = document.getElementById('save-location');
+            const pathEl = document.getElementById('save-path');
+            
+            if (saveDirectoryHandle) {
+                el.classList.remove('not-set');
+                pathEl.textContent = saveDirectoryHandle.name;
+            } else {
+                el.classList.add('not-set');
+                pathEl.textContent = 'Not set - click to choose folder';
+            }
+        }
+        
+        async function createFolderStructure(skuFolder) {
+            // Create SKU folder and subfolders
+            for (const folder of FOLDERS) {
+                try {
+                    await skuFolder.getDirectoryHandle(folder, { create: true });
+                } catch (e) {
+                    console.warn(`Could not create folder ${folder}:`, e);
+                }
+            }
+        }
+        
+        async function savePhotoToFolder(skuFolder, photo, index) {
+            const folderName = photo.folder || 'main';
+            const subFolder = await skuFolder.getDirectoryHandle(folderName, { create: true });
+            
+            // Generate filename: SKU_type_##.jpg
+            const filename = `${currentSKU}_${photo.type}_${String(index + 1).padStart(2, '0')}.jpg`;
+            
+            const fileHandle = await subFolder.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(photo.blob);
+            await writable.close();
+            
+            return filename;
+        }
+        
+        async function saveMeasurementsToFolder(skuFolder) {
+            if (!parsedMeasurements || Object.keys(parsedMeasurements).length === 0) return;
+            
+            const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+            const filename = `${currentSKU}_measurements.json`;
+            
+            const data = {
+                sku: currentSKU,
+                category: detectedCategory,
+                measurements: parsedMeasurements,
+                timestamp: new Date().toISOString()
+            };
+            
+            const fileHandle = await dataFolder.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(data, null, 2));
+            await writable.close();
+        }
+        
+        // ============================================
+        // S3 UPLOAD
+        // ============================================
+        async function uploadToS3() {
+            if (photos.length === 0) return;
+            
+            try {
+                // Get presigned URLs from Lambda
+                const files = photos.map((p, i) => ({
+                    name: `${p.folder}/${currentSKU}_${p.type}_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg'
+                }));
+                
+                console.log('📤 Requesting presigned URLs for S3...');
+                
+                const presignResponse = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'presign',
+                        sku: currentSKU,
+                        files: files
+                    })
+                });
+                
+                if (!presignResponse.ok) {
+                    throw new Error(`Presign failed: ${presignResponse.status}`);
+                }
+                
+                const presignData = await presignResponse.json();
+                
+                if (!presignData.success || !presignData.urls) {
+                    console.warn('S3 presign not available:', presignData.error);
+                    return false;
+                }
+                
+                // Upload each photo
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
+                    const filename = files[i].name;
+                    const uploadUrl = presignData.urls[filename];
+                    
+                    if (uploadUrl) {
+                        setProcessing(`Uploading to S3...`, `${i + 1}/${photos.length}`, ((i + 1) / photos.length) * 50 + 50);
+                        
+                        await fetch(uploadUrl, {
+                            method: 'PUT',
+                            body: photo.blob,
+                            headers: { 'Content-Type': 'image/jpeg' }
+                        });
+                    }
+                }
+                
+                console.log('✅ S3 upload complete');
+                return true;
+                
+            } catch (err) {
+                console.error('S3 upload error:', err);
+                return false;
+            }
+        }
+        
+        // ============================================
+        // CAMERA FUNCTIONS
         // ============================================
         async function enumerateCameras() {
             try {
-                console.log('📷 Requesting camera permission...');
                 const permStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 permStream.getTracks().forEach(t => t.stop());
                 await sleep(300);
                 
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                console.log('📷 All devices:', devices);
-                
-                // Filter video inputs, exclude virtual cameras
-                const virtualKeywords = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
+                const virtualKeywords = ['droidcam', 'obs', 'manycam', 'virtual', 'snap'];
                 availableCameras = devices.filter(d => {
                     if (d.kind !== 'videoinput' || !d.deviceId) return false;
-                    const label = (d.label || '').toLowerCase();
-                    const isVirtual = virtualKeywords.some(v => label.includes(v));
-                    if (isVirtual) console.log(`📷 Skipping virtual camera: ${d.label}`);
-                    return !isVirtual;
+                    return !virtualKeywords.some(v => (d.label || '').toLowerCase().includes(v));
                 });
                 
-                console.log(`📷 Found ${availableCameras.length} cameras:`, availableCameras.map(c => c.label));
                 populateCameraSelects();
-                
             } catch (err) {
-                console.error('Camera error:', err);
                 showToast('error', `Camera: ${err.message}`);
             }
         }
         
         function populateCameraSelects() {
-            const validCameras = availableCameras.filter(cam => cam?.deviceId);
-            
-            ['main', 'closeup', 'handheld'].forEach(mode => {
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
                 if (!select) return;
                 
                 select.innerHTML = '<option value="">Select camera...</option>';
-                validCameras.forEach((cam, i) => {
-                    const option = document.createElement('option');
-                    option.value = cam.deviceId;
-                    option.textContent = cam.label || `Camera ${i + 1}`;
-                    select.appendChild(option);
+                availableCameras.forEach((cam, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = cam.deviceId;
+                    opt.textContent = cam.label || `Camera ${i + 1}`;
+                    select.appendChild(opt);
                 });
                 
-                if (cameraConfig[mode]?.deviceId) {
-                    select.value = cameraConfig[mode].deviceId;
-                }
+                if (cameraConfig[mode]?.deviceId) select.value = cameraConfig[mode].deviceId;
             });
-            
-            // Barcode scanner dropdown
-            const barcodeSelect = document.getElementById('select-barcode');
-            if (barcodeSelect) {
-                barcodeSelect.innerHTML = '<option value="">Select camera for SKU scanning...</option>';
-                validCameras.forEach((cam, i) => {
-                    const option = document.createElement('option');
-                    option.value = cam.deviceId;
-                    option.textContent = cam.label || `Camera ${i + 1}`;
-                    barcodeSelect.appendChild(option);
-                });
-                if (cameraConfig.barcode?.deviceId) {
-                    barcodeSelect.value = cameraConfig.barcode.deviceId;
-                }
-            }
         }
         
-        // ============================================
-        // CAMERA CONFIG PERSISTENCE
-        // ============================================
         function loadCameraConfig() {
             const saved = localStorage.getItem('vl_camera_config');
             if (saved) {
                 try {
                     const loaded = JSON.parse(saved);
-                    cameraConfig = {
-                        main: loaded.main || { deviceId: null, label: '' },
-                        closeup: loaded.closeup || { deviceId: null, label: '' },
-                        handheld: loaded.handheld || { deviceId: null, label: '' },
-                        barcode: loaded.barcode || { deviceId: null, label: '' }
-                    };
-                    console.log('📷 Loaded camera config:', cameraConfig);
-                } catch (e) {
-                    console.error('📷 Error loading camera config:', e);
-                }
+                    cameraConfig = { ...cameraConfig, ...loaded };
+                } catch (e) {}
             }
         }
         
         function saveCameraConfig() {
             localStorage.setItem('vl_camera_config', JSON.stringify(cameraConfig));
-            console.log('📷 Saved camera config');
         }
         
         async function autoConnectCameras() {
-            console.log('📷 Auto-connecting cameras...');
-            
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const statusEl = document.getElementById(`status-${mode}`);
-                if (!statusEl) return;
-                
-                if (cameraConfig[mode]?.deviceId) {
-                    statusEl.textContent = '✓ Ready';
-                    statusEl.classList.remove('not-set');
-                } else {
-                    statusEl.textContent = 'No camera';
-                    statusEl.classList.add('not-set');
+                if (statusEl) {
+                    if (cameraConfig[mode]?.deviceId) {
+                        statusEl.textContent = '✓ Ready';
+                        statusEl.classList.remove('not-set');
+                    } else {
+                        statusEl.textContent = 'No camera';
+                        statusEl.classList.add('not-set');
+                    }
                 }
             });
             
@@ -1551,34 +1222,71 @@
             }
         }
         
+        function stopCurrentStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+        }
+        
+        async function startCameraForMode(mode) {
+            const config = cameraConfig[mode];
+            const video = document.getElementById('camera-video');
+            
+            if (!config?.deviceId) {
+                video.style.display = 'none';
+                document.getElementById('camera-placeholder').style.display = 'flex';
+                document.getElementById('camera-name').textContent = 'No camera';
+                document.getElementById('camera-resolution').textContent = '--';
+                return;
+            }
+            
+            stopCurrentStream();
+            
+            for (const res of RESOLUTION_PRESETS) {
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: config.deviceId }, width: { exact: res.w }, height: { exact: res.h } }
+                    });
+                    break;
+                } catch (e) {}
+            }
+            
+            if (!currentStream) {
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: { deviceId: { exact: config.deviceId } }
+                    });
+                } catch (err) {
+                    showToast('error', `Camera error: ${err.message}`);
+                    return;
+                }
+            }
+            
+            video.srcObject = currentStream;
+            video.style.display = 'block';
+            document.getElementById('camera-placeholder').style.display = 'none';
+            document.getElementById('camera-name').textContent = config.label;
+            
+            video.onloadedmetadata = () => {
+                const w = video.videoWidth, h = video.videoHeight;
+                document.getElementById('camera-resolution').textContent = `${w}×${h}`;
+            };
+        }
+        
         // ============================================
         // SETTINGS MODAL
         // ============================================
         async function openSettings() {
             stopCurrentStream();
             document.getElementById('settings-modal').classList.add('active');
-            
             await enumerateCameras();
-            populateCameraSelects();
-            
-            ['main', 'closeup', 'handheld'].forEach(mode => {
-                if (cameraConfig[mode]?.deviceId) {
-                    const select = document.getElementById(`select-${mode}`);
-                    if (select) select.value = cameraConfig[mode].deviceId;
-                }
-            });
         }
         
         function closeSettings() {
-            stopAllPreviewStreams();
-            document.getElementById('settings-modal').classList.remove('active');
-        }
-        
-        function stopAllPreviewStreams() {
-            Object.values(previewStreams).forEach(stream => {
-                if (stream) stream.getTracks().forEach(t => t.stop());
-            });
+            Object.values(previewStreams).forEach(s => s?.getTracks().forEach(t => t.stop()));
             previewStreams = { main: null, closeup: null, handheld: null };
+            document.getElementById('settings-modal').classList.remove('active');
         }
         
         async function previewCamera(mode, deviceId) {
@@ -1586,7 +1294,6 @@
             const placeholder = document.getElementById(`placeholder-${mode}`);
             const status = document.getElementById(`status-preview-${mode}`);
             
-            // Stop existing preview
             if (previewStreams[mode]) {
                 previewStreams[mode].getTracks().forEach(t => t.stop());
                 previewStreams[mode] = null;
@@ -1601,8 +1308,6 @@
             
             try {
                 status.textContent = 'Connecting...';
-                status.classList.remove('connected');
-                
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
                 });
@@ -1616,34 +1321,28 @@
                     status.textContent = `✓ ${video.videoWidth}×${video.videoHeight}`;
                     status.classList.add('connected');
                 };
-                
             } catch (err) {
-                console.error(`Preview ${mode} error:`, err);
-                status.textContent = `Error: ${err.message}`;
+                status.textContent = `Error`;
                 video.style.display = 'none';
                 placeholder.style.display = 'flex';
             }
         }
         
         function saveSettings() {
-            ['main', 'closeup', 'handheld'].forEach(mode => {
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
-                const deviceId = select.value;
-                const label = select.options[select.selectedIndex]?.textContent || '';
-                cameraConfig[mode] = { deviceId: deviceId || null, label };
+                if (select) {
+                    cameraConfig[mode] = {
+                        deviceId: select.value || null,
+                        label: select.options[select.selectedIndex]?.textContent || ''
+                    };
+                }
             });
-            
-            const barcodeSelect = document.getElementById('select-barcode');
-            if (barcodeSelect) {
-                const deviceId = barcodeSelect.value;
-                const label = barcodeSelect.options[barcodeSelect.selectedIndex]?.textContent || '';
-                cameraConfig.barcode = { deviceId: deviceId || null, label };
-            }
             
             saveCameraConfig();
             closeSettings();
             autoConnectCameras();
-            showToast('success', 'Camera settings saved!');
+            showToast('success', 'Settings saved!');
         }
         
         function testBarcodeScanner() {
@@ -1652,99 +1351,11 @@
         }
         
         // ============================================
-        // CAMERA OPERATIONS
-        // ============================================
-        function stopCurrentStream() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(t => t.stop());
-                currentStream = null;
-            }
-        }
-        
-        async function startCameraForMode(mode) {
-            const config = cameraConfig[mode];
-            
-            if (!config?.deviceId) {
-                document.getElementById('camera-video').style.display = 'none';
-                document.getElementById('camera-placeholder').style.display = 'flex';
-                document.getElementById('camera-placeholder').innerHTML = `
-                    <div class="camera-placeholder-icon">⚠️</div>
-                    <div>No camera set for ${mode.toUpperCase()}</div>
-                    <button class="btn btn-primary" style="margin-top:16px;" onclick="openSettings()">⚙️ Open Settings</button>
-                `;
-                document.getElementById('camera-name').textContent = 'No camera';
-                document.getElementById('camera-resolution').textContent = '--';
-                return;
-            }
-            
-            stopCurrentStream();
-            
-            const video = document.getElementById('camera-video');
-            document.getElementById('camera-resolution').textContent = '...';
-            
-            // Try each resolution from highest to lowest
-            for (const res of RESOLUTION_PRESETS) {
-                try {
-                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
-                    
-                    currentStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            deviceId: { exact: config.deviceId },
-                            width: { exact: res.w },
-                            height: { exact: res.h }
-                        }
-                    });
-                    
-                    const track = currentStream.getVideoTracks()[0];
-                    const settings = track.getSettings();
-                    console.log(`✅ Got ${settings.width}x${settings.height}`);
-                    
-                    setupVideoElement(video, config.label);
-                    return;
-                    
-                } catch (e) {
-                    console.log(`❌ ${res.name} not supported`);
-                }
-            }
-            
-            // Fallback to ideal constraints
-            try {
-                console.log('📷 Falling back to ideal constraints...');
-                currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: config.deviceId },
-                        width: { ideal: 3840 },
-                        height: { ideal: 2160 }
-                    }
-                });
-                
-                setupVideoElement(video, config.label);
-                
-            } catch (err) {
-                console.error('Camera error:', err);
-                showToast('error', `Camera: ${err.message}`);
-            }
-        }
-        
-        function setupVideoElement(video, label) {
-            video.srcObject = currentStream;
-            video.style.display = 'block';
-            document.getElementById('camera-placeholder').style.display = 'none';
-            document.getElementById('camera-name').textContent = label;
-            
-            video.onloadedmetadata = () => {
-                const w = video.videoWidth, h = video.videoHeight;
-                const resEl = document.getElementById('camera-resolution');
-                resEl.textContent = `${w}×${h}`;
-                resEl.style.color = w >= 3840 ? '#22c55e' : w >= 1920 ? '#3b82f6' : '#f59e0b';
-            };
-        }
-        
-        // ============================================
-        // MODE SWITCHING
+        // MODE & PHOTO TYPE
         // ============================================
         function setMode(mode) {
             currentMode = mode;
+            currentPhotoType = PHOTO_TYPES[mode][0];
             
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -1754,7 +1365,30 @@
             badge.className = `camera-mode-badge ${mode}`;
             badge.textContent = mode.toUpperCase();
             
+            updatePhotoTypeButtons();
             startCameraForMode(mode);
+        }
+        
+        function updatePhotoTypeButtons() {
+            const container = document.getElementById('photo-type-buttons');
+            const types = PHOTO_TYPES[currentMode];
+            
+            container.innerHTML = types.map((t, i) => 
+                `<button class="photo-type-btn ${i === 0 ? 'active' : ''}" data-type="${t.id}" onclick="setPhotoType('${t.id}')">${t.label}</button>`
+            ).join('');
+            
+            document.getElementById('current-folder').textContent = currentPhotoType.folder;
+        }
+        
+        function setPhotoType(typeId) {
+            const types = PHOTO_TYPES[currentMode];
+            currentPhotoType = types.find(t => t.id === typeId) || types[0];
+            
+            document.querySelectorAll('.photo-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === typeId);
+            });
+            
+            document.getElementById('current-folder').textContent = currentPhotoType.folder;
         }
         
         // ============================================
@@ -1762,43 +1396,35 @@
         // ============================================
         function capturePhoto() {
             const video = document.getElementById('camera-video');
-            if (!video.srcObject) {
-                showToast('warning', 'No camera active');
-                return;
-            }
-            if (!currentSKU) {
-                showToast('warning', 'Start an item first');
-                return;
-            }
+            if (!video.srcObject) return showToast('warning', 'No camera');
+            if (!currentSKU) return showToast('warning', 'Start an item first');
             
-            // Flash effect
+            // Flash
             const flash = document.getElementById('flash-overlay');
             flash.classList.add('flash');
             setTimeout(() => flash.classList.remove('flash'), 100);
             
-            // Capture to canvas
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             
             canvas.toBlob(blob => {
-                const isFirstMainPhoto = currentMode === 'main' && !photos.some(p => p.mode === 'main');
+                const isFirstMain = currentMode === 'main' && !photos.some(p => p.mode === 'main');
                 
                 photos.push({
                     id: Date.now(),
                     blob,
                     url: URL.createObjectURL(blob),
-                    width: canvas.width,
-                    height: canvas.height,
-                    mode: currentMode
+                    mode: currentMode,
+                    type: currentPhotoType.id,
+                    folder: currentPhotoType.folder
                 });
                 
                 updateUI();
-                showToast('success', `Captured (${currentMode})`);
+                showToast('success', `📷 ${currentPhotoType.label} → ${currentPhotoType.folder}/`);
                 
-                // Detect category from first MAIN photo
-                if (isFirstMainPhoto && !detectedCategory) {
+                if (isFirstMain && !detectedCategory) {
                     detectCategoryFromPhoto(blob);
                 }
             }, 'image/jpeg', 0.95);
@@ -1811,40 +1437,19 @@
         }
         
         // ============================================
-        // KEYBOARD SHORTCUTS
+        // KEYBOARD
         // ============================================
         function initKeyboard() {
             document.addEventListener('keydown', (e) => {
-                // Ignore if modal is open or typing in input
-                if (document.getElementById('settings-modal').classList.contains('active')) return;
-                if (document.getElementById('barcode-modal').classList.contains('active')) return;
-                if (document.getElementById('confirm-cancel-modal').classList.contains('active')) return;
-                if (e.target.matches('input')) return;
+                if (document.querySelector('.modal-overlay.active') || e.target.matches('input')) return;
                 
                 switch(e.code) {
-                    case 'Space':
-                        e.preventDefault();
-                        capturePhoto();
-                        break;
-                    case 'Digit1':
-                        setMode('main');
-                        break;
-                    case 'Digit2':
-                        setMode('closeup');
-                        break;
-                    case 'Digit3':
-                        setMode('handheld');
-                        break;
-                    case 'KeyR':
-                        // Toggle recording
-                        toggleRecording();
-                        break;
-                    case 'Escape':
-                        // Stop recording if active
-                        if (mediaRecorder?.state === 'recording') {
-                            stopRecording();
-                        }
-                        break;
+                    case 'Space': e.preventDefault(); capturePhoto(); break;
+                    case 'Digit1': setMode('main'); break;
+                    case 'Digit2': setMode('closeup'); break;
+                    case 'Digit3': setMode('handheld'); break;
+                    case 'KeyR': toggleRecording(); break;
+                    case 'Escape': if (mediaRecorder?.state === 'recording') stopRecording(); break;
                 }
             });
         }
@@ -1853,15 +1458,9 @@
         // ITEM MANAGEMENT
         // ============================================
         function startNewItem() {
-            const input = document.getElementById('sku-input');
-            const sku = input.value.trim().toUpperCase();
+            const sku = document.getElementById('sku-input').value.trim().toUpperCase();
+            if (!sku) return showToast('warning', 'Enter a SKU');
             
-            if (!sku) {
-                showToast('warning', 'Enter a SKU');
-                return;
-            }
-            
-            // Clear previous photos
             photos.forEach(p => URL.revokeObjectURL(p.url));
             photos = [];
             
@@ -1883,7 +1482,6 @@
         
         function confirmCancelItem() {
             if (!currentSKU) return;
-            
             document.getElementById('cancel-sku-display').textContent = currentSKU;
             document.getElementById('cancel-photo-count').textContent = photos.length;
             document.getElementById('confirm-cancel-modal').classList.add('active');
@@ -1908,13 +1506,11 @@
             timerInterval = null;
             itemStartTime = null;
             
-            // Reset measurements
             detectedCategory = null;
             currentTemplate = null;
             audioBlob = null;
             parsedMeasurements = {};
             
-            // Reset UI
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-input-row').style.display = 'flex';
             document.getElementById('sku-display').classList.remove('visible');
@@ -1922,7 +1518,6 @@
             document.getElementById('check-sku').classList.remove('complete');
             document.getElementById('timer-display').textContent = '0:00';
             
-            // Reset measurement UI
             document.getElementById('measure-category').classList.remove('detected');
             document.getElementById('measure-category').innerHTML = `
                 <span class="measure-category-icon">❓</span>
@@ -1941,32 +1536,79 @@
         }
         
         // ============================================
-        // AI PROCESSING
+        // COMPLETE ITEM
         // ============================================
         async function completeItem() {
             if (!currentSKU || photos.length === 0) return;
             
-            showProcessing('Starting AI processing...', '', 0);
+            showProcessing('Saving photos...', '', 0);
             
             try {
-                const processed = [];
+                let savedToFolder = false;
+                let uploadedToS3 = false;
                 
-                for (let i = 0; i < photos.length; i++) {
-                    const progress = ((i + 1) / photos.length) * 100;
-                    setProcessing(`Processing ${i+1}/${photos.length}`, 'Classifying & cropping...', progress);
-                    
-                    const result = await processPhotoWithAI(photos[i]);
-                    processed.push(result);
+                // Save to local folder if handle exists
+                if (saveDirectoryHandle) {
+                    try {
+                        // Verify permission
+                        const permission = await saveDirectoryHandle.queryPermission({ mode: 'readwrite' });
+                        if (permission !== 'granted') {
+                            const request = await saveDirectoryHandle.requestPermission({ mode: 'readwrite' });
+                            if (request !== 'granted') throw new Error('Permission denied');
+                        }
+                        
+                        // Create SKU folder
+                        const skuFolder = await saveDirectoryHandle.getDirectoryHandle(currentSKU, { create: true });
+                        await createFolderStructure(skuFolder);
+                        
+                        // Save photos by folder
+                        const photosByFolder = {};
+                        photos.forEach(p => {
+                            if (!photosByFolder[p.folder]) photosByFolder[p.folder] = [];
+                            photosByFolder[p.folder].push(p);
+                        });
+                        
+                        let savedCount = 0;
+                        for (const [folder, folderPhotos] of Object.entries(photosByFolder)) {
+                            for (let i = 0; i < folderPhotos.length; i++) {
+                                setProcessing(`Saving to ${folder}/`, `${savedCount + 1}/${photos.length}`, (savedCount / photos.length) * 50);
+                                await savePhotoToFolder(skuFolder, folderPhotos[i], i);
+                                savedCount++;
+                            }
+                        }
+                        
+                        // Save measurements
+                        await saveMeasurementsToFolder(skuFolder);
+                        
+                        savedToFolder = true;
+                        console.log(`✅ Saved ${photos.length} photos to ${saveDirectoryHandle.name}/${currentSKU}/`);
+                        
+                    } catch (err) {
+                        console.error('Local save error:', err);
+                        showToast('warning', 'Could not save locally - check folder permissions');
+                    }
                 }
                 
-                setProcessing('Downloading...', '', 100);
-                await downloadPhotos(processed);
-                
-                incrementDailyCounter();
+                // Upload to S3
+                setProcessing('Uploading to S3...', '', 50);
+                uploadedToS3 = await uploadToS3();
                 
                 hideProcessing();
-                showToast('success', `Complete: ${currentSKU}`);
                 
+                // Show result
+                if (savedToFolder && uploadedToS3) {
+                    showToast('success', `✅ Saved locally + uploaded to S3`);
+                } else if (savedToFolder) {
+                    showToast('success', `✅ Saved to ${saveDirectoryHandle.name}/${currentSKU}/`);
+                } else if (uploadedToS3) {
+                    showToast('success', `✅ Uploaded to S3`);
+                } else {
+                    // Fallback to browser downloads
+                    showToast('warning', 'No save location - downloading files');
+                    await fallbackDownload();
+                }
+                
+                incrementDailyCounter();
                 resetItem();
                 
             } catch (err) {
@@ -1975,136 +1617,14 @@
             }
         }
         
-        async function processPhotoWithAI(photo) {
-            const base64 = await blobToBase64(photo.blob);
-            
-            for (const ai of AI_ORDER) {
-                if (ai === 'manual') {
-                    return { classification: photo.mode, blob: photo.blob, url: photo.url };
-                }
-                
-                try {
-                    updateAIBadge(ai);
-                    const result = await callLambdaAI(ai, base64, photo.mode);
-                    
-                    if (result.success) {
-                        const processed = await applyRotationAndCrop(photo, result);
-                        return { ...result, ...processed };
-                    }
-                } catch (err) {
-                    console.warn(`${ai} failed:`, err.message);
-                }
-            }
-            
-            return { classification: photo.mode, blob: photo.blob, url: photo.url };
-        }
-        
-        async function callLambdaAI(provider, base64, mode) {
-            const response = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    action: 'process_photo', 
-                    provider, 
-                    image: base64, 
-                    mode, 
-                    sku: currentSKU 
-                })
-            });
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
-        }
-        
-        async function applyRotationAndCrop(photo, aiResult) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                
-                img.onload = () => {
-                    try {
-                        const rotation = aiResult.rotation || 0;
-                        const crop = aiResult.crop || { x: 0, y: 0, width: 100, height: 100 };
-                        
-                        let canvas = document.createElement('canvas');
-                        let ctx = canvas.getContext('2d');
-                        
-                        // Rotate
-                        if (rotation !== 0) {
-                            const rad = (rotation * Math.PI) / 180;
-                            const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
-                            canvas.width = img.width * cos + img.height * sin;
-                            canvas.height = img.width * sin + img.height * cos;
-                            ctx.translate(canvas.width/2, canvas.height/2);
-                            ctx.rotate(rad);
-                            ctx.drawImage(img, -img.width/2, -img.height/2);
-                        } else {
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-                        }
-                        
-                        // Validate and apply crop
-                        const cx = Math.max(0, Math.round((crop.x/100) * canvas.width));
-                        const cy = Math.max(0, Math.round((crop.y/100) * canvas.height));
-                        let cw = Math.round((crop.width/100) * canvas.width);
-                        let ch = Math.round((crop.height/100) * canvas.height);
-                        
-                        // Ensure minimum dimensions
-                        cw = Math.max(10, Math.min(cw, canvas.width - cx));
-                        ch = Math.max(10, Math.min(ch, canvas.height - cy));
-                        
-                        const final = document.createElement('canvas');
-                        final.width = cw;
-                        final.height = ch;
-                        final.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
-                        
-                        final.toBlob(blob => {
-                            if (blob) {
-                                resolve({ blob, url: URL.createObjectURL(blob) });
-                            } else {
-                                reject(new Error('Failed to create blob'));
-                            }
-                        }, 'image/jpeg', 0.95);
-                        
-                    } catch (err) {
-                        reject(err);
-                    }
-                };
-                
-                img.onerror = () => {
-                    reject(new Error('Failed to load image for processing'));
-                };
-                
-                img.src = photo.url;
-            });
-        }
-        
-        async function downloadPhotos(processed) {
-            // Group by classification
-            const grouped = {};
-            processed.forEach(p => {
-                const type = p.classification || 'other';
-                if (!grouped[type]) grouped[type] = [];
-                grouped[type].push(p);
-            });
-            
-            for (const [type, items] of Object.entries(grouped)) {
-                for (let i = 0; i < items.length; i++) {
-                    const a = document.createElement('a');
-                    a.href = items[i].url || URL.createObjectURL(items[i].blob);
-                    a.download = `${currentSKU}_${type}_${String(i+1).padStart(2,'0')}.jpg`;
-                    a.click();
-                    await sleep(150);
-                }
-            }
-            
-            // Log vintage indicators
-            const indicators = processed
-                .filter(p => p.vintage_indicators?.length > 0)
-                .map(p => ({ classification: p.classification, indicators: p.vintage_indicators }));
-            
-            if (indicators.length > 0) {
-                console.log('🏷️ Vintage indicators found:', indicators);
+        async function fallbackDownload() {
+            for (let i = 0; i < photos.length; i++) {
+                const p = photos[i];
+                const a = document.createElement('a');
+                a.href = p.url;
+                a.download = `${currentSKU}_${p.folder}_${p.type}_${String(i + 1).padStart(2, '0')}.jpg`;
+                a.click();
+                await sleep(200);
             }
         }
         
@@ -2112,68 +1632,43 @@
         // CATEGORY DETECTION
         // ============================================
         async function detectCategoryFromPhoto(photoBlob) {
-            const base64 = await blobToBase64(photoBlob);
-            
             try {
+                const base64 = await blobToBase64(photoBlob);
+                
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'detect_category',
-                        image: base64
-                    })
+                    body: JSON.stringify({ action: 'vision', type: 'main', image: base64 })
                 });
                 
-                if (!response.ok) throw new Error('API error');
+                if (!response.ok) return;
                 
-                const data = await response.json();
-                if (data.category) {
-                    setDetectedCategory(data.category, data.sleeveStyle || 'standard');
+                const result = await response.json();
+                if (result.success && result.data?.category) {
+                    setDetectedCategory(result.data.category);
                 }
             } catch (err) {
                 console.error('Category detection error:', err);
             }
         }
         
-        function setDetectedCategory(category, sleeveStyle) {
-            // Determine template key
-            let templateKey;
-            
-            if (['tops', 'T-Shirt', 'Sweatshirt', 'Hoodie', 'Sweater', 'Jersey', 'Tank Top', 'Polo'].includes(category)) {
-                templateKey = `tops-${sleeveStyle}`;
-            } else if (['Button Shirt', 'Flannel'].includes(category)) {
-                templateKey = `button-${sleeveStyle}`;
-            } else if (['Jeans', 'Pants', 'Sweatpants', 'bottoms'].includes(category)) {
-                templateKey = 'bottoms-pants';
-            } else if (category === 'Shorts') {
-                templateKey = 'bottoms-shorts';
-            } else if (['Jacket', 'Coat', 'Vest', 'outer'].includes(category)) {
-                templateKey = `outer-${sleeveStyle}`;
-            } else {
-                templateKey = 'tops-standard';
-            }
-            
+        function setDetectedCategory(category) {
+            const templateKey = CATEGORY_MAP[category] || 'tops-standard';
             detectedCategory = templateKey;
-            currentTemplate = MEASUREMENT_TEMPLATES[templateKey] || MEASUREMENT_TEMPLATES['tops-standard'];
+            currentTemplate = MEASUREMENT_TEMPLATES[templateKey];
             
-            // Update UI
-            const categoryEl = document.getElementById('measure-category');
-            categoryEl.classList.add('detected');
-            categoryEl.innerHTML = `
+            document.getElementById('measure-category').classList.add('detected');
+            document.getElementById('measure-category').innerHTML = `
                 <span class="measure-category-icon">✓</span>
-                <span class="measure-category-text"><strong>${category}</strong> detected - ${currentTemplate.length} measurements</span>
+                <span class="measure-category-text"><strong>${category}</strong> - ${currentTemplate?.length || 0} measurements</span>
             `;
             
-            // Show measurement hints
-            const hintsEl = document.getElementById('measure-hints');
-            hintsEl.classList.remove('hidden');
-            
-            const listEl = document.getElementById('measure-hints-list');
-            listEl.innerHTML = currentTemplate.map((m, i) => 
-                `<div class="hint-item"><span class="hint-num">${i+1}.</span> ${m}</div>`
-            ).join('');
-            
-            console.log(`📏 Category detected: ${category} → ${templateKey} (${currentTemplate.length} measurements)`);
+            if (currentTemplate) {
+                document.getElementById('measure-hints').classList.remove('hidden');
+                document.getElementById('measure-hints-list').innerHTML = currentTemplate.map((m, i) => 
+                    `<div class="hint-item"><span class="hint-num">${i+1}.</span> ${m}</div>`
+                ).join('');
+            }
         }
         
         // ============================================
@@ -2191,7 +1686,6 @@
                 audioChunks = [];
                 
                 mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                
                 mediaRecorder.onstop = async () => {
                     audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     stream.getTracks().forEach(t => t.stop());
@@ -2201,15 +1695,16 @@
                 mediaRecorder.start();
                 recordingStart = Date.now();
                 
-                const btn = document.getElementById('record-btn');
-                btn.innerHTML = '<span class="record-icon">⏹️</span><span class="record-text">RECORDING...</span>';
-                btn.classList.add('recording');
+                document.getElementById('record-btn').innerHTML = '<span class="record-icon">⏹️</span><span class="record-text">RECORDING...</span>';
+                document.getElementById('record-btn').classList.add('recording');
                 
-                recordingInterval = setInterval(updateRecordingTime, 1000);
+                recordingInterval = setInterval(() => {
+                    const s = Math.floor((Date.now() - recordingStart) / 1000);
+                    document.querySelector('.record-text').textContent = `RECORDING ${formatTime(s)}`;
+                }, 1000);
                 
             } catch (err) {
                 showToast('error', 'Microphone access denied');
-                console.error('Microphone error:', err);
             }
         }
         
@@ -2231,11 +1726,6 @@
             }
         }
         
-        function updateRecordingTime() {
-            const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
-            document.querySelector('.record-text').textContent = `RECORDING ${formatTime(elapsed)}`;
-        }
-        
         async function transcribeAudio(blob) {
             try {
                 const base64 = await blobToBase64(blob);
@@ -2243,27 +1733,20 @@
                 const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'transcribe',
-                        audio: base64
-                    })
+                    body: JSON.stringify({ action: 'whisper', audio: base64, filename: 'audio.webm', language: 'en' })
                 });
                 
-                if (!response.ok) throw new Error('Transcription failed');
+                const result = await response.json();
                 
-                const data = await response.json();
-                
-                if (data.transcript) {
+                if (result.success && result.text) {
                     document.getElementById('transcript-status').textContent = '✓ Transcribed';
                     document.getElementById('transcript-status').className = 'transcript-status success';
-                    parseMeasurements(data.transcript);
+                    parseMeasurements(result.text);
                 } else {
-                    throw new Error(data.error || 'No transcript');
+                    throw new Error(result.error || 'No transcript');
                 }
-                
             } catch (err) {
-                console.error('Transcription error:', err);
-                document.getElementById('transcript-status').textContent = '❌ Transcription failed - measurements saved as audio';
+                document.getElementById('transcript-status').textContent = '❌ Failed';
                 document.getElementById('transcript-status').className = 'transcript-status error';
             }
         }
@@ -2272,27 +1755,12 @@
             if (!currentTemplate) return;
             
             parsedMeasurements = {};
-            const text = transcript.toLowerCase();
+            const numbers = transcript.match(/\d+\.?\d*/g) || [];
             
-            // Extract numbers from transcript
-            const numbers = text.match(/\d+\.?\d*/g) || [];
-            
-            // Try keyword matching first
-            for (const [keyword, fieldName] of Object.entries(MEASUREMENT_KEYWORDS)) {
-                if (!currentTemplate.includes(fieldName)) continue;
-                
-                const regex = new RegExp(keyword + '[\\s:]*([\\d.]+)', 'i');
-                const match = text.match(regex);
-                if (match) {
-                    parsedMeasurements[fieldName] = parseFloat(match[1]);
-                }
-            }
-            
-            // Fill remaining with sequential numbers
-            let numIndex = 0;
+            let i = 0;
             for (const field of currentTemplate) {
-                if (!parsedMeasurements[field] && numIndex < numbers.length) {
-                    parsedMeasurements[field] = parseFloat(numbers[numIndex++]);
+                if (i < numbers.length) {
+                    parsedMeasurements[field] = parseFloat(numbers[i++]);
                 }
             }
             
@@ -2305,11 +1773,11 @@
             const container = document.getElementById('measurements-parsed');
             container.classList.remove('hidden');
             
-            container.innerHTML = currentTemplate.map((field, index) => {
+            container.innerHTML = currentTemplate.map((field, i) => {
                 const value = parsedMeasurements[field];
                 const filled = value !== undefined;
                 return `<div class="measurement-item ${filled ? 'filled' : 'empty'}">
-                    <span class="measurement-name">${index + 1}. ${field}</span>
+                    <span class="measurement-name">${i + 1}. ${field}</span>
                     <span class="measurement-value">${filled ? value + '"' : '--'}</span>
                 </div>`;
             }).join('');
@@ -2322,11 +1790,8 @@
             document.getElementById('record-section').classList.remove('hidden');
             document.getElementById('post-record-section').classList.add('hidden');
             document.getElementById('measurements-parsed').classList.add('hidden');
-            
-            const btn = document.getElementById('record-btn');
-            btn.innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
-            btn.classList.remove('recording');
-            
+            document.getElementById('record-btn').innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
+            document.getElementById('record-btn').classList.remove('recording');
             document.getElementById('check-measure').textContent = '○';
             document.getElementById('check-measure').classList.remove('complete');
         }
@@ -2336,186 +1801,64 @@
         // ============================================
         async function openBarcodeScanner() {
             if (!cameraConfig.barcode?.deviceId) {
-                showToast('warning', 'Set up barcode camera in Settings first');
-                openSettings();
-                return;
+                showToast('warning', 'Set barcode camera in Settings');
+                return openSettings();
             }
             
             stopCurrentStream();
-            
             document.getElementById('barcode-modal').classList.add('active');
-            document.getElementById('barcode-status').textContent = 'Starting scanner...';
-            document.getElementById('barcode-status').classList.remove('success');
+            document.getElementById('barcode-status').textContent = 'Starting...';
             
             if (typeof Quagga !== 'undefined') {
-                startQuaggaScanner();
-            } else {
-                startNativeBarcodeScanner();
-            }
-        }
-        
-        function startQuaggaScanner() {
-            const videoContainer = document.getElementById('barcode-video').parentElement;
-            document.getElementById('barcode-video').style.display = 'none';
-            
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: videoContainer,
-                    constraints: {
-                        deviceId: cameraConfig.barcode.deviceId,
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: "environment"
+                const container = document.getElementById('barcode-video').parentElement;
+                document.getElementById('barcode-video').style.display = 'none';
+                
+                Quagga.init({
+                    inputStream: { name: "Live", type: "LiveStream", target: container,
+                        constraints: { deviceId: cameraConfig.barcode.deviceId, width: { ideal: 640 }, height: { ideal: 480 } }
+                    },
+                    decoder: { readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"] }
+                }, (err) => {
+                    if (err) {
+                        document.getElementById('barcode-status').textContent = 'Scanner error';
+                        return;
                     }
-                },
-                decoder: {
-                    readers: [
-                        "code_128_reader",
-                        "ean_reader",
-                        "ean_8_reader",
-                        "upc_reader",
-                        "upc_e_reader",
-                        "code_39_reader"
-                    ]
-                },
-                locate: true,
-                locator: {
-                    halfSample: true,
-                    patchSize: "medium"
-                }
-            }, function(err) {
-                if (err) {
-                    console.error('Quagga init error:', err);
-                    document.getElementById('barcode-status').textContent = 'Scanner error - type SKU manually';
-                    return;
-                }
-                
-                console.log('📷 Quagga initialized');
-                document.getElementById('barcode-status').textContent = 'Point camera at barcode...';
-                barcodeScanning = true;
-                Quagga.start();
-            });
-            
-            Quagga.onDetected(function(result) {
-                if (!barcodeScanning) return;
-                
-                const code = result.codeResult.code;
-                console.log('📷 Barcode detected:', code);
-                
-                barcodeScanning = false;
-                Quagga.stop();
-                
-                document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
-                document.getElementById('barcode-status').classList.add('success');
-                document.getElementById('sku-input').value = code;
-                
-                setTimeout(() => {
-                    closeBarcodeScanner();
-                    showToast('success', `SKU scanned: ${code}`);
-                }, 400);
-            });
-        }
-        
-        async function startNativeBarcodeScanner() {
-            try {
-                barcodeStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: cameraConfig.barcode.deviceId },
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }
+                    document.getElementById('barcode-status').textContent = 'Point at barcode...';
+                    barcodeScanning = true;
+                    Quagga.start();
                 });
                 
-                const video = document.getElementById('barcode-video');
-                video.style.display = 'block';
-                video.srcObject = barcodeStream;
-                await video.play();
-                
-                document.getElementById('barcode-status').textContent = 'Point camera at barcode...';
-                
-                if ('BarcodeDetector' in window) {
-                    barcodeDetector = new BarcodeDetector({
-                        formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
-                    });
-                    barcodeScanning = true;
-                    scanBarcodeNative(video);
-                } else {
-                    document.getElementById('barcode-status').textContent = 'Scanner not available - type SKU manually';
-                }
-            } catch (err) {
-                console.error('Native barcode scanner error:', err);
-                document.getElementById('barcode-status').textContent = `Error: ${err.message}`;
-            }
-        }
-        
-        async function scanBarcodeNative(video) {
-            if (!barcodeScanning || !barcodeDetector || !barcodeStream) return;
-            
-            try {
-                const barcodes = await barcodeDetector.detect(video);
-                
-                if (barcodes.length > 0) {
-                    const code = barcodes[0].rawValue;
-                    console.log('📷 Barcode detected:', code);
-                    
+                Quagga.onDetected((result) => {
+                    if (!barcodeScanning) return;
                     barcodeScanning = false;
+                    Quagga.stop();
                     
-                    document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
+                    const code = result.codeResult.code;
+                    document.getElementById('barcode-status').textContent = `✓ ${code}`;
                     document.getElementById('barcode-status').classList.add('success');
                     document.getElementById('sku-input').value = code;
                     
-                    setTimeout(() => {
-                        closeBarcodeScanner();
-                        showToast('success', `SKU scanned: ${code}`);
-                    }, 400);
-                    return;
-                }
-            } catch (err) { /* ignore scan errors */ }
-            
-            if (barcodeScanning) {
-                requestAnimationFrame(() => scanBarcodeNative(video));
+                    setTimeout(() => { closeBarcodeScanner(); showToast('success', `SKU: ${code}`); }, 400);
+                });
             }
         }
         
         function closeBarcodeScanner() {
             barcodeScanning = false;
-            
-            if (typeof Quagga !== 'undefined') {
-                try { Quagga.stop(); } catch(e) {}
-            }
-            
-            if (barcodeStream) {
-                barcodeStream.getTracks().forEach(t => t.stop());
-                barcodeStream = null;
-            }
-            
+            if (typeof Quagga !== 'undefined') try { Quagga.stop(); } catch(e) {}
+            if (barcodeStream) { barcodeStream.getTracks().forEach(t => t.stop()); barcodeStream = null; }
             document.getElementById('barcode-video').style.display = 'block';
-            
-            // Remove any Quagga-created elements
-            const quaggaCanvas = document.querySelector('#barcode-video + canvas');
-            if (quaggaCanvas) quaggaCanvas.remove();
-            
             document.getElementById('barcode-modal').classList.remove('active');
-            
-            // Restart main camera
-            if (cameraConfig[currentMode]?.deviceId) {
-                startCameraForMode(currentMode);
-            }
+            if (cameraConfig[currentMode]?.deviceId) startCameraForMode(currentMode);
         }
         
         // ============================================
-        // PHOTOS PANEL (RESPONSIVE)
+        // UI
         // ============================================
         function togglePhotosPanel() {
-            const panel = document.getElementById('photos-panel');
-            panel.classList.toggle('visible');
+            document.getElementById('photos-panel').classList.toggle('visible');
         }
         
-        // ============================================
-        // UI UPDATES
-        // ============================================
         function updateUI() {
             const counts = { main: 0, closeup: 0, handheld: 0 };
             photos.forEach(p => counts[p.mode]++);
@@ -2527,17 +1870,14 @@
             document.getElementById('photos-toggle-count').textContent = photos.length;
             
             const grid = document.getElementById('photos-grid');
-            grid.innerHTML = '';
-            photos.forEach((p, i) => {
-                const div = document.createElement('div');
-                div.className = 'photo-thumb';
-                div.innerHTML = `
-                    <img src="${p.url}" alt="Photo ${i+1}">
-                    <div class="photo-label">${p.mode.toUpperCase()}</div>
+            grid.innerHTML = photos.map((p, i) => `
+                <div class="photo-thumb">
+                    <img src="${p.url}" alt="">
+                    <div class="photo-folder">${p.folder}</div>
+                    <div class="photo-label">${p.type}</div>
                     <button class="delete-btn" onclick="deletePhoto(${i})">×</button>
-                `;
-                grid.appendChild(div);
-            });
+                </div>
+            `).join('');
             
             document.getElementById('complete-btn').disabled = !currentSKU || photos.length === 0;
         }
@@ -2548,15 +1888,6 @@
             document.getElementById('timer-display').textContent = formatTime(s);
         }
         
-        function updateAIBadge(active) {
-            document.querySelectorAll('.ai-badge').forEach(b => {
-                b.classList.toggle('active', b.classList.contains(active));
-            });
-        }
-        
-        // ============================================
-        // TOAST / PROCESSING
-        // ============================================
         function showToast(type, msg) {
             const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
             const toast = document.createElement('div');
@@ -2583,9 +1914,6 @@
             document.getElementById('processing-overlay').classList.remove('active');
         }
         
-        // ============================================
-        // UTILITIES
-        // ============================================
         function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -2595,12 +1923,12 @@
             });
         }
         
-        function formatTime(seconds) {
-            return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+        function formatTime(s) {
+            return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
         }
         
         function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
+            return new Promise(r => setTimeout(r, ms));
         }
     </script>
 </body>
