@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.8.2</title>
+    <title>VintageLister Browser v2.8.4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         :root {
@@ -210,6 +210,7 @@
         .ai-badge.gemini { background: #7c3aed; }
         .ai-badge.claude { background: #d97706; }
         .ai-badge.s3 { background: #059669; }
+        .ai-badge.n8n { background: #e11d48; }
         .ai-badge.active { box-shadow: 0 0 0 2px white; }
         .ai-arrow { color: #64748b; font-size: 8px; }
         
@@ -354,6 +355,125 @@
             display: flex; align-items: center; justify-content: center;
         }
         .photo-thumb:hover .delete-btn { opacity: 1; }
+        .photo-thumb.clickable { cursor: pointer; }
+        .photo-thumb.clickable:hover { transform: scale(1.05); }
+        
+        /* Photo Lightbox */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .lightbox-modal.active { display: flex; }
+        
+        .lightbox-container {
+            position: relative;
+            width: 90%;
+            max-width: 900px;
+            height: 80vh;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .lightbox-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+        
+        .lightbox-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .lightbox-controls {
+            background: rgba(0,0,0,0.8);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .lightbox-nav {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .lightbox-nav button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+        
+        .lightbox-nav button:hover:not(:disabled) { background: rgba(255,255,255,0.4); }
+        .lightbox-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .lightbox-info {
+            flex: 1;
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .lightbox-info div { margin: 2px 0; }
+        .lightbox-info strong { color: white; }
+        
+        .lightbox-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .lightbox-actions button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.15s;
+        }
+        
+        .lightbox-actions button:hover { background: rgba(255,255,255,0.4); }
+        .lightbox-actions button.delete { background: rgba(239,68,68,0.3); }
+        .lightbox-actions button.delete:hover { background: rgba(239,68,68,0.5); }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.15s;
+        }
+        
+        .lightbox-close:hover { background: rgba(0,0,0,0.8); }
         
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.8);
@@ -635,13 +755,15 @@
                 <!-- AI & Save Status -->
                 <div class="section-card">
                     <div class="ai-status">
-                        <div class="ai-status-title">🤖 AI + STORAGE</div>
+                        <div class="ai-status-title">🤖 AI + STORAGE + AUTOMATION</div>
                         <div class="ai-status-chain">
                             <span class="ai-badge gemini">GEMINI</span>
                             <span class="ai-arrow">→</span>
                             <span class="ai-badge claude">CLAUDE</span>
                             <span class="ai-arrow">+</span>
                             <span class="ai-badge s3">S3</span>
+                            <span class="ai-arrow">+</span>
+                            <span class="ai-badge n8n">n8n</span>
                         </div>
                     </div>
                     
@@ -859,7 +981,30 @@
         </div>
     </div>
     
+    <!-- Photo Lightbox -->
+    <div class="lightbox-modal" id="photo-lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <div class="lightbox-container">
+            <div class="lightbox-image" id="lightbox-image"></div>
+            <div class="lightbox-controls">
+                <div class="lightbox-nav">
+                    <button id="lightbox-prev" onclick="lightboxPrev()">◀</button>
+                    <button id="lightbox-next" onclick="lightboxNext()">▶</button>
+                </div>
+                <div class="lightbox-info">
+                    <div><strong id="lightbox-index">1/1</strong></div>
+                    <div><span id="lightbox-type"></span> • <span id="lightbox-folder"></span></div>
+                </div>
+                <div class="lightbox-actions">
+                    <button id="lightbox-delete" onclick="lightboxDelete()" class="delete">🗑 Delete</button>
+                    <button onclick="closeLightbox()">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="toast-container" id="toast-container"></div>
+
     
     <div class="processing-overlay" id="processing-overlay">
         <div class="processing-spinner"></div>
@@ -1158,14 +1303,36 @@
                 await sleep(300);
                 
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                const virtualKeywords = ['droidcam', 'obs', 'manycam', 'virtual', 'snap'];
-                availableCameras = devices.filter(d => {
-                    if (d.kind !== 'videoinput' || !d.deviceId) return false;
-                    return !virtualKeywords.some(v => (d.label || '').toLowerCase().includes(v));
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                // DEBUG: Log all video devices found
+                console.group('📹 Camera Enumeration Debug');
+                console.log(`Total video devices detected: ${videoDevices.length}`);
+                videoDevices.forEach((cam, i) => {
+                    console.log(`[${i}] "${cam.label}" (ID: ${cam.deviceId.substring(0, 12)}...)`);
                 });
+                
+                // Filter out virtual cameras
+                const virtualKeywords = ['droidcam', 'obs', 'manycam', 'virtual', 'snap'];
+                availableCameras = videoDevices.filter(d => {
+                    if (!d.deviceId) return false;
+                    const isVirtual = virtualKeywords.some(v => (d.label || '').toLowerCase().includes(v));
+                    if (isVirtual) {
+                        console.log(`  ❌ Filtered: "${d.label}" (contains virtual keyword)`);
+                    }
+                    return !isVirtual;
+                });
+                
+                console.log(`\nCameras after filtering: ${availableCameras.length}`);
+                availableCameras.forEach((cam, i) => {
+                    console.log(`[${i}] "${cam.label}"`);
+                });
+                console.log('Virtual keywords:', virtualKeywords.join(', '));
+                console.groupEnd();
                 
                 populateCameraSelects();
             } catch (err) {
+                console.error('❌ Camera enumeration error:', err);
                 showToast('error', `Camera: ${err.message}`);
             }
         }
@@ -1536,6 +1703,54 @@
         }
         
         // ============================================
+        // N8N WEBHOOK INTEGRATION
+        // ============================================
+        async function sendToN8N() {
+            try {
+                const n8nData = {
+                    sku: currentSKU,
+                    category: detectedCategory || 'Unknown',
+                    measurements: parsedMeasurements,
+                    measurementCount: Object.keys(parsedMeasurements).length,
+                    photoCount: photos.length,
+                    timestamp: new Date().toISOString(),
+                    itemDuration: itemStartTime ? Math.floor((Date.now() - itemStartTime) / 1000) : 0
+                };
+                
+                console.log('📧 Sending to n8n:', n8nData.sku);
+                
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'n8n',
+                        formData: n8nData
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.warn('n8n response not OK:', response.status);
+                    return false;
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('✅ n8n notification sent');
+                    return true;
+                } else {
+                    console.warn('n8n error:', result.error);
+                    return false;
+                }
+                
+            } catch (err) {
+                console.error('n8n send error:', err);
+                // Non-blocking error - don't interrupt workflow
+                showToast('warning', 'Could not notify n8n (continuing anyway)');
+                return false;
+            }
+        }
+        
+        // ============================================
         // COMPLETE ITEM
         // ============================================
         async function completeItem() {
@@ -1593,15 +1808,21 @@
                 setProcessing('Uploading to S3...', '', 50);
                 uploadedToS3 = await uploadToS3();
                 
+                // Send to n8n (non-blocking)
+                if (uploadedToS3 || savedToFolder) {
+                    setProcessing('Notifying n8n...', '', 75);
+                    await sendToN8N();
+                }
+                
                 hideProcessing();
                 
                 // Show result
                 if (savedToFolder && uploadedToS3) {
-                    showToast('success', `✅ Saved locally + uploaded to S3`);
+                    showToast('success', `✅ Saved locally + uploaded to S3 + notified n8n`);
                 } else if (savedToFolder) {
                     showToast('success', `✅ Saved to ${saveDirectoryHandle.name}/${currentSKU}/`);
                 } else if (uploadedToS3) {
-                    showToast('success', `✅ Uploaded to S3`);
+                    showToast('success', `✅ Uploaded to S3 + notified n8n`);
                 } else {
                     // Fallback to browser downloads
                     showToast('warning', 'No save location - downloading files');
@@ -1800,32 +2021,89 @@
         // BARCODE SCANNER
         // ============================================
         async function openBarcodeScanner() {
+            // Validate barcode camera is configured
             if (!cameraConfig.barcode?.deviceId) {
                 showToast('warning', 'Set barcode camera in Settings');
                 return openSettings();
             }
             
-            stopCurrentStream();
-            document.getElementById('barcode-modal').classList.add('active');
-            document.getElementById('barcode-status').textContent = 'Starting...';
+            // Validate that the configured camera actually exists
+            const barcodeCamera = availableCameras.find(c => c.deviceId === cameraConfig.barcode.deviceId);
+            if (!barcodeCamera) {
+                showToast('error', '❌ Barcode camera not found - reconfigure in Settings');
+                console.warn('Barcode camera ID not found in available cameras:', cameraConfig.barcode.deviceId);
+                return openSettings();
+            }
             
-            if (typeof Quagga !== 'undefined') {
+            // Stop all other streams
+            stopCurrentStream();
+            await sleep(200);
+            
+            document.getElementById('barcode-modal').classList.add('active');
+            document.getElementById('barcode-status').textContent = 'Initializing scanner...';
+            document.getElementById('barcode-status').style.color = '#f59e0b';
+            
+            // Guard: Check if Quagga is available
+            if (typeof Quagga === 'undefined') {
+                document.getElementById('barcode-status').textContent = '❌ Scanner library not loaded';
+                document.getElementById('barcode-status').style.color = '#ef4444';
+                showToast('error', 'Barcode library unavailable');
+                return;
+            }
+            
+            try {
                 const container = document.getElementById('barcode-video').parentElement;
                 document.getElementById('barcode-video').style.display = 'none';
                 
+                // Set init timeout
+                let initTimeout = setTimeout(() => {
+                    if (barcodeScanning === false) {
+                        document.getElementById('barcode-status').textContent = '⏱️ Scanner taking too long - retry';
+                        document.getElementById('barcode-status').style.color = '#f59e0b';
+                    }
+                }, 5000);
+                
                 Quagga.init({
-                    inputStream: { name: "Live", type: "LiveStream", target: container,
-                        constraints: { deviceId: cameraConfig.barcode.deviceId, width: { ideal: 640 }, height: { ideal: 480 } }
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: container,
+                        constraints: {
+                            deviceId: cameraConfig.barcode.deviceId,
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
                     },
-                    decoder: { readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"] }
+                    decoder: {
+                        readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
+                        debug: false
+                    }
                 }, (err) => {
+                    clearTimeout(initTimeout);
+                    
                     if (err) {
-                        document.getElementById('barcode-status').textContent = 'Scanner error';
+                        console.error('Quagga init error:', err);
+                        document.getElementById('barcode-status').textContent = `❌ Camera error: ${err.message || 'Unknown'}`;
+                        document.getElementById('barcode-status').style.color = '#ef4444';
+                        showToast('error', 'Barcode camera failed: ' + (err.message || 'Permission denied?'));
                         return;
                     }
-                    document.getElementById('barcode-status').textContent = 'Point at barcode...';
+                    
+                    document.getElementById('barcode-status').textContent = '🔍 Point camera at barcode...';
+                    document.getElementById('barcode-status').style.color = '#22c55e';
                     barcodeScanning = true;
-                    Quagga.start();
+                    
+                    try {
+                        Quagga.start();
+                    } catch (startErr) {
+                        console.error('Quagga start error:', startErr);
+                        document.getElementById('barcode-status').textContent = '❌ Failed to start scanner';
+                        document.getElementById('barcode-status').style.color = '#ef4444';
+                    }
+                });
+                
+                Quagga.onProcessed(() => {
+                    // Use this hook for debugging if needed
                 });
                 
                 Quagga.onDetected((result) => {
@@ -1835,11 +2113,20 @@
                     
                     const code = result.codeResult.code;
                     document.getElementById('barcode-status').textContent = `✓ ${code}`;
-                    document.getElementById('barcode-status').classList.add('success');
+                    document.getElementById('barcode-status').style.color = '#22c55e';
                     document.getElementById('sku-input').value = code;
                     
-                    setTimeout(() => { closeBarcodeScanner(); showToast('success', `SKU: ${code}`); }, 400);
+                    setTimeout(() => {
+                        closeBarcodeScanner();
+                        showToast('success', `✓ SKU: ${code}`);
+                    }, 600);
                 });
+                
+            } catch (err) {
+                console.error('Barcode scanner error:', err);
+                document.getElementById('barcode-status').textContent = `❌ ${err.message || 'Scanner error'}`;
+                document.getElementById('barcode-status').style.color = '#ef4444';
+                showToast('error', 'Barcode scanner failed: ' + err.message);
             }
         }
         
@@ -1871,11 +2158,11 @@
             
             const grid = document.getElementById('photos-grid');
             grid.innerHTML = photos.map((p, i) => `
-                <div class="photo-thumb">
+                <div class="photo-thumb clickable" ondblclick="openLightbox(${i})">
                     <img src="${p.url}" alt="">
                     <div class="photo-folder">${p.folder}</div>
                     <div class="photo-label">${p.type}</div>
-                    <button class="delete-btn" onclick="deletePhoto(${i})">×</button>
+                    <button class="delete-btn" onclick="deletePhoto(${i}); event.stopPropagation();">×</button>
                 </div>
             `).join('');
             
@@ -1929,6 +2216,71 @@
         
         function sleep(ms) {
             return new Promise(r => setTimeout(r, ms));
+        }
+        
+        // ============================================
+        // PHOTO LIGHTBOX
+        // ============================================
+        let currentLightboxIndex = 0;
+        
+        function openLightbox(index) {
+            if (!photos || photos.length === 0) return;
+            currentLightboxIndex = index;
+            displayLightboxImage();
+            document.getElementById('photo-lightbox').classList.add('active');
+            document.addEventListener('keydown', handleLightboxKeys);
+        }
+        
+        function closeLightbox() {
+            document.getElementById('photo-lightbox').classList.remove('active');
+            document.removeEventListener('keydown', handleLightboxKeys);
+        }
+        
+        function displayLightboxImage() {
+            if (!photos || currentLightboxIndex >= photos.length) return;
+            
+            const photo = photos[currentLightboxIndex];
+            document.getElementById('lightbox-image').innerHTML = `<img src="${photo.url}" alt="">`;
+            document.getElementById('lightbox-index').textContent = `${currentLightboxIndex + 1}/${photos.length}`;
+            document.getElementById('lightbox-type').textContent = photo.type || 'unknown';
+            document.getElementById('lightbox-folder').textContent = photo.folder || 'none';
+            
+            // Update nav buttons
+            document.getElementById('lightbox-prev').disabled = currentLightboxIndex === 0;
+            document.getElementById('lightbox-next').disabled = currentLightboxIndex === photos.length - 1;
+        }
+        
+        function lightboxPrev() {
+            if (currentLightboxIndex > 0) {
+                currentLightboxIndex--;
+                displayLightboxImage();
+            }
+        }
+        
+        function lightboxNext() {
+            if (currentLightboxIndex < photos.length - 1) {
+                currentLightboxIndex++;
+                displayLightboxImage();
+            }
+        }
+        
+        function lightboxDelete() {
+            deletePhoto(currentLightboxIndex);
+            if (photos.length === 0) {
+                closeLightbox();
+            } else {
+                currentLightboxIndex = Math.min(currentLightboxIndex, photos.length - 1);
+                displayLightboxImage();
+            }
+        }
+        
+        function handleLightboxKeys(e) {
+            if (!document.getElementById('photo-lightbox').classList.contains('active')) return;
+            
+            if (e.key === 'ArrowLeft') lightboxPrev();
+            else if (e.key === 'ArrowRight') lightboxNext();
+            else if (e.key === 'Escape') closeLightbox();
+            else if (e.key === 'Delete') lightboxDelete();
         }
     </script>
 </body>
