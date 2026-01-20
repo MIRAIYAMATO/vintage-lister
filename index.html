@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister Browser v2.7.6</title>
+    <title>VintageLister Browser v2.8.0</title>
     <!-- QuaggaJS for barcode scanning fallback -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
+        /* ============================================
+           CSS VARIABLES
+           ============================================ */
         :root {
             --color-primary: #3b82f6;
             --color-primary-dark: #2563eb;
@@ -24,11 +27,13 @@
             --color-border: #e2e8f0;
             --color-dark: #1e293b;
             --color-purple: #7c3aed;
-            --color-cyan: #0891b2;
             --radius-md: 8px;
             --radius-lg: 12px;
         }
         
+        /* ============================================
+           BASE STYLES
+           ============================================ */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         html, body {
@@ -38,7 +43,12 @@
             overflow: hidden;
         }
         
-        /* LAYOUT */
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        
+        /* ============================================
+           LAYOUT
+           ============================================ */
         .desktop-layout {
             display: grid;
             grid-template-columns: 320px minmax(400px, 1fr) 280px;
@@ -46,7 +56,6 @@
             overflow: hidden;
         }
         
-        /* Responsive adjustment for smaller screens */
         @media (max-width: 1200px) {
             .desktop-layout {
                 grid-template-columns: 280px minmax(300px, 1fr) 240px;
@@ -55,14 +64,30 @@
         
         @media (max-width: 900px) {
             .desktop-layout {
-                grid-template-columns: 260px 1fr;
+                grid-template-columns: 280px 1fr;
             }
             .photos-panel {
-                display: none;
+                position: fixed;
+                right: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 500;
+                box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+            }
+            .photos-panel.visible {
+                transform: translateX(0);
+            }
+            .photos-toggle {
+                display: flex !important;
             }
         }
         
-        /* LEFT PANEL */
+        /* ============================================
+           LEFT PANEL
+           ============================================ */
         .form-panel {
             background: var(--color-surface);
             display: flex;
@@ -70,7 +95,7 @@
             overflow: hidden;
         }
         
-        /* TIMER HEADER */
+        /* Timer Header */
         .floating-timer {
             background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
             color: white;
@@ -101,6 +126,7 @@
             background: var(--color-error); 
             animation: pulse-attention 2s infinite;
         }
+        
         @keyframes pulse-attention {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
@@ -114,7 +140,7 @@
             font-weight: 600; 
         }
         
-        /* FORM CONTENT */
+        /* Form Content */
         .form-content { flex: 1; overflow-y: auto; padding: 12px; }
         
         .section-card {
@@ -147,7 +173,9 @@
         }
         .check-circle.complete { background: var(--color-success); color: white; }
         
-        /* SKU Input */
+        /* ============================================
+           SKU INPUT
+           ============================================ */
         .sku-input-row { 
             display: flex; 
             gap: 6px; 
@@ -155,7 +183,7 @@
         }
         .sku-input {
             flex: 1;
-            min-width: 0; /* Allow shrinking */
+            min-width: 0;
             padding: 10px;
             border: 2px solid var(--color-border);
             border-radius: var(--radius-md);
@@ -163,6 +191,7 @@
             font-weight: 600;
         }
         .sku-input:focus { outline: none; border-color: var(--color-primary); }
+        
         .sku-btn {
             padding: 10px 12px;
             border-radius: var(--radius-md);
@@ -177,22 +206,40 @@
         .sku-btn-scan:hover { background: var(--color-primary-dark); }
         .sku-btn-start { background: var(--color-success); color: white; }
         .sku-btn-start:hover { background: var(--color-success-dark); }
+        
         .sku-display {
             padding: 12px;
             background: var(--color-success);
             color: white;
             border-radius: var(--radius-md);
-            font-size: 16px; font-weight: 700;
+            font-size: 16px; 
+            font-weight: 700;
             text-align: center;
             display: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
         }
         .sku-display.visible { display: block; }
+        .sku-display:hover { background: var(--color-success-dark); }
+        .sku-display::after {
+            content: '✕ Cancel';
+            position: absolute;
+            right: 12px;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .sku-display:hover::after { opacity: 0.8; }
         
-        /* Buttons */
+        /* ============================================
+           BUTTONS
+           ============================================ */
         .btn {
             padding: 10px 16px;
             border-radius: var(--radius-md);
-            font-size: 13px; font-weight: 600;
+            font-size: 13px; 
+            font-weight: 600;
             cursor: pointer;
             border: 2px solid transparent;
             transition: all 0.15s;
@@ -202,8 +249,12 @@
         .btn-success:hover { background: var(--color-success-dark); }
         .btn-primary { background: var(--color-primary); color: white; }
         .btn-primary:hover { background: var(--color-primary-dark); }
+        .btn-error { background: var(--color-error); color: white; }
+        .btn-error:hover { background: var(--color-error-dark); }
         
-        /* MODE BUTTONS */
+        /* ============================================
+           MODE BUTTONS
+           ============================================ */
         .mode-buttons { display: flex; flex-direction: column; gap: 8px; }
         
         .mode-btn {
@@ -237,7 +288,9 @@
         }
         .mode-camera-status.not-set { background: var(--color-error); }
         
-        /* AI Status */
+        /* ============================================
+           AI STATUS
+           ============================================ */
         .ai-status {
             background: linear-gradient(135deg, #1e1b4b, #312e81);
             border-radius: 10px;
@@ -254,26 +307,37 @@
         .ai-badge.active { box-shadow: 0 0 0 2px white; }
         .ai-arrow { color: #64748b; font-size: 8px; }
         
-        /* Complete Button */
+        /* ============================================
+           COMPLETE SECTION
+           ============================================ */
         .complete-section { padding: 16px; border-top: 1px solid var(--color-border); }
+        
         .complete-btn {
-            width: 100%; padding: 14px;
+            width: 100%; 
+            padding: 14px;
             background: linear-gradient(135deg, var(--color-success), var(--color-success-dark));
-            color: white; border: none;
+            color: white; 
+            border: none;
             border-radius: var(--radius-lg);
-            font-size: 15px; font-weight: 700;
+            font-size: 15px; 
+            font-weight: 700;
             cursor: pointer;
         }
-        .complete-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(34,197,94,0.4); }
+        .complete-btn:hover:not(:disabled) { 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(34,197,94,0.4); 
+        }
         .complete-btn:disabled { background: var(--color-border); cursor: not-allowed; }
         
-        /* CENTER - Camera */
+        /* ============================================
+           CENTER - CAMERA PANEL
+           ============================================ */
         .camera-panel {
             background: #000;
             display: flex;
             flex-direction: column;
             position: relative;
-            min-width: 0; /* Allow shrinking */
+            min-width: 0;
             overflow: hidden;
         }
         
@@ -286,6 +350,7 @@
             z-index: 10;
             flex-shrink: 0;
         }
+        
         .camera-mode-badge {
             padding: 6px 12px;
             border-radius: 6px;
@@ -296,10 +361,27 @@
         .camera-mode-badge.main { background: var(--color-primary); }
         .camera-mode-badge.closeup { background: var(--color-purple); }
         .camera-mode-badge.handheld { background: var(--color-warning); }
+        
         .camera-resolution { color: var(--color-success); font-size: 12px; font-family: monospace; }
         .camera-name { color: #888; font-size: 11px; flex: 1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        /* Camera View - matches v100 approach */
+        /* Photos Toggle Button (tablet/mobile) */
+        .photos-toggle {
+            display: none;
+            background: var(--color-primary);
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            gap: 4px;
+            align-items: center;
+        }
+        .photos-toggle:hover { background: var(--color-primary-dark); }
+        
+        /* Camera View */
         .camera-view {
             flex: 1;
             display: flex;
@@ -308,7 +390,7 @@
             position: relative;
             overflow: hidden;
             background: #000;
-            min-height: 0; /* Critical for flexbox to allow shrinking */
+            min-height: 0;
         }
         .camera-view-container {
             position: relative;
@@ -359,9 +441,10 @@
         .shutter-hint { font-size: 11px; color: #888; text-align: center; margin-top: 8px; }
         .shutter-hint kbd { background: #444; color: white; padding: 2px 6px; border-radius: 4px; }
         
-        /* Flash */
+        /* Flash Overlay */
         .flash-overlay {
-            position: absolute; inset: 0;
+            position: absolute; 
+            inset: 0;
             background: white;
             opacity: 0;
             pointer-events: none;
@@ -369,12 +452,36 @@
         }
         .flash-overlay.flash { opacity: 1; transition: opacity 0.05s; }
         
-        /* RIGHT PANEL */
+        /* ============================================
+           RIGHT PANEL - PHOTOS
+           ============================================ */
         .photos-panel {
             background: var(--color-background);
             overflow-y: auto;
             padding: 16px;
             border-left: 1px solid var(--color-border);
+        }
+        
+        .photos-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .photos-close {
+            display: none;
+            background: var(--color-border);
+            border: none;
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .photos-close:hover { background: var(--color-text-muted); color: white; }
+        
+        @media (max-width: 900px) {
+            .photos-close { display: flex; align-items: center; justify-content: center; }
         }
         
         .photos-section { margin-bottom: 16px; }
@@ -419,16 +526,24 @@
             top: 2px; right: 2px;
             width: 16px; height: 16px;
             background: var(--color-error);
-            border: none; border-radius: 50%;
-            color: white; font-size: 10px;
+            border: none; 
+            border-radius: 50%;
+            color: white; 
+            font-size: 10px;
             cursor: pointer;
             opacity: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .photo-thumb:hover .delete-btn { opacity: 1; }
         
-        /* SETTINGS MODAL */
+        /* ============================================
+           MODALS
+           ============================================ */
         .modal-overlay {
-            position: fixed; inset: 0;
+            position: fixed; 
+            inset: 0;
             background: rgba(0,0,0,0.8);
             display: none;
             align-items: center;
@@ -474,10 +589,26 @@
             flex: 1;
         }
         
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            background: var(--color-background);
+        }
+        
+        /* Camera Setup Grid */
         .camera-setup-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 16px;
+        }
+        
+        @media (max-width: 800px) {
+            .camera-setup-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         .camera-setup-card {
@@ -539,16 +670,9 @@
         }
         .camera-preview-status.connected { background: var(--color-success); }
         
-        .modal-footer {
-            padding: 16px 20px;
-            border-top: 1px solid var(--color-border);
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            background: var(--color-background);
-        }
-        
-        /* TOAST */
+        /* ============================================
+           TOAST NOTIFICATIONS
+           ============================================ */
         .toast-container {
             position: fixed;
             top: 20px; right: 20px;
@@ -577,9 +701,12 @@
         .toast-message { font-size: 13px; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
         
-        /* PROCESSING OVERLAY */
+        /* ============================================
+           PROCESSING OVERLAY
+           ============================================ */
         .processing-overlay {
-            position: fixed; inset: 0;
+            position: fixed; 
+            inset: 0;
             background: rgba(0,0,0,0.9);
             display: none;
             align-items: center;
@@ -602,7 +729,9 @@
         .processing-progress { width: 300px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
         .processing-progress-bar { height: 100%; background: var(--color-primary); transition: width 0.3s; }
         
-        /* BARCODE SCANNER */
+        /* ============================================
+           BARCODE SCANNER
+           ============================================ */
         .barcode-scanner-container {
             position: relative;
             background: #000;
@@ -640,11 +769,11 @@
             font-size: 14px;
             font-weight: 600;
         }
-        .barcode-status.success {
-            background: var(--color-success);
-        }
+        .barcode-status.success { background: var(--color-success); }
         
-        /* MEASUREMENT SECTION */
+        /* ============================================
+           MEASUREMENT SECTION
+           ============================================ */
         .measure-category {
             display: flex;
             align-items: center;
@@ -686,9 +815,7 @@
             min-width: 14px;
         }
         
-        #record-section {
-            margin-top: 8px;
-        }
+        #record-section { margin-top: 8px; }
         
         .record-btn {
             width: 100%;
@@ -717,9 +844,7 @@
         }
         .record-icon { font-size: 18px; }
         
-        #post-record-section {
-            margin-top: 8px;
-        }
+        #post-record-section { margin-top: 8px; }
         
         .recorded-badge {
             background: #f0fdf4;
@@ -799,7 +924,7 @@
                 </div>
                 <div class="timer-stats">
                     <div><strong id="stat-today">0</strong> today</div>
-                    <div class="version-badge">v2.7.6</div>
+                    <div class="version-badge">v2.8.0</div>
                 </div>
             </div>
             
@@ -815,7 +940,7 @@
                         <button class="sku-btn sku-btn-scan" onclick="openBarcodeScanner()" title="Scan Barcode">📷</button>
                         <button class="sku-btn sku-btn-start" onclick="startNewItem()">START</button>
                     </div>
-                    <div class="sku-display" id="sku-display"></div>
+                    <div class="sku-display" id="sku-display" onclick="confirmCancelItem()" title="Click to cancel item"></div>
                 </div>
                 
                 <!-- Photo Mode -->
@@ -884,7 +1009,7 @@
                         <span class="measure-category-text">Take a MAIN photo to detect category</span>
                     </div>
                     
-                    <!-- Measurement Hints (shown after category detected) -->
+                    <!-- Measurement Hints -->
                     <div id="measure-hints" class="measure-hints hidden">
                         <div class="measure-hints-title">📏 Measurement Order:</div>
                         <div id="measure-hints-list" class="measure-hints-list"></div>
@@ -917,7 +1042,7 @@
                     🤖 COMPLETE + AI PROCESS
                 </button>
                 <div style="text-align:center; margin-top:8px; font-size:10px; color:var(--color-text-muted);">
-                    VintageLister Browser <span id="version-footer">v2.7.6</span>
+                    VintageLister Browser <span id="version-footer">v2.8.0</span>
                 </div>
             </div>
         </div>
@@ -928,6 +1053,9 @@
                 <span class="camera-mode-badge main" id="camera-mode-badge">MAIN</span>
                 <span class="camera-resolution" id="camera-resolution">--</span>
                 <span class="camera-name" id="camera-name">No camera selected</span>
+                <button class="photos-toggle" id="photos-toggle" onclick="togglePhotosPanel()">
+                    📷 <span id="photos-toggle-count">0</span>
+                </button>
             </div>
             
             <div class="camera-view" id="camera-view">
@@ -951,10 +1079,13 @@
         </div>
         
         <!-- RIGHT PANEL -->
-        <div class="photos-panel">
+        <div class="photos-panel" id="photos-panel">
+            <div class="photos-panel-header">
+                <span class="photos-section-title">📷 All Photos</span>
+                <button class="photos-close" onclick="togglePhotosPanel()">✕</button>
+            </div>
             <div class="photos-section">
                 <div class="photos-section-header">
-                    <span class="photos-section-title">📷 All Photos</span>
                     <span class="photos-section-count" id="total-count">0</span>
                 </div>
                 <div style="font-size:10px; color:var(--color-text-muted); margin-bottom:10px;">
@@ -1060,6 +1191,30 @@
         </div>
     </div>
     
+    <!-- CONFIRM CANCEL MODAL -->
+    <div class="modal-overlay" id="confirm-cancel-modal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header" style="background: var(--color-error);">
+                <span class="modal-title">⚠️ Cancel Item?</span>
+                <button class="modal-close" onclick="closeConfirmCancel()">✕</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p style="margin-bottom: 12px;">Are you sure you want to cancel this item?</p>
+                <p style="font-size: 13px; color: var(--color-text-muted);">
+                    SKU: <strong id="cancel-sku-display"></strong><br>
+                    Photos: <strong id="cancel-photo-count"></strong>
+                </p>
+                <p style="font-size: 12px; color: var(--color-error); margin-top: 12px;">
+                    This will discard all photos and measurements.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" style="background:#f1f5f9;" onclick="closeConfirmCancel()">Keep Working</button>
+                <button class="btn btn-error" onclick="cancelItem()">Yes, Cancel Item</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Toast -->
     <div class="toast-container" id="toast-container"></div>
     
@@ -1075,11 +1230,12 @@
 
     <script>
         // ============================================
-        // VERSION
+        // CONSTANTS
         // ============================================
-        const VERSION = '2.7.6';
-        const VERSION_DATE = '2025-01-18';
+        const VERSION = '2.8.0';
+        const VERSION_DATE = '2025-01-19';
         const CHANGELOG = {
+            '2.8.0': 'Bug fixes: .hidden CSS, image error handling, cancel item, daily counter reset, tablet responsive',
             '2.7.6': 'Expanded photo classifications (pants inside-out, single stitch, Talon zipper, etc.)',
             '2.7.5': 'QuaggaJS barcode library, fixed SKU button layout, improved camera detection',
             '2.7.4': 'Fixed measurement button spacing, horizontal record button, cleaner parsed display',
@@ -1090,19 +1246,24 @@
             '2.6': 'Added barcode scanner for SKU, fixed camera dropdown population, centered buttons',
             '2.5': 'Fixed camera view resizing, proper aspect ratio, responsive layout',
             '2.4': '3 cameras with settings modal, live previews, localStorage persistence',
-            '2.3': 'AI integration, 3-mode system',
-            '2.2': 'Camera init fixes',
-            '2.1': 'Error handling, versioning',
-            '2.0': 'Initial browser version'
+            '2.3': 'AI integration, 3-mode system'
         };
         
         const LAMBDA_URL = 'https://i745n2nibsrhx7ivc7w6mf7cgy0caatc.lambda-url.us-east-2.on.aws/';
+        
+        const RESOLUTION_PRESETS = [
+            { w: 4096, h: 2160, name: '4K DCI' },
+            { w: 3840, h: 2160, name: '4K UHD' },
+            { w: 2560, h: 1440, name: '1440p' },
+            { w: 1920, h: 1080, name: '1080p' }
+        ];
+        
+        const AI_ORDER = ['claude', 'openai', 'gemini', 'manual'];
         
         // ============================================
         // MEASUREMENT TEMPLATES
         // ============================================
         const MEASUREMENT_TEMPLATES = {
-            // TOPS
             'tops-standard': [
                 'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
                 'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
@@ -1115,8 +1276,6 @@
                 'Neck-to-Shoulder', 'Shoulder-to-Shoulder', 'Pit-to-Pit',
                 'Waist', 'Bottom Hem', 'Length'
             ],
-            
-            // BUTTON SHIRTS (adds Neck Circumference)
             'button-standard': [
                 'Neck Circumference', 'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening',
                 'Bottom Sleeve', 'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
@@ -1129,16 +1288,12 @@
                 'Neck Circumference', 'Neck-to-Shoulder', 'Shoulder-to-Shoulder',
                 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
             ],
-            
-            // BOTTOMS
             'bottoms-pants': [
                 'Waist', 'Rise', 'Inseam', 'Thigh', 'Knee', 'Leg Opening', 'Total Length'
             ],
             'bottoms-shorts': [
                 'Waist', 'Rise', 'Inseam', 'Thigh', 'Leg Opening'
             ],
-            
-            // OUTER
             'outer-standard': [
                 'Neck-to-Shoulder', 'Top Sleeve', 'Sleeve Opening', 'Bottom Sleeve',
                 'Shoulder-to-Shoulder', 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
@@ -1146,27 +1301,39 @@
             'outer-raglan': [
                 'Neck-to-Cuff', 'Sleeve Opening', 'Bottom Sleeve',
                 'Pit-to-Pit', 'Waist', 'Bottom Hem', 'Length'
-            ],
+            ]
         };
         
-        // Keywords for parsing voice measurements
         const MEASUREMENT_KEYWORDS = {
-            'neck': 'Neck Circumference', 'collar': 'Neck Circumference',
-            'neck to shoulder': 'Neck-to-Shoulder', 'neck shoulder': 'Neck-to-Shoulder',
-            'shoulder': 'Shoulder-to-Shoulder', 'shoulders': 'Shoulder-to-Shoulder',
-            'top sleeve': 'Top Sleeve', 'sleeve': 'Top Sleeve', 'upper sleeve': 'Top Sleeve',
-            'sleeve opening': 'Sleeve Opening', 'cuff': 'Sleeve Opening',
-            'bottom sleeve': 'Bottom Sleeve', 'lower sleeve': 'Bottom Sleeve',
+            'neck': 'Neck Circumference', 
+            'collar': 'Neck Circumference',
+            'neck to shoulder': 'Neck-to-Shoulder', 
+            'neck shoulder': 'Neck-to-Shoulder',
+            'shoulder': 'Shoulder-to-Shoulder', 
+            'shoulders': 'Shoulder-to-Shoulder',
+            'top sleeve': 'Top Sleeve', 
+            'sleeve': 'Top Sleeve', 
+            'upper sleeve': 'Top Sleeve',
+            'sleeve opening': 'Sleeve Opening', 
+            'cuff': 'Sleeve Opening',
+            'bottom sleeve': 'Bottom Sleeve', 
+            'lower sleeve': 'Bottom Sleeve',
             'neck to cuff': 'Neck-to-Cuff',
-            'pit': 'Pit-to-Pit', 'pit to pit': 'Pit-to-Pit', 'chest': 'Pit-to-Pit',
+            'pit': 'Pit-to-Pit', 
+            'pit to pit': 'Pit-to-Pit', 
+            'chest': 'Pit-to-Pit',
             'waist': 'Waist',
-            'bottom': 'Bottom Hem', 'hem': 'Bottom Hem', 'bottom hem': 'Bottom Hem',
-            'length': 'Length', 'total length': 'Total Length',
+            'bottom': 'Bottom Hem', 
+            'hem': 'Bottom Hem', 
+            'bottom hem': 'Bottom Hem',
+            'length': 'Length', 
+            'total length': 'Total Length',
             'rise': 'Rise',
             'inseam': 'Inseam',
             'thigh': 'Thigh',
             'knee': 'Knee',
-            'leg opening': 'Leg Opening', 'leg': 'Leg Opening'
+            'leg opening': 'Leg Opening', 
+            'leg': 'Leg Opening'
         };
         
         // ============================================
@@ -1176,8 +1343,9 @@
         let currentSKU = '';
         let currentStream = null;
         let availableCameras = [];
+        let photos = [];
         
-        // Camera assignments (saved to localStorage)
+        // Camera config
         let cameraConfig = {
             main: { deviceId: null, label: '' },
             closeup: { deviceId: null, label: '' },
@@ -1185,27 +1353,20 @@
             barcode: { deviceId: null, label: '' }
         };
         
-        // Preview streams for settings modal
+        // Preview streams
         let previewStreams = { main: null, closeup: null, handheld: null };
         
-        // Barcode scanner
+        // Barcode
         let barcodeStream = null;
         let barcodeDetector = null;
-        let barcodeScanInterval = null;
-        
-        // Photos
-        let photos = [];
+        let barcodeScanning = false;
         
         // Timer
         let itemStartTime = null;
         let timerInterval = null;
-        let itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
-        
-        // AI
-        const AI_ORDER = ['claude', 'openai', 'gemini', 'manual'];
         
         // Measurements
-        let detectedCategory = null; // e.g., 'tops-standard', 'bottoms-pants'
+        let detectedCategory = null;
         let currentTemplate = null;
         let mediaRecorder = null;
         let audioChunks = [];
@@ -1221,9 +1382,12 @@
             console.log(`%c VintageLister Browser v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
             console.log(`📅 ${VERSION_DATE} | ${CHANGELOG[VERSION]}`);
             
+            // Set version displays
             document.querySelector('.version-badge').textContent = `v${VERSION}`;
             document.getElementById('version-footer').textContent = `v${VERSION}`;
-            document.getElementById('stat-today').textContent = itemsToday;
+            
+            // Initialize daily counter (with date check)
+            initDailyCounter();
             
             // Load saved camera config
             loadCameraConfig();
@@ -1232,42 +1396,68 @@
             await enumerateCameras();
             
             // Auto-connect if config exists
-            if (cameraConfig.main.deviceId || cameraConfig.closeup.deviceId || cameraConfig.handheld.deviceId) {
+            if (hasCameraConfigured()) {
                 await autoConnectCameras();
             }
             
+            // Initialize keyboard shortcuts
             initKeyboard();
+            
+            // Update UI
             updateUI();
         });
         
+        function initDailyCounter() {
+            const savedDate = localStorage.getItem('vl_items_date');
+            const today = new Date().toDateString();
+            
+            if (savedDate !== today) {
+                // New day - reset counter
+                localStorage.setItem('vl_items_date', today);
+                localStorage.setItem('vl_items_today', '0');
+            }
+            
+            const itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
+            document.getElementById('stat-today').textContent = itemsToday;
+        }
+        
+        function incrementDailyCounter() {
+            let itemsToday = parseInt(localStorage.getItem('vl_items_today') || '0');
+            itemsToday++;
+            localStorage.setItem('vl_items_today', itemsToday.toString());
+            document.getElementById('stat-today').textContent = itemsToday;
+        }
+        
+        function hasCameraConfigured() {
+            return (cameraConfig.main?.deviceId || 
+                    cameraConfig.closeup?.deviceId || 
+                    cameraConfig.handheld?.deviceId);
+        }
+        
+        // ============================================
+        // CAMERA ENUMERATION
+        // ============================================
         async function enumerateCameras() {
             try {
-                // First, try to get permission with a simple request
                 console.log('📷 Requesting camera permission...');
-                const permStream = await navigator.mediaDevices.getUserMedia({
-                    video: true  // Simple request first
-                });
+                const permStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 permStream.getTracks().forEach(t => t.stop());
-                await new Promise(r => setTimeout(r, 300));
+                await sleep(300);
                 
-                // Now enumerate all devices
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 console.log('📷 All devices:', devices);
                 
-                // Filter to video inputs only, exclude virtual cameras
-                const virtual = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
+                // Filter video inputs, exclude virtual cameras
+                const virtualKeywords = ['droidcam', 'obs', 'manycam', 'virtual', 'snap camera'];
                 availableCameras = devices.filter(d => {
-                    if (d.kind !== 'videoinput') return false;
-                    if (!d.deviceId) return false;
+                    if (d.kind !== 'videoinput' || !d.deviceId) return false;
                     const label = (d.label || '').toLowerCase();
-                    const isVirtual = virtual.some(v => label.includes(v));
+                    const isVirtual = virtualKeywords.some(v => label.includes(v));
                     if (isVirtual) console.log(`📷 Skipping virtual camera: ${d.label}`);
                     return !isVirtual;
                 });
                 
                 console.log(`📷 Found ${availableCameras.length} cameras:`, availableCameras.map(c => c.label));
-                
-                // Populate settings dropdowns
                 populateCameraSelects();
                 
             } catch (err) {
@@ -1277,14 +1467,13 @@
         }
         
         function populateCameraSelects() {
-            // Filter out any undefined/null cameras
-            const validCameras = availableCameras.filter(cam => cam && cam.deviceId);
+            const validCameras = availableCameras.filter(cam => cam?.deviceId);
             
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
                 if (!select) return;
-                select.innerHTML = '<option value="">Select camera...</option>';
                 
+                select.innerHTML = '<option value="">Select camera...</option>';
                 validCameras.forEach((cam, i) => {
                     const option = document.createElement('option');
                     option.value = cam.deviceId;
@@ -1292,13 +1481,12 @@
                     select.appendChild(option);
                 });
                 
-                // Set saved value
-                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
+                if (cameraConfig[mode]?.deviceId) {
                     select.value = cameraConfig[mode].deviceId;
                 }
             });
             
-            // Also populate barcode scanner dropdown
+            // Barcode scanner dropdown
             const barcodeSelect = document.getElementById('select-barcode');
             if (barcodeSelect) {
                 barcodeSelect.innerHTML = '<option value="">Select camera for SKU scanning...</option>';
@@ -1308,18 +1496,20 @@
                     option.textContent = cam.label || `Camera ${i + 1}`;
                     barcodeSelect.appendChild(option);
                 });
-                if (cameraConfig.barcode && cameraConfig.barcode.deviceId) {
+                if (cameraConfig.barcode?.deviceId) {
                     barcodeSelect.value = cameraConfig.barcode.deviceId;
                 }
             }
         }
         
+        // ============================================
+        // CAMERA CONFIG PERSISTENCE
+        // ============================================
         function loadCameraConfig() {
             const saved = localStorage.getItem('vl_camera_config');
             if (saved) {
                 try {
                     const loaded = JSON.parse(saved);
-                    // Merge with defaults to ensure all keys exist
                     cameraConfig = {
                         main: loaded.main || { deviceId: null, label: '' },
                         closeup: loaded.closeup || { deviceId: null, label: '' },
@@ -1341,12 +1531,11 @@
         async function autoConnectCameras() {
             console.log('📷 Auto-connecting cameras...');
             
-            // Update UI status indicators
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const statusEl = document.getElementById(`status-${mode}`);
                 if (!statusEl) return;
                 
-                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
+                if (cameraConfig[mode]?.deviceId) {
                     statusEl.textContent = '✓ Ready';
                     statusEl.classList.remove('not-set');
                 } else {
@@ -1355,16 +1544,9 @@
                 }
             });
             
-            // Check if any camera is configured
-            const hasCamera = (cameraConfig.main && cameraConfig.main.deviceId) || 
-                              (cameraConfig.closeup && cameraConfig.closeup.deviceId) || 
-                              (cameraConfig.handheld && cameraConfig.handheld.deviceId);
-            
-            if (hasCamera) {
+            if (hasCameraConfigured()) {
                 document.getElementById('settings-btn').classList.remove('needs-setup');
                 document.getElementById('shutter-btn').disabled = false;
-                
-                // Start the camera for current mode
                 await startCameraForMode(currentMode);
             }
         }
@@ -1373,36 +1555,30 @@
         // SETTINGS MODAL
         // ============================================
         async function openSettings() {
-            // Stop main camera stream first to free up device
-            if (currentStream) {
-                currentStream.getTracks().forEach(t => t.stop());
-                currentStream = null;
-            }
-            
+            stopCurrentStream();
             document.getElementById('settings-modal').classList.add('active');
             
-            // Re-enumerate cameras to get fresh list
             await enumerateCameras();
             populateCameraSelects();
             
-            // If cameras were previously configured, show their previews
-            for (const mode of ['main', 'closeup', 'handheld']) {
-                if (cameraConfig[mode] && cameraConfig[mode].deviceId) {
+            ['main', 'closeup', 'handheld'].forEach(mode => {
+                if (cameraConfig[mode]?.deviceId) {
                     const select = document.getElementById(`select-${mode}`);
                     if (select) select.value = cameraConfig[mode].deviceId;
-                    // Don't auto-preview - let user click to preview
                 }
-            }
+            });
         }
         
         function closeSettings() {
-            // Stop all preview streams
+            stopAllPreviewStreams();
+            document.getElementById('settings-modal').classList.remove('active');
+        }
+        
+        function stopAllPreviewStreams() {
             Object.values(previewStreams).forEach(stream => {
                 if (stream) stream.getTracks().forEach(t => t.stop());
             });
             previewStreams = { main: null, closeup: null, handheld: null };
-            
-            document.getElementById('settings-modal').classList.remove('active');
         }
         
         async function previewCamera(mode, deviceId) {
@@ -1437,8 +1613,7 @@
                 placeholder.style.display = 'none';
                 
                 video.onloadedmetadata = () => {
-                    const w = video.videoWidth, h = video.videoHeight;
-                    status.textContent = `✓ ${w}×${h}`;
+                    status.textContent = `✓ ${video.videoWidth}×${video.videoHeight}`;
                     status.classList.add('connected');
                 };
                 
@@ -1451,16 +1626,13 @@
         }
         
         function saveSettings() {
-            // Save selections
             ['main', 'closeup', 'handheld'].forEach(mode => {
                 const select = document.getElementById(`select-${mode}`);
                 const deviceId = select.value;
                 const label = select.options[select.selectedIndex]?.textContent || '';
-                
                 cameraConfig[mode] = { deviceId: deviceId || null, label };
             });
             
-            // Save barcode camera selection
             const barcodeSelect = document.getElementById('select-barcode');
             if (barcodeSelect) {
                 const deviceId = barcodeSelect.value;
@@ -1471,7 +1643,6 @@
             saveCameraConfig();
             closeSettings();
             autoConnectCameras();
-            
             showToast('success', 'Camera settings saved!');
         }
         
@@ -1481,40 +1652,710 @@
         }
         
         // ============================================
-        // BARCODE SCANNER (QuaggaJS)
+        // CAMERA OPERATIONS
         // ============================================
-        let barcodeScanning = false;
+        function stopCurrentStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(t => t.stop());
+                currentStream = null;
+            }
+        }
         
+        async function startCameraForMode(mode) {
+            const config = cameraConfig[mode];
+            
+            if (!config?.deviceId) {
+                document.getElementById('camera-video').style.display = 'none';
+                document.getElementById('camera-placeholder').style.display = 'flex';
+                document.getElementById('camera-placeholder').innerHTML = `
+                    <div class="camera-placeholder-icon">⚠️</div>
+                    <div>No camera set for ${mode.toUpperCase()}</div>
+                    <button class="btn btn-primary" style="margin-top:16px;" onclick="openSettings()">⚙️ Open Settings</button>
+                `;
+                document.getElementById('camera-name').textContent = 'No camera';
+                document.getElementById('camera-resolution').textContent = '--';
+                return;
+            }
+            
+            stopCurrentStream();
+            
+            const video = document.getElementById('camera-video');
+            document.getElementById('camera-resolution').textContent = '...';
+            
+            // Try each resolution from highest to lowest
+            for (const res of RESOLUTION_PRESETS) {
+                try {
+                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
+                    
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: config.deviceId },
+                            width: { exact: res.w },
+                            height: { exact: res.h }
+                        }
+                    });
+                    
+                    const track = currentStream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    console.log(`✅ Got ${settings.width}x${settings.height}`);
+                    
+                    setupVideoElement(video, config.label);
+                    return;
+                    
+                } catch (e) {
+                    console.log(`❌ ${res.name} not supported`);
+                }
+            }
+            
+            // Fallback to ideal constraints
+            try {
+                console.log('📷 Falling back to ideal constraints...');
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: { exact: config.deviceId },
+                        width: { ideal: 3840 },
+                        height: { ideal: 2160 }
+                    }
+                });
+                
+                setupVideoElement(video, config.label);
+                
+            } catch (err) {
+                console.error('Camera error:', err);
+                showToast('error', `Camera: ${err.message}`);
+            }
+        }
+        
+        function setupVideoElement(video, label) {
+            video.srcObject = currentStream;
+            video.style.display = 'block';
+            document.getElementById('camera-placeholder').style.display = 'none';
+            document.getElementById('camera-name').textContent = label;
+            
+            video.onloadedmetadata = () => {
+                const w = video.videoWidth, h = video.videoHeight;
+                const resEl = document.getElementById('camera-resolution');
+                resEl.textContent = `${w}×${h}`;
+                resEl.style.color = w >= 3840 ? '#22c55e' : w >= 1920 ? '#3b82f6' : '#f59e0b';
+            };
+        }
+        
+        // ============================================
+        // MODE SWITCHING
+        // ============================================
+        function setMode(mode) {
+            currentMode = mode;
+            
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            const badge = document.getElementById('camera-mode-badge');
+            badge.className = `camera-mode-badge ${mode}`;
+            badge.textContent = mode.toUpperCase();
+            
+            startCameraForMode(mode);
+        }
+        
+        // ============================================
+        // PHOTO CAPTURE
+        // ============================================
+        function capturePhoto() {
+            const video = document.getElementById('camera-video');
+            if (!video.srcObject) {
+                showToast('warning', 'No camera active');
+                return;
+            }
+            if (!currentSKU) {
+                showToast('warning', 'Start an item first');
+                return;
+            }
+            
+            // Flash effect
+            const flash = document.getElementById('flash-overlay');
+            flash.classList.add('flash');
+            setTimeout(() => flash.classList.remove('flash'), 100);
+            
+            // Capture to canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                const isFirstMainPhoto = currentMode === 'main' && !photos.some(p => p.mode === 'main');
+                
+                photos.push({
+                    id: Date.now(),
+                    blob,
+                    url: URL.createObjectURL(blob),
+                    width: canvas.width,
+                    height: canvas.height,
+                    mode: currentMode
+                });
+                
+                updateUI();
+                showToast('success', `Captured (${currentMode})`);
+                
+                // Detect category from first MAIN photo
+                if (isFirstMainPhoto && !detectedCategory) {
+                    detectCategoryFromPhoto(blob);
+                }
+            }, 'image/jpeg', 0.95);
+        }
+        
+        function deletePhoto(index) {
+            URL.revokeObjectURL(photos[index].url);
+            photos.splice(index, 1);
+            updateUI();
+        }
+        
+        // ============================================
+        // KEYBOARD SHORTCUTS
+        // ============================================
+        function initKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if modal is open or typing in input
+                if (document.getElementById('settings-modal').classList.contains('active')) return;
+                if (document.getElementById('barcode-modal').classList.contains('active')) return;
+                if (document.getElementById('confirm-cancel-modal').classList.contains('active')) return;
+                if (e.target.matches('input')) return;
+                
+                switch(e.code) {
+                    case 'Space':
+                        e.preventDefault();
+                        capturePhoto();
+                        break;
+                    case 'Digit1':
+                        setMode('main');
+                        break;
+                    case 'Digit2':
+                        setMode('closeup');
+                        break;
+                    case 'Digit3':
+                        setMode('handheld');
+                        break;
+                    case 'KeyR':
+                        // Toggle recording
+                        toggleRecording();
+                        break;
+                    case 'Escape':
+                        // Stop recording if active
+                        if (mediaRecorder?.state === 'recording') {
+                            stopRecording();
+                        }
+                        break;
+                }
+            });
+        }
+        
+        // ============================================
+        // ITEM MANAGEMENT
+        // ============================================
+        function startNewItem() {
+            const input = document.getElementById('sku-input');
+            const sku = input.value.trim().toUpperCase();
+            
+            if (!sku) {
+                showToast('warning', 'Enter a SKU');
+                return;
+            }
+            
+            // Clear previous photos
+            photos.forEach(p => URL.revokeObjectURL(p.url));
+            photos = [];
+            
+            currentSKU = sku;
+            itemStartTime = Date.now();
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            document.getElementById('sku-input-row').style.display = 'none';
+            document.getElementById('sku-display').textContent = sku;
+            document.getElementById('sku-display').classList.add('visible');
+            document.getElementById('check-sku').textContent = '✓';
+            document.getElementById('check-sku').classList.add('complete');
+            
+            updateUI();
+            showToast('success', `Started: ${sku}`);
+        }
+        
+        function confirmCancelItem() {
+            if (!currentSKU) return;
+            
+            document.getElementById('cancel-sku-display').textContent = currentSKU;
+            document.getElementById('cancel-photo-count').textContent = photos.length;
+            document.getElementById('confirm-cancel-modal').classList.add('active');
+        }
+        
+        function closeConfirmCancel() {
+            document.getElementById('confirm-cancel-modal').classList.remove('active');
+        }
+        
+        function cancelItem() {
+            closeConfirmCancel();
+            resetItem();
+            showToast('info', 'Item cancelled');
+        }
+        
+        function resetItem() {
+            photos.forEach(p => URL.revokeObjectURL(p.url));
+            photos = [];
+            currentSKU = '';
+            
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = null;
+            itemStartTime = null;
+            
+            // Reset measurements
+            detectedCategory = null;
+            currentTemplate = null;
+            audioBlob = null;
+            parsedMeasurements = {};
+            
+            // Reset UI
+            document.getElementById('sku-input').value = '';
+            document.getElementById('sku-input-row').style.display = 'flex';
+            document.getElementById('sku-display').classList.remove('visible');
+            document.getElementById('check-sku').textContent = '○';
+            document.getElementById('check-sku').classList.remove('complete');
+            document.getElementById('timer-display').textContent = '0:00';
+            
+            // Reset measurement UI
+            document.getElementById('measure-category').classList.remove('detected');
+            document.getElementById('measure-category').innerHTML = `
+                <span class="measure-category-icon">❓</span>
+                <span class="measure-category-text">Take a MAIN photo to detect category</span>
+            `;
+            document.getElementById('measure-hints').classList.add('hidden');
+            document.getElementById('record-section').classList.remove('hidden');
+            document.getElementById('post-record-section').classList.add('hidden');
+            document.getElementById('measurements-parsed').classList.add('hidden');
+            document.getElementById('record-btn').innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
+            document.getElementById('record-btn').classList.remove('recording');
+            document.getElementById('check-measure').textContent = '○';
+            document.getElementById('check-measure').classList.remove('complete');
+            
+            updateUI();
+        }
+        
+        // ============================================
+        // AI PROCESSING
+        // ============================================
+        async function completeItem() {
+            if (!currentSKU || photos.length === 0) return;
+            
+            showProcessing('Starting AI processing...', '', 0);
+            
+            try {
+                const processed = [];
+                
+                for (let i = 0; i < photos.length; i++) {
+                    const progress = ((i + 1) / photos.length) * 100;
+                    setProcessing(`Processing ${i+1}/${photos.length}`, 'Classifying & cropping...', progress);
+                    
+                    const result = await processPhotoWithAI(photos[i]);
+                    processed.push(result);
+                }
+                
+                setProcessing('Downloading...', '', 100);
+                await downloadPhotos(processed);
+                
+                incrementDailyCounter();
+                
+                hideProcessing();
+                showToast('success', `Complete: ${currentSKU}`);
+                
+                resetItem();
+                
+            } catch (err) {
+                hideProcessing();
+                showToast('error', err.message);
+            }
+        }
+        
+        async function processPhotoWithAI(photo) {
+            const base64 = await blobToBase64(photo.blob);
+            
+            for (const ai of AI_ORDER) {
+                if (ai === 'manual') {
+                    return { classification: photo.mode, blob: photo.blob, url: photo.url };
+                }
+                
+                try {
+                    updateAIBadge(ai);
+                    const result = await callLambdaAI(ai, base64, photo.mode);
+                    
+                    if (result.success) {
+                        const processed = await applyRotationAndCrop(photo, result);
+                        return { ...result, ...processed };
+                    }
+                } catch (err) {
+                    console.warn(`${ai} failed:`, err.message);
+                }
+            }
+            
+            return { classification: photo.mode, blob: photo.blob, url: photo.url };
+        }
+        
+        async function callLambdaAI(provider, base64, mode) {
+            const response = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'process_photo', 
+                    provider, 
+                    image: base64, 
+                    mode, 
+                    sku: currentSKU 
+                })
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+        
+        async function applyRotationAndCrop(photo, aiResult) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                
+                img.onload = () => {
+                    try {
+                        const rotation = aiResult.rotation || 0;
+                        const crop = aiResult.crop || { x: 0, y: 0, width: 100, height: 100 };
+                        
+                        let canvas = document.createElement('canvas');
+                        let ctx = canvas.getContext('2d');
+                        
+                        // Rotate
+                        if (rotation !== 0) {
+                            const rad = (rotation * Math.PI) / 180;
+                            const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
+                            canvas.width = img.width * cos + img.height * sin;
+                            canvas.height = img.width * sin + img.height * cos;
+                            ctx.translate(canvas.width/2, canvas.height/2);
+                            ctx.rotate(rad);
+                            ctx.drawImage(img, -img.width/2, -img.height/2);
+                        } else {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                        }
+                        
+                        // Validate and apply crop
+                        const cx = Math.max(0, Math.round((crop.x/100) * canvas.width));
+                        const cy = Math.max(0, Math.round((crop.y/100) * canvas.height));
+                        let cw = Math.round((crop.width/100) * canvas.width);
+                        let ch = Math.round((crop.height/100) * canvas.height);
+                        
+                        // Ensure minimum dimensions
+                        cw = Math.max(10, Math.min(cw, canvas.width - cx));
+                        ch = Math.max(10, Math.min(ch, canvas.height - cy));
+                        
+                        const final = document.createElement('canvas');
+                        final.width = cw;
+                        final.height = ch;
+                        final.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+                        
+                        final.toBlob(blob => {
+                            if (blob) {
+                                resolve({ blob, url: URL.createObjectURL(blob) });
+                            } else {
+                                reject(new Error('Failed to create blob'));
+                            }
+                        }, 'image/jpeg', 0.95);
+                        
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                
+                img.onerror = () => {
+                    reject(new Error('Failed to load image for processing'));
+                };
+                
+                img.src = photo.url;
+            });
+        }
+        
+        async function downloadPhotos(processed) {
+            // Group by classification
+            const grouped = {};
+            processed.forEach(p => {
+                const type = p.classification || 'other';
+                if (!grouped[type]) grouped[type] = [];
+                grouped[type].push(p);
+            });
+            
+            for (const [type, items] of Object.entries(grouped)) {
+                for (let i = 0; i < items.length; i++) {
+                    const a = document.createElement('a');
+                    a.href = items[i].url || URL.createObjectURL(items[i].blob);
+                    a.download = `${currentSKU}_${type}_${String(i+1).padStart(2,'0')}.jpg`;
+                    a.click();
+                    await sleep(150);
+                }
+            }
+            
+            // Log vintage indicators
+            const indicators = processed
+                .filter(p => p.vintage_indicators?.length > 0)
+                .map(p => ({ classification: p.classification, indicators: p.vintage_indicators }));
+            
+            if (indicators.length > 0) {
+                console.log('🏷️ Vintage indicators found:', indicators);
+            }
+        }
+        
+        // ============================================
+        // CATEGORY DETECTION
+        // ============================================
+        async function detectCategoryFromPhoto(photoBlob) {
+            const base64 = await blobToBase64(photoBlob);
+            
+            try {
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'detect_category',
+                        image: base64
+                    })
+                });
+                
+                if (!response.ok) throw new Error('API error');
+                
+                const data = await response.json();
+                if (data.category) {
+                    setDetectedCategory(data.category, data.sleeveStyle || 'standard');
+                }
+            } catch (err) {
+                console.error('Category detection error:', err);
+            }
+        }
+        
+        function setDetectedCategory(category, sleeveStyle) {
+            // Determine template key
+            let templateKey;
+            
+            if (['tops', 'T-Shirt', 'Sweatshirt', 'Hoodie', 'Sweater', 'Jersey', 'Tank Top', 'Polo'].includes(category)) {
+                templateKey = `tops-${sleeveStyle}`;
+            } else if (['Button Shirt', 'Flannel'].includes(category)) {
+                templateKey = `button-${sleeveStyle}`;
+            } else if (['Jeans', 'Pants', 'Sweatpants', 'bottoms'].includes(category)) {
+                templateKey = 'bottoms-pants';
+            } else if (category === 'Shorts') {
+                templateKey = 'bottoms-shorts';
+            } else if (['Jacket', 'Coat', 'Vest', 'outer'].includes(category)) {
+                templateKey = `outer-${sleeveStyle}`;
+            } else {
+                templateKey = 'tops-standard';
+            }
+            
+            detectedCategory = templateKey;
+            currentTemplate = MEASUREMENT_TEMPLATES[templateKey] || MEASUREMENT_TEMPLATES['tops-standard'];
+            
+            // Update UI
+            const categoryEl = document.getElementById('measure-category');
+            categoryEl.classList.add('detected');
+            categoryEl.innerHTML = `
+                <span class="measure-category-icon">✓</span>
+                <span class="measure-category-text"><strong>${category}</strong> detected - ${currentTemplate.length} measurements</span>
+            `;
+            
+            // Show measurement hints
+            const hintsEl = document.getElementById('measure-hints');
+            hintsEl.classList.remove('hidden');
+            
+            const listEl = document.getElementById('measure-hints-list');
+            listEl.innerHTML = currentTemplate.map((m, i) => 
+                `<div class="hint-item"><span class="hint-num">${i+1}.</span> ${m}</div>`
+            ).join('');
+            
+            console.log(`📏 Category detected: ${category} → ${templateKey} (${currentTemplate.length} measurements)`);
+        }
+        
+        // ============================================
+        // VOICE RECORDING
+        // ============================================
+        async function toggleRecording() {
+            if (mediaRecorder?.state === 'recording') {
+                stopRecording();
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                
+                mediaRecorder.onstop = async () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(t => t.stop());
+                    await transcribeAudio(audioBlob);
+                };
+                
+                mediaRecorder.start();
+                recordingStart = Date.now();
+                
+                const btn = document.getElementById('record-btn');
+                btn.innerHTML = '<span class="record-icon">⏹️</span><span class="record-text">RECORDING...</span>';
+                btn.classList.add('recording');
+                
+                recordingInterval = setInterval(updateRecordingTime, 1000);
+                
+            } catch (err) {
+                showToast('error', 'Microphone access denied');
+                console.error('Microphone error:', err);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder?.state === 'recording') {
+                mediaRecorder.stop();
+                clearInterval(recordingInterval);
+                
+                const duration = Math.floor((Date.now() - recordingStart) / 1000);
+                document.getElementById('recording-duration').textContent = formatTime(duration);
+                
+                document.getElementById('record-section').classList.add('hidden');
+                document.getElementById('post-record-section').classList.remove('hidden');
+                document.getElementById('transcript-status').textContent = '🔄 Transcribing...';
+                document.getElementById('transcript-status').className = 'transcript-status processing';
+                
+                document.getElementById('check-measure').textContent = '✓';
+                document.getElementById('check-measure').classList.add('complete');
+            }
+        }
+        
+        function updateRecordingTime() {
+            const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
+            document.querySelector('.record-text').textContent = `RECORDING ${formatTime(elapsed)}`;
+        }
+        
+        async function transcribeAudio(blob) {
+            try {
+                const base64 = await blobToBase64(blob);
+                
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'transcribe',
+                        audio: base64
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Transcription failed');
+                
+                const data = await response.json();
+                
+                if (data.transcript) {
+                    document.getElementById('transcript-status').textContent = '✓ Transcribed';
+                    document.getElementById('transcript-status').className = 'transcript-status success';
+                    parseMeasurements(data.transcript);
+                } else {
+                    throw new Error(data.error || 'No transcript');
+                }
+                
+            } catch (err) {
+                console.error('Transcription error:', err);
+                document.getElementById('transcript-status').textContent = '❌ Transcription failed - measurements saved as audio';
+                document.getElementById('transcript-status').className = 'transcript-status error';
+            }
+        }
+        
+        function parseMeasurements(transcript) {
+            if (!currentTemplate) return;
+            
+            parsedMeasurements = {};
+            const text = transcript.toLowerCase();
+            
+            // Extract numbers from transcript
+            const numbers = text.match(/\d+\.?\d*/g) || [];
+            
+            // Try keyword matching first
+            for (const [keyword, fieldName] of Object.entries(MEASUREMENT_KEYWORDS)) {
+                if (!currentTemplate.includes(fieldName)) continue;
+                
+                const regex = new RegExp(keyword + '[\\s:]*([\\d.]+)', 'i');
+                const match = text.match(regex);
+                if (match) {
+                    parsedMeasurements[fieldName] = parseFloat(match[1]);
+                }
+            }
+            
+            // Fill remaining with sequential numbers
+            let numIndex = 0;
+            for (const field of currentTemplate) {
+                if (!parsedMeasurements[field] && numIndex < numbers.length) {
+                    parsedMeasurements[field] = parseFloat(numbers[numIndex++]);
+                }
+            }
+            
+            displayParsedMeasurements();
+        }
+        
+        function displayParsedMeasurements() {
+            if (!currentTemplate) return;
+            
+            const container = document.getElementById('measurements-parsed');
+            container.classList.remove('hidden');
+            
+            container.innerHTML = currentTemplate.map((field, index) => {
+                const value = parsedMeasurements[field];
+                const filled = value !== undefined;
+                return `<div class="measurement-item ${filled ? 'filled' : 'empty'}">
+                    <span class="measurement-name">${index + 1}. ${field}</span>
+                    <span class="measurement-value">${filled ? value + '"' : '--'}</span>
+                </div>`;
+            }).join('');
+        }
+        
+        function reRecord() {
+            audioBlob = null;
+            parsedMeasurements = {};
+            
+            document.getElementById('record-section').classList.remove('hidden');
+            document.getElementById('post-record-section').classList.add('hidden');
+            document.getElementById('measurements-parsed').classList.add('hidden');
+            
+            const btn = document.getElementById('record-btn');
+            btn.innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
+            btn.classList.remove('recording');
+            
+            document.getElementById('check-measure').textContent = '○';
+            document.getElementById('check-measure').classList.remove('complete');
+        }
+        
+        // ============================================
+        // BARCODE SCANNER
+        // ============================================
         async function openBarcodeScanner() {
-            if (!cameraConfig.barcode || !cameraConfig.barcode.deviceId) {
+            if (!cameraConfig.barcode?.deviceId) {
                 showToast('warning', 'Set up barcode camera in Settings first');
                 openSettings();
                 return;
             }
             
-            // Stop main camera to free up devices
-            if (currentStream) {
-                currentStream.getTracks().forEach(t => t.stop());
-                currentStream = null;
-            }
+            stopCurrentStream();
             
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting scanner...';
             document.getElementById('barcode-status').classList.remove('success');
             
-            // Use QuaggaJS for barcode scanning
             if (typeof Quagga !== 'undefined') {
                 startQuaggaScanner();
             } else {
-                // Fallback to native BarcodeDetector if QuaggaJS not loaded
                 startNativeBarcodeScanner();
             }
         }
         
         function startQuaggaScanner() {
             const videoContainer = document.getElementById('barcode-video').parentElement;
-            
-            // Hide the video element, Quagga will create its own
             document.getElementById('barcode-video').style.display = 'none';
             
             Quagga.init({
@@ -1566,14 +2407,10 @@
                 barcodeScanning = false;
                 Quagga.stop();
                 
-                // Show success
                 document.getElementById('barcode-status').textContent = `✓ Found: ${code}`;
                 document.getElementById('barcode-status').classList.add('success');
-                
-                // Fill in SKU
                 document.getElementById('sku-input').value = code;
                 
-                // Close after short delay
                 setTimeout(() => {
                     closeBarcodeScanner();
                     showToast('success', `SKU scanned: ${code}`);
@@ -1635,7 +2472,7 @@
                     }, 400);
                     return;
                 }
-            } catch (err) { }
+            } catch (err) { /* ignore scan errors */ }
             
             if (barcodeScanning) {
                 requestAnimationFrame(() => scanBarcodeNative(video));
@@ -1645,14 +2482,8 @@
         function closeBarcodeScanner() {
             barcodeScanning = false;
             
-            // Stop Quagga if running
             if (typeof Quagga !== 'undefined') {
                 try { Quagga.stop(); } catch(e) {}
-            }
-            
-            if (barcodeScanInterval) {
-                clearInterval(barcodeScanInterval);
-                barcodeScanInterval = null;
             }
             
             if (barcodeStream) {
@@ -1660,7 +2491,6 @@
                 barcodeStream = null;
             }
             
-            // Show video element again (in case Quagga hid it)
             document.getElementById('barcode-video').style.display = 'block';
             
             // Remove any Quagga-created elements
@@ -1670,626 +2500,21 @@
             document.getElementById('barcode-modal').classList.remove('active');
             
             // Restart main camera
-            if (cameraConfig[currentMode] && cameraConfig[currentMode].deviceId) {
+            if (cameraConfig[currentMode]?.deviceId) {
                 startCameraForMode(currentMode);
             }
         }
         
         // ============================================
-        // MEASUREMENTS
+        // PHOTOS PANEL (RESPONSIVE)
         // ============================================
-        async function detectCategoryFromPhoto(photoBlob) {
-            // Send first MAIN photo to AI for category detection
-            const base64 = await blobToBase64(photoBlob);
-            
-            try {
-                const response = await fetch(LAMBDA_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'detect_category',
-                        image: base64
-                    })
-                });
-                
-                if (!response.ok) throw new Error('API error');
-                
-                const data = await response.json();
-                if (data.category) {
-                    setDetectedCategory(data.category, data.sleeveStyle || 'standard');
-                }
-            } catch (err) {
-                console.error('Category detection error:', err);
-            }
-        }
-        
-        function setDetectedCategory(category, sleeveStyle) {
-            // Determine template key
-            let templateKey;
-            if (category === 'tops' || category === 'T-Shirt' || category === 'Sweatshirt' || category === 'Hoodie') {
-                templateKey = `tops-${sleeveStyle}`;
-            } else if (category === 'Button Shirt' || category === 'Flannel') {
-                templateKey = `button-${sleeveStyle}`;
-            } else if (category === 'Jeans' || category === 'Pants' || category === 'bottoms') {
-                templateKey = 'bottoms-pants';
-            } else if (category === 'Shorts') {
-                templateKey = 'bottoms-shorts';
-            } else if (category === 'Jacket' || category === 'Coat' || category === 'outer') {
-                templateKey = `outer-${sleeveStyle}`;
-            } else {
-                templateKey = 'tops-standard'; // Default
-            }
-            
-            detectedCategory = templateKey;
-            currentTemplate = MEASUREMENT_TEMPLATES[templateKey] || MEASUREMENT_TEMPLATES['tops-standard'];
-            
-            // Update UI
-            const categoryEl = document.getElementById('measure-category');
-            categoryEl.classList.add('detected');
-            categoryEl.innerHTML = `
-                <span class="measure-category-icon">✓</span>
-                <span class="measure-category-text"><strong>${category}</strong> detected - ${currentTemplate.length} measurements</span>
-            `;
-            
-            // Show measurement hints
-            const hintsEl = document.getElementById('measure-hints');
-            hintsEl.classList.remove('hidden');
-            
-            const listEl = document.getElementById('measure-hints-list');
-            listEl.innerHTML = currentTemplate.map((m, i) => 
-                `<div class="hint-item"><span class="hint-num">${i+1}.</span> ${m}</div>`
-            ).join('');
-            
-            console.log(`📏 Category detected: ${category} → ${templateKey} (${currentTemplate.length} measurements)`);
-        }
-        
-        async function toggleRecording() {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                stopRecording();
-                return;
-            }
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                
-                mediaRecorder.onstop = async () => {
-                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    stream.getTracks().forEach(t => t.stop());
-                    
-                    // Transcribe
-                    await transcribeAudio(audioBlob);
-                };
-                
-                mediaRecorder.start();
-                recordingStart = Date.now();
-                
-                const btn = document.getElementById('record-btn');
-                btn.innerHTML = '<span class="record-icon">⏹️</span><span class="record-text">RECORDING...</span>';
-                btn.classList.add('recording');
-                
-                recordingInterval = setInterval(updateRecordingTime, 1000);
-                
-            } catch (err) {
-                showToast('error', 'Microphone access denied');
-                console.error('Microphone error:', err);
-            }
-        }
-        
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                clearInterval(recordingInterval);
-                
-                const duration = Math.floor((Date.now() - recordingStart) / 1000);
-                document.getElementById('recording-duration').textContent = formatRecordingTime(duration);
-                
-                document.getElementById('record-section').classList.add('hidden');
-                document.getElementById('post-record-section').classList.remove('hidden');
-                document.getElementById('transcript-status').textContent = '🔄 Transcribing...';
-                document.getElementById('transcript-status').className = 'transcript-status processing';
-                
-                document.getElementById('check-measure').textContent = '✓';
-                document.getElementById('check-measure').classList.add('complete');
-            }
-        }
-        
-        function updateRecordingTime() {
-            const elapsed = Math.floor((Date.now() - recordingStart) / 1000);
-            document.querySelector('.record-text').textContent = `RECORDING ${formatRecordingTime(elapsed)}`;
-        }
-        
-        function formatRecordingTime(s) {
-            return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-        }
-        
-        async function transcribeAudio(blob) {
-            try {
-                const base64 = await blobToBase64(blob);
-                
-                const response = await fetch(LAMBDA_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'transcribe',
-                        audio: base64
-                    })
-                });
-                
-                if (!response.ok) throw new Error('Transcription failed');
-                
-                const data = await response.json();
-                
-                if (data.transcript) {
-                    document.getElementById('transcript-status').textContent = '✓ Transcribed';
-                    document.getElementById('transcript-status').className = 'transcript-status success';
-                    
-                    // Parse measurements
-                    parseMeasurements(data.transcript);
-                } else {
-                    throw new Error(data.error || 'No transcript');
-                }
-                
-            } catch (err) {
-                console.error('Transcription error:', err);
-                document.getElementById('transcript-status').textContent = '❌ Transcription failed - measurements saved as audio';
-                document.getElementById('transcript-status').className = 'transcript-status error';
-            }
-        }
-        
-        function parseMeasurements(transcript) {
-            if (!currentTemplate) return;
-            
-            parsedMeasurements = {};
-            const text = transcript.toLowerCase();
-            
-            // Extract numbers from transcript
-            const numbers = text.match(/\d+\.?\d*/g) || [];
-            
-            // Try keyword matching first
-            for (const [keyword, fieldName] of Object.entries(MEASUREMENT_KEYWORDS)) {
-                if (!currentTemplate.includes(fieldName)) continue;
-                
-                const regex = new RegExp(keyword + '[\\s:]*([\\d.]+)', 'i');
-                const match = text.match(regex);
-                if (match) {
-                    parsedMeasurements[fieldName] = parseFloat(match[1]);
-                }
-            }
-            
-            // Fill remaining with sequential numbers
-            let numIndex = 0;
-            for (const field of currentTemplate) {
-                if (!parsedMeasurements[field] && numIndex < numbers.length) {
-                    parsedMeasurements[field] = parseFloat(numbers[numIndex++]);
-                }
-            }
-            
-            // Display parsed measurements
-            displayParsedMeasurements();
-        }
-        
-        function displayParsedMeasurements() {
-            if (!currentTemplate) return;
-            
-            const container = document.getElementById('measurements-parsed');
-            container.classList.remove('hidden');
-            
-            container.innerHTML = currentTemplate.map((field, index) => {
-                const value = parsedMeasurements[field];
-                const filled = value !== undefined;
-                return `<div class="measurement-item ${filled ? 'filled' : 'empty'}"><span class="measurement-name">${index + 1}. ${field}</span><span class="measurement-value">${filled ? value + '"' : '--'}</span></div>`;
-            }).join('');
-        }
-        
-        function reRecord() {
-            audioBlob = null;
-            parsedMeasurements = {};
-            
-            document.getElementById('record-section').classList.remove('hidden');
-            document.getElementById('post-record-section').classList.add('hidden');
-            document.getElementById('measurements-parsed').classList.add('hidden');
-            
-            const btn = document.getElementById('record-btn');
-            btn.innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
-            btn.classList.remove('recording');
-            
-            document.getElementById('check-measure').textContent = '○';
-            document.getElementById('check-measure').classList.remove('complete');
-        }
-        // ============================================
-        // CAMERA
-        // ============================================
-        
-        // Resolution presets (4K max for browser compatibility)
-        const RESOLUTION_PRESETS = [
-            { w: 4096, h: 2160, name: '4K DCI' },   // Max for browsers
-            { w: 3840, h: 2160, name: '4K UHD' },
-            { w: 2560, h: 1440, name: '1440p' },
-            { w: 1920, h: 1080, name: '1080p' }
-        ];
-        
-        async function startCameraForMode(mode) {
-            const config = cameraConfig[mode];
-            
-            if (!config || !config.deviceId) {
-                document.getElementById('camera-video').style.display = 'none';
-                document.getElementById('camera-placeholder').style.display = 'flex';
-                document.getElementById('camera-placeholder').innerHTML = `
-                    <div class="camera-placeholder-icon">⚠️</div>
-                    <div>No camera set for ${mode.toUpperCase()}</div>
-                    <button class="btn btn-primary" style="margin-top:16px;" onclick="openSettings()">⚙️ Open Settings</button>
-                `;
-                document.getElementById('camera-name').textContent = 'No camera';
-                document.getElementById('camera-resolution').textContent = '--';
-                return;
-            }
-            
-            // Stop existing stream
-            if (currentStream) {
-                currentStream.getTracks().forEach(t => t.stop());
-                currentStream = null;
-            }
-            
-            const video = document.getElementById('camera-video');
-            document.getElementById('camera-resolution').textContent = '...';
-            
-            // Try each resolution from highest to lowest
-            for (const res of RESOLUTION_PRESETS) {
-                try {
-                    console.log(`📷 Trying ${res.name} (${res.w}x${res.h})...`);
-                    
-                    currentStream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            deviceId: { exact: config.deviceId },
-                            width: { exact: res.w },
-                            height: { exact: res.h }
-                        }
-                    });
-                    
-                    const track = currentStream.getVideoTracks()[0];
-                    const settings = track.getSettings();
-                    console.log(`✅ Got ${settings.width}x${settings.height}`);
-                    
-                    video.srcObject = currentStream;
-                    video.style.display = 'block';
-                    document.getElementById('camera-placeholder').style.display = 'none';
-                    document.getElementById('camera-name').textContent = config.label;
-                    
-                    video.onloadedmetadata = () => {
-                        const w = video.videoWidth, h = video.videoHeight;
-                        const resEl = document.getElementById('camera-resolution');
-                        resEl.textContent = `${w}×${h}`;
-                        resEl.style.color = w >= 3840 ? '#22c55e' : w >= 1920 ? '#3b82f6' : '#f59e0b';
-                    };
-                    
-                    return; // Success!
-                    
-                } catch (e) {
-                    console.log(`❌ ${res.name} not supported`);
-                }
-            }
-            
-            // Fallback to ideal constraints if exact fails
-            try {
-                console.log('📷 Falling back to ideal constraints...');
-                currentStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: config.deviceId },
-                        width: { ideal: 3840 },
-                        height: { ideal: 2160 }
-                    }
-                });
-                
-                video.srcObject = currentStream;
-                video.style.display = 'block';
-                document.getElementById('camera-placeholder').style.display = 'none';
-                document.getElementById('camera-name').textContent = config.label;
-                
-                video.onloadedmetadata = () => {
-                    const w = video.videoWidth, h = video.videoHeight;
-                    document.getElementById('camera-resolution').textContent = `${w}×${h}`;
-                };
-                
-            } catch (err) {
-                console.error('Camera error:', err);
-                showToast('error', `Camera: ${err.message}`);
-            }
+        function togglePhotosPanel() {
+            const panel = document.getElementById('photos-panel');
+            panel.classList.toggle('visible');
         }
         
         // ============================================
-        // MODE
-        // ============================================
-        function setMode(mode) {
-            currentMode = mode;
-            
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            
-            const badge = document.getElementById('camera-mode-badge');
-            badge.className = `camera-mode-badge ${mode}`;
-            badge.textContent = mode.toUpperCase();
-            
-            startCameraForMode(mode);
-        }
-        
-        // ============================================
-        // CAPTURE
-        // ============================================
-        function capturePhoto() {
-            const video = document.getElementById('camera-video');
-            if (!video.srcObject) {
-                showToast('warning', 'No camera active');
-                return;
-            }
-            if (!currentSKU) {
-                showToast('warning', 'Start an item first');
-                return;
-            }
-            
-            // Flash
-            const flash = document.getElementById('flash-overlay');
-            flash.classList.add('flash');
-            setTimeout(() => flash.classList.remove('flash'), 100);
-            
-            // Capture
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            
-            canvas.toBlob(blob => {
-                const isFirstMainPhoto = currentMode === 'main' && !photos.some(p => p.mode === 'main');
-                
-                photos.push({
-                    id: Date.now(),
-                    blob,
-                    url: URL.createObjectURL(blob),
-                    width: canvas.width,
-                    height: canvas.height,
-                    mode: currentMode
-                });
-                
-                updateUI();
-                showToast('success', `Captured (${currentMode})`);
-                
-                // Detect category from first MAIN photo
-                if (isFirstMainPhoto && !detectedCategory) {
-                    detectCategoryFromPhoto(blob);
-                }
-            }, 'image/jpeg', 0.95);
-        }
-        
-        function initKeyboard() {
-            document.addEventListener('keydown', (e) => {
-                if (document.getElementById('settings-modal').classList.contains('active')) return;
-                
-                if (e.code === 'Space' && !e.target.matches('input')) {
-                    e.preventDefault();
-                    capturePhoto();
-                }
-                if (e.key === '1') setMode('main');
-                if (e.key === '2') setMode('closeup');
-                if (e.key === '3') setMode('handheld');
-            });
-        }
-        
-        // ============================================
-        // ITEM
-        // ============================================
-        function startNewItem() {
-            const input = document.getElementById('sku-input');
-            const sku = input.value.trim().toUpperCase();
-            
-            if (!sku) {
-                showToast('warning', 'Enter a SKU');
-                return;
-            }
-            
-            photos.forEach(p => URL.revokeObjectURL(p.url));
-            photos = [];
-            
-            currentSKU = sku;
-            itemStartTime = Date.now();
-            
-            if (timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimer, 1000);
-            
-            document.getElementById('sku-input-row').style.display = 'none';
-            document.getElementById('sku-display').textContent = sku;
-            document.getElementById('sku-display').classList.add('visible');
-            document.getElementById('check-sku').textContent = '✓';
-            document.getElementById('check-sku').classList.add('complete');
-            
-            updateUI();
-            showToast('success', `Started: ${sku}`);
-        }
-        
-        async function completeItem() {
-            if (!currentSKU || photos.length === 0) return;
-            
-            showProcessing('Starting AI processing...', '', 0);
-            
-            try {
-                const processed = [];
-                
-                for (let i = 0; i < photos.length; i++) {
-                    const progress = ((i + 1) / photos.length) * 100;
-                    setProcessing(`Processing ${i+1}/${photos.length}`, 'Classifying & cropping...', progress);
-                    
-                    const result = await processPhotoWithAI(photos[i]);
-                    processed.push(result);
-                }
-                
-                setProcessing('Downloading...', '', 100);
-                await downloadPhotos(processed);
-                
-                itemsToday++;
-                localStorage.setItem('vl_items_today', itemsToday.toString());
-                document.getElementById('stat-today').textContent = itemsToday;
-                
-                hideProcessing();
-                showToast('success', `Complete: ${currentSKU}`);
-                
-                resetItem();
-                
-            } catch (err) {
-                hideProcessing();
-                showToast('error', err.message);
-            }
-        }
-        
-        async function processPhotoWithAI(photo) {
-            const base64 = await blobToBase64(photo.blob);
-            
-            for (const ai of AI_ORDER) {
-                if (ai === 'manual') {
-                    return { classification: photo.mode, blob: photo.blob, url: photo.url };
-                }
-                
-                try {
-                    updateAIBadge(ai);
-                    const result = await callLambdaAI(ai, base64, photo.mode);
-                    
-                    if (result.success) {
-                        const processed = await applyRotationAndCrop(photo, result);
-                        return { ...result, ...processed };
-                    }
-                } catch (err) {
-                    console.warn(`${ai} failed:`, err.message);
-                }
-            }
-            
-            return { classification: photo.mode, blob: photo.blob, url: photo.url };
-        }
-        
-        async function callLambdaAI(provider, base64, mode) {
-            const response = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'process_photo', provider, image: base64, mode, sku: currentSKU })
-            });
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
-        }
-        
-        async function applyRotationAndCrop(photo, aiResult) {
-            return new Promise(resolve => {
-                const img = new Image();
-                img.onload = () => {
-                    const rotation = aiResult.rotation || 0;
-                    const crop = aiResult.crop || { x: 0, y: 0, width: 100, height: 100 };
-                    
-                    let canvas = document.createElement('canvas');
-                    let ctx = canvas.getContext('2d');
-                    
-                    // Rotate
-                    if (rotation !== 0) {
-                        const rad = (rotation * Math.PI) / 180;
-                        const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
-                        canvas.width = img.width * cos + img.height * sin;
-                        canvas.height = img.width * sin + img.height * cos;
-                        ctx.translate(canvas.width/2, canvas.height/2);
-                        ctx.rotate(rad);
-                        ctx.drawImage(img, -img.width/2, -img.height/2);
-                    } else {
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        ctx.drawImage(img, 0, 0);
-                    }
-                    
-                    // Crop
-                    const cx = Math.round((crop.x/100) * canvas.width);
-                    const cy = Math.round((crop.y/100) * canvas.height);
-                    const cw = Math.round((crop.width/100) * canvas.width);
-                    const ch = Math.round((crop.height/100) * canvas.height);
-                    
-                    const final = document.createElement('canvas');
-                    final.width = cw; final.height = ch;
-                    final.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
-                    
-                    final.toBlob(blob => {
-                        resolve({ blob, url: URL.createObjectURL(blob) });
-                    }, 'image/jpeg', 0.95);
-                };
-                img.src = photo.url;
-            });
-        }
-        
-        async function downloadPhotos(processed) {
-            // Group by full classification for better organization
-            const grouped = {};
-            processed.forEach(p => {
-                const type = p.classification || 'other';
-                if (!grouped[type]) grouped[type] = [];
-                grouped[type].push(p);
-            });
-            
-            for (const [type, items] of Object.entries(grouped)) {
-                for (let i = 0; i < items.length; i++) {
-                    const a = document.createElement('a');
-                    a.href = items[i].url || URL.createObjectURL(items[i].blob);
-                    // Use full classification in filename
-                    a.download = `${currentSKU}_${type}_${String(i+1).padStart(2,'0')}.jpg`;
-                    a.click();
-                    await new Promise(r => setTimeout(r, 150));
-                }
-            }
-            
-            // Also save vintage indicators if any found
-            const indicators = processed
-                .filter(p => p.vintage_indicators && p.vintage_indicators.length > 0)
-                .map(p => ({ classification: p.classification, indicators: p.vintage_indicators }));
-            
-            if (indicators.length > 0) {
-                console.log('🏷️ Vintage indicators found:', indicators);
-            }
-        }
-        
-        function resetItem() {
-            photos.forEach(p => URL.revokeObjectURL(p.url));
-            photos = [];
-            currentSKU = '';
-            if (timerInterval) clearInterval(timerInterval);
-            
-            // Reset measurements
-            detectedCategory = null;
-            currentTemplate = null;
-            audioBlob = null;
-            parsedMeasurements = {};
-            
-            document.getElementById('sku-input').value = '';
-            document.getElementById('sku-input-row').style.display = 'flex';
-            document.getElementById('sku-display').classList.remove('visible');
-            document.getElementById('check-sku').textContent = '○';
-            document.getElementById('check-sku').classList.remove('complete');
-            document.getElementById('timer-display').textContent = '0:00';
-            
-            // Reset measurement UI
-            document.getElementById('measure-category').classList.remove('detected');
-            document.getElementById('measure-category').innerHTML = `
-                <span class="measure-category-icon">❓</span>
-                <span class="measure-category-text">Take a MAIN photo to detect category</span>
-            `;
-            document.getElementById('measure-hints').classList.add('hidden');
-            document.getElementById('record-section').classList.remove('hidden');
-            document.getElementById('post-record-section').classList.add('hidden');
-            document.getElementById('measurements-parsed').classList.add('hidden');
-            document.getElementById('record-btn').innerHTML = '<span class="record-icon">🎤</span><span class="record-text">TAP TO RECORD</span>';
-            document.getElementById('record-btn').classList.remove('recording');
-            document.getElementById('check-measure').textContent = '○';
-            document.getElementById('check-measure').classList.remove('complete');
-            
-            updateUI();
-        }
-        
-        // ============================================
-        // UI
+        // UI UPDATES
         // ============================================
         function updateUI() {
             const counts = { main: 0, closeup: 0, handheld: 0 };
@@ -2299,6 +2524,7 @@
             document.getElementById('count-closeup').textContent = counts.closeup;
             document.getElementById('count-handheld').textContent = counts.handheld;
             document.getElementById('total-count').textContent = photos.length;
+            document.getElementById('photos-toggle-count').textContent = photos.length;
             
             const grid = document.getElementById('photos-grid');
             grid.innerHTML = '';
@@ -2306,7 +2532,7 @@
                 const div = document.createElement('div');
                 div.className = 'photo-thumb';
                 div.innerHTML = `
-                    <img src="${p.url}">
+                    <img src="${p.url}" alt="Photo ${i+1}">
                     <div class="photo-label">${p.mode.toUpperCase()}</div>
                     <button class="delete-btn" onclick="deletePhoto(${i})">×</button>
                 `;
@@ -2316,28 +2542,15 @@
             document.getElementById('complete-btn').disabled = !currentSKU || photos.length === 0;
         }
         
-        function deletePhoto(i) {
-            URL.revokeObjectURL(photos[i].url);
-            photos.splice(i, 1);
-            updateUI();
-        }
-        
         function updateTimer() {
             if (!itemStartTime) return;
             const s = Math.floor((Date.now() - itemStartTime) / 1000);
-            document.getElementById('timer-display').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+            document.getElementById('timer-display').textContent = formatTime(s);
         }
         
         function updateAIBadge(active) {
-            document.querySelectorAll('.ai-badge').forEach(b => b.classList.toggle('active', b.classList.contains(active)));
-        }
-        
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
+            document.querySelectorAll('.ai-badge').forEach(b => {
+                b.classList.toggle('active', b.classList.contains(active));
             });
         }
         
@@ -2368,6 +2581,26 @@
         
         function hideProcessing() {
             document.getElementById('processing-overlay').classList.remove('active');
+        }
+        
+        // ============================================
+        // UTILITIES
+        // ============================================
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        
+        function formatTime(seconds) {
+            return `${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
     </script>
 </body>
