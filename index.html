@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9</title>
+    <title>VintageLister v2.9.1</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         /* =================================================================
-           CSS - Clean and Organized
+           CSS - VintageLister v2.9.1
            ================================================================= */
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,98 +28,129 @@
             --radius: 8px;
         }
         
-        body {
+        html, body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
+            height: 100vh;
+            overflow: hidden;
         }
         
-        /* Layout */
+        /* Layout - Fixed 3 column */
         .app-container {
             display: grid;
-            grid-template-columns: 300px 1fr 320px;
-            min-height: 100vh;
-            gap: 1px;
-            background: var(--border-color);
+            grid-template-columns: 300px 1fr 300px;
+            height: 100vh;
+            overflow: hidden;
         }
         
         @media (max-width: 1200px) {
-            .app-container { grid-template-columns: 280px 1fr 280px; }
+            .app-container { grid-template-columns: 260px 1fr 260px; }
         }
         
         @media (max-width: 900px) {
             .app-container { grid-template-columns: 1fr; }
-            .panel-right { display: none; }
+            .panel-left, .panel-right { display: none; }
         }
         
         .panel {
             background: var(--bg-primary);
-            padding: 16px;
-            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         
-        .panel-left { border-right: 1px solid var(--border-color); }
-        .panel-right { border-left: 1px solid var(--border-color); }
+        .panel-right { border-right: none; border-left: 1px solid var(--border-color); }
+        
+        .panel-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
         
         /* Header Bar */
         .header-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 16px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            flex-shrink: 0;
         }
         
         .timer {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             font-family: 'Courier New', monospace;
-            color: var(--accent-blue);
+            color: white;
         }
         
         .timer-label {
-            font-size: 10px;
-            color: var(--text-secondary);
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
             text-transform: uppercase;
         }
         
         .sku-display {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--accent-yellow);
+            background: rgba(0,0,0,0.3);
+            padding: 6px 12px;
+            border-radius: 6px;
         }
         
         .version-badge {
-            font-size: 11px;
-            color: var(--text-secondary);
-            background: var(--bg-tertiary);
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            background: rgba(0,0,0,0.3);
             padding: 4px 8px;
             border-radius: 4px;
         }
         
-        /* Camera Mode Tabs */
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Camera Panel */
+        .camera-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        /* Camera Tabs */
         .camera-tabs {
             display: flex;
-            gap: 8px;
-            padding: 12px 16px;
+            gap: 4px;
+            padding: 8px;
             background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
         
         .camera-tab {
-            padding: 10px 20px;
+            flex: 1;
+            padding: 10px 8px;
             border: none;
             border-radius: var(--radius);
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
@@ -136,201 +168,28 @@
             color: white;
         }
         
-        .camera-tab.closeup.active {
-            background: var(--accent-orange);
-        }
-        
-        .camera-tab.handheld.active {
-            background: var(--accent-purple);
-        }
-        
-        /* Camera Info Bar */
-        .camera-info {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 16px;
-            background: var(--bg-tertiary);
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .camera-name {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .resolution-badge {
-            background: var(--bg-secondary);
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-        
-        .photo-count {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: var(--accent-green);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        
-        /* Video Preview */
-        .video-container {
-            position: relative;
-            background: #000;
-            aspect-ratio: 16/9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .video-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .video-placeholder {
-            color: var(--text-secondary);
-            text-align: center;
-        }
-        
-        .capture-flash {
-            position: absolute;
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s;
-        }
-        
-        .capture-flash.active {
-            opacity: 0.8;
-        }
-        
-        /* Capture Button */
-        .capture-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            background: var(--bg-secondary);
-        }
-        
-        .capture-btn {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 4px solid var(--text-primary);
-            background: transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-        
-        .capture-btn::after {
-            content: '';
-            position: absolute;
-            inset: 6px;
-            border-radius: 50%;
-            background: var(--text-primary);
-            transition: all 0.2s;
-        }
-        
-        .capture-btn:hover::after {
-            background: var(--accent-blue);
-        }
-        
-        .capture-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .capture-hint {
-            margin-top: 12px;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-        
-        .capture-hint kbd {
-            background: var(--bg-tertiary);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: inherit;
-        }
-        
-        /* Section Cards */
-        .section-card {
-            background: var(--bg-secondary);
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        
-        .section-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        /* Classification Display */
-        .classification-display {
-            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
-            border: 1px solid var(--accent-blue);
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        
-        .classification-display.pending {
-            border-color: var(--text-secondary);
-            opacity: 0.7;
-        }
-        
-        .classification-display.ready {
-            border-color: var(--accent-green);
-        }
-        
-        .classification-category {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--accent-yellow);
-            margin-bottom: 4px;
-        }
-        
-        .classification-template {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .classification-template span {
-            color: var(--accent-blue);
-            font-weight: 600;
-        }
+        .camera-tab.closeup.active { background: var(--accent-orange); }
+        .camera-tab.handheld.active { background: var(--accent-purple); }
         
         /* Photo Type Buttons */
-        .photo-types {
+        .photo-types-bar {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            flex-shrink: 0;
         }
         
         .photo-type-btn {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--bg-tertiary);
+            border-radius: 6px;
+            background: var(--bg-secondary);
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s;
         }
         
         .photo-type-btn:hover {
@@ -344,17 +203,166 @@
             color: white;
         }
         
+        /* Camera Info */
+        .camera-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.5);
+            font-size: 11px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .camera-name { font-weight: 600; color: var(--text-primary); }
+        
+        .resolution-badge {
+            background: var(--bg-secondary);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        
+        .photo-count-badge {
+            background: var(--accent-green);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        
+        /* Video Container */
+        .video-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0; /* Critical for flex shrinking */
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .video-placeholder {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .capture-flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+        
+        .capture-flash.active { opacity: 0.7; }
+        
+        /* Capture Area - Fixed at bottom */
+        .capture-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+        
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid var(--text-primary);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .capture-btn::after {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            transition: all 0.2s;
+        }
+        
+        .capture-btn:hover::after { background: var(--accent-blue); }
+        .capture-btn:active { transform: scale(0.95); }
+        
+        .capture-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .capture-hint kbd {
+            background: var(--bg-tertiary);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        
+        /* Classification Display */
+        .classification-box {
+            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 12px;
+        }
+        
+        .classification-box.ready { border-color: var(--accent-green); }
+        
+        .classification-category {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-yellow);
+        }
+        
+        .classification-template {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .classification-template span { color: var(--accent-blue); font-weight: 600; }
+        
+        /* Tag Data */
+        .tag-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        
+        .tag-item {
+            background: var(--bg-tertiary);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+        
+        .tag-label { color: var(--text-secondary); font-size: 9px; text-transform: uppercase; }
+        .tag-value { font-weight: 600; margin-top: 2px; }
+        
         /* Photo Grid */
         .photo-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            gap: 6px;
         }
         
         .photo-thumb {
             position: relative;
             aspect-ratio: 1;
-            border-radius: var(--radius);
+            border-radius: 6px;
             overflow: hidden;
             background: var(--bg-tertiary);
         }
@@ -370,148 +378,109 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0,0,0,0.7);
-            padding: 4px;
-            font-size: 9px;
+            background: rgba(0,0,0,0.8);
+            padding: 3px;
+            font-size: 8px;
             text-align: center;
             color: var(--accent-yellow);
         }
         
         .photo-thumb-delete {
             position: absolute;
-            top: 4px;
-            right: 4px;
-            width: 20px;
-            height: 20px;
+            top: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             border: none;
             background: var(--accent-red);
             color: white;
-            font-size: 12px;
+            font-size: 10px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.2s;
         }
         
-        .photo-thumb:hover .photo-thumb-delete {
-            opacity: 1;
-        }
+        .photo-thumb:hover .photo-thumb-delete { opacity: 1; }
         
-        /* Measurements Section */
+        /* Measurements */
         .measurement-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
         
         .measurement-item {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px 12px;
+            padding: 8px 10px;
             background: var(--bg-tertiary);
-            border-radius: var(--radius);
-            font-size: 13px;
+            border-radius: 6px;
+            font-size: 12px;
         }
         
-        .measurement-item.active {
-            background: var(--accent-blue);
-        }
+        .measurement-item.active { background: var(--accent-blue); }
         
         .measurement-item.completed {
-            background: var(--accent-green);
             background: linear-gradient(90deg, rgba(34,197,94,0.2), transparent);
             border-left: 3px solid var(--accent-green);
         }
         
         .measurement-num {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             background: var(--bg-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
-            margin-right: 10px;
+            margin-right: 8px;
+            flex-shrink: 0;
         }
         
-        .measurement-name {
-            flex: 1;
-        }
+        .measurement-name { flex: 1; }
+        .measurement-value { font-weight: 600; color: var(--accent-green); }
         
-        .measurement-value {
-            font-weight: 600;
-            color: var(--accent-green);
-        }
-        
-        /* Record Button */
-        .record-btn {
-            width: 100%;
-            padding: 16px;
+        /* Buttons */
+        .btn {
+            padding: 12px 16px;
             border: none;
             border-radius: var(--radius);
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: var(--accent-red);
-            color: white;
-        }
-        
-        .record-btn:hover {
-            filter: brightness(1.1);
-        }
-        
-        .record-btn.recording {
-            background: var(--accent-orange);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        /* Action Buttons */
-        .action-btn {
             width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
             margin-bottom: 8px;
         }
         
-        .action-btn.primary {
-            background: var(--accent-green);
-            color: white;
-        }
+        .btn-primary { background: var(--accent-green); color: white; }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-record { background: var(--accent-red); color: white; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.recording { animation: pulse 1s infinite; }
         
-        .action-btn.secondary {
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        
+        /* Folder Display */
+        .folder-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
             background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 11px;
+            margin-bottom: 8px;
         }
         
-        .action-btn:hover {
-            filter: brightness(1.1);
-        }
+        .folder-display.not-set { color: var(--text-secondary); }
+        .folder-display.set { color: var(--accent-green); }
         
-        .action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Settings Modal */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -525,61 +494,45 @@
             transition: all 0.3s;
         }
         
-        .modal-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
         
         .modal {
             background: var(--bg-secondary);
             border-radius: var(--radius);
             width: 90%;
-            max-width: 600px;
+            max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
-            transform: scale(0.9);
-            transition: transform 0.3s;
-        }
-        
-        .modal-overlay.active .modal {
-            transform: scale(1);
         }
         
         .modal-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 20px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--border-color);
         }
         
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-        }
+        .modal-title { font-size: 16px; font-weight: 600; }
         
         .modal-close {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border: none;
             border-radius: 50%;
             background: var(--bg-tertiary);
             color: var(--text-primary);
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
         }
         
-        .modal-body {
-            padding: 20px;
-        }
+        .modal-body { padding: 16px; }
         
-        .form-group {
-            margin-bottom: 16px;
-        }
+        .form-group { margin-bottom: 14px; }
         
         .form-label {
             display: block;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-secondary);
             margin-bottom: 6px;
@@ -593,7 +546,7 @@
             border-radius: var(--radius);
             background: var(--bg-tertiary);
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .form-select:focus, .form-input:focus {
@@ -601,7 +554,70 @@
             border-color: var(--accent-blue);
         }
         
-        /* Toast Notifications */
+        /* SKU Input Area */
+        .sku-input-area {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .sku-input-area input {
+            flex: 1;
+            font-size: 18px;
+            text-align: center;
+            padding: 14px;
+        }
+        
+        .sku-scan-btn {
+            padding: 14px 20px;
+            background: var(--accent-purple);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        
+        /* Barcode Scanner */
+        .barcode-container {
+            position: relative;
+            background: #000;
+            aspect-ratio: 4/3;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .barcode-container video, .barcode-container canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .barcode-target {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 80px;
+            border: 3px solid var(--accent-yellow);
+            border-radius: 8px;
+        }
+        
+        .barcode-status {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .barcode-status.success { background: var(--accent-green); }
+        
+        /* Toast */
         .toast-container {
             position: fixed;
             top: 20px;
@@ -613,14 +629,11 @@
         }
         
         .toast {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-radius: var(--radius);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             animation: slideIn 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         
         @keyframes slideIn {
@@ -633,79 +646,8 @@
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
         
-        /* SKU Input Modal */
-        .sku-modal {
-            text-align: center;
-            padding: 40px 20px;
-        }
-        
-        .sku-modal h2 {
-            margin-bottom: 20px;
-        }
-        
-        .sku-input {
-            font-size: 24px;
-            text-align: center;
-            padding: 16px;
-            width: 100%;
-            max-width: 300px;
-            margin-bottom: 20px;
-        }
-        
-        /* Status Indicators */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .status-dot.green { background: var(--accent-green); }
-        .status-dot.red { background: var(--accent-red); }
-        .status-dot.yellow { background: var(--accent-yellow); }
-        
-        /* Tag Data Display */
-        .tag-data {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            font-size: 12px;
-        }
-        
-        .tag-item {
-            background: var(--bg-tertiary);
-            padding: 8px 10px;
-            border-radius: var(--radius);
-        }
-        
-        .tag-item-label {
-            color: var(--text-secondary);
-            font-size: 10px;
-            text-transform: uppercase;
-        }
-        
-        .tag-item-value {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-top: 2px;
-        }
-        
-        /* Loading Spinner */
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--bg-tertiary);
-            border-top-color: var(--accent-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
         /* AI Processing Overlay */
-        .ai-processing {
+        .ai-overlay {
             position: absolute;
             inset: 0;
             background: rgba(15, 23, 42, 0.9);
@@ -713,21 +655,26 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 16px;
+            gap: 12px;
             opacity: 0;
             visibility: hidden;
             transition: all 0.3s;
         }
         
-        .ai-processing.active {
-            opacity: 1;
-            visibility: visible;
+        .ai-overlay.active { opacity: 1; visibility: visible; }
+        
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
         
-        .ai-processing-text {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .ai-overlay-text { font-size: 13px; color: var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -738,60 +685,59 @@
     <div class="app-container">
         <!-- Left Panel -->
         <div class="panel panel-left">
-            <!-- Timer & SKU -->
-            <div class="section-card">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                    <div>
-                        <div class="timer" id="timer">0:00</div>
-                        <div class="timer-label">Item Time</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div class="sku-display" id="sku-display">No SKU</div>
-                        <div class="version-badge" id="version-badge">v2.9</div>
-                    </div>
+            <!-- Header -->
+            <div class="header-bar">
+                <div>
+                    <div class="timer" id="timer">0:00</div>
+                    <div class="timer-label">Item Time</div>
                 </div>
-                <button class="action-btn secondary" onclick="openSKUModal()">📷 New Item</button>
-            </div>
-            
-            <!-- Classification -->
-            <div class="section-card">
-                <div class="section-title">🤖 AI Classification</div>
-                <div class="classification-display pending" id="classification-display">
-                    <div class="classification-category" id="classification-category">Waiting...</div>
-                    <div class="classification-template">Template: <span id="classification-template">-</span></div>
-                </div>
-                <div class="tag-data" id="tag-data" style="display: none;">
-                    <div class="tag-item">
-                        <div class="tag-item-label">Brand</div>
-                        <div class="tag-item-value" id="tag-brand">-</div>
-                    </div>
-                    <div class="tag-item">
-                        <div class="tag-item-label">Size</div>
-                        <div class="tag-item-value" id="tag-size">-</div>
-                    </div>
-                    <div class="tag-item">
-                        <div class="tag-item-label">Materials</div>
-                        <div class="tag-item-value" id="tag-materials">-</div>
-                    </div>
-                    <div class="tag-item">
-                        <div class="tag-item-label">Country</div>
-                        <div class="tag-item-value" id="tag-country">-</div>
-                    </div>
+                <div style="text-align: right;">
+                    <div class="sku-display" id="sku-display">No SKU</div>
+                    <div class="version-badge" id="version-badge">v2.9.1</div>
                 </div>
             </div>
             
-            <!-- Photos Captured -->
-            <div class="section-card">
-                <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
-                <div class="photo-grid" id="photo-grid"></div>
+            <div class="panel-scroll">
+                <!-- New Item Button -->
+                <button class="btn btn-primary" onclick="openSKUModal()">📷 New Item</button>
+                
+                <!-- Classification -->
+                <div class="section-card">
+                    <div class="section-title">🤖 AI Classification</div>
+                    <div class="classification-box" id="classification-box">
+                        <div class="classification-category" id="classification-category">Waiting...</div>
+                        <div class="classification-template">Template: <span id="classification-template">-</span></div>
+                    </div>
+                    <div class="tag-grid" id="tag-grid" style="display: none;">
+                        <div class="tag-item"><div class="tag-label">Brand</div><div class="tag-value" id="tag-brand">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Size</div><div class="tag-value" id="tag-size">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Materials</div><div class="tag-value" id="tag-materials">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Country</div><div class="tag-value" id="tag-country">-</div></div>
+                    </div>
+                </div>
+                
+                <!-- Save Location -->
+                <div class="section-card">
+                    <div class="section-title">💾 Save Location</div>
+                    <div class="folder-display not-set" id="folder-display">
+                        📁 Not set - click to choose
+                    </div>
+                    <button class="btn btn-secondary" onclick="chooseSaveFolder()">Choose Folder</button>
+                </div>
+                
+                <!-- Photos -->
+                <div class="section-card">
+                    <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
+                    <div class="photo-grid" id="photo-grid"></div>
+                </div>
+                
+                <!-- Settings -->
+                <button class="btn btn-secondary" onclick="openSettings()">⚙️ Settings</button>
             </div>
-            
-            <!-- Settings -->
-            <button class="action-btn secondary" onclick="openSettings()">⚙️ Settings</button>
         </div>
         
-        <!-- Center Panel - Camera -->
-        <div class="panel panel-center" style="padding: 0; display: flex; flex-direction: column;">
+        <!-- Center - Camera -->
+        <div class="panel camera-panel">
             <!-- Camera Tabs -->
             <div class="camera-tabs">
                 <button class="camera-tab active" data-mode="main" onclick="switchCameraMode('main')">📷 MAIN</button>
@@ -799,58 +745,94 @@
                 <button class="camera-tab handheld" data-mode="handheld" onclick="switchCameraMode('handheld')">📱 HANDHELD</button>
             </div>
             
+            <!-- Photo Type Buttons -->
+            <div class="photo-types-bar" id="photo-types-bar">
+                <!-- Populated by JS -->
+            </div>
+            
             <!-- Camera Info -->
             <div class="camera-info">
-                <span class="camera-name" id="camera-name">No camera selected</span>
+                <span class="camera-name" id="camera-name">No camera</span>
                 <span class="resolution-badge" id="resolution-badge">-</span>
-                <span class="photo-count">
-                    <span id="mode-photo-count">0</span> photos
-                </span>
+                <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
             </div>
             
-            <!-- Video Container -->
-            <div class="video-container" style="flex: 1;">
+            <!-- Video -->
+            <div class="video-container">
                 <video id="video-preview" autoplay playsinline muted></video>
                 <div class="video-placeholder" id="video-placeholder">
-                    <p>📷 Select a camera in Settings</p>
-                    <p style="font-size: 12px; margin-top: 8px;">Press ⚙️ Settings to configure cameras</p>
+                    📷 Select a camera in Settings
                 </div>
                 <div class="capture-flash" id="capture-flash"></div>
-                <div class="ai-processing" id="ai-processing">
-                    <div class="spinner" style="width: 40px; height: 40px; border-width: 3px;"></div>
-                    <div class="ai-processing-text">AI analyzing photos...</div>
+                <div class="ai-overlay" id="ai-overlay">
+                    <div class="spinner"></div>
+                    <div class="ai-overlay-text">AI analyzing photos...</div>
                 </div>
             </div>
             
-            <!-- Capture Area -->
+            <!-- Capture -->
             <div class="capture-area">
+                <div class="capture-hint"><kbd>SPACE</kbd> to capture</div>
                 <button class="capture-btn" id="capture-btn" onclick="capturePhoto()"></button>
-                <div class="capture-hint">Press <kbd>SPACE</kbd> or click to capture</div>
+                <div class="capture-hint" id="photo-type-hint">Front-T</div>
             </div>
         </div>
         
         <!-- Right Panel - Measurements -->
         <div class="panel panel-right">
-            <div class="section-card">
-                <div class="section-title">📏 Measurements</div>
-                <div class="measurement-list" id="measurement-list">
-                    <div style="color: var(--text-secondary); font-size: 13px; text-align: center; padding: 20px;">
-                        Take photos and classify item first
+            <div class="panel-scroll">
+                <div class="section-card">
+                    <div class="section-title">📏 Measurements</div>
+                    <div class="measurement-list" id="measurement-list">
+                        <div style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 16px;">
+                            Classify item first
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Record Button -->
-            <button class="record-btn" id="record-btn" onclick="toggleRecording()">
-                <span>🎤</span>
-                <span id="record-btn-text">TAP TO RECORD</span>
-            </button>
-            
-            <!-- Complete Button -->
-            <div style="margin-top: 16px;">
-                <button class="action-btn primary" id="complete-btn" onclick="completeItem()" disabled>
+                
+                <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">
+                    🎤 TAP TO RECORD
+                </button>
+                
+                <button class="btn btn-primary" id="complete-btn" onclick="completeItem()" disabled>
                     ✅ COMPLETE & SAVE
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SKU Modal -->
+    <div class="modal-overlay" id="sku-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">📷 New Item</div>
+                <button class="modal-close" onclick="closeSKUModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="sku-input-area">
+                    <input type="text" class="form-input" id="sku-input" placeholder="Enter SKU..." autofocus>
+                    <button class="sku-scan-btn" onclick="openBarcodeScanner()">📷</button>
+                </div>
+                <button class="btn btn-primary" onclick="startNewItem()">Start Item</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Barcode Modal -->
+    <div class="modal-overlay" id="barcode-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">📷 Scan Barcode</div>
+                <button class="modal-close" onclick="closeBarcodeScanner()">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="barcode-container" id="barcode-container">
+                    <div class="barcode-target"></div>
+                    <div class="barcode-status" id="barcode-status">Starting scanner...</div>
+                </div>
+                <div style="padding: 12px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="closeBarcodeScanner()">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
@@ -875,40 +857,59 @@
                     <label class="form-label">Handheld Camera</label>
                     <select class="form-select" id="camera-handheld"></select>
                 </div>
-                <hr style="border-color: var(--border-color); margin: 20px 0;">
+                <div class="form-group">
+                    <label class="form-label">Barcode Scanner Camera</label>
+                    <select class="form-select" id="camera-barcode"></select>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 16px 0;">
                 <div class="form-group">
                     <label class="form-label">Lambda URL</label>
-                    <input type="text" class="form-input" id="lambda-url" placeholder="https://...lambda-url...">
+                    <input type="text" class="form-input" id="lambda-url" placeholder="https://...">
                 </div>
-                <button class="action-btn primary" onclick="saveSettings()">Save Settings</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
             </div>
         </div>
     </div>
     
-    <!-- SKU Modal -->
-    <div class="modal-overlay" id="sku-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">📷 Start New Item</div>
-                <button class="modal-close" onclick="closeSKUModal()">×</button>
-            </div>
-            <div class="modal-body sku-modal">
-                <h2>Enter SKU</h2>
-                <input type="text" class="form-input sku-input" id="sku-input" placeholder="Enter SKU..." autofocus>
-                <button class="action-btn primary" onclick="startNewItem()">Start Item</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Hidden canvas for photo capture -->
+    <!-- Hidden Canvas -->
     <canvas id="capture-canvas" style="display: none;"></canvas>
+    <canvas id="resize-canvas" style="display: none;"></canvas>
     
     <script>
         // =====================================================================
-        // CONFIGURATION
+        // CONFIG
         // =====================================================================
-        const VERSION = '2.9';
+        const VERSION = '2.9.1';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
+        const AI_IMAGE_MAX_SIZE = 1024; // Resize for AI to avoid payload limits
+        
+        // =====================================================================
+        // PHOTO TYPES BY MODE
+        // =====================================================================
+        const PHOTO_TYPES = {
+            main: [
+                { id: 'front-t', label: 'Front-T', folder: 'main' },
+                { id: 'back-t', label: 'Back-T', folder: 'main' },
+                { id: 'front-folded', label: 'Front Folded', folder: 'main' },
+                { id: 'back-folded', label: 'Back Folded', folder: 'main' },
+                { id: 'inside-front', label: 'Inside Front', folder: 'main' },
+                { id: 'inside-back', label: 'Inside Back', folder: 'main' }
+            ],
+            closeup: [
+                { id: 'tag-brand', label: 'Brand Tag', folder: 'tag' },
+                { id: 'tag-size', label: 'Size Tag', folder: 'tag' },
+                { id: 'tag-care', label: 'Care Tag', folder: 'tag' },
+                { id: 'tag-origin', label: 'Made In', folder: 'tag' },
+                { id: 'defect', label: 'Defect', folder: 'defects' },
+                { id: 'feature', label: 'Feature', folder: 'features' }
+            ],
+            handheld: [
+                { id: 'weight', label: 'Weight/Scale', folder: 'weight' },
+                { id: 'angle', label: 'Angle Shot', folder: 'features' },
+                { id: 'detail', label: 'Detail', folder: 'features' },
+                { id: 'defect', label: 'Defect', folder: 'defects' }
+            ]
+        };
         
         // =====================================================================
         // STATE
@@ -916,150 +917,117 @@
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
             lambdaVersion: null,
-            lambdaHealthy: false,
             
             currentSKU: '',
-            currentMode: 'main', // main, closeup, handheld
+            currentMode: 'main',
+            currentPhotoType: PHOTO_TYPES.main[0],
             currentStream: null,
             
             cameras: {
-                main: { deviceId: localStorage.getItem('camera-main') || null, label: '' },
-                closeup: { deviceId: localStorage.getItem('camera-closeup') || null, label: '' },
-                handheld: { deviceId: localStorage.getItem('camera-handheld') || null, label: '' }
+                main: { deviceId: localStorage.getItem('camera-main') || null },
+                closeup: { deviceId: localStorage.getItem('camera-closeup') || null },
+                handheld: { deviceId: localStorage.getItem('camera-handheld') || null },
+                barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
             },
             
             availableCameras: [],
             
-            // Photos grouped by mode
-            photos: {
-                main: [],
-                closeup: [],
-                handheld: []
-            },
+            photos: { main: [], closeup: [], handheld: [] },
             
-            // Classification result
             classification: null,
             templateKey: null,
             template: null,
-            photoLabels: [],
             tagData: null,
-            
-            // Measurements
             measurements: {},
             
-            // Timer
+            saveDirectoryHandle: null,
+            
             timerStart: null,
             timerInterval: null,
             
-            // Recording
             isRecording: false,
             mediaRecorder: null,
             audioChunks: [],
             
-            // Flags
             aiTriggered: false
         };
         
         // =====================================================================
-        // TEMPLATES (Cached from Lambda)
-        // =====================================================================
-        let TEMPLATES = {};
-        let CATEGORIES = {};
-        
-        // =====================================================================
-        // INITIALIZATION
+        // INIT
         // =====================================================================
         async function init() {
-            console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 16px; font-weight: bold;');
+            console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px; font-weight: bold;');
             
-            // Load settings
             document.getElementById('lambda-url').value = state.lambdaUrl;
             
-            // Check Lambda health
             await checkLambda();
-            
-            // Enumerate cameras
             await enumerateCameras();
-            
-            // Load templates from Lambda
             await loadTemplates();
             
-            // Setup keyboard shortcuts
+            updatePhotoTypeButtons();
             setupKeyboardShortcuts();
             
-            // Start with main camera if configured
             if (state.cameras.main.deviceId) {
                 await startCamera('main');
             }
             
-            console.log('✅ Initialization complete');
+            console.log('✅ Init complete');
         }
         
         // =====================================================================
-        // LAMBDA COMMUNICATION
+        // LAMBDA
         // =====================================================================
         async function checkLambda() {
             try {
-                console.log('🔍 Checking Lambda health...');
-                const response = await fetch(state.lambdaUrl, {
+                const res = await fetch(state.lambdaUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'diagnostics' })
                 });
-                
-                const data = await response.json();
+                const data = await res.json();
                 
                 if (data.success) {
-                    state.lambdaHealthy = true;
                     state.lambdaVersion = data.version;
                     document.getElementById('version-badge').textContent = `v${VERSION} (Lambda: v${data.version})`;
                     console.log(`✅ Lambda v${data.version} healthy`);
                     showToast('success', `Connected to Lambda v${data.version}`);
-                } else {
-                    throw new Error(data.error || 'Unknown error');
                 }
             } catch (err) {
-                console.error('❌ Lambda health check failed:', err);
-                state.lambdaHealthy = false;
+                console.error('Lambda check failed:', err);
                 showToast('error', 'Lambda connection failed');
             }
         }
         
         async function loadTemplates() {
             try {
-                const response = await fetch(state.lambdaUrl, {
+                const res = await fetch(state.lambdaUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'templates' })
                 });
-                
-                const data = await response.json();
-                
+                const data = await res.json();
                 if (data.success) {
-                    TEMPLATES = data.templates;
-                    CATEGORIES = data.categories;
-                    console.log(`✅ Loaded ${Object.keys(TEMPLATES).length} templates`);
+                    console.log(`✅ Loaded ${Object.keys(data.templates).length} templates`);
                 }
             } catch (err) {
-                console.error('Failed to load templates:', err);
+                console.error('Load templates failed:', err);
             }
         }
         
         async function callLambda(action, body = {}) {
-            const response = await fetch(state.lambdaUrl, {
+            const res = await fetch(state.lambdaUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, ...body })
             });
-            return response.json();
+            return res.json();
         }
         
         // =====================================================================
-        // CAMERA MANAGEMENT
+        // CAMERA
         // =====================================================================
         async function enumerateCameras() {
             try {
-                // Request permission first
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 stream.getTracks().forEach(t => t.stop());
                 
@@ -1067,28 +1035,23 @@
                 state.availableCameras = devices.filter(d => d.kind === 'videoinput');
                 
                 console.log(`📹 Found ${state.availableCameras.length} cameras`);
-                
-                // Populate selects
                 populateCameraSelects();
             } catch (err) {
-                console.error('Camera enumeration failed:', err);
-                showToast('error', 'Failed to access cameras');
+                console.error('Camera enum failed:', err);
             }
         }
         
         function populateCameraSelects() {
-            ['main', 'closeup', 'handheld'].forEach(mode => {
-                const select = document.getElementById(`camera-${mode}`);
-                select.innerHTML = '<option value="">Select camera...</option>';
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
+                const sel = document.getElementById(`camera-${mode}`);
+                sel.innerHTML = '<option value="">Select camera...</option>';
                 
                 state.availableCameras.forEach((cam, i) => {
-                    const option = document.createElement('option');
-                    option.value = cam.deviceId;
-                    option.textContent = cam.label || `Camera ${i + 1}`;
-                    if (cam.deviceId === state.cameras[mode].deviceId) {
-                        option.selected = true;
-                    }
-                    select.appendChild(option);
+                    const opt = document.createElement('option');
+                    opt.value = cam.deviceId;
+                    opt.textContent = cam.label || `Camera ${i + 1}`;
+                    if (cam.deviceId === state.cameras[mode].deviceId) opt.selected = true;
+                    sel.appendChild(opt);
                 });
             });
         }
@@ -1096,65 +1059,70 @@
         async function startCamera(mode) {
             const deviceId = state.cameras[mode].deviceId;
             if (!deviceId) {
-                document.getElementById('video-placeholder').style.display = 'flex';
+                document.getElementById('video-placeholder').style.display = 'block';
                 return;
             }
             
-            // Stop existing stream
             if (state.currentStream) {
                 state.currentStream.getTracks().forEach(t => t.stop());
             }
             
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: deviceId },
-                        width: { ideal: 4096 },
-                        height: { ideal: 2160 }
-                    }
+                    video: { deviceId: { exact: deviceId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
                 });
                 
                 state.currentStream = stream;
-                const video = document.getElementById('video-preview');
-                video.srcObject = stream;
-                
+                document.getElementById('video-preview').srcObject = stream;
                 document.getElementById('video-placeholder').style.display = 'none';
                 
-                // Get actual resolution
-                const track = stream.getVideoTracks()[0];
-                const settings = track.getSettings();
+                const settings = stream.getVideoTracks()[0].getSettings();
                 document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
                 
-                // Update camera name
                 const cam = state.availableCameras.find(c => c.deviceId === deviceId);
                 document.getElementById('camera-name').textContent = cam?.label || 'Camera';
                 
-                console.log(`📹 Started ${mode} camera: ${settings.width}×${settings.height}`);
+                console.log(`📹 Started ${mode}: ${settings.width}×${settings.height}`);
             } catch (err) {
-                console.error('Failed to start camera:', err);
-                showToast('error', 'Failed to start camera');
+                console.error('Start camera failed:', err);
             }
         }
         
         function switchCameraMode(mode) {
-            // Update UI
-            document.querySelectorAll('.camera-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.mode === mode);
-            });
-            
-            const previousMode = state.currentMode;
+            const prevMode = state.currentMode;
             state.currentMode = mode;
             
-            // Start camera for this mode
-            startCamera(mode);
+            document.querySelectorAll('.camera-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.mode === mode);
+            });
             
-            // Update photo count
+            state.currentPhotoType = PHOTO_TYPES[mode][0];
+            updatePhotoTypeButtons();
+            startCamera(mode);
             updatePhotoCount();
             
-            // TRIGGER AI: When switching FROM main TO closeup
-            if (previousMode === 'main' && mode === 'closeup' && !state.aiTriggered) {
-                triggerAIClassification();
+            // Trigger AI when switching to closeup
+            if (prevMode === 'main' && mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
+                triggerAI();
             }
+        }
+        
+        function updatePhotoTypeButtons() {
+            const bar = document.getElementById('photo-types-bar');
+            const types = PHOTO_TYPES[state.currentMode];
+            
+            bar.innerHTML = types.map(t => `
+                <button class="photo-type-btn ${t.id === state.currentPhotoType.id ? 'active' : ''}" 
+                        onclick="selectPhotoType('${t.id}')">${t.label}</button>
+            `).join('');
+            
+            document.getElementById('photo-type-hint').textContent = state.currentPhotoType.label;
+        }
+        
+        function selectPhotoType(id) {
+            const types = PHOTO_TYPES[state.currentMode];
+            state.currentPhotoType = types.find(t => t.id === id) || types[0];
+            updatePhotoTypeButtons();
         }
         
         // =====================================================================
@@ -1162,7 +1130,7 @@
         // =====================================================================
         function capturePhoto() {
             if (!state.currentStream || !state.currentSKU) {
-                showToast('warning', 'Enter a SKU first');
+                showToast('warning', 'Enter SKU first');
                 return;
             }
             
@@ -1170,34 +1138,39 @@
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d');
             
-            // Set canvas to video resolution
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
-            // Draw frame
             ctx.drawImage(video, 0, 0);
             
-            // Flash effect
+            // Flash
             const flash = document.getElementById('capture-flash');
             flash.classList.add('active');
             setTimeout(() => flash.classList.remove('active'), 100);
             
-            // Get blob
             canvas.toBlob(blob => {
                 const photo = {
                     blob,
                     mode: state.currentMode,
-                    timestamp: Date.now(),
-                    label: null // AI will assign
+                    type: state.currentPhotoType.id,
+                    label: state.currentPhotoType.label,
+                    folder: state.currentPhotoType.folder,
+                    timestamp: Date.now()
                 };
                 
                 state.photos[state.currentMode].push(photo);
-                
                 updatePhotoGrid();
                 updatePhotoCount();
                 
-                console.log(`📷 Captured ${state.currentMode} photo #${state.photos[state.currentMode].length}`);
-                showToast('success', `Photo captured`);
+                // Auto-advance to next photo type
+                const types = PHOTO_TYPES[state.currentMode];
+                const idx = types.findIndex(t => t.id === state.currentPhotoType.id);
+                if (idx < types.length - 1) {
+                    state.currentPhotoType = types[idx + 1];
+                    updatePhotoTypeButtons();
+                }
+                
+                console.log(`📷 Captured: ${photo.label}`);
+                showToast('success', `Captured: ${photo.label}`);
             }, 'image/jpeg', 0.92);
         }
         
@@ -1209,121 +1182,122 @@
         
         function updatePhotoGrid() {
             const grid = document.getElementById('photo-grid');
-            grid.innerHTML = '';
-            
-            const allPhotos = [
-                ...state.photos.main.map((p, i) => ({ ...p, globalIndex: i, mode: 'main' })),
-                ...state.photos.closeup.map((p, i) => ({ ...p, globalIndex: i, mode: 'closeup' })),
-                ...state.photos.handheld.map((p, i) => ({ ...p, globalIndex: i, mode: 'handheld' }))
+            const all = [
+                ...state.photos.main,
+                ...state.photos.closeup,
+                ...state.photos.handheld
             ];
             
-            allPhotos.forEach((photo, i) => {
-                const thumb = document.createElement('div');
-                thumb.className = 'photo-thumb';
-                
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(photo.blob);
-                thumb.appendChild(img);
-                
-                // Label
-                const label = document.createElement('div');
-                label.className = 'photo-thumb-label';
-                label.textContent = photo.label || `${photo.mode} #${photo.globalIndex + 1}`;
-                thumb.appendChild(label);
-                
-                // Delete button
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'photo-thumb-delete';
-                deleteBtn.textContent = '×';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    state.photos[photo.mode].splice(photo.globalIndex, 1);
-                    updatePhotoGrid();
-                    updatePhotoCount();
-                };
-                thumb.appendChild(deleteBtn);
-                
-                grid.appendChild(thumb);
-            });
+            grid.innerHTML = all.map((p, i) => `
+                <div class="photo-thumb">
+                    <img src="${URL.createObjectURL(p.blob)}">
+                    <div class="photo-thumb-label">${p.label}</div>
+                    <button class="photo-thumb-delete" onclick="deletePhoto(${i})">×</button>
+                </div>
+            `).join('');
+        }
+        
+        function deletePhoto(globalIdx) {
+            let count = 0;
+            for (const mode of ['main', 'closeup', 'handheld']) {
+                if (globalIdx < count + state.photos[mode].length) {
+                    state.photos[mode].splice(globalIdx - count, 1);
+                    break;
+                }
+                count += state.photos[mode].length;
+            }
+            updatePhotoGrid();
+            updatePhotoCount();
         }
         
         // =====================================================================
         // AI CLASSIFICATION
         // =====================================================================
-        async function triggerAIClassification() {
-            if (state.photos.main.length === 0) {
-                console.log('No main photos to classify');
-                return;
-            }
+        async function triggerAI() {
+            if (state.photos.main.length === 0) return;
             
             state.aiTriggered = true;
-            
-            const processing = document.getElementById('ai-processing');
-            processing.classList.add('active');
+            document.getElementById('ai-overlay').classList.add('active');
             
             try {
-                console.log(`🤖 Triggering AI classification with ${state.photos.main.length} photos`);
+                console.log(`🤖 AI classification: ${state.photos.main.length} photos`);
                 
-                // Convert photos to base64
+                // Resize images for AI (to avoid payload limits)
                 const mainPhotos = await Promise.all(
-                    state.photos.main.map(p => blobToBase64(p.blob))
+                    state.photos.main.slice(0, 4).map(p => resizeImageForAI(p.blob))
                 );
                 
-                // Get first closeup photo if available (for tag OCR)
                 let tagPhoto = null;
                 if (state.photos.closeup.length > 0) {
-                    tagPhoto = await blobToBase64(state.photos.closeup[0].blob);
+                    tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
                 }
                 
-                // Call Lambda
-                const result = await callLambda('classify', {
-                    mainPhotos,
-                    tagPhoto
-                });
+                const result = await callLambda('classify', { mainPhotos, tagPhoto });
                 
                 if (result.success) {
                     state.classification = result.category;
                     state.templateKey = result.templateKey;
                     state.template = result.template;
-                    state.photoLabels = result.photoLabels || [];
                     state.tagData = result.tagData;
                     
-                    // Update photo labels
-                    state.photos.main.forEach((photo, i) => {
-                        if (state.photoLabels[i]) {
-                            photo.label = state.photoLabels[i];
-                        }
-                    });
-                    
                     updateClassificationDisplay();
-                    updatePhotoGrid();
                     updateMeasurementList();
                     
-                    console.log(`✅ Classified as: ${result.category} → ${result.templateKey}`);
+                    console.log(`✅ Classified: ${result.category}`);
                     showToast('success', `Classified: ${result.category}`);
                 } else {
                     throw new Error(result.error || 'Classification failed');
                 }
             } catch (err) {
-                console.error('AI classification error:', err);
-                showToast('error', 'Classification failed: ' + err.message);
+                console.error('AI error:', err);
+                showToast('error', 'AI failed: ' + err.message);
             } finally {
-                processing.classList.remove('active');
+                document.getElementById('ai-overlay').classList.remove('active');
             }
         }
         
+        async function resizeImageForAI(blob) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('resize-canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    let w = img.width;
+                    let h = img.height;
+                    
+                    if (w > AI_IMAGE_MAX_SIZE || h > AI_IMAGE_MAX_SIZE) {
+                        if (w > h) {
+                            h = Math.round(h * AI_IMAGE_MAX_SIZE / w);
+                            w = AI_IMAGE_MAX_SIZE;
+                        } else {
+                            w = Math.round(w * AI_IMAGE_MAX_SIZE / h);
+                            h = AI_IMAGE_MAX_SIZE;
+                        }
+                    }
+                    
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    
+                    // Return base64 without prefix
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    resolve(dataUrl.split(',')[1]);
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+        
         function updateClassificationDisplay() {
-            const display = document.getElementById('classification-display');
-            display.classList.remove('pending');
-            display.classList.add('ready');
+            const box = document.getElementById('classification-box');
+            box.classList.add('ready');
             
             document.getElementById('classification-category').textContent = state.classification || 'Unknown';
             document.getElementById('classification-template').innerHTML = 
-                `Template: <span>${state.template?.name || '-'}</span> (${state.template?.count || 0} measurements)`;
+                `Template: <span>${state.template?.name || '-'}</span> (${state.template?.count || 0})`;
             
-            // Update tag data
             if (state.tagData) {
-                document.getElementById('tag-data').style.display = 'grid';
+                document.getElementById('tag-grid').style.display = 'grid';
                 document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
                 document.getElementById('tag-size').textContent = state.tagData.size || '-';
                 document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
@@ -1334,20 +1308,19 @@
         function updateMeasurementList() {
             const list = document.getElementById('measurement-list');
             
-            if (!state.template || !state.template.measurements) {
-                list.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Classify item first</div>';
+            if (!state.template?.measurements) {
+                list.innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
                 return;
             }
             
             list.innerHTML = state.template.measurements.map((m, i) => `
-                <div class="measurement-item" data-index="${i}">
+                <div class="measurement-item" data-idx="${i}">
                     <span class="measurement-num">${i + 1}</span>
                     <span class="measurement-name">${m}</span>
-                    <span class="measurement-value" id="measurement-value-${i}">-</span>
+                    <span class="measurement-value" id="mv-${i}">-</span>
                 </div>
             `).join('');
             
-            // Enable complete button
             document.getElementById('complete-btn').disabled = false;
         }
         
@@ -1369,23 +1342,20 @@
                 state.audioChunks = [];
                 
                 state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
-                
                 state.mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
                     stream.getTracks().forEach(t => t.stop());
-                    await transcribeAudio(audioBlob);
+                    await transcribeAudio(blob);
                 };
                 
                 state.mediaRecorder.start();
                 state.isRecording = true;
                 
-                document.getElementById('record-btn').classList.add('recording');
-                document.getElementById('record-btn-text').textContent = 'RECORDING...';
-                
-                console.log('🎤 Recording started');
+                const btn = document.getElementById('record-btn');
+                btn.classList.add('recording');
+                btn.textContent = '🎤 RECORDING...';
             } catch (err) {
-                console.error('Recording error:', err);
-                showToast('error', 'Microphone access denied');
+                showToast('error', 'Mic access denied');
             }
         }
         
@@ -1394,119 +1364,177 @@
                 state.mediaRecorder.stop();
                 state.isRecording = false;
                 
-                document.getElementById('record-btn').classList.remove('recording');
-                document.getElementById('record-btn-text').textContent = 'TAP TO RECORD';
-                
-                console.log('🎤 Recording stopped');
+                const btn = document.getElementById('record-btn');
+                btn.classList.remove('recording');
+                btn.textContent = '🎤 TAP TO RECORD';
             }
         }
         
-        async function transcribeAudio(audioBlob) {
+        async function transcribeAudio(blob) {
             try {
                 showToast('info', 'Transcribing...');
                 
-                const base64 = await blobToBase64(audioBlob);
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
                 
-                const result = await callLambda('whisper', {
-                    audio: base64.split(',')[1], // Remove data URL prefix
-                    filename: 'audio.webm',
-                    language: 'en'
-                });
-                
-                if (result.success && result.text) {
-                    console.log('📝 Transcribed:', result.text);
-                    parseMeasurements(result.text);
-                    showToast('success', 'Transcription complete');
-                } else {
-                    throw new Error(result.error || 'Transcription failed');
-                }
+                reader.onloadend = async () => {
+                    const base64 = reader.result.split(',')[1];
+                    const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
+                    
+                    if (result.success && result.text) {
+                        console.log('📝 Transcribed:', result.text);
+                        parseMeasurements(result.text);
+                        showToast('success', 'Transcription done');
+                    }
+                };
             } catch (err) {
-                console.error('Transcription error:', err);
                 showToast('error', 'Transcription failed');
             }
         }
         
         function parseMeasurements(text) {
-            // Simple parser - looks for numbers with units
             const regex = /(\d+(?:\.\d+)?)\s*(?:inches?|in|")?/gi;
             const matches = [...text.matchAll(regex)];
             
             if (!state.template) return;
             
-            matches.forEach((match, i) => {
+            matches.forEach((m, i) => {
                 if (i < state.template.measurements.length) {
-                    const value = parseFloat(match[1]);
-                    state.measurements[state.template.measurements[i]] = value;
+                    const val = parseFloat(m[1]);
+                    const name = state.template.measurements[i];
+                    state.measurements[name] = val;
                     
-                    const el = document.getElementById(`measurement-value-${i}`);
+                    const el = document.getElementById(`mv-${i}`);
                     if (el) {
-                        el.textContent = `${value}"`;
+                        el.textContent = `${val}"`;
                         el.closest('.measurement-item').classList.add('completed');
                     }
                 }
             });
-            
-            console.log('📊 Parsed measurements:', state.measurements);
         }
         
         // =====================================================================
-        // COMPLETE & SAVE
+        // FOLDER SAVE
+        // =====================================================================
+        async function chooseSaveFolder() {
+            try {
+                state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                
+                const display = document.getElementById('folder-display');
+                display.textContent = `📁 ${state.saveDirectoryHandle.name}`;
+                display.classList.remove('not-set');
+                display.classList.add('set');
+                
+                showToast('success', `Folder: ${state.saveDirectoryHandle.name}`);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast('error', 'Folder selection failed');
+                }
+            }
+        }
+        
+        async function saveToFolder() {
+            if (!state.saveDirectoryHandle || !state.currentSKU) return false;
+            
+            try {
+                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(state.currentSKU, { create: true });
+                
+                // Create subfolders
+                for (const f of ['main', 'tag', 'defects', 'features', 'weight', 'data']) {
+                    await skuFolder.getDirectoryHandle(f, { create: true });
+                }
+                
+                // Save photos
+                for (const mode of ['main', 'closeup', 'handheld']) {
+                    for (let i = 0; i < state.photos[mode].length; i++) {
+                        const photo = state.photos[mode][i];
+                        const subfolder = await skuFolder.getDirectoryHandle(photo.folder, { create: true });
+                        const filename = `${state.currentSKU}_${photo.type}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        
+                        const fileHandle = await subfolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                }
+                
+                // Save data JSON
+                if (Object.keys(state.measurements).length > 0) {
+                    const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+                    const fileHandle = await dataFolder.getFileHandle(`${state.currentSKU}_data.json`, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(JSON.stringify({
+                        sku: state.currentSKU,
+                        category: state.classification,
+                        template: state.templateKey,
+                        measurements: state.measurements,
+                        tagData: state.tagData,
+                        timestamp: new Date().toISOString()
+                    }, null, 2));
+                    await writable.close();
+                }
+                
+                return true;
+            } catch (err) {
+                console.error('Folder save error:', err);
+                return false;
+            }
+        }
+        
+        // =====================================================================
+        // COMPLETE
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) {
-                showToast('warning', 'No SKU set');
+                showToast('warning', 'No SKU');
                 return;
             }
             
             try {
                 showToast('info', 'Saving...');
                 
-                // Prepare files for S3
-                const files = [];
+                // 1. Save to local folder
+                if (state.saveDirectoryHandle) {
+                    const ok = await saveToFolder();
+                    if (ok) console.log('✅ Saved to folder');
+                }
                 
-                // Add photos
+                // 2. Upload to S3
+                const files = [];
                 for (const mode of ['main', 'closeup', 'handheld']) {
                     for (let i = 0; i < state.photos[mode].length; i++) {
-                        const photo = state.photos[mode][i];
-                        const label = photo.label || `${mode}_${i + 1}`;
+                        const p = state.photos[mode][i];
                         files.push({
-                            name: `${label}.jpg`,
+                            name: `${p.folder}/${p.type}_${i + 1}.jpg`,
                             contentType: 'image/jpeg',
-                            blob: photo.blob
+                            blob: p.blob
                         });
                     }
                 }
                 
-                // Get presigned URLs
-                const presignResult = await callLambda('presign', {
-                    sku: state.currentSKU,
-                    files: files.map(f => ({ name: f.name, contentType: f.contentType }))
-                });
-                
-                if (!presignResult.success) {
-                    throw new Error(presignResult.error || 'Presign failed');
-                }
-                
-                // Upload files to S3
-                for (const file of files) {
-                    const url = presignResult.urls[file.name];
-                    if (url) {
-                        await fetch(url, {
-                            method: 'PUT',
-                            body: file.blob,
-                            headers: { 'Content-Type': file.contentType }
-                        });
+                if (files.length > 0) {
+                    const presign = await callLambda('presign', {
+                        sku: state.currentSKU,
+                        files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+                    });
+                    
+                    if (presign.success) {
+                        for (const f of files) {
+                            const url = presign.urls[f.name];
+                            if (url) {
+                                await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
+                            }
+                        }
+                        console.log('✅ Uploaded to S3');
                     }
                 }
                 
-                console.log('✅ Uploaded to S3');
-                
-                // Send to n8n
+                // 3. Send to n8n
                 await callLambda('n8n', {
                     formData: {
                         sku: state.currentSKU,
                         category: state.classification,
-                        templateKey: state.templateKey,
+                        template: state.templateKey,
                         measurements: state.measurements,
                         tagData: state.tagData,
                         photoCount: files.length,
@@ -1514,21 +1542,14 @@
                     }
                 });
                 
-                console.log('✅ Sent to n8n');
-                showToast('success', 'Item saved successfully!');
-                
-                // Stop timer
+                showToast('success', 'Item saved!');
                 stopTimer();
                 
-                // Reset for next item
                 setTimeout(() => {
-                    if (confirm('Start next item?')) {
-                        openSKUModal();
-                    }
+                    if (confirm('Start next item?')) openSKUModal();
                 }, 500);
                 
             } catch (err) {
-                console.error('Save error:', err);
                 showToast('error', 'Save failed: ' + err.message);
             }
         }
@@ -1548,45 +1569,32 @@
         
         function startNewItem() {
             const sku = document.getElementById('sku-input').value.trim();
-            if (!sku) {
-                showToast('warning', 'Enter a SKU');
-                return;
-            }
+            if (!sku) { showToast('warning', 'Enter SKU'); return; }
             
-            // Reset state
             state.currentSKU = sku;
             state.photos = { main: [], closeup: [], handheld: [] };
             state.classification = null;
             state.templateKey = null;
             state.template = null;
-            state.photoLabels = [];
             state.tagData = null;
             state.measurements = {};
             state.aiTriggered = false;
             
-            // Update UI
             document.getElementById('sku-display').textContent = sku;
-            document.getElementById('classification-display').classList.remove('ready');
-            document.getElementById('classification-display').classList.add('pending');
+            document.getElementById('classification-box').classList.remove('ready');
             document.getElementById('classification-category').textContent = 'Waiting...';
             document.getElementById('classification-template').innerHTML = 'Template: <span>-</span>';
-            document.getElementById('tag-data').style.display = 'none';
-            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Take photos and classify item first</div>';
+            document.getElementById('tag-grid').style.display = 'none';
+            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('complete-btn').disabled = true;
             
             updatePhotoGrid();
             updatePhotoCount();
             
-            // Start timer
             startTimer();
-            
-            // Close modal
             closeSKUModal();
-            
-            // Switch to main camera
             switchCameraMode('main');
             
-            console.log(`📦 Started new item: ${sku}`);
             showToast('success', `Started: ${sku}`);
         }
         
@@ -1594,22 +1602,69 @@
             stopTimer();
             state.timerStart = Date.now();
             state.timerInterval = setInterval(updateTimer, 1000);
-            updateTimer();
         }
         
         function stopTimer() {
-            if (state.timerInterval) {
-                clearInterval(state.timerInterval);
-                state.timerInterval = null;
-            }
+            if (state.timerInterval) clearInterval(state.timerInterval);
         }
         
         function updateTimer() {
             if (!state.timerStart) return;
-            const elapsed = Math.floor((Date.now() - state.timerStart) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
-            document.getElementById('timer').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            const s = Math.floor((Date.now() - state.timerStart) / 1000);
+            document.getElementById('timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        }
+        
+        // =====================================================================
+        // BARCODE SCANNER (QuaggaJS)
+        // =====================================================================
+        function openBarcodeScanner() {
+            document.getElementById('barcode-modal').classList.add('active');
+            document.getElementById('barcode-status').textContent = 'Starting...';
+            document.getElementById('barcode-status').classList.remove('success');
+            
+            const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
+            
+            Quagga.init({
+                inputStream: {
+                    type: 'LiveStream',
+                    target: document.getElementById('barcode-container'),
+                    constraints: {
+                        deviceId: deviceId ? { exact: deviceId } : undefined,
+                        facingMode: 'environment'
+                    }
+                },
+                decoder: {
+                    readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader']
+                }
+            }, err => {
+                if (err) {
+                    console.error('Quagga init error:', err);
+                    document.getElementById('barcode-status').textContent = 'Scanner error';
+                    return;
+                }
+                
+                document.getElementById('barcode-status').textContent = 'Point at barcode...';
+                Quagga.start();
+                
+                Quagga.onDetected(result => {
+                    const code = result.codeResult.code;
+                    console.log('📷 Barcode:', code);
+                    
+                    document.getElementById('barcode-status').textContent = code;
+                    document.getElementById('barcode-status').classList.add('success');
+                    document.getElementById('sku-input').value = code;
+                    
+                    setTimeout(() => {
+                        closeBarcodeScanner();
+                        showToast('success', `Scanned: ${code}`);
+                    }, 500);
+                });
+            });
+        }
+        
+        function closeBarcodeScanner() {
+            try { Quagga.stop(); } catch {}
+            document.getElementById('barcode-modal').classList.remove('active');
         }
         
         // =====================================================================
@@ -1624,86 +1679,55 @@
         }
         
         function saveSettings() {
-            // Save camera selections
-            ['main', 'closeup', 'handheld'].forEach(mode => {
-                const select = document.getElementById(`camera-${mode}`);
-                const deviceId = select.value;
-                state.cameras[mode].deviceId = deviceId;
-                localStorage.setItem(`camera-${mode}`, deviceId);
-                
-                const cam = state.availableCameras.find(c => c.deviceId === deviceId);
-                state.cameras[mode].label = cam?.label || '';
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
+                const sel = document.getElementById(`camera-${mode}`);
+                state.cameras[mode].deviceId = sel.value;
+                localStorage.setItem(`camera-${mode}`, sel.value);
             });
             
-            // Save Lambda URL
-            const lambdaUrl = document.getElementById('lambda-url').value.trim();
-            if (lambdaUrl) {
-                state.lambdaUrl = lambdaUrl;
-                localStorage.setItem('lambdaUrl', lambdaUrl);
+            const url = document.getElementById('lambda-url').value.trim();
+            if (url) {
+                state.lambdaUrl = url;
+                localStorage.setItem('lambdaUrl', url);
             }
             
             closeSettings();
             showToast('success', 'Settings saved');
-            
-            // Restart current camera
             startCamera(state.currentMode);
-            
-            // Re-check Lambda
             checkLambda();
         }
         
         // =====================================================================
         // UTILITIES
         // =====================================================================
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-        
-        function showToast(type, message) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+        function showToast(type, msg) {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
         }
         
         function setupKeyboardShortcuts() {
-            document.addEventListener('keydown', (e) => {
-                // Space = capture photo
-                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
-                    e.preventDefault();
-                    capturePhoto();
-                }
+            document.addEventListener('keydown', e => {
+                if (e.target.matches('input, textarea')) return;
                 
-                // 1, 2, 3 = switch camera mode
+                if (e.code === 'Space') { e.preventDefault(); capturePhoto(); }
                 if (e.code === 'Digit1') switchCameraMode('main');
                 if (e.code === 'Digit2') switchCameraMode('closeup');
                 if (e.code === 'Digit3') switchCameraMode('handheld');
-                
-                // R = toggle recording
-                if (e.code === 'KeyR' && !e.target.matches('input, textarea')) {
-                    toggleRecording();
-                }
-                
-                // Enter in SKU modal
+                if (e.code === 'KeyR') toggleRecording();
+            });
+            
+            document.addEventListener('keydown', e => {
                 if (e.code === 'Enter' && document.getElementById('sku-modal').classList.contains('active')) {
                     startNewItem();
                 }
-                
-                // Escape = close modals
                 if (e.code === 'Escape') {
                     closeSettings();
                     closeSKUModal();
+                    closeBarcodeScanner();
                 }
             });
         }
