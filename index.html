@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.2</title>
+    <title>VintageLister v2.9.3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +32,6 @@
             overflow: hidden;
         }
         
-        /* Layout */
         .app-container {
             display: grid;
             grid-template-columns: 300px 1fr 300px;
@@ -70,30 +69,20 @@
             flex-shrink: 0;
         }
         
-        .timer {
-            font-size: 28px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: white;
-        }
+        .timer-section { text-align: left; }
+        .timer { font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; color: white; }
+        .timer-label { font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
         
-        .timer-label {
-            font-size: 9px;
-            color: rgba(255,255,255,0.7);
-            text-transform: uppercase;
-        }
+        .stats-section { text-align: center; }
+        .stats-row { display: flex; gap: 12px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 16px; font-weight: 700; color: white; }
+        .stat-label { font-size: 8px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
         
-        .version-info {
-            text-align: right;
-        }
-        
-        .version-badge {
-            font-size: 10px;
-            color: rgba(255,255,255,0.9);
-            background: rgba(0,0,0,0.3);
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
+        .version-info { text-align: right; }
+        .version-badge { font-size: 10px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: block; margin-bottom: 4px; }
+        .retry-badge { font-size: 9px; color: var(--accent-yellow); display: none; }
+        .retry-badge.visible { display: block; }
         
         /* Section Cards */
         .section-card {
@@ -111,15 +100,17 @@
             margin-bottom: 10px;
         }
         
-        /* SKU Input - Inline */
+        /* SKU Input - Fixed Layout */
         .sku-row {
             display: flex;
             gap: 6px;
             margin-bottom: 8px;
+            flex-wrap: nowrap;
         }
         
         .sku-input {
             flex: 1;
+            min-width: 0;
             padding: 10px 12px;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
@@ -129,31 +120,21 @@
             font-weight: 600;
         }
         
-        .sku-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-        }
+        .sku-input:focus { outline: none; border-color: var(--accent-blue); }
         
         .sku-btn {
-            padding: 10px 14px;
+            padding: 10px 12px;
             border: none;
             border-radius: var(--radius);
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         
-        .sku-btn-scan {
-            background: var(--accent-purple);
-            color: white;
-        }
-        
-        .sku-btn-start {
-            background: var(--accent-green);
-            color: white;
-            font-weight: 600;
-        }
-        
+        .sku-btn-scan { background: var(--accent-purple); color: white; }
+        .sku-btn-start { background: var(--accent-green); color: white; font-weight: 600; }
         .sku-btn:hover { filter: brightness(1.1); }
         
         .sku-display {
@@ -179,19 +160,8 @@
         }
         
         .classification-box.ready { border-color: var(--accent-green); }
-        
-        .classification-category {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent-yellow);
-        }
-        
-        .classification-template {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-        
+        .classification-category { font-size: 18px; font-weight: 700; color: var(--accent-yellow); }
+        .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .classification-template span { color: var(--accent-blue); font-weight: 600; }
         
         /* Tag Data */
@@ -220,16 +190,13 @@
             font-size: 11px;
             margin-bottom: 8px;
             color: var(--text-secondary);
+            cursor: pointer;
         }
         
         .folder-display.set { color: var(--accent-green); }
         
         /* Photo Grid */
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-        }
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         
         .photo-thumb {
             position: relative;
@@ -239,17 +206,11 @@
             background: var(--bg-tertiary);
         }
         
-        .photo-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         
         .photo-thumb-label {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             background: rgba(0,0,0,0.8);
             padding: 3px;
             font-size: 8px;
@@ -259,10 +220,8 @@
         
         .photo-thumb-delete {
             position: absolute;
-            top: 2px;
-            right: 2px;
-            width: 18px;
-            height: 18px;
+            top: 2px; right: 2px;
+            width: 18px; height: 18px;
             border-radius: 50%;
             border: none;
             background: var(--accent-red);
@@ -283,7 +242,6 @@
             background: #000;
         }
         
-        /* Camera Tabs */
         .camera-tabs {
             display: flex;
             gap: 4px;
@@ -305,16 +263,8 @@
             color: var(--text-secondary);
         }
         
-        .camera-tab:hover {
-            background: var(--bg-primary);
-            color: var(--text-primary);
-        }
-        
-        .camera-tab.active {
-            background: var(--accent-blue);
-            color: white;
-        }
-        
+        .camera-tab:hover { background: var(--bg-primary); color: var(--text-primary); }
+        .camera-tab.active { background: var(--accent-blue); color: white; }
         .camera-tab.closeup.active { background: var(--accent-orange); }
         .camera-tab.handheld.active { background: var(--accent-purple); }
         
@@ -331,20 +281,8 @@
         }
         
         .camera-name { font-weight: 600; color: var(--text-primary); }
-        
-        .resolution-badge {
-            background: var(--bg-secondary);
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-        
-        .photo-count-badge {
-            background: var(--accent-green);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
+        .resolution-badge { background: var(--bg-secondary); padding: 3px 8px; border-radius: 4px; }
+        .photo-count-badge { background: var(--accent-green); color: white; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
         
         /* Video */
         .video-container {
@@ -356,17 +294,8 @@
             min-height: 0;
         }
         
-        .video-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        
-        .video-placeholder {
-            color: var(--text-secondary);
-            text-align: center;
-            padding: 40px;
-        }
+        .video-container video { width: 100%; height: 100%; object-fit: contain; }
+        .video-placeholder { color: var(--text-secondary); text-align: center; padding: 40px; }
         
         .capture-flash {
             position: absolute;
@@ -379,11 +308,12 @@
         
         .capture-flash.active { opacity: 0.7; }
         
-        /* Capture Area */
+        /* Capture Area - Now with Complete Button */
         .capture-area {
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 20px;
             padding: 16px;
             background: var(--bg-secondary);
             flex-shrink: 0;
@@ -412,12 +342,42 @@
         .capture-btn:hover::after { background: var(--accent-blue); }
         .capture-btn:active { transform: scale(0.95); }
         
-        /* Measurements */
-        .measurement-list {
+        .complete-btn-camera {
+            padding: 14px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--accent-green);
+            color: white;
+            transition: all 0.2s;
+        }
+        
+        .complete-btn-camera:hover { filter: brightness(1.1); }
+        .complete-btn-camera:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* AI Overlay */
+        .ai-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
         }
+        
+        .ai-overlay.active { opacity: 1; visibility: visible; }
+        .spinner { width: 36px; height: 36px; border: 3px solid var(--bg-tertiary); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Measurements */
+        .measurement-list { display: flex; flex-direction: column; gap: 6px; }
         
         .measurement-item {
             display: flex;
@@ -434,8 +394,7 @@
         }
         
         .measurement-num {
-            width: 22px;
-            height: 22px;
+            width: 22px; height: 22px;
             border-radius: 50%;
             background: var(--bg-secondary);
             display: flex;
@@ -449,6 +408,21 @@
         
         .measurement-name { flex: 1; }
         .measurement-value { font-weight: 600; color: var(--accent-green); }
+        
+        /* Transcript Display */
+        .transcript-box {
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: none;
+        }
+        
+        .transcript-box.visible { display: block; }
+        .transcript-label { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .transcript-text { font-style: italic; }
         
         /* Buttons */
         .btn {
@@ -469,7 +443,6 @@
         .btn:hover { filter: brightness(1.1); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn.recording { animation: pulse 1s infinite; }
-        
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         
         /* Modal */
@@ -508,8 +481,7 @@
         .modal-title { font-size: 16px; font-weight: 600; }
         
         .modal-close {
-            width: 30px;
-            height: 30px;
+            width: 30px; height: 30px;
             border: none;
             border-radius: 50%;
             background: var(--bg-tertiary);
@@ -519,17 +491,8 @@
         }
         
         .modal-body { padding: 16px; }
-        
         .form-group { margin-bottom: 14px; }
-        
-        .form-label {
-            display: block;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }
+        .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
         
         .form-select, .form-input {
             width: 100%;
@@ -541,10 +504,7 @@
             font-size: 13px;
         }
         
-        .form-select:focus, .form-input:focus {
-            outline: none;
-            border-color: var(--accent-blue);
-        }
+        .form-select:focus, .form-input:focus { outline: none; border-color: var(--accent-blue); }
         
         /* Barcode Scanner */
         .barcode-container {
@@ -555,27 +515,20 @@
             overflow: hidden;
         }
         
-        .barcode-container video, .barcode-container canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        .barcode-container video, .barcode-container canvas { width: 100%; height: 100%; object-fit: cover; }
         
         .barcode-target {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 200px;
-            height: 80px;
+            width: 200px; height: 80px;
             border: 3px solid var(--accent-yellow);
             border-radius: 8px;
         }
         
         .barcode-status {
             position: absolute;
-            bottom: 10px;
-            left: 50%;
+            bottom: 10px; left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.8);
             padding: 8px 16px;
@@ -588,8 +541,7 @@
         /* Toast */
         .toast-container {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 20px; right: 20px;
             z-index: 2000;
             display: flex;
             flex-direction: column;
@@ -604,43 +556,12 @@
             animation: slideIn 0.3s ease;
         }
         
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
         .toast.success { background: var(--accent-green); color: white; }
         .toast.error { background: var(--accent-red); color: white; }
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
-        
-        /* AI Overlay */
-        .ai-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .ai-overlay.active { opacity: 1; visibility: visible; }
-        
-        .spinner {
-            width: 36px;
-            height: 36px;
-            border: 3px solid var(--bg-tertiary);
-            border-top-color: var(--accent-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -650,17 +571,30 @@
         <!-- Left Panel -->
         <div class="panel panel-left">
             <div class="header-bar">
-                <div>
+                <div class="timer-section">
                     <div class="timer" id="timer">0:00</div>
                     <div class="timer-label">Item Time</div>
                 </div>
+                <div class="stats-section">
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="item-count">0</div>
+                            <div class="stat-label">Items</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avg-time">0:00</div>
+                            <div class="stat-label">Avg</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="version-info">
-                    <div class="version-badge" id="version-badge">v2.9.2</div>
+                    <span class="version-badge" id="version-badge">v2.9.3</span>
+                    <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
             
             <div class="panel-scroll">
-                <!-- SKU - Inline -->
+                <!-- SKU - Fixed Layout -->
                 <div class="section-card">
                     <div class="section-title">🏷️ Item SKU</div>
                     <div class="sku-row" id="sku-row">
@@ -689,8 +623,7 @@
                 <!-- Save Location -->
                 <div class="section-card">
                     <div class="section-title">💾 Save Location</div>
-                    <div class="folder-display" id="folder-display">📁 Not set - click to choose</div>
-                    <button class="btn btn-secondary" onclick="chooseSaveFolder()">Choose Folder</button>
+                    <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
                 </div>
                 
                 <!-- Photos -->
@@ -729,6 +662,7 @@
             
             <div class="capture-area">
                 <button class="capture-btn" id="capture-btn" onclick="capturePhoto()"></button>
+                <button class="complete-btn-camera" id="complete-btn-camera" onclick="completeItem()" disabled>✅ COMPLETE</button>
             </div>
         </div>
         
@@ -741,6 +675,10 @@
                         <div style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 16px;">
                             Classify item first
                         </div>
+                    </div>
+                    <div class="transcript-box" id="transcript-box">
+                        <div class="transcript-label">📝 Transcript:</div>
+                        <div class="transcript-text" id="transcript-text"></div>
                     </div>
                 </div>
                 
@@ -807,9 +745,11 @@
     <canvas id="resize-canvas" style="display: none;"></canvas>
     
     <script>
-        const VERSION = '2.9.2';
+        const VERSION = '2.9.3';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 5000;
         
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
@@ -830,27 +770,53 @@
             template: null,
             tagData: null,
             measurements: {},
+            rawTranscript: '',
+            audioBlob: null,
             saveDirectoryHandle: null,
             timerStart: null,
             timerInterval: null,
             isRecording: false,
             mediaRecorder: null,
             audioChunks: [],
-            aiTriggered: false
+            aiTriggered: false,
+            // Section timing
+            timing: { mainStart: null, closeupStart: null, measurementsStart: null },
+            // Stats
+            completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
+            totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
+            // Retry queue
+            retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]')
         };
         
-        // Init
+        // =====================================================================
+        // INIT
+        // =====================================================================
         async function init() {
             console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px;');
             document.getElementById('lambda-url').value = state.lambdaUrl;
+            updateStats();
+            updateRetryBadge();
             await checkLambda();
             await enumerateCameras();
-            await loadTemplates();
             if (state.cameras.main.deviceId) await startCamera('main');
-            console.log('✅ Init complete');
+            
+            // SPACE key for pedal capture
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    capturePhoto();
+                }
+            });
+            
+            // Process retry queue
+            processRetryQueue();
+            
+            console.log('✅ Init complete - SPACE key enabled for capture');
         }
         
-        // Lambda
+        // =====================================================================
+        // LAMBDA
+        // =====================================================================
         async function checkLambda() {
             try {
                 const res = await fetch(state.lambdaUrl, {
@@ -861,27 +827,13 @@
                 const data = await res.json();
                 if (data.success) {
                     state.lambdaVersion = data.version;
-                    document.getElementById('version-badge').textContent = `v${VERSION} | Lambda v${data.version}`;
+                    document.getElementById('version-badge').textContent = `v${VERSION} | λ${data.version}`;
                     console.log(`✅ Lambda v${data.version} healthy`);
                     showToast('success', `Connected to Lambda v${data.version}`);
                 }
             } catch (err) {
                 console.error('Lambda check failed:', err);
                 showToast('error', 'Lambda connection failed');
-            }
-        }
-        
-        async function loadTemplates() {
-            try {
-                const res = await fetch(state.lambdaUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'templates' })
-                });
-                const data = await res.json();
-                if (data.success) console.log(`✅ Loaded ${Object.keys(data.templates).length} templates`);
-            } catch (err) {
-                console.error('Load templates failed:', err);
             }
         }
         
@@ -894,7 +846,9 @@
             return res.json();
         }
         
-        // Camera
+        // =====================================================================
+        // CAMERA
+        // =====================================================================
         async function enumerateCameras() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -952,17 +906,31 @@
             document.querySelectorAll('.camera-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
             startCamera(mode);
             updatePhotoCount();
+            
+            // Track timing
+            if (mode === 'closeup' && prevMode === 'main' && state.currentSKU) {
+                state.timing.closeupStart = Date.now();
+            }
+            
+            // Trigger AI when switching to closeup (after taking main photos)
             if (prevMode === 'main' && mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
                 triggerAI();
             }
         }
         
-        // Photo Capture
+        // =====================================================================
+        // PHOTO CAPTURE
+        // =====================================================================
         function capturePhoto() {
-            if (!state.currentStream || !state.currentSKU) {
+            if (!state.currentStream) {
+                showToast('warning', 'No camera active');
+                return;
+            }
+            if (!state.currentSKU) {
                 showToast('warning', 'Start an item first');
                 return;
             }
+            
             const video = document.getElementById('video-preview');
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d');
@@ -975,11 +943,7 @@
             setTimeout(() => flash.classList.remove('active'), 100);
             
             canvas.toBlob(blob => {
-                const photo = {
-                    blob,
-                    mode: state.currentMode,
-                    timestamp: Date.now()
-                };
+                const photo = { blob, mode: state.currentMode, timestamp: Date.now() };
                 state.photos[state.currentMode].push(photo);
                 updatePhotoGrid();
                 updatePhotoCount();
@@ -1000,7 +964,7 @@
             grid.innerHTML = all.map((p, i) => `
                 <div class="photo-thumb">
                     <img src="${URL.createObjectURL(p.blob)}">
-                    <div class="photo-thumb-label">${p.label || p.mode + ' #' + (i + 1)}</div>
+                    <div class="photo-thumb-label">${p.label || p.mode}</div>
                     <button class="photo-thumb-delete" onclick="deletePhoto(${i})">×</button>
                 </div>
             `).join('');
@@ -1019,11 +983,14 @@
             updatePhotoCount();
         }
         
-        // AI Classification
+        // =====================================================================
+        // AI CLASSIFICATION
+        // =====================================================================
         async function triggerAI() {
             if (state.photos.main.length === 0) return;
             state.aiTriggered = true;
             document.getElementById('ai-overlay').classList.add('active');
+            
             try {
                 console.log(`🤖 AI: ${state.photos.main.length} photos`);
                 const mainPhotos = await Promise.all(state.photos.main.slice(0, 4).map(p => resizeImageForAI(p.blob)));
@@ -1083,8 +1050,8 @@
         function updateClassificationDisplay() {
             document.getElementById('classification-box').classList.add('ready');
             document.getElementById('classification-category').textContent = state.classification || 'Unknown';
-            document.getElementById('classification-template').innerHTML = `Template: <span>${state.template?.name || '-'}</span> (${state.template?.count || 0})`;
-            if (state.tagData) {
+            document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
+            if (state.tagData && !state.tagData.error) {
                 document.getElementById('tag-grid').style.display = 'grid';
                 document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
                 document.getElementById('tag-size').textContent = state.tagData.size || '-';
@@ -1107,9 +1074,15 @@
                 </div>
             `).join('');
             document.getElementById('complete-btn').disabled = false;
+            document.getElementById('complete-btn-camera').disabled = false;
+            
+            // Track measurements start time
+            state.timing.measurementsStart = Date.now();
         }
         
-        // Voice Recording
+        // =====================================================================
+        // VOICE RECORDING
+        // =====================================================================
         async function toggleRecording() {
             if (state.isRecording) stopRecording();
             else startRecording();
@@ -1123,6 +1096,7 @@
                 state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
                 state.mediaRecorder.onstop = async () => {
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    state.audioBlob = blob; // Save for later
                     stream.getTracks().forEach(t => t.stop());
                     await transcribeAudio(blob);
                 };
@@ -1155,7 +1129,13 @@
                     const base64 = reader.result.split(',')[1];
                     const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
                     if (result.success && result.text) {
+                        state.rawTranscript = result.text;
                         console.log('📝 Transcribed:', result.text);
+                        
+                        // Show transcript
+                        document.getElementById('transcript-text').textContent = result.text;
+                        document.getElementById('transcript-box').classList.add('visible');
+                        
                         parseMeasurements(result.text);
                         showToast('success', 'Transcription done');
                     }
@@ -1166,12 +1146,19 @@
         }
         
         function parseMeasurements(text) {
-            const regex = /(\d+(?:\.\d+)?)\s*(?:inches?|in|")?/gi;
+            const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
             const matches = [...text.matchAll(regex)];
             if (!state.template) return;
+            
             matches.forEach((m, i) => {
                 if (i < state.template.measurements.length) {
-                    const val = parseFloat(m[1]);
+                    let val = parseFloat(m[1]);
+                    // Handle "and a half", "and a quarter", etc.
+                    const fullMatch = m[0].toLowerCase();
+                    if (fullMatch.includes('half')) val += 0.5;
+                    else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
+                    else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
+                    
                     const name = state.template.measurements[i];
                     state.measurements[name] = val;
                     const el = document.getElementById(`mv-${i}`);
@@ -1183,7 +1170,9 @@
             });
         }
         
-        // Folder Save
+        // =====================================================================
+        // FOLDER SAVE
+        // =====================================================================
         async function chooseSaveFolder() {
             try {
                 state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -1196,100 +1185,355 @@
             }
         }
         
-        async function saveToFolder() {
-            if (!state.saveDirectoryHandle || !state.currentSKU) return false;
+        async function saveToLocalFolder(itemData) {
+            if (!state.saveDirectoryHandle || !itemData.sku) return false;
             try {
-                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(state.currentSKU, { create: true });
-                for (const f of ['main', 'tag', 'defects', 'features', 'weight', 'data']) {
+                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
+                
+                // Create ALL folders
+                const folders = ['main', 'tag', 'defects', 'features', 'weight', 'measurements', 'data'];
+                for (const f of folders) {
                     await skuFolder.getDirectoryHandle(f, { create: true });
                 }
-                for (const mode of ['main', 'closeup', 'handheld']) {
-                    const folderName = mode === 'main' ? 'main' : (mode === 'closeup' ? 'tag' : 'features');
-                    for (let i = 0; i < state.photos[mode].length; i++) {
-                        const photo = state.photos[mode][i];
-                        const subfolder = await skuFolder.getDirectoryHandle(folderName, { create: true });
-                        const filename = `${state.currentSKU}_${photo.label || mode}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await subfolder.getFileHandle(filename, { create: true });
+                
+                // Save main photos
+                if (itemData.photos.main.length > 0) {
+                    const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
+                    for (let i = 0; i < itemData.photos.main.length; i++) {
+                        const photo = itemData.photos.main[i];
+                        const filename = `${itemData.sku}_${photo.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await mainFolder.getFileHandle(filename, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(photo.blob);
                         await writable.close();
                     }
+                } else {
+                    await createNAFile(skuFolder, 'main', itemData.sku);
                 }
-                if (Object.keys(state.measurements).length > 0) {
-                    const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
-                    const fileHandle = await dataFolder.getFileHandle(`${state.currentSKU}_data.json`, { create: true });
-                    const writable = await fileHandle.createWritable();
-                    await writable.write(JSON.stringify({
-                        sku: state.currentSKU,
-                        category: state.classification,
-                        template: state.templateKey,
-                        measurements: state.measurements,
-                        tagData: state.tagData,
-                        timestamp: new Date().toISOString()
-                    }, null, 2));
-                    await writable.close();
+                
+                // Save tag photos
+                if (itemData.photos.closeup.length > 0) {
+                    const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
+                    for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                        const photo = itemData.photos.closeup[i];
+                        const filename = `${itemData.sku}_tag_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await tagFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(skuFolder, 'tag', itemData.sku);
                 }
+                
+                // Defects, features, weight - NA for now
+                await createNAFile(skuFolder, 'defects', itemData.sku);
+                await createNAFile(skuFolder, 'features', itemData.sku);
+                await createNAFile(skuFolder, 'weight', itemData.sku);
+                
+                // Save measurements folder contents
+                const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
+                
+                // Raw audio
+                if (itemData.audioBlob) {
+                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_raw.webm`, { create: true });
+                    const audioWritable = await audioHandle.createWritable();
+                    await audioWritable.write(itemData.audioBlob);
+                    await audioWritable.close();
+                }
+                
+                // Raw transcript
+                if (itemData.rawTranscript) {
+                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
+                    const transcriptWritable = await transcriptHandle.createWritable();
+                    await transcriptWritable.write(itemData.rawTranscript);
+                    await transcriptWritable.close();
+                }
+                
+                // Parsed measurements (clean format for listings)
+                if (Object.keys(itemData.measurements).length > 0) {
+                    const parsedContent = generateParsedMeasurements(itemData);
+                    const parsedHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_measurements_parsed.txt`, { create: true });
+                    const parsedWritable = await parsedHandle.createWritable();
+                    await parsedWritable.write(parsedContent);
+                    await parsedWritable.close();
+                }
+                
+                // Master JSON
+                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
+                const dataWritable = await dataHandle.createWritable();
+                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
+                await dataWritable.close();
+                
                 return true;
             } catch (err) {
-                console.error('Folder save error:', err);
+                console.error('Local save error:', err);
                 return false;
             }
         }
         
-        // Complete
+        async function createNAFile(parentFolder, folderName, sku) {
+            const folder = await parentFolder.getDirectoryHandle(folderName, { create: true });
+            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(`No data for ${sku}`);
+            await writable.close();
+        }
+        
+        function generateParsedMeasurements(itemData) {
+            let content = `MEASUREMENTS - ${itemData.sku}\n`;
+            content += `Category: ${itemData.category || 'Unknown'}\n`;
+            content += `Template: ${itemData.template?.name || 'Unknown'}\n`;
+            content += `Note: All measurements are FLAT LAY (multiply by 2 for circumference)\n\n`;
+            
+            for (const [name, value] of Object.entries(itemData.measurements)) {
+                content += `• ${name}: ${value}"\n`;
+            }
+            
+            return content;
+        }
+        
+        // =====================================================================
+        // S3 UPLOAD
+        // =====================================================================
+        async function uploadToS3(itemData) {
+            const files = [];
+            const sku = itemData.sku;
+            
+            // Main photos
+            for (let i = 0; i < itemData.photos.main.length; i++) {
+                const p = itemData.photos.main[i];
+                files.push({
+                    name: `main/${sku}_${p.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (itemData.photos.main.length === 0) {
+                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            }
+            
+            // Tag photos
+            for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                const p = itemData.photos.closeup[i];
+                files.push({
+                    name: `tag/${sku}_tag_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (itemData.photos.closeup.length === 0) {
+                files.push({ name: `tag/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            }
+            
+            // Defects, features, weight - NA placeholders
+            files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            
+            // Measurements folder
+            if (itemData.audioBlob) {
+                files.push({ name: `measurements/${sku}_audio_raw.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            }
+            if (itemData.rawTranscript) {
+                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            }
+            if (Object.keys(itemData.measurements).length > 0) {
+                const parsed = generateParsedMeasurements(itemData);
+                files.push({ name: `measurements/${sku}_measurements_parsed.txt`, contentType: 'text/plain', blob: new Blob([parsed]) });
+            }
+            
+            // Master JSON
+            files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
+            
+            // Get presigned URLs
+            const presign = await callLambda('presign', {
+                sku: sku,
+                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+            });
+            
+            if (!presign.success) throw new Error(presign.error || 'Presign failed');
+            
+            // Upload all files
+            for (const f of files) {
+                const url = presign.urls[f.name];
+                if (url) {
+                    await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
+                }
+            }
+            
+            return true;
+        }
+        
+        // =====================================================================
+        // COMPLETE ITEM (ASYNC BACKGROUND)
+        // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
+            
+            // Calculate timing
+            const now = Date.now();
+            const totalDuration = Math.round((now - state.timerStart) / 1000);
+            const mainDuration = state.timing.closeupStart ? Math.round((state.timing.closeupStart - state.timerStart) / 1000) : totalDuration;
+            const closeupDuration = state.timing.measurementsStart && state.timing.closeupStart ? Math.round((state.timing.measurementsStart - state.timing.closeupStart) / 1000) : 0;
+            const measurementsDuration = state.timing.measurementsStart ? Math.round((now - state.timing.measurementsStart) / 1000) : 0;
+            
+            // Build complete item data
+            const itemData = {
+                sku: state.currentSKU,
+                category: state.classification,
+                templateKey: state.templateKey,
+                template: state.template,
+                tagData: state.tagData,
+                measurements: state.measurements,
+                rawTranscript: state.rawTranscript,
+                audioBlob: state.audioBlob,
+                photos: {
+                    main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
+                    closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
+                    handheld: state.photos.handheld.map(p => ({ blob: p.blob, label: p.label }))
+                },
+                timing: {
+                    mainPhotosDuration: mainDuration,
+                    closeupDuration: closeupDuration,
+                    measurementsDuration: measurementsDuration,
+                    totalDuration: totalDuration
+                },
+                jsonData: {
+                    sku: state.currentSKU,
+                    timestamp: new Date().toISOString(),
+                    category: state.classification,
+                    templateKey: state.templateKey,
+                    tagData: state.tagData || { brand: 'N/A', size: 'N/A', materials: 'N/A', country: 'N/A' },
+                    measurements: state.measurements,
+                    rawTranscript: state.rawTranscript,
+                    timing: {
+                        mainPhotosDuration: mainDuration,
+                        closeupDuration: closeupDuration,
+                        measurementsDuration: measurementsDuration,
+                        totalDuration: totalDuration
+                    },
+                    photoCount: {
+                        main: state.photos.main.length,
+                        tag: state.photos.closeup.length,
+                        defects: 0,
+                        features: 0,
+                        weight: 0
+                    },
+                    flags: {},
+                    fitAnalysis: null,
+                    confidence: {}
+                }
+            };
+            
+            // Update stats
+            state.completedItems++;
+            state.totalTime += totalDuration;
+            localStorage.setItem('completedItems', state.completedItems);
+            localStorage.setItem('totalTime', state.totalTime);
+            updateStats();
+            
+            // IMMEDIATELY reset UI for next item
+            showToast('success', `${state.currentSKU} submitted!`);
+            stopTimer();
+            resetItem();
+            
+            // Process in background with retry
+            processItemInBackground(itemData);
+        }
+        
+        async function processItemInBackground(itemData, retryCount = 0) {
             try {
-                showToast('info', 'Saving...');
+                // 1. Save to local folder
                 if (state.saveDirectoryHandle) {
-                    const ok = await saveToFolder();
-                    if (ok) console.log('✅ Saved to folder');
+                    await saveToLocalFolder(itemData);
+                    console.log(`✅ ${itemData.sku} saved to local folder`);
                 }
-                const files = [];
-                for (const mode of ['main', 'closeup', 'handheld']) {
-                    const folderName = mode === 'main' ? 'main' : (mode === 'closeup' ? 'tag' : 'features');
-                    for (let i = 0; i < state.photos[mode].length; i++) {
-                        const p = state.photos[mode][i];
-                        files.push({
-                            name: `${folderName}/${p.label || mode}_${i + 1}.jpg`,
-                            contentType: 'image/jpeg',
-                            blob: p.blob
-                        });
-                    }
-                }
-                if (files.length > 0) {
-                    const presign = await callLambda('presign', {
-                        sku: state.currentSKU,
-                        files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+                
+                // 2. Upload to S3
+                await uploadToS3(itemData);
+                console.log(`✅ ${itemData.sku} uploaded to S3`);
+                
+                // 3. Run fit analysis
+                try {
+                    const fitResult = await callLambda('fitAnalysis', {
+                        category: itemData.category,
+                        measurements: itemData.measurements,
+                        tagData: itemData.tagData
                     });
-                    if (presign.success) {
-                        for (const f of files) {
-                            const url = presign.urls[f.name];
-                            if (url) await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
-                        }
-                        console.log('✅ Uploaded to S3');
+                    if (fitResult.success) {
+                        itemData.jsonData.fitAnalysis = fitResult.fitAnalysis;
+                        itemData.jsonData.flags = fitResult.flags;
+                        itemData.jsonData.confidence = fitResult.confidence;
+                        itemData.jsonData.holistic = fitResult.holistic;
                     }
+                } catch (e) {
+                    console.warn('Fit analysis failed:', e.message);
                 }
-                await callLambda('n8n', {
-                    formData: {
-                        sku: state.currentSKU,
-                        category: state.classification,
-                        template: state.templateKey,
-                        measurements: state.measurements,
-                        tagData: state.tagData,
-                        photoCount: files.length,
-                        timestamp: new Date().toISOString()
-                    }
-                });
-                showToast('success', 'Item saved!');
-                stopTimer();
-                resetItem();
+                
+                // 4. Send to n8n
+                await callLambda('n8n', { formData: itemData.jsonData });
+                console.log(`✅ ${itemData.sku} sent to n8n`);
+                
             } catch (err) {
-                showToast('error', 'Save failed: ' + err.message);
+                console.error(`❌ Background process failed for ${itemData.sku}:`, err);
+                
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`↻ Retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAY/1000}s...`);
+                    setTimeout(() => processItemInBackground(itemData, retryCount + 1), RETRY_DELAY);
+                } else {
+                    // Add to retry queue
+                    showToast('warning', `⚠️ ${itemData.sku} upload incomplete - queued for retry`);
+                    addToRetryQueue(itemData);
+                }
             }
         }
         
-        // SKU & Timer
+        function addToRetryQueue(itemData) {
+            // Store minimal data (can't store blobs in localStorage)
+            const queueItem = {
+                sku: itemData.sku,
+                jsonData: itemData.jsonData,
+                timestamp: Date.now()
+            };
+            state.retryQueue.push(queueItem);
+            localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
+            updateRetryBadge();
+        }
+        
+        function updateRetryBadge() {
+            const badge = document.getElementById('retry-badge');
+            if (state.retryQueue.length > 0) {
+                badge.textContent = `⚠️ ${state.retryQueue.length} pending`;
+                badge.classList.add('visible');
+            } else {
+                badge.classList.remove('visible');
+            }
+        }
+        
+        async function processRetryQueue() {
+            if (state.retryQueue.length === 0) return;
+            
+            const toRetry = [...state.retryQueue];
+            state.retryQueue = [];
+            
+            for (const item of toRetry) {
+                try {
+                    await callLambda('n8n', { formData: item.jsonData });
+                    console.log(`✅ Retry success: ${item.sku}`);
+                } catch (e) {
+                    state.retryQueue.push(item);
+                }
+            }
+            
+            localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
+            updateRetryBadge();
+        }
+        
+        // =====================================================================
+        // SKU & TIMER
+        // =====================================================================
         function startNewItem() {
             const sku = document.getElementById('sku-input').value.trim().toUpperCase();
             if (!sku) { showToast('warning', 'Enter a SKU'); return; }
@@ -1301,7 +1545,10 @@
             state.template = null;
             state.tagData = null;
             state.measurements = {};
+            state.rawTranscript = '';
+            state.audioBlob = null;
             state.aiTriggered = false;
+            state.timing = { mainStart: Date.now(), closeupStart: null, measurementsStart: null };
             
             document.getElementById('sku-row').style.display = 'none';
             document.getElementById('sku-display').textContent = sku;
@@ -1309,10 +1556,12 @@
             
             document.getElementById('classification-box').classList.remove('ready');
             document.getElementById('classification-category').textContent = 'Waiting...';
-            document.getElementById('classification-template').innerHTML = 'Template: <span>-</span>';
+            document.getElementById('classification-template').textContent = '-';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
+            document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn').disabled = true;
+            document.getElementById('complete-btn-camera').disabled = true;
             
             updatePhotoGrid();
             updatePhotoCount();
@@ -1335,7 +1584,10 @@
             state.template = null;
             state.tagData = null;
             state.measurements = {};
+            state.rawTranscript = '';
+            state.audioBlob = null;
             state.aiTriggered = false;
+            state.timing = { mainStart: null, closeupStart: null, measurementsStart: null };
             
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
@@ -1343,10 +1595,12 @@
             
             document.getElementById('classification-box').classList.remove('ready');
             document.getElementById('classification-category').textContent = 'Waiting...';
-            document.getElementById('classification-template').innerHTML = 'Template: <span>-</span>';
+            document.getElementById('classification-template').textContent = '-';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
+            document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn').disabled = true;
+            document.getElementById('complete-btn-camera').disabled = true;
             
             updatePhotoGrid();
             updatePhotoCount();
@@ -1367,7 +1621,17 @@
             if (state.timerInterval) clearInterval(state.timerInterval);
         }
         
-        // Barcode Scanner
+        function updateStats() {
+            document.getElementById('item-count').textContent = state.completedItems;
+            if (state.completedItems > 0) {
+                const avg = Math.round(state.totalTime / state.completedItems);
+                document.getElementById('avg-time').textContent = `${Math.floor(avg / 60)}:${String(avg % 60).padStart(2, '0')}`;
+            }
+        }
+        
+        // =====================================================================
+        // BARCODE SCANNER
+        // =====================================================================
         function openBarcodeScanner() {
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting...';
@@ -1404,7 +1668,9 @@
             document.getElementById('barcode-modal').classList.remove('active');
         }
         
-        // Settings
+        // =====================================================================
+        // SETTINGS
+        // =====================================================================
         function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
         function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         
@@ -1422,7 +1688,9 @@
             checkLambda();
         }
         
-        // Toast
+        // =====================================================================
+        // TOAST
+        // =====================================================================
         function showToast(type, msg) {
             const c = document.getElementById('toast-container');
             const t = document.createElement('div');
