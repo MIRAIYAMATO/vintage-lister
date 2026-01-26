@@ -562,6 +562,59 @@
         .toast.error { background: var(--accent-red); color: white; }
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
+        
+        /* Dymo Scale */
+        .scale-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+        }
+        
+        .scale-display.connected { border: 1px solid var(--accent-green); }
+        .scale-display.disconnected { border: 1px dashed var(--border-color); }
+        
+        .scale-weight {
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--accent-green);
+            flex: 1;
+        }
+        
+        .scale-weight.waiting { color: var(--text-secondary); font-size: 14px; }
+        
+        .scale-unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .scale-status {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        
+        .scale-status.connected { background: var(--accent-green); color: white; }
+        .scale-status.disconnected { background: var(--bg-secondary); color: var(--text-secondary); }
+        .scale-status.reading { background: var(--accent-blue); color: white; }
+        
+        .scale-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            background: var(--accent-purple);
+            color: white;
+        }
+        
+        .scale-btn:hover { filter: brightness(1.1); }
+        .scale-btn.disconnect { background: var(--accent-red); }
     </style>
 </head>
 <body>
@@ -624,6 +677,19 @@
                 <div class="section-card">
                     <div class="section-title">💾 Save Location</div>
                     <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
+                </div>
+                
+                <!-- Dymo USB Scale -->
+                <div class="section-card">
+                    <div class="section-title">⚖️ USB Scale</div>
+                    <div class="scale-display disconnected" id="scale-display">
+                        <div class="scale-weight waiting" id="scale-weight">Not connected</div>
+                        <span class="scale-unit" id="scale-unit"></span>
+                        <button class="scale-btn" id="scale-btn" onclick="toggleScale()">Connect</button>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+                        Dymo USB scale auto-reads weight
+                    </div>
                 </div>
                 
                 <!-- Photos -->
@@ -785,7 +851,12 @@
             completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
             // Retry queue
-            retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]')
+            retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
+            // Dymo USB Scale
+            scaleDevice: null,
+            scaleWeight: null,
+            scaleUnit: 'lb',
+            scaleStatus: 'disconnected'
         };
         
         // =====================================================================
@@ -1226,10 +1297,21 @@
                     await createNAFile(skuFolder, 'tag', itemData.sku);
                 }
                 
-                // Defects, features, weight - NA for now
+                // Defects, features - NA for now
                 await createNAFile(skuFolder, 'defects', itemData.sku);
                 await createNAFile(skuFolder, 'features', itemData.sku);
-                await createNAFile(skuFolder, 'weight', itemData.sku);
+                
+                // Weight from Dymo scale
+                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
+                if (itemData.weight && itemData.weight.value !== 'N/A') {
+                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.value} ${itemData.weight.unit}\nSource: Dymo USB Scale\nTimestamp: ${new Date().toISOString()}`;
+                    const weightHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight.txt`, { create: true });
+                    const weightWritable = await weightHandle.createWritable();
+                    await weightWritable.write(weightContent);
+                    await weightWritable.close();
+                } else {
+                    await createNAFile(skuFolder, 'weight', itemData.sku);
+                }
                 
                 // Save measurements folder contents
                 const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
@@ -1327,10 +1409,17 @@
                 files.push({ name: `tag/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             }
             
-            // Defects, features, weight - NA placeholders
+            // Defects, features - NA placeholders
             files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            
+            // Weight from Dymo scale
+            if (itemData.weight && itemData.weight.value !== 'N/A') {
+                const weightContent = `${sku}\nWeight: ${itemData.weight.value} ${itemData.weight.unit}\nSource: Dymo USB Scale\nTimestamp: ${new Date().toISOString()}`;
+                files.push({ name: `weight/${sku}_weight.txt`, contentType: 'text/plain', blob: new Blob([weightContent]) });
+            } else {
+                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            }
             
             // Measurements folder
             if (itemData.audioBlob) {
@@ -1379,6 +1468,9 @@
             const closeupDuration = state.timing.measurementsStart && state.timing.closeupStart ? Math.round((state.timing.measurementsStart - state.timing.closeupStart) / 1000) : 0;
             const measurementsDuration = state.timing.measurementsStart ? Math.round((now - state.timing.measurementsStart) / 1000) : 0;
             
+            // Get weight from Dymo scale
+            const weightData = getCurrentWeight();
+            
             // Build complete item data
             const itemData = {
                 sku: state.currentSKU,
@@ -1389,6 +1481,7 @@
                 measurements: state.measurements,
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
+                weight: weightData, // From Dymo scale
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
@@ -1408,6 +1501,7 @@
                     tagData: state.tagData || { brand: 'N/A', size: 'N/A', materials: 'N/A', country: 'N/A' },
                     measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
+                    weight: weightData || { value: 'N/A', unit: 'N/A' }, // From Dymo scale
                     timing: {
                         mainPhotosDuration: mainDuration,
                         closeupDuration: closeupDuration,
@@ -1630,9 +1724,12 @@
         }
         
         // =====================================================================
-        // BARCODE SCANNER
+        // BARCODE SCANNER (with debounce to prevent rapid-fire detection)
         // =====================================================================
+        let barcodeDetected = false; // Debounce flag
+        
         function openBarcodeScanner() {
+            barcodeDetected = false; // Reset flag
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting...';
             document.getElementById('barcode-status').classList.remove('success');
@@ -1643,28 +1740,45 @@
                 inputStream: {
                     type: 'LiveStream',
                     target: document.getElementById('barcode-container'),
-                    constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' }
+                    constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' },
+                    willReadFrequently: true // Fix canvas performance warning
                 },
-                decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] }
+                decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
+                locate: true,
+                frequency: 10 // Reduce scan frequency
             }, err => {
                 if (err) {
                     document.getElementById('barcode-status').textContent = 'Scanner error';
+                    console.error('Quagga init error:', err);
                     return;
                 }
                 document.getElementById('barcode-status').textContent = 'Point at barcode...';
                 Quagga.start();
                 Quagga.onDetected(result => {
+                    // CRITICAL: Only process first detection
+                    if (barcodeDetected) return;
+                    barcodeDetected = true;
+                    
+                    // Stop immediately
+                    Quagga.stop();
+                    
                     const code = result.codeResult.code;
+                    console.log('📊 Barcode detected:', code);
                     document.getElementById('barcode-status').textContent = code;
                     document.getElementById('barcode-status').classList.add('success');
                     document.getElementById('sku-input').value = code;
-                    setTimeout(() => { closeBarcodeScanner(); showToast('success', `Scanned: ${code}`); }, 500);
+                    
+                    setTimeout(() => { 
+                        closeBarcodeScanner(); 
+                        showToast('success', `Scanned: ${code}`); 
+                    }, 500);
                 });
             });
         }
         
         function closeBarcodeScanner() {
-            try { Quagga.stop(); } catch {}
+            barcodeDetected = false;
+            try { Quagga.stop(); Quagga.offDetected(); } catch {}
             document.getElementById('barcode-modal').classList.remove('active');
         }
         
@@ -1686,6 +1800,166 @@
             showToast('success', 'Settings saved');
             startCamera(state.currentMode);
             checkLambda();
+        }
+        
+        // =====================================================================
+        // DYMO USB SCALE (WebHID)
+        // =====================================================================
+        const DYMO_VENDOR_ID = 0x0922; // Dymo vendor ID
+        
+        async function toggleScale() {
+            if (state.scaleDevice) {
+                await disconnectScale();
+            } else {
+                await connectScale();
+            }
+        }
+        
+        async function connectScale() {
+            if (!('hid' in navigator)) {
+                showToast('error', 'WebHID not supported in this browser');
+                return;
+            }
+            
+            try {
+                // Request Dymo scale device
+                const devices = await navigator.hid.requestDevice({
+                    filters: [{ vendorId: DYMO_VENDOR_ID }]
+                });
+                
+                if (devices.length === 0) {
+                    showToast('warning', 'No scale selected');
+                    return;
+                }
+                
+                state.scaleDevice = devices[0];
+                
+                if (!state.scaleDevice.opened) {
+                    await state.scaleDevice.open();
+                }
+                
+                console.log('⚖️ Scale connected:', state.scaleDevice.productName);
+                
+                // Set up input report handler
+                state.scaleDevice.addEventListener('inputreport', handleScaleReport);
+                
+                // Update UI
+                state.scaleStatus = 'connected';
+                updateScaleUI();
+                showToast('success', `Scale connected: ${state.scaleDevice.productName}`);
+                
+            } catch (err) {
+                console.error('Scale connection error:', err);
+                if (err.name !== 'NotFoundError') {
+                    showToast('error', 'Scale connection failed: ' + err.message);
+                }
+            }
+        }
+        
+        async function disconnectScale() {
+            if (state.scaleDevice) {
+                try {
+                    state.scaleDevice.removeEventListener('inputreport', handleScaleReport);
+                    await state.scaleDevice.close();
+                } catch (e) {
+                    console.warn('Scale disconnect warning:', e);
+                }
+                state.scaleDevice = null;
+                state.scaleWeight = null;
+                state.scaleStatus = 'disconnected';
+                updateScaleUI();
+                showToast('info', 'Scale disconnected');
+            }
+        }
+        
+        function handleScaleReport(event) {
+            const data = new Uint8Array(event.data.buffer);
+            
+            // Dymo scale data format:
+            // Byte 0: Report ID (usually 3)
+            // Byte 1: Status (2=stable, 4=in motion, etc.)
+            // Byte 2: Unit (2=grams, 11=ounces, 12=pounds)
+            // Byte 3: Scale factor (signed, power of 10)
+            // Byte 4-5: Weight (little-endian)
+            
+            const status = data[1];
+            const unitCode = data[2];
+            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // Signed byte
+            const weightRaw = data[4] + (data[5] << 8); // Little-endian 16-bit
+            
+            // Calculate actual weight
+            const weight = weightRaw * Math.pow(10, scaleFactor);
+            
+            // Determine unit
+            let unit = 'lb';
+            if (unitCode === 2) unit = 'g';
+            else if (unitCode === 11) unit = 'oz';
+            else if (unitCode === 12) unit = 'lb';
+            
+            // Update state
+            state.scaleWeight = weight;
+            state.scaleUnit = unit;
+            
+            // Status interpretation
+            if (status === 2 || status === 0) {
+                state.scaleStatus = 'stable';
+            } else if (status === 4) {
+                state.scaleStatus = 'reading';
+            } else {
+                state.scaleStatus = 'connected';
+            }
+            
+            updateScaleUI();
+        }
+        
+        function updateScaleUI() {
+            const display = document.getElementById('scale-display');
+            const weightEl = document.getElementById('scale-weight');
+            const unitEl = document.getElementById('scale-unit');
+            const btn = document.getElementById('scale-btn');
+            
+            if (state.scaleDevice) {
+                display.classList.remove('disconnected');
+                display.classList.add('connected');
+                btn.textContent = 'Disconnect';
+                btn.classList.add('disconnect');
+                
+                if (state.scaleWeight !== null) {
+                    // Format weight nicely
+                    let displayWeight;
+                    if (state.scaleUnit === 'g') {
+                        displayWeight = Math.round(state.scaleWeight);
+                    } else {
+                        displayWeight = state.scaleWeight.toFixed(2);
+                    }
+                    weightEl.textContent = displayWeight;
+                    weightEl.classList.remove('waiting');
+                    unitEl.textContent = state.scaleUnit;
+                } else {
+                    weightEl.textContent = 'Waiting...';
+                    weightEl.classList.add('waiting');
+                    unitEl.textContent = '';
+                }
+            } else {
+                display.classList.add('disconnected');
+                display.classList.remove('connected');
+                weightEl.textContent = 'Not connected';
+                weightEl.classList.add('waiting');
+                unitEl.textContent = '';
+                btn.textContent = 'Connect';
+                btn.classList.remove('disconnect');
+            }
+        }
+        
+        function getCurrentWeight() {
+            // Returns current weight for saving with item
+            if (state.scaleWeight !== null && state.scaleDevice) {
+                return {
+                    value: state.scaleWeight,
+                    unit: state.scaleUnit
+                };
+            }
+            return null;
         }
         
         // =====================================================================
