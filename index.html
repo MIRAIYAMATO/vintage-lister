@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.4</title>
+    <title>VintageLister v2.9.4c</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -819,19 +819,30 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.4
+        // VINTAGELISTER v2.9.4c - MAJOR ARCHITECTURAL FIX
         // 
+        // CHANGES FROM v2.9.4b:
+        // 1. AI runs BEFORE JSON is built (not in background after)
+        // 2. Image Processing Agent called for crop/rotation metadata
+        // 3. Photo Routing Agent classifies closeups as tag/feature/defect
+        // 4. Matcher Agent results used for measurements (semantic matching)
+        // 5. Underwriter Agent results: era estimation, tag size analysis, QC flags
+        // 6. Photos routed to correct folders (not all to /tag/)
+        //
+        // CHANGES FROM v2.9.4:
+        // 1. Fixed scale handler - added debug logging, simplified parsing
+        // 2. Fixed OCR timing - runs at completion if tag data is missing
+        //
         // CHANGES FROM v2.9.3:
         // 1. Fixed Dymo M10 scale lb:oz parsing (was showing 1e+35)
         // 2. Removed "COMPLETE & SAVE" button from right panel
-        // 3. Recording button now shows "🛑 TAP TO STOP" when active (clear, unmistakable)
-        // 4. Support for discarded recordings (saved for QC)
-        // 5. Background processing calls new fullPipeline agent
-        // 6. File storage structure: main/raw/ and main/final/ subfolders
-        // 7. Recording duration KPI tracking
+        // 3. Recording button shows "🛑 TAP TO STOP" when active
+        // 4. Discarded recordings saved for QC
+        // 5. File storage: main/raw/ and main/final/ subfolders
+        // 6. Recording duration KPI tracking
         // =============================================================================
         
-        const VERSION = '2.9.4';
+        const VERSION = '2.9.4c';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1039,13 +1050,17 @@
             flash.classList.add('active');
             setTimeout(() => flash.classList.remove('active'), 100);
             
-            canvas.toBlob(blob => {
-                const photo = { blob, mode: state.currentMode, timestamp: Date.now() };
-                state.photos[state.currentMode].push(photo);
+            const currentMode = state.currentMode;
+            
+            canvas.toBlob(async blob => {
+                const photo = { blob, mode: currentMode, timestamp: Date.now() };
+                state.photos[currentMode].push(photo);
                 updatePhotoGrid();
                 updatePhotoCount();
-                console.log(`📷 Captured ${state.currentMode} #${state.photos[state.currentMode].length}`);
+                console.log(`📷 Captured ${currentMode} #${state.photos[currentMode].length}`);
                 showToast('success', 'Photo captured');
+                
+                // Note: Photo routing happens in completeItem() for all closeups at once
             }, 'image/jpeg', 0.92);
         }
         
@@ -1268,28 +1283,45 @@
         }
         
         function parseMeasurements(text) {
+            // v2.9.4c: Just extract numbers for immediate UI display
+            // The actual field matching happens in fullPipeline via Lambda
+            // This is only for user feedback - final values come from AI
+            
             const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
             const matches = [...text.matchAll(regex)];
             if (!state.template) return;
             
-            matches.forEach((m, i) => {
+            // Show extracted values but mark as "pending AI"
+            const extractedValues = matches.map(m => {
+                let val = parseFloat(m[1]);
+                const fullMatch = m[0].toLowerCase();
+                if (fullMatch.includes('half')) val += 0.5;
+                else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
+                else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
+                return val;
+            });
+            
+            console.log(`📏 Extracted ${extractedValues.length} values from transcript:`, extractedValues);
+            
+            // For UI display only - show that we got values but AI will match them
+            // Don't try to assign to specific fields (that's what caused the swap bug)
+            extractedValues.forEach((val, i) => {
                 if (i < state.template.measurements.length) {
-                    let val = parseFloat(m[1]);
-                    // Handle "and a half", "and a quarter", etc.
-                    const fullMatch = m[0].toLowerCase();
-                    if (fullMatch.includes('half')) val += 0.5;
-                    else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
-                    else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
-                    
-                    const name = state.template.measurements[i];
-                    state.measurements[name] = val;
                     const el = document.getElementById(`mv-${i}`);
                     if (el) {
-                        el.textContent = `${val}"`;
+                        // Show value with indicator that AI will verify
+                        el.textContent = `${val}" ⏳`;
+                        el.title = 'AI will match to correct field';
                         el.closest('.measurement-item').classList.add('completed');
                     }
                 }
             });
+            
+            // Store raw values - fullPipeline will properly match them later
+            state.rawExtractedValues = extractedValues;
+            
+            // Note: We don't populate state.measurements here anymore
+            // That happens in processItemInBackground when fullPipeline runs
         }
         
         // =====================================================================
@@ -1346,24 +1378,70 @@
                     await createNAFile(finalFolder, null, itemData.sku);
                 }
                 
+                // v2.9.4c: Route closeup photos to appropriate folders based on AI classification
+                // Categories: tag (brand labels, size tags), features (hardware, details), defects (damage, stains)
+                const tagPhotos = [];
+                const featurePhotos = [];
+                const defectPhotos = [];
+                
+                for (const photo of itemData.photos.closeup) {
+                    const category = photo.routedCategory || 'tag'; // Default to tag
+                    if (category === 'defect' || category === 'defects') {
+                        defectPhotos.push(photo);
+                    } else if (category === 'feature' || category === 'features') {
+                        featurePhotos.push(photo);
+                    } else {
+                        tagPhotos.push(photo);
+                    }
+                }
+                
                 // Save tag photos
-                if (itemData.photos.closeup.length > 0) {
-                    const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
-                    for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                        const photo = itemData.photos.closeup[i];
-                        const filename = `${itemData.sku}_tag_${String(i + 1).padStart(2, '0')}.jpg`;
+                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
+                if (tagPhotos.length > 0) {
+                    for (let i = 0; i < tagPhotos.length; i++) {
+                        const photo = tagPhotos[i];
+                        const label = photo.routedLabel || 'tag';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
                         const fileHandle = await tagFolder.getFileHandle(filename, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(photo.blob);
                         await writable.close();
                     }
                 } else {
-                    await createNAFile(skuFolder, 'tag', itemData.sku);
+                    await createNAFile(tagFolder, null, itemData.sku);
                 }
                 
-                // Defects, features - NA for now
-                await createNAFile(skuFolder, 'defects', itemData.sku);
-                await createNAFile(skuFolder, 'features', itemData.sku);
+                // Save feature photos
+                const featuresFolder = await skuFolder.getDirectoryHandle('features', { create: true });
+                if (featurePhotos.length > 0) {
+                    for (let i = 0; i < featurePhotos.length; i++) {
+                        const photo = featurePhotos[i];
+                        const label = photo.routedLabel || 'feature';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await featuresFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(featuresFolder, null, itemData.sku);
+                }
+                
+                // Save defect photos
+                const defectsFolder = await skuFolder.getDirectoryHandle('defects', { create: true });
+                if (defectPhotos.length > 0) {
+                    for (let i = 0; i < defectPhotos.length; i++) {
+                        const photo = defectPhotos[i];
+                        const label = photo.routedLabel || 'defect';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await defectsFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(defectsFolder, null, itemData.sku);
+                }
                 
                 // Weight from Dymo scale - v2.9.4 UPDATED format
                 const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
@@ -1487,22 +1565,63 @@
                 files.push({ name: `main/final/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             }
             
-            // Tag photos
-            for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                const p = itemData.photos.closeup[i];
+            // v2.9.4c: Route closeup photos to appropriate S3 folders based on AI classification
+            const tagPhotos = [];
+            const featurePhotos = [];
+            const defectPhotos = [];
+            
+            for (const photo of itemData.photos.closeup) {
+                const category = photo.routedCategory || 'tag';
+                if (category === 'defect' || category === 'defects') {
+                    defectPhotos.push(photo);
+                } else if (category === 'feature' || category === 'features') {
+                    featurePhotos.push(photo);
+                } else {
+                    tagPhotos.push(photo);
+                }
+            }
+            
+            // Upload tag photos
+            for (let i = 0; i < tagPhotos.length; i++) {
+                const p = tagPhotos[i];
+                const label = p.routedLabel || 'tag';
                 files.push({
-                    name: `tag/${sku}_tag_${String(i + 1).padStart(2, '0')}.jpg`,
+                    name: `tag/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
                     contentType: 'image/jpeg',
                     blob: p.blob
                 });
             }
-            if (itemData.photos.closeup.length === 0) {
+            if (tagPhotos.length === 0) {
                 files.push({ name: `tag/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             }
             
-            // Defects, features - NA placeholders
-            files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            // Upload feature photos
+            for (let i = 0; i < featurePhotos.length; i++) {
+                const p = featurePhotos[i];
+                const label = p.routedLabel || 'feature';
+                files.push({
+                    name: `features/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (featurePhotos.length === 0) {
+                files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            }
+            
+            // Upload defect photos
+            for (let i = 0; i < defectPhotos.length; i++) {
+                const p = defectPhotos[i];
+                const label = p.routedLabel || 'defect';
+                files.push({
+                    name: `defects/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (defectPhotos.length === 0) {
+                files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+            }
             
             // Weight from Dymo scale - v2.9.4 UPDATED format
             if (itemData.weight && itemData.weight.pounds !== null) {
@@ -1560,12 +1679,195 @@
         }
         
         // =====================================================================
-        // COMPLETE ITEM (ASYNC BACKGROUND) - v2.9.4 UPDATED
+        // COMPLETE ITEM - v2.9.4c MAJOR REWRITE
+        // Now runs all AI agents BEFORE building JSON:
+        // 1. Image Processing on main photos
+        // 2. Photo Routing on closeup photos  
+        // 3. OCR on tag photos
+        // 4. Full Pipeline (Parser→Matcher→Underwriter) for measurements
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
             
-            // Calculate timing
+            showToast('info', '🤖 Running AI processing...');
+            const aiStartTime = Date.now();
+            
+            // ===== STEP 1: Run OCR if we have closeup photos =====
+            if (state.photos.closeup.length > 0 && (!state.tagData || state.tagData.brand === 'N/A')) {
+                try {
+                    console.log('🏷️ Running OCR on tag photos...');
+                    const tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
+                    const ocrResult = await callLambda('classify', { 
+                        mainPhotos: [],
+                        tagPhoto: tagPhoto 
+                    });
+                    if (ocrResult.success && ocrResult.tagData && !ocrResult.tagData.error) {
+                        state.tagData = ocrResult.tagData;
+                        console.log('✅ OCR:', state.tagData.brand, state.tagData.size);
+                        // Update display
+                        document.getElementById('tag-grid').style.display = 'grid';
+                        document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
+                        document.getElementById('tag-size').textContent = state.tagData.size || '-';
+                        document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
+                        document.getElementById('tag-country').textContent = state.tagData.country || '-';
+                    }
+                } catch (e) {
+                    console.warn('OCR failed:', e.message);
+                }
+            }
+            
+            // ===== STEP 2: Run Image Processing on main photos =====
+            let imageProcessingResults = [];
+            if (state.photos.main.length > 0) {
+                try {
+                    console.log('🖼️ Running image processing...');
+                    for (let i = 0; i < Math.min(state.photos.main.length, 2); i++) {
+                        const photo = state.photos.main[i];
+                        const imageBase64 = await resizeImageForAI(photo.blob);
+                        const result = await callLambda('imageProcessing', {
+                            image: imageBase64,
+                            garmentType: state.template?.category || 'tops'
+                        });
+                        if (result.success) {
+                            imageProcessingResults.push({
+                                photoIndex: i,
+                                ...result
+                            });
+                            console.log(`✅ Image ${i+1}: rotation ${result.rotation?.currentAngle?.toFixed(1)}°, ColorChecker: ${result.colorChecker?.detected}`);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Image processing failed:', e.message);
+                }
+            }
+            
+            // ===== STEP 3: Run Photo Routing on closeup photos =====
+            let photoRoutingResults = [];
+            if (state.photos.closeup.length > 0) {
+                try {
+                    console.log('📸 Routing closeup photos...');
+                    for (let i = 0; i < state.photos.closeup.length; i++) {
+                        const photo = state.photos.closeup[i];
+                        const imageBase64 = await resizeImageForAI(photo.blob);
+                        const result = await callLambda('photoRouting', {
+                            image: imageBase64,
+                            sku: state.currentSKU
+                        });
+                        if (result.success) {
+                            // Update photo with routing info
+                            photo.routedCategory = result.category;
+                            photo.routedLabel = result.label;
+                            photo.label = `${result.category}: ${result.label}`;
+                            photoRoutingResults.push({
+                                photoIndex: i,
+                                category: result.category,
+                                label: result.label,
+                                confidence: result.confidence
+                            });
+                            console.log(`✅ Closeup ${i+1}: ${result.category} - ${result.label}`);
+                        }
+                    }
+                    updatePhotoGrid(); // Refresh with new labels
+                } catch (e) {
+                    console.warn('Photo routing failed:', e.message);
+                }
+            }
+            
+            // ===== STEP 4: Run Full Pipeline for measurements =====
+            let pipelineResults = null;
+            let finalMeasurements = state.measurements; // Fallback to dumb parser
+            let finalClassification = {
+                category: state.classification,
+                templateKey: state.templateKey,
+                wasChanged: false
+            };
+            let eraEstimation = null;
+            let qcFlags = {};
+            let tagSizeAnalysis = null;
+            
+            if (state.rawTranscript && state.rawTranscript.length > 0) {
+                try {
+                    console.log('📏 Running measurement pipeline...');
+                    const mainPhotos = await Promise.all(
+                        state.photos.main.slice(0, 2).map(async p => {
+                            return await resizeImageForAI(p.blob);
+                        })
+                    );
+                    
+                    const result = await callLambda('fullPipeline', {
+                        transcript: state.rawTranscript,
+                        category: state.classification,
+                        templateKey: state.templateKey,
+                        tagData: state.tagData,
+                        weightData: getCurrentWeight(),
+                        photos: mainPhotos
+                    });
+                    
+                    if (result.success && !result.error) {
+                        pipelineResults = result;
+                        
+                        // Use Matcher Agent's measurements (semantically matched)
+                        if (result.matcher?.matchedMeasurements) {
+                            finalMeasurements = {};
+                            for (const [field, data] of Object.entries(result.matcher.matchedMeasurements)) {
+                                finalMeasurements[field] = data.value;
+                            }
+                            console.log('✅ Using Matcher Agent measurements');
+                            
+                            // Update UI with corrected measurements
+                            if (state.template?.measurements) {
+                                state.template.measurements.forEach((m, i) => {
+                                    const el = document.getElementById(`mv-${i}`);
+                                    if (el && finalMeasurements[m] !== undefined) {
+                                        el.textContent = `${finalMeasurements[m]}"`;
+                                        el.closest('.measurement-item').classList.add('completed');
+                                    }
+                                });
+                            }
+                        }
+                        
+                        // Check if Underwriter changed classification
+                        if (result.underwriter?.finalClassification) {
+                            finalClassification = result.underwriter.finalClassification;
+                            if (finalClassification.wasChanged) {
+                                console.log(`⚠️ Classification changed: ${state.classification} → ${finalClassification.category}`);
+                                showToast('warning', `Reclassified: ${finalClassification.category}`);
+                            }
+                        }
+                        
+                        // Era estimation
+                        if (result.underwriter?.eraEstimation) {
+                            eraEstimation = result.underwriter.eraEstimation;
+                            console.log(`📅 Era: ${eraEstimation.estimate} (${eraEstimation.confidence})`);
+                        }
+                        
+                        // Tag size analysis
+                        if (result.underwriter?.tagSizeAnalysis) {
+                            tagSizeAnalysis = result.underwriter.tagSizeAnalysis;
+                        }
+                        
+                        // QC flags
+                        if (result.underwriter?.qcFlags) {
+                            qcFlags = result.underwriter.qcFlags;
+                        }
+                        
+                        console.log(`✅ Pipeline complete in ${result.processingTime}ms`);
+                    } else if (result.error) {
+                        console.warn('Pipeline error:', result.error);
+                        qcFlags.pipelineFailed = true;
+                        qcFlags.pipelineError = result.error;
+                    }
+                } catch (e) {
+                    console.warn('Full pipeline failed:', e.message);
+                    qcFlags.pipelineFailed = true;
+                    qcFlags.pipelineError = e.message;
+                }
+            }
+            
+            const aiProcessingTime = Date.now() - aiStartTime;
+            console.log(`🤖 AI processing complete in ${(aiProcessingTime/1000).toFixed(1)}s`);
+            
+            // ===== Calculate timing =====
             const now = Date.now();
             const totalDuration = Math.round((now - state.timerStart) / 1000);
             const mainDuration = state.timing.closeupStart ? Math.round((state.timing.closeupStart - state.timerStart) / 1000) : totalDuration;
@@ -1579,40 +1881,67 @@
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
-            // Build complete item data
+            // Build complete item data - v2.9.4c uses AI results
             const itemData = {
                 sku: state.currentSKU,
-                category: state.classification,
-                templateKey: state.templateKey,
+                category: finalClassification.category || state.classification,
+                templateKey: finalClassification.templateKey || state.templateKey,
                 template: state.template,
                 tagData: state.tagData,
-                measurements: state.measurements,
+                measurements: finalMeasurements,
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
-                discardedRecordings: state.discardedRecordings, // v2.9.4 NEW
+                discardedRecordings: state.discardedRecordings,
                 weight: weightData,
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
-                    closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
+                    closeup: state.photos.closeup.map(p => ({ 
+                        blob: p.blob, 
+                        label: p.label,
+                        routedCategory: p.routedCategory,
+                        routedLabel: p.routedLabel
+                    })),
                     handheld: state.photos.handheld.map(p => ({ blob: p.blob, label: p.label }))
                 },
                 timing: {
                     mainPhotosDuration: mainDuration,
                     closeupDuration: closeupDuration,
                     measurementsDuration: measurementsDuration,
-                    totalDuration: totalDuration
+                    totalDuration: totalDuration,
+                    aiProcessingTime: aiProcessingTime
                 },
                 jsonData: {
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
                     version: VERSION,
-                    category: state.classification,
-                    templateKey: state.templateKey,
+                    // v2.9.4c: Use final classification (may have been corrected by Underwriter)
+                    category: finalClassification.category || state.classification,
+                    templateKey: finalClassification.templateKey || state.templateKey,
+                    originalCategory: finalClassification.wasChanged ? state.classification : null,
+                    classificationCorrected: finalClassification.wasChanged || false,
                     tagData: state.tagData || { brand: 'N/A', size: 'N/A', materials: 'N/A', country: 'N/A' },
-                    measurements: state.measurements,
+                    // v2.9.4c: Use Matcher Agent measurements (semantically matched)
+                    measurements: finalMeasurements,
                     rawTranscript: state.rawTranscript,
                     weight: weightData || { pounds: null, display: 'N/A' },
-                    // v2.9.4 - Audio recording metadata
+                    // v2.9.4c: Pipeline results
+                    pipelineResults: pipelineResults ? {
+                        parser: pipelineResults.parser,
+                        matcher: pipelineResults.matcher,
+                        underwriter: pipelineResults.underwriter
+                    } : null,
+                    aiProviders: pipelineResults?.aiProviders || null,
+                    // v2.9.4c: Era estimation from Underwriter
+                    eraEstimation: eraEstimation,
+                    // v2.9.4c: Tag size vs measured size analysis
+                    tagSizeAnalysis: tagSizeAnalysis,
+                    // v2.9.4c: Image processing results (crop/rotation metadata)
+                    imageProcessing: imageProcessingResults.length > 0 ? imageProcessingResults : null,
+                    // v2.9.4c: Photo routing results
+                    photoRouting: photoRoutingResults.length > 0 ? photoRoutingResults : null,
+                    // v2.9.4c: QC flags from all agents
+                    qcFlags: Object.keys(qcFlags).length > 0 ? qcFlags : null,
+                    // Audio recording metadata
                     audioRecordings: {
                         final: {
                             duration: recordingDuration,
@@ -1667,94 +1996,52 @@
             processItemInBackground(itemData);
         }
         
+        // =====================================================================
+        // BACKGROUND PROCESSING - v2.9.4c SIMPLIFIED
+        // AI processing now happens in completeItem() before this is called
+        // This function just handles saving to local folder, S3, and n8n
+        // =====================================================================
         async function processItemInBackground(itemData, retryCount = 0) {
+            const sku = itemData.sku;
+            console.log(`🔄 [${sku}] Starting save/upload...`);
+            
             try {
-                // 1. Save to local folder
+                // =================================================================
+                // STEP 1: SAVE TO LOCAL FOLDER
+                // =================================================================
+                console.log(`💾 [${sku}] Step 1: Saving to local folder...`);
+                
                 if (state.saveDirectoryHandle) {
                     await saveToLocalFolder(itemData);
-                    console.log(`✅ ${itemData.sku} saved to local folder`);
+                    console.log(`✅ [${sku}] Saved to local folder`);
                 }
                 
-                // 2. Upload to S3
+                // =================================================================
+                // STEP 2: UPLOAD TO S3
+                // =================================================================
+                console.log(`☁️ [${sku}] Step 2: Uploading to S3...`);
+                
                 await uploadToS3(itemData);
-                console.log(`✅ ${itemData.sku} uploaded to S3`);
+                console.log(`✅ [${sku}] Uploaded to S3`);
                 
-                // 3. Run full pipeline (v2.9.4 - calls new agent architecture)
-                try {
-                    // Prepare photos for AI
-                    const mainPhotos = await Promise.all(
-                        itemData.photos.main.slice(0, 2).map(async p => {
-                            const reader = new FileReader();
-                            return new Promise(resolve => {
-                                reader.onload = () => resolve(reader.result.split(',')[1]);
-                                reader.readAsDataURL(p.blob);
-                            });
-                        })
-                    );
-                    
-                    const pipelineResult = await callLambda('fullPipeline', {
-                        transcript: itemData.rawTranscript,
-                        category: itemData.category,
-                        templateKey: itemData.templateKey,
-                        tagData: itemData.tagData,
-                        weightData: itemData.weight,
-                        photos: mainPhotos
-                    });
-                    
-                    if (pipelineResult.success) {
-                        // Update JSON with pipeline results
-                        itemData.jsonData.pipelineResults = {
-                            parser: pipelineResult.parser,
-                            matcher: pipelineResult.matcher,
-                            underwriter: pipelineResult.underwriter
-                        };
-                        itemData.jsonData.aiProviders = pipelineResult.aiProviders;
-                        itemData.jsonData.processingTime = pipelineResult.processingTime;
-                        
-                        // If underwriter corrected classification, note it
-                        if (pipelineResult.underwriter?.finalClassification?.wasChanged) {
-                            itemData.jsonData.classification = {
-                                final: pipelineResult.underwriter.finalClassification.category,
-                                finalTemplate: pipelineResult.underwriter.finalClassification.templateKey,
-                                original: itemData.category,
-                                wasChanged: true,
-                                changeReason: pipelineResult.underwriter.finalClassification.changeReason
-                            };
-                        }
-                        
-                        // Era estimation
-                        if (pipelineResult.underwriter?.eraEstimation) {
-                            itemData.jsonData.eraEstimation = pipelineResult.underwriter.eraEstimation;
-                        }
-                        
-                        // QC flags
-                        if (pipelineResult.underwriter?.qcFlags) {
-                            itemData.jsonData.qcFlags = pipelineResult.underwriter.qcFlags;
-                        }
-                        
-                        console.log(`✅ ${itemData.sku} pipeline complete`);
-                    }
-                } catch (e) {
-                    console.warn('Pipeline failed (non-fatal):', e.message);
-                    // Add flag that pipeline failed
-                    itemData.jsonData.qcFlags = itemData.jsonData.qcFlags || {};
-                    itemData.jsonData.qcFlags.pipelineFailed = true;
-                    itemData.jsonData.qcFlags.pipelineError = e.message;
-                }
+                // =================================================================
+                // STEP 3: SEND TO N8N
+                // =================================================================
+                console.log(`📤 [${sku}] Step 3: Sending to n8n...`);
                 
-                // 4. Send to n8n
                 await callLambda('n8n', { formData: itemData.jsonData });
-                console.log(`✅ ${itemData.sku} sent to n8n`);
+                console.log(`✅ [${sku}] Sent to n8n`);
+                
+                console.log(`🎉 [${sku}] Background processing complete!`);
                 
             } catch (err) {
-                console.error(`❌ Background process failed for ${itemData.sku}:`, err);
+                console.error(`❌ [${sku}] Background process failed:`, err);
                 
                 if (retryCount < MAX_RETRIES) {
-                    console.log(`↻ Retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAY/1000}s...`);
+                    console.log(`↻ [${sku}] Retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAY/1000}s...`);
                     setTimeout(() => processItemInBackground(itemData, retryCount + 1), RETRY_DELAY);
                 } else {
-                    // Add to retry queue
-                    showToast('warning', `⚠️ ${itemData.sku} upload incomplete - queued for retry`);
+                    showToast('warning', `⚠️ ${sku} upload incomplete - queued for retry`);
                     addToRetryQueue(itemData);
                 }
             }
@@ -2055,110 +2342,80 @@
             }
         }
         
-        // v2.9.4 FIXED - Proper parsing for Dymo M10 lb:oz format
+        // v2.9.4b FIXED - Simplified Dymo M10 scale handler with debug logging
         function handleScaleReport(event) {
             const data = new Uint8Array(event.data.buffer);
             
+            // Log raw data for debugging
+            console.log('⚖️ Scale raw data:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+            
             // Dymo M10 HID report format:
             // Byte 0: Report ID
-            // Byte 1: Status (2=stable, 4=in motion, 5=fault)
+            // Byte 1: Status (2=stable, 4=in motion, 5=fault, 6=negative, 7=overload)
             // Byte 2: Unit (2=grams, 11=ounces, 12=pounds)
             // Byte 3: Scale factor (signed byte, power of 10)
-            // Byte 4-5: Weight (little-endian 16-bit)
+            // Byte 4-5: Weight data
             
             const status = data[1];
             const unitCode = data[2];
-            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // Convert to signed
-            const weightRaw = data[4] | (data[5] << 8); // Little-endian
+            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3];
             
-            // Dymo M10 in lb:oz mode (unitCode 12):
-            // It reports total ounces, and scaleFactor determines decimal position
-            // Example: 1 lb 13 oz = 29 oz total
-            // weightRaw might be 290 with scaleFactor = -1 → 29.0 oz
-            
-            let decimalPounds = null;
-            let displayWeight = '';
+            let decimalPounds = 0;
+            let displayWeight = '0 lb 0 oz';
             let unit = 'lb';
             
-            if (unitCode === 12) {
-                // Pounds mode - but M10 actually reports in ounces internally
-                // Check if the value seems like total ounces or decimal pounds
+            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Bytes 4-5: ${data[4]}, ${data[5]}`);
+            
+            // Dymo M10 in lb:oz mode (display shows "X:YY.Z" meaning X lb YY.Z oz)
+            // The scale reports: byte 4 = pounds, byte 5 = ounces × 10 (tenths of ounces)
+            if (unitCode === 12 || unitCode === 11) {
+                // Method 1: Try interpreting as separate lb and oz values
+                // This matches M10 display format where "1:13.0" = 1 lb 13.0 oz
+                const pounds = data[4];
+                const ounceTenths = data[5];
+                const ounces = ounceTenths / 10;
                 
-                // Apply scale factor to get raw value
-                const rawValue = weightRaw * Math.pow(10, scaleFactor);
-                
-                // M10 in lb:oz display mode reports total ounces
-                // A typical shirt weighs 0.5-3 lbs = 8-48 oz
-                // If rawValue > 100 and < 500, it's probably total ounces (10ths)
-                // If rawValue is huge (like 1e35), the scale factor is wrong
-                
-                if (rawValue > 1000 || rawValue < 0) {
-                    // Invalid reading - scale factor interpretation error
-                    // Try treating byte 4-5 differently
-                    
-                    // Alternative: M10 might report pounds in byte 4, ounces in byte 5
-                    const pounds = data[4];
-                    const ounces = data[5] / 10; // Tenths of ounces
-                    
-                    if (pounds < 20 && ounces < 16) {
-                        // This looks like valid lb:oz format
-                        decimalPounds = pounds + (ounces / 16);
-                        displayWeight = `${pounds} lb ${ounces.toFixed(0)} oz`;
-                    } else {
-                        // Still invalid, try another interpretation
-                        // Sometimes it's just tenths of ounces total
-                        const totalOunces = weightRaw / 10;
-                        if (totalOunces > 0 && totalOunces < 500) {
-                            const lbs = Math.floor(totalOunces / 16);
-                            const oz = totalOunces % 16;
-                            decimalPounds = totalOunces / 16;
-                            displayWeight = `${lbs} lb ${oz.toFixed(0)} oz`;
-                        }
-                    }
+                if (pounds >= 0 && pounds < 100 && ounces >= 0 && ounces < 16) {
+                    // Valid lb:oz reading
+                    decimalPounds = pounds + (ounces / 16);
+                    displayWeight = `${pounds} lb ${ounces.toFixed(1)} oz`;
+                    console.log(`⚖️ Parsed as lb:oz → ${displayWeight} (${decimalPounds.toFixed(4)} decimal lbs)`);
                 } else {
-                    // Raw value seems reasonable - treat as total ounces / 10
-                    const totalOunces = rawValue;
-                    if (totalOunces > 0 && totalOunces < 500) {
-                        const lbs = Math.floor(totalOunces / 16);
-                        const oz = totalOunces % 16;
+                    // Fallback: standard 16-bit little-endian with scale factor
+                    const weightRaw = data[4] | (data[5] << 8);
+                    const rawValue = weightRaw * Math.pow(10, scaleFactor);
+                    
+                    if (unitCode === 11) {
+                        // Ounces
+                        const totalOunces = rawValue;
                         decimalPounds = totalOunces / 16;
-                        displayWeight = `${lbs} lb ${oz.toFixed(0)} oz`;
+                        const lbs = Math.floor(decimalPounds);
+                        const oz = totalOunces - (lbs * 16);
+                        displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
                     } else {
-                        // Direct decimal pounds
+                        // Pounds
                         decimalPounds = rawValue;
                         displayWeight = `${rawValue.toFixed(2)} lb`;
                     }
+                    console.log(`⚖️ Parsed as raw value → ${displayWeight}`);
                 }
-                
-                unit = 'lb';
-                
-            } else if (unitCode === 11) {
-                // Pure ounces mode
-                const ounces = weightRaw * Math.pow(10, scaleFactor);
-                decimalPounds = ounces / 16;
-                const lbs = Math.floor(decimalPounds);
-                const remainingOz = ounces - (lbs * 16);
-                displayWeight = `${lbs} lb ${remainingOz.toFixed(0)} oz`;
                 unit = 'lb';
                 
             } else if (unitCode === 2) {
                 // Grams mode
+                const weightRaw = data[4] | (data[5] << 8);
                 const grams = weightRaw * Math.pow(10, scaleFactor);
                 decimalPounds = grams / 453.592;
                 displayWeight = `${grams.toFixed(0)} g`;
                 unit = 'g';
-            }
-            
-            // Sanity check - reject obviously wrong values
-            if (decimalPounds !== null && (decimalPounds < 0 || decimalPounds > 50)) {
-                console.warn('⚖️ Suspicious weight reading:', decimalPounds, 'raw:', data);
-                // Try the simple interpretation: byte4 = lbs, byte5 = tenths of oz
-                const simpleLbs = data[4];
-                const simpleOz = data[5] / 10;
-                if (simpleLbs >= 0 && simpleLbs < 20 && simpleOz >= 0 && simpleOz < 16) {
-                    decimalPounds = simpleLbs + (simpleOz / 16);
-                    displayWeight = `${simpleLbs} lb ${simpleOz.toFixed(0)} oz`;
-                }
+                console.log(`⚖️ Parsed as grams → ${displayWeight}`);
+            } else {
+                // Unknown unit - try generic parsing
+                const weightRaw = data[4] | (data[5] << 8);
+                const rawValue = weightRaw * Math.pow(10, scaleFactor);
+                decimalPounds = rawValue;
+                displayWeight = `${rawValue.toFixed(2)} (unit ${unitCode})`;
+                console.log(`⚖️ Unknown unit ${unitCode}, raw: ${rawValue}`);
             }
             
             // Update state
@@ -2171,10 +2428,20 @@
                 state.scaleStatus = 'stable';
             } else if (status === 4) {
                 state.scaleStatus = 'reading';
+            } else if (status === 5) {
+                state.scaleStatus = 'fault';
+                displayWeight = 'FAULT';
+            } else if (status === 6) {
+                state.scaleStatus = 'negative';
+                displayWeight = 'NEGATIVE';
+            } else if (status === 7) {
+                state.scaleStatus = 'overload';
+                displayWeight = 'OVERLOAD';
             } else {
                 state.scaleStatus = 'connected';
             }
             
+            console.log(`⚖️ Final: ${displayWeight}, status: ${state.scaleStatus}`);
             updateScaleUI();
         }
         
