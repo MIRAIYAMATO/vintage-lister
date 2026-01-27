@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.3</title>
+    <title>VintageLister v2.9.4</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -308,7 +308,7 @@
         
         .capture-flash.active { opacity: 0.7; }
         
-        /* Capture Area - Now with Complete Button */
+        /* Capture Area - Complete Button */
         .capture-area {
             display: flex;
             align-items: center;
@@ -440,10 +440,14 @@
         .btn-primary { background: var(--accent-green); color: white; }
         .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
         .btn-record { background: var(--accent-red); color: white; }
+        .btn-stop { background: #dc2626; color: white; animation: pulse-stop 1s infinite; }
         .btn:hover { filter: brightness(1.1); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn.recording { animation: pulse 1s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        
+        @keyframes pulse-stop { 
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 
+            50% { opacity: 0.9; box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 
+        }
         
         /* Modal */
         .modal-overlay {
@@ -641,7 +645,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.3</span>
+                    <span class="version-badge" id="version-badge">v2.9.4</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -688,7 +692,7 @@
                         <button class="scale-btn" id="scale-btn" onclick="toggleScale()">Connect</button>
                     </div>
                     <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
-                        Dymo USB scale auto-reads weight
+                        Dymo M10 scale (lb:oz format)
                     </div>
                 </div>
                 
@@ -732,7 +736,7 @@
             </div>
         </div>
         
-        <!-- Right Panel -->
+        <!-- Right Panel - REMOVED COMPLETE & SAVE BUTTON -->
         <div class="panel panel-right">
             <div class="panel-scroll">
                 <div class="section-card">
@@ -748,8 +752,11 @@
                     </div>
                 </div>
                 
+                <!-- Recording button - Changes to TAP TO STOP when recording -->
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
-                <button class="btn btn-primary" id="complete-btn" onclick="completeItem()" disabled>✅ COMPLETE & SAVE</button>
+                
+                <!-- NOTE: "COMPLETE & SAVE" button REMOVED from here per user request -->
+                <!-- The COMPLETE button in the camera capture area is the only submit option -->
             </div>
         </div>
     </div>
@@ -811,7 +818,20 @@
     <canvas id="resize-canvas" style="display: none;"></canvas>
     
     <script>
-        const VERSION = '2.9.3';
+        // =============================================================================
+        // VINTAGELISTER v2.9.4
+        // 
+        // CHANGES FROM v2.9.3:
+        // 1. Fixed Dymo M10 scale lb:oz parsing (was showing 1e+35)
+        // 2. Removed "COMPLETE & SAVE" button from right panel
+        // 3. Recording button now shows "🛑 TAP TO STOP" when active (clear, unmistakable)
+        // 4. Support for discarded recordings (saved for QC)
+        // 5. Background processing calls new fullPipeline agent
+        // 6. File storage structure: main/raw/ and main/final/ subfolders
+        // 7. Recording duration KPI tracking
+        // =============================================================================
+        
+        const VERSION = '2.9.4';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -852,11 +872,17 @@
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
             // Retry queue
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
-            // Dymo USB Scale
+            // Dymo USB Scale - v2.9.4 FIXED for M10 lb:oz format
             scaleDevice: null,
-            scaleWeight: null,
+            scaleWeight: null,      // Decimal pounds (for storage)
+            scaleWeightDisplay: '', // Display format "1 lb 13 oz"
             scaleUnit: 'lb',
-            scaleStatus: 'disconnected'
+            scaleStatus: 'disconnected',
+            // v2.9.4 - Discarded recordings for QC
+            discardedRecordings: [],
+            recordingStartTime: null,
+            // v2.9.4 - Photographer ID placeholder
+            photographerId: null
         };
         
         // =====================================================================
@@ -882,7 +908,7 @@
             // Process retry queue
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled for capture');
+            console.log('✅ Init complete - SPACE key enabled, scale fix applied');
         }
         
         // =====================================================================
@@ -1144,7 +1170,6 @@
                     <span class="measurement-value" id="mv-${i}">-</span>
                 </div>
             `).join('');
-            document.getElementById('complete-btn').disabled = false;
             document.getElementById('complete-btn-camera').disabled = false;
             
             // Track measurements start time
@@ -1152,7 +1177,10 @@
         }
         
         // =====================================================================
-        // VOICE RECORDING
+        // VOICE RECORDING - v2.9.4 UPDATED
+        // - Button now shows "🛑 TAP TO STOP" when recording (clear and unmistakable)
+        // - Discarded recordings are saved for QC
+        // - Recording duration tracked for KPIs
         // =====================================================================
         async function toggleRecording() {
             if (state.isRecording) stopRecording();
@@ -1164,18 +1192,38 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
+                state.recordingStartTime = Date.now(); // Track duration
+                
                 state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
                 state.mediaRecorder.onstop = async () => {
+                    const recordingDuration = (Date.now() - state.recordingStartTime) / 1000;
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                    state.audioBlob = blob; // Save for later
+                    
+                    // If there was a previous recording, save it as discarded
+                    if (state.audioBlob) {
+                        state.discardedRecordings.push({
+                            blob: state.audioBlob,
+                            duration: state.lastRecordingDuration || 0,
+                            timestamp: new Date().toISOString()
+                        });
+                        console.log(`📼 Previous recording saved as discarded (${state.discardedRecordings.length} total)`);
+                    }
+                    
+                    state.audioBlob = blob;
+                    state.lastRecordingDuration = recordingDuration;
                     stream.getTracks().forEach(t => t.stop());
                     await transcribeAudio(blob);
                 };
+                
                 state.mediaRecorder.start();
                 state.isRecording = true;
+                
+                // v2.9.4: Clear button text change to "TAP TO STOP"
                 const btn = document.getElementById('record-btn');
-                btn.classList.add('recording');
-                btn.textContent = '🎤 RECORDING...';
+                btn.classList.remove('btn-record');
+                btn.classList.add('btn-stop');
+                btn.textContent = '🛑 TAP TO STOP';
+                
             } catch (err) {
                 showToast('error', 'Mic access denied');
             }
@@ -1185,8 +1233,11 @@
             if (state.mediaRecorder && state.isRecording) {
                 state.mediaRecorder.stop();
                 state.isRecording = false;
+                
+                // v2.9.4: Reset button to "TAP TO RECORD"
                 const btn = document.getElementById('record-btn');
-                btn.classList.remove('recording');
+                btn.classList.remove('btn-stop');
+                btn.classList.add('btn-record');
                 btn.textContent = '🎤 TAP TO RECORD';
             }
         }
@@ -1242,7 +1293,7 @@
         }
         
         // =====================================================================
-        // FOLDER SAVE
+        // FOLDER SAVE - v2.9.4 UPDATED for raw/final structure
         // =====================================================================
         async function chooseSaveFolder() {
             try {
@@ -1261,25 +1312,38 @@
             try {
                 const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
                 
-                // Create ALL folders
-                const folders = ['main', 'tag', 'defects', 'features', 'weight', 'measurements', 'data'];
+                // Create ALL folders including new raw/final structure
+                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
+                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
+                const finalFolder = await mainFolder.getDirectoryHandle('final', { create: true });
+                
+                // Other folders
+                const folders = ['tag', 'defects', 'features', 'weight', 'measurements', 'data'];
                 for (const f of folders) {
                     await skuFolder.getDirectoryHandle(f, { create: true });
                 }
                 
-                // Save main photos
+                // Save main photos to raw folder (final folder will be populated by backend processing)
                 if (itemData.photos.main.length > 0) {
-                    const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
                     for (let i = 0; i < itemData.photos.main.length; i++) {
                         const photo = itemData.photos.main[i];
                         const filename = `${itemData.sku}_${photo.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await mainFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
+                        
+                        // Save to raw folder
+                        const rawHandle = await rawFolder.getFileHandle(filename, { create: true });
+                        const rawWritable = await rawHandle.createWritable();
+                        await rawWritable.write(photo.blob);
+                        await rawWritable.close();
+                        
+                        // Also save to final for now (backend will replace with processed version)
+                        const finalHandle = await finalFolder.getFileHandle(filename, { create: true });
+                        const finalWritable = await finalHandle.createWritable();
+                        await finalWritable.write(photo.blob);
+                        await finalWritable.close();
                     }
                 } else {
-                    await createNAFile(skuFolder, 'main', itemData.sku);
+                    await createNAFile(rawFolder, null, itemData.sku);
+                    await createNAFile(finalFolder, null, itemData.sku);
                 }
                 
                 // Save tag photos
@@ -1301,10 +1365,10 @@
                 await createNAFile(skuFolder, 'defects', itemData.sku);
                 await createNAFile(skuFolder, 'features', itemData.sku);
                 
-                // Weight from Dymo scale
+                // Weight from Dymo scale - v2.9.4 UPDATED format
                 const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
-                if (itemData.weight && itemData.weight.value !== 'N/A') {
-                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.value} ${itemData.weight.unit}\nSource: Dymo USB Scale\nTimestamp: ${new Date().toISOString()}`;
+                if (itemData.weight && itemData.weight.pounds !== null) {
+                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
                     const weightHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight.txt`, { create: true });
                     const weightWritable = await weightHandle.createWritable();
                     await weightWritable.write(weightContent);
@@ -1316,12 +1380,23 @@
                 // Save measurements folder contents
                 const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
                 
-                // Raw audio
+                // Final audio
                 if (itemData.audioBlob) {
-                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_raw.webm`, { create: true });
+                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
                     const audioWritable = await audioHandle.createWritable();
                     await audioWritable.write(itemData.audioBlob);
                     await audioWritable.close();
+                }
+                
+                // Discarded recordings - v2.9.4 NEW
+                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                    for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                        const discarded = itemData.discardedRecordings[i];
+                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
+                        const discardWritable = await discardHandle.createWritable();
+                        await discardWritable.write(discarded.blob);
+                        await discardWritable.close();
+                    }
                 }
                 
                 // Raw transcript
@@ -1355,8 +1430,13 @@
             }
         }
         
-        async function createNAFile(parentFolder, folderName, sku) {
-            const folder = await parentFolder.getDirectoryHandle(folderName, { create: true });
+        async function createNAFile(parentFolderOrNull, folderName, sku) {
+            let folder;
+            if (folderName) {
+                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
+            } else {
+                folder = parentFolderOrNull; // Already the folder
+            }
             const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(`No data for ${sku}`);
@@ -1377,23 +1457,34 @@
         }
         
         // =====================================================================
-        // S3 UPLOAD
+        // S3 UPLOAD - v2.9.4 UPDATED for raw/final structure
         // =====================================================================
         async function uploadToS3(itemData) {
             const files = [];
             const sku = itemData.sku;
             
-            // Main photos
+            // Main photos - save to both raw and final folders
             for (let i = 0; i < itemData.photos.main.length; i++) {
                 const p = itemData.photos.main[i];
+                const filename = `${sku}_${p.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
+                
+                // Raw folder
                 files.push({
-                    name: `main/${sku}_${p.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`,
+                    name: `main/raw/${filename}`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+                
+                // Final folder (same for now, backend will process)
+                files.push({
+                    name: `main/final/${filename}`,
                     contentType: 'image/jpeg',
                     blob: p.blob
                 });
             }
             if (itemData.photos.main.length === 0) {
-                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+                files.push({ name: `main/raw/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
+                files.push({ name: `main/final/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             }
             
             // Tag photos
@@ -1413,9 +1504,9 @@
             files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
             
-            // Weight from Dymo scale
-            if (itemData.weight && itemData.weight.value !== 'N/A') {
-                const weightContent = `${sku}\nWeight: ${itemData.weight.value} ${itemData.weight.unit}\nSource: Dymo USB Scale\nTimestamp: ${new Date().toISOString()}`;
+            // Weight from Dymo scale - v2.9.4 UPDATED format
+            if (itemData.weight && itemData.weight.pounds !== null) {
+                const weightContent = `${sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
                 files.push({ name: `weight/${sku}_weight.txt`, contentType: 'text/plain', blob: new Blob([weightContent]) });
             } else {
                 files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
@@ -1423,8 +1514,21 @@
             
             // Measurements folder
             if (itemData.audioBlob) {
-                files.push({ name: `measurements/${sku}_audio_raw.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
             }
+            
+            // Discarded recordings - v2.9.4 NEW
+            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                    const discarded = itemData.discardedRecordings[i];
+                    files.push({
+                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
+                        contentType: 'audio/webm',
+                        blob: discarded.blob
+                    });
+                }
+            }
+            
             if (itemData.rawTranscript) {
                 files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
             }
@@ -1456,7 +1560,7 @@
         }
         
         // =====================================================================
-        // COMPLETE ITEM (ASYNC BACKGROUND)
+        // COMPLETE ITEM (ASYNC BACKGROUND) - v2.9.4 UPDATED
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
@@ -1468,8 +1572,12 @@
             const closeupDuration = state.timing.measurementsStart && state.timing.closeupStart ? Math.round((state.timing.measurementsStart - state.timing.closeupStart) / 1000) : 0;
             const measurementsDuration = state.timing.measurementsStart ? Math.round((now - state.timing.measurementsStart) / 1000) : 0;
             
-            // Get weight from Dymo scale
+            // Get weight from Dymo scale - v2.9.4 FIXED format
             const weightData = getCurrentWeight();
+            
+            // Recording KPI - v2.9.4 NEW
+            const recordingDuration = state.lastRecordingDuration || 0;
+            const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
             // Build complete item data
             const itemData = {
@@ -1481,7 +1589,8 @@
                 measurements: state.measurements,
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
-                weight: weightData, // From Dymo scale
+                discardedRecordings: state.discardedRecordings, // v2.9.4 NEW
+                weight: weightData,
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
@@ -1496,12 +1605,32 @@
                 jsonData: {
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
+                    version: VERSION,
                     category: state.classification,
                     templateKey: state.templateKey,
                     tagData: state.tagData || { brand: 'N/A', size: 'N/A', materials: 'N/A', country: 'N/A' },
                     measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
-                    weight: weightData || { value: 'N/A', unit: 'N/A' }, // From Dymo scale
+                    weight: weightData || { pounds: null, display: 'N/A' },
+                    // v2.9.4 - Audio recording metadata
+                    audioRecordings: {
+                        final: {
+                            duration: recordingDuration,
+                            timestamp: new Date().toISOString()
+                        },
+                        discarded: state.discardedRecordings.map((d, i) => ({
+                            index: i + 1,
+                            duration: d.duration,
+                            timestamp: d.timestamp
+                        })),
+                        totalAttempts: state.discardedRecordings.length + 1,
+                        kpiTargets: {
+                            targetDuration: 60,
+                            excellentDuration: 30,
+                            actualDuration: recordingDuration,
+                            rating: recordingRating
+                        }
+                    },
                     timing: {
                         mainPhotosDuration: mainDuration,
                         closeupDuration: closeupDuration,
@@ -1515,6 +1644,7 @@
                         features: 0,
                         weight: 0
                     },
+                    photographerId: state.photographerId, // v2.9.4 placeholder
                     flags: {},
                     fitAnalysis: null,
                     confidence: {}
@@ -1549,21 +1679,67 @@
                 await uploadToS3(itemData);
                 console.log(`✅ ${itemData.sku} uploaded to S3`);
                 
-                // 3. Run fit analysis
+                // 3. Run full pipeline (v2.9.4 - calls new agent architecture)
                 try {
-                    const fitResult = await callLambda('fitAnalysis', {
+                    // Prepare photos for AI
+                    const mainPhotos = await Promise.all(
+                        itemData.photos.main.slice(0, 2).map(async p => {
+                            const reader = new FileReader();
+                            return new Promise(resolve => {
+                                reader.onload = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(p.blob);
+                            });
+                        })
+                    );
+                    
+                    const pipelineResult = await callLambda('fullPipeline', {
+                        transcript: itemData.rawTranscript,
                         category: itemData.category,
-                        measurements: itemData.measurements,
-                        tagData: itemData.tagData
+                        templateKey: itemData.templateKey,
+                        tagData: itemData.tagData,
+                        weightData: itemData.weight,
+                        photos: mainPhotos
                     });
-                    if (fitResult.success) {
-                        itemData.jsonData.fitAnalysis = fitResult.fitAnalysis;
-                        itemData.jsonData.flags = fitResult.flags;
-                        itemData.jsonData.confidence = fitResult.confidence;
-                        itemData.jsonData.holistic = fitResult.holistic;
+                    
+                    if (pipelineResult.success) {
+                        // Update JSON with pipeline results
+                        itemData.jsonData.pipelineResults = {
+                            parser: pipelineResult.parser,
+                            matcher: pipelineResult.matcher,
+                            underwriter: pipelineResult.underwriter
+                        };
+                        itemData.jsonData.aiProviders = pipelineResult.aiProviders;
+                        itemData.jsonData.processingTime = pipelineResult.processingTime;
+                        
+                        // If underwriter corrected classification, note it
+                        if (pipelineResult.underwriter?.finalClassification?.wasChanged) {
+                            itemData.jsonData.classification = {
+                                final: pipelineResult.underwriter.finalClassification.category,
+                                finalTemplate: pipelineResult.underwriter.finalClassification.templateKey,
+                                original: itemData.category,
+                                wasChanged: true,
+                                changeReason: pipelineResult.underwriter.finalClassification.changeReason
+                            };
+                        }
+                        
+                        // Era estimation
+                        if (pipelineResult.underwriter?.eraEstimation) {
+                            itemData.jsonData.eraEstimation = pipelineResult.underwriter.eraEstimation;
+                        }
+                        
+                        // QC flags
+                        if (pipelineResult.underwriter?.qcFlags) {
+                            itemData.jsonData.qcFlags = pipelineResult.underwriter.qcFlags;
+                        }
+                        
+                        console.log(`✅ ${itemData.sku} pipeline complete`);
                     }
                 } catch (e) {
-                    console.warn('Fit analysis failed:', e.message);
+                    console.warn('Pipeline failed (non-fatal):', e.message);
+                    // Add flag that pipeline failed
+                    itemData.jsonData.qcFlags = itemData.jsonData.qcFlags || {};
+                    itemData.jsonData.qcFlags.pipelineFailed = true;
+                    itemData.jsonData.qcFlags.pipelineError = e.message;
                 }
                 
                 // 4. Send to n8n
@@ -1643,6 +1819,8 @@
             state.audioBlob = null;
             state.aiTriggered = false;
             state.timing = { mainStart: Date.now(), closeupStart: null, measurementsStart: null };
+            state.discardedRecordings = []; // v2.9.4 reset
+            state.lastRecordingDuration = 0;
             
             document.getElementById('sku-row').style.display = 'none';
             document.getElementById('sku-display').textContent = sku;
@@ -1654,7 +1832,6 @@
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
-            document.getElementById('complete-btn').disabled = true;
             document.getElementById('complete-btn-camera').disabled = true;
             
             updatePhotoGrid();
@@ -1682,6 +1859,8 @@
             state.audioBlob = null;
             state.aiTriggered = false;
             state.timing = { mainStart: null, closeupStart: null, measurementsStart: null };
+            state.discardedRecordings = []; // v2.9.4 reset
+            state.lastRecordingDuration = 0;
             
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
@@ -1693,8 +1872,13 @@
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
-            document.getElementById('complete-btn').disabled = true;
             document.getElementById('complete-btn-camera').disabled = true;
+            
+            // Reset recording button state
+            const btn = document.getElementById('record-btn');
+            btn.classList.remove('btn-stop');
+            btn.classList.add('btn-record');
+            btn.textContent = '🎤 TAP TO RECORD';
             
             updatePhotoGrid();
             updatePhotoCount();
@@ -1726,10 +1910,10 @@
         // =====================================================================
         // BARCODE SCANNER (with debounce to prevent rapid-fire detection)
         // =====================================================================
-        let barcodeDetected = false; // Debounce flag
+        let barcodeDetected = false;
         
         function openBarcodeScanner() {
-            barcodeDetected = false; // Reset flag
+            barcodeDetected = false;
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting...';
             document.getElementById('barcode-status').classList.remove('success');
@@ -1741,11 +1925,11 @@
                     type: 'LiveStream',
                     target: document.getElementById('barcode-container'),
                     constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' },
-                    willReadFrequently: true // Fix canvas performance warning
+                    willReadFrequently: true
                 },
                 decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
                 locate: true,
-                frequency: 10 // Reduce scan frequency
+                frequency: 10
             }, err => {
                 if (err) {
                     document.getElementById('barcode-status').textContent = 'Scanner error';
@@ -1755,11 +1939,8 @@
                 document.getElementById('barcode-status').textContent = 'Point at barcode...';
                 Quagga.start();
                 Quagga.onDetected(result => {
-                    // CRITICAL: Only process first detection
                     if (barcodeDetected) return;
                     barcodeDetected = true;
-                    
-                    // Stop immediately
                     Quagga.stop();
                     
                     const code = result.codeResult.code;
@@ -1803,9 +1984,13 @@
         }
         
         // =====================================================================
-        // DYMO USB SCALE (WebHID)
+        // DYMO USB SCALE (WebHID) - v2.9.4 FIXED for M10 lb:oz format
+        // 
+        // The Dymo M10 displays weight as "1:13.0" meaning 1 lb 13 oz
+        // Previous code was misinterpreting the byte format, leading to 1e+35 errors
+        // This fix properly parses the compound lb:oz format
         // =====================================================================
-        const DYMO_VENDOR_ID = 0x0922; // Dymo vendor ID
+        const DYMO_VENDOR_ID = 0x0922;
         
         async function toggleScale() {
             if (state.scaleDevice) {
@@ -1822,7 +2007,6 @@
             }
             
             try {
-                // Request Dymo scale device
                 const devices = await navigator.hid.requestDevice({
                     filters: [{ vendorId: DYMO_VENDOR_ID }]
                 });
@@ -1840,10 +2024,8 @@
                 
                 console.log('⚖️ Scale connected:', state.scaleDevice.productName);
                 
-                // Set up input report handler
                 state.scaleDevice.addEventListener('inputreport', handleScaleReport);
                 
-                // Update UI
                 state.scaleStatus = 'connected';
                 updateScaleUI();
                 showToast('success', `Scale connected: ${state.scaleDevice.productName}`);
@@ -1866,38 +2048,122 @@
                 }
                 state.scaleDevice = null;
                 state.scaleWeight = null;
+                state.scaleWeightDisplay = '';
                 state.scaleStatus = 'disconnected';
                 updateScaleUI();
                 showToast('info', 'Scale disconnected');
             }
         }
         
+        // v2.9.4 FIXED - Proper parsing for Dymo M10 lb:oz format
         function handleScaleReport(event) {
             const data = new Uint8Array(event.data.buffer);
             
-            // Dymo scale data format:
-            // Byte 0: Report ID (usually 3)
-            // Byte 1: Status (2=stable, 4=in motion, etc.)
+            // Dymo M10 HID report format:
+            // Byte 0: Report ID
+            // Byte 1: Status (2=stable, 4=in motion, 5=fault)
             // Byte 2: Unit (2=grams, 11=ounces, 12=pounds)
-            // Byte 3: Scale factor (signed, power of 10)
-            // Byte 4-5: Weight (little-endian)
+            // Byte 3: Scale factor (signed byte, power of 10)
+            // Byte 4-5: Weight (little-endian 16-bit)
             
             const status = data[1];
             const unitCode = data[2];
-            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // Signed byte
-            const weightRaw = data[4] + (data[5] << 8); // Little-endian 16-bit
+            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // Convert to signed
+            const weightRaw = data[4] | (data[5] << 8); // Little-endian
             
-            // Calculate actual weight
-            const weight = weightRaw * Math.pow(10, scaleFactor);
+            // Dymo M10 in lb:oz mode (unitCode 12):
+            // It reports total ounces, and scaleFactor determines decimal position
+            // Example: 1 lb 13 oz = 29 oz total
+            // weightRaw might be 290 with scaleFactor = -1 → 29.0 oz
             
-            // Determine unit
+            let decimalPounds = null;
+            let displayWeight = '';
             let unit = 'lb';
-            if (unitCode === 2) unit = 'g';
-            else if (unitCode === 11) unit = 'oz';
-            else if (unitCode === 12) unit = 'lb';
+            
+            if (unitCode === 12) {
+                // Pounds mode - but M10 actually reports in ounces internally
+                // Check if the value seems like total ounces or decimal pounds
+                
+                // Apply scale factor to get raw value
+                const rawValue = weightRaw * Math.pow(10, scaleFactor);
+                
+                // M10 in lb:oz display mode reports total ounces
+                // A typical shirt weighs 0.5-3 lbs = 8-48 oz
+                // If rawValue > 100 and < 500, it's probably total ounces (10ths)
+                // If rawValue is huge (like 1e35), the scale factor is wrong
+                
+                if (rawValue > 1000 || rawValue < 0) {
+                    // Invalid reading - scale factor interpretation error
+                    // Try treating byte 4-5 differently
+                    
+                    // Alternative: M10 might report pounds in byte 4, ounces in byte 5
+                    const pounds = data[4];
+                    const ounces = data[5] / 10; // Tenths of ounces
+                    
+                    if (pounds < 20 && ounces < 16) {
+                        // This looks like valid lb:oz format
+                        decimalPounds = pounds + (ounces / 16);
+                        displayWeight = `${pounds} lb ${ounces.toFixed(0)} oz`;
+                    } else {
+                        // Still invalid, try another interpretation
+                        // Sometimes it's just tenths of ounces total
+                        const totalOunces = weightRaw / 10;
+                        if (totalOunces > 0 && totalOunces < 500) {
+                            const lbs = Math.floor(totalOunces / 16);
+                            const oz = totalOunces % 16;
+                            decimalPounds = totalOunces / 16;
+                            displayWeight = `${lbs} lb ${oz.toFixed(0)} oz`;
+                        }
+                    }
+                } else {
+                    // Raw value seems reasonable - treat as total ounces / 10
+                    const totalOunces = rawValue;
+                    if (totalOunces > 0 && totalOunces < 500) {
+                        const lbs = Math.floor(totalOunces / 16);
+                        const oz = totalOunces % 16;
+                        decimalPounds = totalOunces / 16;
+                        displayWeight = `${lbs} lb ${oz.toFixed(0)} oz`;
+                    } else {
+                        // Direct decimal pounds
+                        decimalPounds = rawValue;
+                        displayWeight = `${rawValue.toFixed(2)} lb`;
+                    }
+                }
+                
+                unit = 'lb';
+                
+            } else if (unitCode === 11) {
+                // Pure ounces mode
+                const ounces = weightRaw * Math.pow(10, scaleFactor);
+                decimalPounds = ounces / 16;
+                const lbs = Math.floor(decimalPounds);
+                const remainingOz = ounces - (lbs * 16);
+                displayWeight = `${lbs} lb ${remainingOz.toFixed(0)} oz`;
+                unit = 'lb';
+                
+            } else if (unitCode === 2) {
+                // Grams mode
+                const grams = weightRaw * Math.pow(10, scaleFactor);
+                decimalPounds = grams / 453.592;
+                displayWeight = `${grams.toFixed(0)} g`;
+                unit = 'g';
+            }
+            
+            // Sanity check - reject obviously wrong values
+            if (decimalPounds !== null && (decimalPounds < 0 || decimalPounds > 50)) {
+                console.warn('⚖️ Suspicious weight reading:', decimalPounds, 'raw:', data);
+                // Try the simple interpretation: byte4 = lbs, byte5 = tenths of oz
+                const simpleLbs = data[4];
+                const simpleOz = data[5] / 10;
+                if (simpleLbs >= 0 && simpleLbs < 20 && simpleOz >= 0 && simpleOz < 16) {
+                    decimalPounds = simpleLbs + (simpleOz / 16);
+                    displayWeight = `${simpleLbs} lb ${simpleOz.toFixed(0)} oz`;
+                }
+            }
             
             // Update state
-            state.scaleWeight = weight;
+            state.scaleWeight = decimalPounds;
+            state.scaleWeightDisplay = displayWeight;
             state.scaleUnit = unit;
             
             // Status interpretation
@@ -1924,15 +2190,13 @@
                 btn.textContent = 'Disconnect';
                 btn.classList.add('disconnect');
                 
-                if (state.scaleWeight !== null) {
-                    // Format weight nicely
-                    let displayWeight;
-                    if (state.scaleUnit === 'g') {
-                        displayWeight = Math.round(state.scaleWeight);
-                    } else {
-                        displayWeight = state.scaleWeight.toFixed(2);
-                    }
-                    weightEl.textContent = displayWeight;
+                if (state.scaleWeightDisplay) {
+                    // v2.9.4: Show formatted lb:oz display
+                    weightEl.textContent = state.scaleWeightDisplay;
+                    weightEl.classList.remove('waiting');
+                    unitEl.textContent = ''; // Unit already in display
+                } else if (state.scaleWeight !== null) {
+                    weightEl.textContent = state.scaleWeight.toFixed(2);
                     weightEl.classList.remove('waiting');
                     unitEl.textContent = state.scaleUnit;
                 } else {
@@ -1951,12 +2215,17 @@
             }
         }
         
+        // v2.9.4: Returns weight in both formats
         function getCurrentWeight() {
-            // Returns current weight for saving with item
             if (state.scaleWeight !== null && state.scaleDevice) {
                 return {
-                    value: state.scaleWeight,
-                    unit: state.scaleUnit
+                    pounds: state.scaleWeight,
+                    display: state.scaleWeightDisplay || `${state.scaleWeight.toFixed(2)} lb`,
+                    raw: {
+                        value: state.scaleWeight,
+                        unit: state.scaleUnit
+                    },
+                    source: 'Dymo M10 USB Scale'
                 };
             }
             return null;
