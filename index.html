@@ -671,7 +671,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.4</span>
+                    <span class="version-badge" id="version-badge">v2.9.4e</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -2465,36 +2465,32 @@
             }
         }
         
-        // v2.9.4d FIXED - Handle unit 255 (scale not ready) and improve parsing
+        // v2.9.4e FIXED - Correct byte positions per Dymo HID spec (Antradar documentation)
+        // Previous version had byte indices off by one, causing unit 255 "not ready" errors
         function handleScaleReport(event) {
             const data = new Uint8Array(event.data.buffer);
             
             // Log raw data for debugging
             console.log('⚖️ Scale raw data:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
             
-            // Dymo M10 HID report format:
-            // Byte 0: Report ID
-            // Byte 1: Status (2=stable, 4=in motion, 5=fault, 6=negative, 7=overload)
-            // Byte 2: Unit (2=grams, 11=ounces, 12=pounds, 255=not ready)
-            // Byte 3: Scale factor (signed byte, power of 10)
-            // Byte 4-5: Weight data
+            // CORRECT Dymo M10/M25 HID report format (per Antradar docs):
+            // Byte 0: Status (2=stable, 4=in motion, 5=fault, 6=negative, 7=overload)
+            // Byte 1: Unit (2=grams, 11=ounces, 12=pounds)
+            // Byte 2: Scale factor (signed byte, power of 10) - 0xff = -1
+            // Byte 3: Weight low byte
+            // Byte 4: Weight high byte
+            // 
+            // Weight = (byte3 + byte4*256) * 10^scaleFactor
             
-            const status = data[1];
-            const unitCode = data[2];
-            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3];
+            const status = data[0];
+            const unitCode = data[1];
+            const scaleFactor = data[2] > 127 ? data[2] - 256 : data[2]; // Convert to signed
+            const weightLow = data[3] || 0;
+            const weightHigh = data[4] || 0;
             
-            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Bytes 4-5: ${data[4]}, ${data[5]}`);
+            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Weight bytes: ${weightLow}, ${weightHigh}`);
             
-            // v2.9.4d: Handle unit 255 (scale not ready/initializing)
-            if (unitCode === 255 || unitCode === 0) {
-                console.log('⚖️ Scale not ready (unit 255/0), waiting for valid reading...');
-                state.scaleStatus = 'waiting';
-                state.scaleWeightDisplay = 'Waiting...';
-                updateScaleUI();
-                return; // Don't process this reading - wait for valid unit
-            }
-            
-            // v2.9.4d: Handle status codes that indicate invalid reading
+            // Handle status codes that indicate invalid reading
             if (status === 5) {
                 state.scaleStatus = 'fault';
                 state.scaleWeightDisplay = 'FAULT';
@@ -2514,55 +2510,49 @@
                 return;
             }
             
+            // Validate unit code
+            if (unitCode !== 2 && unitCode !== 11 && unitCode !== 12) {
+                console.warn(`⚖️ Unknown unit code ${unitCode}, waiting...`);
+                state.scaleStatus = 'waiting';
+                state.scaleWeightDisplay = 'Waiting...';
+                updateScaleUI();
+                return;
+            }
+            
+            // Calculate raw weight (little-endian 16-bit)
+            const rawWeight = weightLow + (weightHigh * 256);
+            const scaledWeight = rawWeight * Math.pow(10, scaleFactor);
+            
             let decimalPounds = 0;
             let displayWeight = '0 lb 0 oz';
             let unit = 'lb';
             
-            // Dymo M10 in lb:oz mode (unitCode 12)
-            if (unitCode === 12) {
-                // M10 in lb mode - try multiple interpretations
-                const pounds = data[4];
-                const ounceTenths = data[5];
-                const ounces = ounceTenths / 10;
-                
-                // Check if this looks like valid lb:oz format
-                if (pounds >= 0 && pounds < 50 && ounces >= 0 && ounces < 16) {
-                    decimalPounds = pounds + (ounces / 16);
-                    displayWeight = `${pounds} lb ${ounces.toFixed(1)} oz`;
-                    console.log(`⚖️ Parsed as lb:oz → ${displayWeight}`);
-                } else {
-                    // Fallback: standard 16-bit little-endian with scale factor
-                    const weightRaw = data[4] | (data[5] << 8);
-                    decimalPounds = weightRaw * Math.pow(10, scaleFactor);
-                    displayWeight = `${decimalPounds.toFixed(2)} lb`;
-                    console.log(`⚖️ Parsed as raw lb → ${displayWeight}`);
-                }
-                unit = 'lb';
-                
-            } else if (unitCode === 11) {
-                // Ounces mode
-                const weightRaw = data[4] | (data[5] << 8);
-                const totalOunces = weightRaw * Math.pow(10, scaleFactor);
+            if (unitCode === 11) {
+                // OUNCES mode (most common for Dymo M10)
+                const totalOunces = scaledWeight;
                 decimalPounds = totalOunces / 16;
-                const lbs = Math.floor(decimalPounds);
-                const oz = totalOunces - (lbs * 16);
+                const lbs = Math.floor(totalOunces / 16);
+                const oz = totalOunces % 16;
                 displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
                 unit = 'lb';
-                console.log(`⚖️ Parsed as ounces → ${displayWeight}`);
+                console.log(`⚖️ Ounces mode: ${totalOunces} oz → ${displayWeight}`);
+                
+            } else if (unitCode === 12) {
+                // POUNDS mode
+                decimalPounds = scaledWeight;
+                const lbs = Math.floor(decimalPounds);
+                const oz = (decimalPounds - lbs) * 16;
+                displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
+                unit = 'lb';
+                console.log(`⚖️ Pounds mode: ${decimalPounds} lb → ${displayWeight}`);
                 
             } else if (unitCode === 2) {
-                // Grams mode
-                const weightRaw = data[4] | (data[5] << 8);
-                const grams = weightRaw * Math.pow(10, scaleFactor);
+                // GRAMS mode
+                const grams = scaledWeight;
                 decimalPounds = grams / 453.592;
                 displayWeight = `${grams.toFixed(0)} g`;
                 unit = 'g';
-                console.log(`⚖️ Parsed as grams → ${displayWeight}`);
-                
-            } else {
-                // Unknown unit - log and skip
-                console.warn(`⚖️ Unknown unit code ${unitCode}, skipping`);
-                return;
+                console.log(`⚖️ Grams mode: ${grams} g → ${displayWeight}`);
             }
             
             // Sanity check - reject obviously wrong values
@@ -2571,40 +2561,30 @@
                 return;
             }
             
-            // Update state
-            state.scaleWeight = decimalPounds;
-            state.scaleWeightDisplay = displayWeight;
-            state.scaleUnit = unit;
-            
-            // Status interpretation and stability tracking for lock feature
+            // Status interpretation and stability tracking
             const isStable = (status === 2 || status === 0);
             
-            // v2.9.4d: If weight is locked, don't update the display weight
+            // If weight is locked, don't update the display weight
             if (state.scaleWeightLocked) {
-                // Still update the live weight for reference, but don't change locked values
                 state.scaleWeight = decimalPounds;
                 state.scaleWeightDisplay = displayWeight;
-                // Keep status as locked
                 state.scaleStatus = 'locked';
                 console.log(`⚖️ Weight locked at ${state.scaleLockedDisplay}, live: ${displayWeight}`);
                 updateScaleUI();
                 return;
             }
             
-            // v2.9.4d: Stability tracking for auto-lock
+            // Stability tracking for lock feature
             const STABILITY_THRESHOLD = 0.01; // Weight must be within 0.01 lb to be "same"
-            const STABILITY_TIME_MS = 2000;   // Must be stable for 2 seconds
             
             if (isStable && state.scaleLastWeight !== null) {
                 const weightDiff = Math.abs(decimalPounds - state.scaleLastWeight);
                 if (weightDiff < STABILITY_THRESHOLD) {
-                    // Weight is stable
                     if (!state.scaleStableStartTime) {
                         state.scaleStableStartTime = Date.now();
                     }
                     state.scaleStatus = 'stable';
                 } else {
-                    // Weight changed - reset stability timer
                     state.scaleStableStartTime = null;
                     state.scaleStatus = 'motion';
                 }
@@ -2620,7 +2600,7 @@
             state.scaleWeightDisplay = displayWeight;
             state.scaleUnit = unit;
             
-            console.log(`⚖️ Final: ${displayWeight}, status: ${state.scaleStatus}`);
+            console.log(`⚖️ Final: ${displayWeight} (${decimalPounds.toFixed(4)} lb), status: ${state.scaleStatus}`);
             updateScaleUI();
         }
         
