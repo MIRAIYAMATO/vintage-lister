@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.4c</title>
+    <title>VintageLister v2.9.4d</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -576,10 +576,37 @@
             background: var(--bg-tertiary);
             border-radius: var(--radius);
             margin-bottom: 8px;
+            flex-wrap: wrap;
         }
         
         .scale-display.connected { border: 1px solid var(--accent-green); }
         .scale-display.disconnected { border: 1px dashed var(--border-color); }
+        .scale-display.stable { border: 2px solid var(--accent-green); }
+        .scale-display.locked { border: 2px solid var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+        .scale-display.motion { border: 2px solid var(--accent-orange); }
+        
+        .scale-status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .scale-status-indicator.stable { background: var(--accent-green); animation: pulse-green 1.5s infinite; }
+        .scale-status-indicator.motion { background: var(--accent-orange); animation: pulse-orange 0.5s infinite; }
+        .scale-status-indicator.locked { background: var(--accent-blue); }
+        .scale-status-indicator.waiting { background: var(--text-secondary); }
+        
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        }
+        
+        @keyframes pulse-orange {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
         
         .scale-weight {
             font-size: 24px;
@@ -587,25 +614,22 @@
             font-family: 'Courier New', monospace;
             color: var(--accent-green);
             flex: 1;
+            min-width: 100px;
         }
         
         .scale-weight.waiting { color: var(--text-secondary); font-size: 14px; }
+        .scale-weight.locked { color: var(--accent-blue); }
         
         .scale-unit {
             font-size: 14px;
             color: var(--text-secondary);
         }
         
-        .scale-status {
-            font-size: 10px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
+        .scale-buttons {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
         }
-        
-        .scale-status.connected { background: var(--accent-green); color: white; }
-        .scale-status.disconnected { background: var(--bg-secondary); color: var(--text-secondary); }
-        .scale-status.reading { background: var(--accent-blue); color: white; }
         
         .scale-btn {
             padding: 8px 12px;
@@ -619,6 +643,8 @@
         
         .scale-btn:hover { filter: brightness(1.1); }
         .scale-btn.disconnect { background: var(--accent-red); }
+        .scale-btn.lock { background: var(--accent-green); }
+        .scale-btn.unlock { background: var(--accent-orange); }
     </style>
 </head>
 <body>
@@ -687,12 +713,16 @@
                 <div class="section-card">
                     <div class="section-title">⚖️ USB Scale</div>
                     <div class="scale-display disconnected" id="scale-display">
+                        <div class="scale-status-indicator" id="scale-status-indicator"></div>
                         <div class="scale-weight waiting" id="scale-weight">Not connected</div>
                         <span class="scale-unit" id="scale-unit"></span>
-                        <button class="scale-btn" id="scale-btn" onclick="toggleScale()">Connect</button>
+                        <div class="scale-buttons">
+                            <button class="scale-btn" id="scale-btn" onclick="toggleScale()">Connect</button>
+                            <button class="scale-btn lock" id="scale-lock-btn" onclick="toggleWeightLock()" style="display: none;">🔒 Lock</button>
+                        </div>
                     </div>
                     <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
-                        Dymo M10 scale (lb:oz format)
+                        Dymo M10 scale • <span id="scale-status-text">Disconnected</span>
                     </div>
                 </div>
                 
@@ -819,8 +849,15 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.4c - MAJOR ARCHITECTURAL FIX
+        // VINTAGELISTER v2.9.4d - SCALE FIX + OCR MULTI-PHOTO + RAGLAN DETECTION
         // 
+        // CHANGES FROM v2.9.4c:
+        // 1. Scale: Handle unit 255 (not ready) - show "Place item on scale..."
+        // 2. Scale: Better status handling (fault/negative/overload)
+        // 3. OCR: Process ALL closeup photos and merge results (not just first one)
+        // 4. Classification: Better raglan sleeve detection from photos
+        // 5. Lambda resolveTemplate now uses sleeveConstruction for raglan templates
+        //
         // CHANGES FROM v2.9.4b:
         // 1. AI runs BEFORE JSON is built (not in background after)
         // 2. Image Processing Agent called for crop/rotation metadata
@@ -842,7 +879,7 @@
         // 6. Recording duration KPI tracking
         // =============================================================================
         
-        const VERSION = '2.9.4c';
+        const VERSION = '2.9.4d';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -883,12 +920,17 @@
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
             // Retry queue
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
-            // Dymo USB Scale - v2.9.4 FIXED for M10 lb:oz format
+            // Dymo USB Scale - v2.9.4d FIXED with lock functionality
             scaleDevice: null,
-            scaleWeight: null,      // Decimal pounds (for storage)
-            scaleWeightDisplay: '', // Display format "1 lb 13 oz"
+            scaleWeight: null,          // Decimal pounds (for storage)
+            scaleWeightDisplay: '',     // Display format "1 lb 13.0 oz"
             scaleUnit: 'lb',
-            scaleStatus: 'disconnected',
+            scaleStatus: 'disconnected', // disconnected, waiting, motion, stable, locked
+            scaleWeightLocked: false,    // v2.9.4d: Is the weight locked?
+            scaleLockedWeight: null,     // v2.9.4d: The locked weight value (decimal lbs)
+            scaleLockedDisplay: '',      // v2.9.4d: The locked display string
+            scaleStableStartTime: null,  // v2.9.4d: When did weight become stable?
+            scaleLastWeight: null,       // v2.9.4d: Previous weight for stability detection
             // v2.9.4 - Discarded recordings for QC
             discardedRecordings: [],
             recordingStartTime: null,
@@ -1692,48 +1734,116 @@
             showToast('info', '🤖 Running AI processing...');
             const aiStartTime = Date.now();
             
-            // ===== STEP 1: Run OCR if we have closeup photos =====
-            if (state.photos.closeup.length > 0 && (!state.tagData || state.tagData.brand === 'N/A')) {
+            // ===== STEP 1: Run OCR on ALL tag photos and merge results =====
+            // v2.9.4d: Process multiple tag photos to capture all label info
+            if (state.photos.closeup.length > 0) {
                 try {
-                    console.log('🏷️ Running OCR on tag photos...');
-                    const tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
-                    const ocrResult = await callLambda('classify', { 
-                        mainPhotos: [],
-                        tagPhoto: tagPhoto 
-                    });
-                    if (ocrResult.success && ocrResult.tagData && !ocrResult.tagData.error) {
-                        state.tagData = ocrResult.tagData;
-                        console.log('✅ OCR:', state.tagData.brand, state.tagData.size);
-                        // Update display
-                        document.getElementById('tag-grid').style.display = 'grid';
-                        document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
-                        document.getElementById('tag-size').textContent = state.tagData.size || '-';
-                        document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
-                        document.getElementById('tag-country').textContent = state.tagData.country || '-';
+                    console.log(`🏷️ Running OCR on ${state.photos.closeup.length} closeup photos...`);
+                    
+                    // Initialize merged tag data
+                    const mergedTagData = {
+                        brand: null,
+                        size: null,
+                        materials: null,
+                        country: null,
+                        rnNumber: null,
+                        careInstructions: null,
+                        confidence: 0
+                    };
+                    
+                    // Process each closeup photo for OCR
+                    for (let i = 0; i < state.photos.closeup.length; i++) {
+                        const photo = state.photos.closeup[i];
+                        try {
+                            const tagPhoto = await resizeImageForAI(photo.blob);
+                            const ocrResult = await callLambda('classify', { 
+                                mainPhotos: [],
+                                tagPhoto: tagPhoto 
+                            });
+                            
+                            if (ocrResult.success && ocrResult.tagData && !ocrResult.tagData.error) {
+                                const td = ocrResult.tagData;
+                                console.log(`📷 OCR closeup ${i+1}:`, td.brand || '-', td.size || '-', td.materials || '-');
+                                
+                                // Merge: prefer non-null values, keep highest confidence
+                                if (td.brand && td.brand !== 'N/A' && !mergedTagData.brand) {
+                                    mergedTagData.brand = td.brand;
+                                }
+                                if (td.size && td.size !== 'N/A' && !mergedTagData.size) {
+                                    mergedTagData.size = td.size;
+                                }
+                                if (td.materials && td.materials !== 'N/A' && !mergedTagData.materials) {
+                                    mergedTagData.materials = td.materials;
+                                }
+                                if (td.country && td.country !== 'N/A' && !mergedTagData.country) {
+                                    mergedTagData.country = td.country;
+                                }
+                                if (td.rnNumber && !mergedTagData.rnNumber) {
+                                    mergedTagData.rnNumber = td.rnNumber;
+                                }
+                                if (td.careInstructions && !mergedTagData.careInstructions) {
+                                    mergedTagData.careInstructions = td.careInstructions;
+                                }
+                                if (td.confidence && td.confidence > mergedTagData.confidence) {
+                                    mergedTagData.confidence = td.confidence;
+                                }
+                            }
+                        } catch (photoErr) {
+                            console.warn(`OCR closeup ${i+1} failed:`, photoErr.message);
+                        }
                     }
+                    
+                    // Use merged results
+                    state.tagData = mergedTagData;
+                    console.log('✅ Merged OCR:', state.tagData.brand, state.tagData.size, state.tagData.materials, state.tagData.country);
+                    
+                    // Update display
+                    document.getElementById('tag-grid').style.display = 'grid';
+                    document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
+                    document.getElementById('tag-size').textContent = state.tagData.size || '-';
+                    document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
+                    document.getElementById('tag-country').textContent = state.tagData.country || '-';
+                    
                 } catch (e) {
                     console.warn('OCR failed:', e.message);
                 }
             }
             
             // ===== STEP 2: Run Image Processing on main photos =====
+            // v2.9.4d: Only run visual measurements on folded photos, not extended poses
             let imageProcessingResults = [];
             if (state.photos.main.length > 0) {
                 try {
                     console.log('🖼️ Running image processing...');
                     for (let i = 0; i < Math.min(state.photos.main.length, 2); i++) {
                         const photo = state.photos.main[i];
+                        const photoLabel = photo.label?.toLowerCase() || '';
+                        
+                        // v2.9.4d: Skip visual measurements on extended arm poses
+                        // Extended poses show arms at angles - bad for measurement
+                        const isExtendedPose = photoLabel.includes('extended') || 
+                                               photoLabel.includes('arms') ||
+                                               photoLabel.includes('-t') ||  // Front-T, Back-T naming
+                                               i < 2; // First 2 photos are typically extended poses
+                        
                         const imageBase64 = await resizeImageForAI(photo.blob);
                         const result = await callLambda('imageProcessing', {
                             image: imageBase64,
-                            garmentType: state.template?.category || 'tops'
+                            garmentType: state.template?.category || 'tops',
+                            skipVisualMeasurements: isExtendedPose // Tell Lambda to skip visual measurements
                         });
                         if (result.success) {
                             imageProcessingResults.push({
                                 photoIndex: i,
+                                photoLabel: photo.label || `main_${i+1}`,
+                                isExtendedPose: isExtendedPose,
                                 ...result
                             });
-                            console.log(`✅ Image ${i+1}: rotation ${result.rotation?.currentAngle?.toFixed(1)}°, ColorChecker: ${result.colorChecker?.detected}`);
+                            if (isExtendedPose) {
+                                console.log(`✅ Image ${i+1} (extended pose): rotation ${result.rotation?.currentAngle?.toFixed(1)}°, visual measurements skipped`);
+                            } else {
+                                console.log(`✅ Image ${i+1} (folded): rotation ${result.rotation?.currentAngle?.toFixed(1)}°, ColorChecker: ${result.colorChecker?.detected}`);
+                            }
                         }
                     }
                 } catch (e) {
@@ -2149,6 +2259,13 @@
             state.discardedRecordings = []; // v2.9.4 reset
             state.lastRecordingDuration = 0;
             
+            // v2.9.4d: Reset scale lock for new item (but keep connected)
+            state.scaleWeightLocked = false;
+            state.scaleLockedWeight = null;
+            state.scaleLockedDisplay = '';
+            state.scaleStableStartTime = null;
+            updateScaleUI();
+            
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
             document.getElementById('sku-display').classList.remove('visible');
@@ -2337,12 +2454,18 @@
                 state.scaleWeight = null;
                 state.scaleWeightDisplay = '';
                 state.scaleStatus = 'disconnected';
+                // v2.9.4d: Reset lock state on disconnect
+                state.scaleWeightLocked = false;
+                state.scaleLockedWeight = null;
+                state.scaleLockedDisplay = '';
+                state.scaleStableStartTime = null;
+                state.scaleLastWeight = null;
                 updateScaleUI();
                 showToast('info', 'Scale disconnected');
             }
         }
         
-        // v2.9.4b FIXED - Simplified Dymo M10 scale handler with debug logging
+        // v2.9.4d FIXED - Handle unit 255 (scale not ready) and improve parsing
         function handleScaleReport(event) {
             const data = new Uint8Array(event.data.buffer);
             
@@ -2352,7 +2475,7 @@
             // Dymo M10 HID report format:
             // Byte 0: Report ID
             // Byte 1: Status (2=stable, 4=in motion, 5=fault, 6=negative, 7=overload)
-            // Byte 2: Unit (2=grams, 11=ounces, 12=pounds)
+            // Byte 2: Unit (2=grams, 11=ounces, 12=pounds, 255=not ready)
             // Byte 3: Scale factor (signed byte, power of 10)
             // Byte 4-5: Weight data
             
@@ -2360,46 +2483,72 @@
             const unitCode = data[2];
             const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3];
             
+            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Bytes 4-5: ${data[4]}, ${data[5]}`);
+            
+            // v2.9.4d: Handle unit 255 (scale not ready/initializing)
+            if (unitCode === 255 || unitCode === 0) {
+                console.log('⚖️ Scale not ready (unit 255/0), waiting for valid reading...');
+                state.scaleStatus = 'waiting';
+                state.scaleWeightDisplay = 'Waiting...';
+                updateScaleUI();
+                return; // Don't process this reading - wait for valid unit
+            }
+            
+            // v2.9.4d: Handle status codes that indicate invalid reading
+            if (status === 5) {
+                state.scaleStatus = 'fault';
+                state.scaleWeightDisplay = 'FAULT';
+                updateScaleUI();
+                return;
+            }
+            if (status === 6) {
+                state.scaleStatus = 'negative';
+                state.scaleWeightDisplay = 'NEGATIVE';
+                updateScaleUI();
+                return;
+            }
+            if (status === 7) {
+                state.scaleStatus = 'overload';
+                state.scaleWeightDisplay = 'OVERLOAD';
+                updateScaleUI();
+                return;
+            }
+            
             let decimalPounds = 0;
             let displayWeight = '0 lb 0 oz';
             let unit = 'lb';
             
-            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Bytes 4-5: ${data[4]}, ${data[5]}`);
-            
-            // Dymo M10 in lb:oz mode (display shows "X:YY.Z" meaning X lb YY.Z oz)
-            // The scale reports: byte 4 = pounds, byte 5 = ounces × 10 (tenths of ounces)
-            if (unitCode === 12 || unitCode === 11) {
-                // Method 1: Try interpreting as separate lb and oz values
-                // This matches M10 display format where "1:13.0" = 1 lb 13.0 oz
+            // Dymo M10 in lb:oz mode (unitCode 12)
+            if (unitCode === 12) {
+                // M10 in lb mode - try multiple interpretations
                 const pounds = data[4];
                 const ounceTenths = data[5];
                 const ounces = ounceTenths / 10;
                 
-                if (pounds >= 0 && pounds < 100 && ounces >= 0 && ounces < 16) {
-                    // Valid lb:oz reading
+                // Check if this looks like valid lb:oz format
+                if (pounds >= 0 && pounds < 50 && ounces >= 0 && ounces < 16) {
                     decimalPounds = pounds + (ounces / 16);
                     displayWeight = `${pounds} lb ${ounces.toFixed(1)} oz`;
-                    console.log(`⚖️ Parsed as lb:oz → ${displayWeight} (${decimalPounds.toFixed(4)} decimal lbs)`);
+                    console.log(`⚖️ Parsed as lb:oz → ${displayWeight}`);
                 } else {
                     // Fallback: standard 16-bit little-endian with scale factor
                     const weightRaw = data[4] | (data[5] << 8);
-                    const rawValue = weightRaw * Math.pow(10, scaleFactor);
-                    
-                    if (unitCode === 11) {
-                        // Ounces
-                        const totalOunces = rawValue;
-                        decimalPounds = totalOunces / 16;
-                        const lbs = Math.floor(decimalPounds);
-                        const oz = totalOunces - (lbs * 16);
-                        displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
-                    } else {
-                        // Pounds
-                        decimalPounds = rawValue;
-                        displayWeight = `${rawValue.toFixed(2)} lb`;
-                    }
-                    console.log(`⚖️ Parsed as raw value → ${displayWeight}`);
+                    decimalPounds = weightRaw * Math.pow(10, scaleFactor);
+                    displayWeight = `${decimalPounds.toFixed(2)} lb`;
+                    console.log(`⚖️ Parsed as raw lb → ${displayWeight}`);
                 }
                 unit = 'lb';
+                
+            } else if (unitCode === 11) {
+                // Ounces mode
+                const weightRaw = data[4] | (data[5] << 8);
+                const totalOunces = weightRaw * Math.pow(10, scaleFactor);
+                decimalPounds = totalOunces / 16;
+                const lbs = Math.floor(decimalPounds);
+                const oz = totalOunces - (lbs * 16);
+                displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
+                unit = 'lb';
+                console.log(`⚖️ Parsed as ounces → ${displayWeight}`);
                 
             } else if (unitCode === 2) {
                 // Grams mode
@@ -2409,13 +2558,17 @@
                 displayWeight = `${grams.toFixed(0)} g`;
                 unit = 'g';
                 console.log(`⚖️ Parsed as grams → ${displayWeight}`);
+                
             } else {
-                // Unknown unit - try generic parsing
-                const weightRaw = data[4] | (data[5] << 8);
-                const rawValue = weightRaw * Math.pow(10, scaleFactor);
-                decimalPounds = rawValue;
-                displayWeight = `${rawValue.toFixed(2)} (unit ${unitCode})`;
-                console.log(`⚖️ Unknown unit ${unitCode}, raw: ${rawValue}`);
+                // Unknown unit - log and skip
+                console.warn(`⚖️ Unknown unit code ${unitCode}, skipping`);
+                return;
+            }
+            
+            // Sanity check - reject obviously wrong values
+            if (decimalPounds < 0 || decimalPounds > 100) {
+                console.warn(`⚖️ Weight out of range (${decimalPounds}), skipping`);
+                return;
             }
             
             // Update state
@@ -2423,25 +2576,78 @@
             state.scaleWeightDisplay = displayWeight;
             state.scaleUnit = unit;
             
-            // Status interpretation
-            if (status === 2 || status === 0) {
-                state.scaleStatus = 'stable';
-            } else if (status === 4) {
-                state.scaleStatus = 'reading';
-            } else if (status === 5) {
-                state.scaleStatus = 'fault';
-                displayWeight = 'FAULT';
-            } else if (status === 6) {
-                state.scaleStatus = 'negative';
-                displayWeight = 'NEGATIVE';
-            } else if (status === 7) {
-                state.scaleStatus = 'overload';
-                displayWeight = 'OVERLOAD';
-            } else {
-                state.scaleStatus = 'connected';
+            // Status interpretation and stability tracking for lock feature
+            const isStable = (status === 2 || status === 0);
+            
+            // v2.9.4d: If weight is locked, don't update the display weight
+            if (state.scaleWeightLocked) {
+                // Still update the live weight for reference, but don't change locked values
+                state.scaleWeight = decimalPounds;
+                state.scaleWeightDisplay = displayWeight;
+                // Keep status as locked
+                state.scaleStatus = 'locked';
+                console.log(`⚖️ Weight locked at ${state.scaleLockedDisplay}, live: ${displayWeight}`);
+                updateScaleUI();
+                return;
             }
             
+            // v2.9.4d: Stability tracking for auto-lock
+            const STABILITY_THRESHOLD = 0.01; // Weight must be within 0.01 lb to be "same"
+            const STABILITY_TIME_MS = 2000;   // Must be stable for 2 seconds
+            
+            if (isStable && state.scaleLastWeight !== null) {
+                const weightDiff = Math.abs(decimalPounds - state.scaleLastWeight);
+                if (weightDiff < STABILITY_THRESHOLD) {
+                    // Weight is stable
+                    if (!state.scaleStableStartTime) {
+                        state.scaleStableStartTime = Date.now();
+                    }
+                    state.scaleStatus = 'stable';
+                } else {
+                    // Weight changed - reset stability timer
+                    state.scaleStableStartTime = null;
+                    state.scaleStatus = 'motion';
+                }
+            } else if (!isStable) {
+                state.scaleStableStartTime = null;
+                state.scaleStatus = 'motion';
+            } else {
+                state.scaleStatus = 'stable';
+            }
+            
+            state.scaleLastWeight = decimalPounds;
+            state.scaleWeight = decimalPounds;
+            state.scaleWeightDisplay = displayWeight;
+            state.scaleUnit = unit;
+            
             console.log(`⚖️ Final: ${displayWeight}, status: ${state.scaleStatus}`);
+            updateScaleUI();
+        }
+        
+        // v2.9.4d: Toggle weight lock
+        function toggleWeightLock() {
+            if (state.scaleWeightLocked) {
+                // Unlock
+                state.scaleWeightLocked = false;
+                state.scaleLockedWeight = null;
+                state.scaleLockedDisplay = '';
+                state.scaleStableStartTime = null;
+                showToast('info', 'Weight unlocked - ready to re-weigh');
+                console.log('⚖️ Weight UNLOCKED');
+            } else {
+                // Lock current weight
+                if (state.scaleWeight !== null && state.scaleWeight > 0) {
+                    state.scaleWeightLocked = true;
+                    state.scaleLockedWeight = state.scaleWeight;
+                    state.scaleLockedDisplay = state.scaleWeightDisplay;
+                    state.scaleStatus = 'locked';
+                    showToast('success', `Weight locked: ${state.scaleLockedDisplay}`);
+                    console.log(`⚖️ Weight LOCKED at ${state.scaleLockedDisplay}`);
+                } else {
+                    showToast('warning', 'No weight to lock - place item on scale first');
+                    return;
+                }
+            }
             updateScaleUI();
         }
         
@@ -2450,40 +2656,90 @@
             const weightEl = document.getElementById('scale-weight');
             const unitEl = document.getElementById('scale-unit');
             const btn = document.getElementById('scale-btn');
+            const lockBtn = document.getElementById('scale-lock-btn');
+            const statusIndicator = document.getElementById('scale-status-indicator');
+            const statusText = document.getElementById('scale-status-text');
+            
+            // Reset classes
+            display.classList.remove('disconnected', 'connected', 'stable', 'locked', 'motion');
+            statusIndicator.classList.remove('stable', 'motion', 'locked', 'waiting');
+            weightEl.classList.remove('waiting', 'locked');
             
             if (state.scaleDevice) {
-                display.classList.remove('disconnected');
-                display.classList.add('connected');
                 btn.textContent = 'Disconnect';
                 btn.classList.add('disconnect');
+                lockBtn.style.display = 'inline-block';
                 
-                if (state.scaleWeightDisplay) {
-                    // v2.9.4: Show formatted lb:oz display
+                // v2.9.4d: Handle locked state
+                if (state.scaleWeightLocked) {
+                    display.classList.add('locked');
+                    statusIndicator.classList.add('locked');
+                    weightEl.textContent = `🔒 ${state.scaleLockedDisplay}`;
+                    weightEl.classList.add('locked');
+                    unitEl.textContent = '';
+                    lockBtn.textContent = '🔓 Unlock';
+                    lockBtn.classList.remove('lock');
+                    lockBtn.classList.add('unlock');
+                    statusText.textContent = 'LOCKED';
+                } else if (state.scaleWeightDisplay) {
                     weightEl.textContent = state.scaleWeightDisplay;
-                    weightEl.classList.remove('waiting');
-                    unitEl.textContent = ''; // Unit already in display
-                } else if (state.scaleWeight !== null) {
-                    weightEl.textContent = state.scaleWeight.toFixed(2);
-                    weightEl.classList.remove('waiting');
-                    unitEl.textContent = state.scaleUnit;
+                    unitEl.textContent = '';
+                    lockBtn.textContent = '🔒 Lock';
+                    lockBtn.classList.add('lock');
+                    lockBtn.classList.remove('unlock');
+                    
+                    // Show stability status
+                    if (state.scaleStatus === 'stable') {
+                        display.classList.add('stable');
+                        statusIndicator.classList.add('stable');
+                        statusText.textContent = '✓ Stable';
+                    } else if (state.scaleStatus === 'motion') {
+                        display.classList.add('motion');
+                        statusIndicator.classList.add('motion');
+                        statusText.textContent = 'Stabilizing...';
+                    } else {
+                        display.classList.add('connected');
+                        statusIndicator.classList.add('waiting');
+                        statusText.textContent = 'Reading...';
+                    }
                 } else {
+                    display.classList.add('connected');
                     weightEl.textContent = 'Waiting...';
                     weightEl.classList.add('waiting');
                     unitEl.textContent = '';
+                    statusIndicator.classList.add('waiting');
+                    statusText.textContent = 'Waiting for weight...';
+                    lockBtn.style.display = 'none';
                 }
             } else {
                 display.classList.add('disconnected');
-                display.classList.remove('connected');
                 weightEl.textContent = 'Not connected';
                 weightEl.classList.add('waiting');
                 unitEl.textContent = '';
                 btn.textContent = 'Connect';
                 btn.classList.remove('disconnect');
+                lockBtn.style.display = 'none';
+                statusText.textContent = 'Disconnected';
             }
         }
         
-        // v2.9.4: Returns weight in both formats
+        // v2.9.4d: Returns weight - uses LOCKED weight if locked, otherwise live weight
         function getCurrentWeight() {
+            // If weight is locked, return the locked weight
+            if (state.scaleWeightLocked && state.scaleLockedWeight !== null) {
+                return {
+                    pounds: state.scaleLockedWeight,
+                    display: state.scaleLockedDisplay,
+                    raw: {
+                        value: state.scaleLockedWeight,
+                        unit: state.scaleUnit
+                    },
+                    source: 'Dymo M10 USB Scale',
+                    locked: true
+                };
+            }
+            
+            // Otherwise return live weight
             if (state.scaleWeight !== null && state.scaleDevice) {
                 return {
                     pounds: state.scaleWeight,
@@ -2492,7 +2748,8 @@
                         value: state.scaleWeight,
                         unit: state.scaleUnit
                     },
-                    source: 'Dymo M10 USB Scale'
+                    source: 'Dymo M10 USB Scale',
+                    locked: false
                 };
             }
             return null;
