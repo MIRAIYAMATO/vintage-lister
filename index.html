@@ -3,2055 +3,1288 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.4d</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <title>VintageLister v2.9.5 ASYNC</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* =====================================================================
+           VintageLister v2.9.5 ASYNC - Zero Wait Time Architecture
+           
+           MAJOR CHANGE: All AI processing moved to Lambda (async)
+           - Photographer clicks COMPLETE → UI resets in < 1 second
+           - No more 10-30 second waits
+           - AI runs in background via Lambda after S3 upload
+           
+           What's removed from browser:
+           - OCR calls (moved to Lambda)
+           - Image Processing calls (moved to Lambda)
+           - Photo Routing calls (moved to Lambda)
+           - Full Pipeline calls (moved to Lambda)
+           
+           What's added:
+           - Trigger file upload to signal Lambda to process
+           - Status field in JSON for tracking processing state
+           ===================================================================== */
         
-        :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
-            --accent-blue: #3b82f6;
-            --accent-green: #22c55e;
-            --accent-yellow: #eab308;
-            --accent-orange: #f97316;
-            --accent-red: #ef4444;
-            --accent-purple: #a855f7;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border-color: #475569;
-            --radius: 8px;
-        }
-        
-        html, body {
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            height: 100vh;
-            overflow: hidden;
+            background: #1a1a2e; 
+            color: #eee;
+            min-height: 100vh;
         }
         
-        .app-container {
+        .header {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #0f3460;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .version-badge {
+            background: #e94560;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .main-grid {
             display: grid;
-            grid-template-columns: 300px 1fr 300px;
-            height: 100vh;
-            overflow: hidden;
-        }
-        
-        @media (max-width: 1200px) {
-            .app-container { grid-template-columns: 260px 1fr 260px; }
+            grid-template-columns: 300px 1fr 320px;
+            gap: 15px;
+            padding: 15px;
+            max-width: 1800px;
+            margin: 0 auto;
         }
         
         .panel {
-            background: var(--bg-primary);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            background: #16213e;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #0f3460;
         }
         
-        .panel-right { border-right: none; border-left: 1px solid var(--border-color); }
-        
-        .panel-scroll {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-        
-        /* Header */
-        .header-bar {
+        .panel-title {
+            font-size: 0.85rem;
+            color: #e94560;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
-            flex-shrink: 0;
+            gap: 8px;
         }
         
-        .timer-section { text-align: left; }
-        .timer { font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; color: white; }
-        .timer-label { font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
-        
-        .stats-section { text-align: center; }
-        .stats-row { display: flex; gap: 12px; }
-        .stat-item { text-align: center; }
-        .stat-value { font-size: 16px; font-weight: 700; color: white; }
-        .stat-label { font-size: 8px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
-        
-        .version-info { text-align: right; }
-        .version-badge { font-size: 10px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: block; margin-bottom: 4px; }
-        .retry-badge { font-size: 9px; color: var(--accent-yellow); display: none; }
-        .retry-badge.visible { display: block; }
-        
-        /* Section Cards */
-        .section-card {
-            background: var(--bg-secondary);
-            border-radius: var(--radius);
-            padding: 12px;
-            margin-bottom: 10px;
+        /* Camera & Preview */
+        .camera-container {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 4/3;
         }
         
-        .section-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            margin-bottom: 10px;
+        #camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
         
-        /* SKU Input - Fixed Layout */
-        .sku-row {
+        .camera-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
             display: flex;
-            gap: 6px;
-            margin-bottom: 8px;
-            flex-wrap: nowrap;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        
+        .camera-badge {
+            background: rgba(0,0,0,0.7);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+        
+        /* Photo Grid */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .photo-thumb {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .photo-thumb:hover {
+            border-color: #e94560;
+            transform: scale(1.05);
+        }
+        
+        .photo-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-thumb .label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            padding: 2px 4px;
+            font-size: 0.65rem;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* SKU Input */
+        .sku-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
         }
         
         .sku-input {
             flex: 1;
-            min-width: 0;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 14px;
+            background: #0f3460;
+            border: 2px solid #e94560;
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 1.2rem;
             font-weight: 600;
+            text-transform: uppercase;
         }
         
-        .sku-input:focus { outline: none; border-color: var(--accent-blue); }
-        
-        .sku-btn {
-            padding: 10px 12px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.15s;
-            white-space: nowrap;
-            flex-shrink: 0;
+        .sku-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
         }
-        
-        .sku-btn-scan { background: var(--accent-purple); color: white; }
-        .sku-btn-start { background: var(--accent-green); color: white; font-weight: 600; }
-        .sku-btn:hover { filter: brightness(1.1); }
-        
-        .sku-display {
-            display: none;
-            padding: 12px;
-            background: var(--accent-green);
-            border-radius: var(--radius);
-            font-size: 18px;
-            font-weight: 700;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        .sku-display.visible { display: block; }
-        .sku-display:hover { background: #16a34a; }
-        
-        /* Classification */
-        .classification-box {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 12px;
-        }
-        
-        .classification-box.ready { border-color: var(--accent-green); }
-        .classification-category { font-size: 18px; font-weight: 700; color: var(--accent-yellow); }
-        .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-        .classification-template span { color: var(--accent-blue); font-weight: 600; }
-        
-        /* Tag Data */
-        .tag-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 10px;
-        }
-        
-        .tag-item {
-            background: var(--bg-secondary);
-            padding: 6px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-        }
-        
-        .tag-label { color: var(--text-secondary); font-size: 9px; text-transform: uppercase; }
-        .tag-value { font-weight: 600; margin-top: 2px; }
-        
-        /* Folder Display */
-        .folder-display {
-            padding: 8px 10px;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            font-size: 11px;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-        
-        .folder-display.set { color: var(--accent-green); }
-        
-        /* Photo Grid */
-        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        
-        .photo-thumb {
-            position: relative;
-            aspect-ratio: 1;
-            border-radius: 6px;
-            overflow: hidden;
-            background: var(--bg-tertiary);
-        }
-        
-        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .photo-thumb-label {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.8);
-            padding: 3px;
-            font-size: 8px;
-            text-align: center;
-            color: var(--accent-yellow);
-        }
-        
-        .photo-thumb-delete {
-            position: absolute;
-            top: 2px; right: 2px;
-            width: 18px; height: 18px;
-            border-radius: 50%;
-            border: none;
-            background: var(--accent-red);
-            color: white;
-            font-size: 10px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-        
-        .photo-thumb:hover .photo-thumb-delete { opacity: 1; }
-        
-        /* Camera Panel */
-        .camera-panel {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #000;
-        }
-        
-        .camera-tabs {
-            display: flex;
-            gap: 4px;
-            padding: 8px;
-            background: var(--bg-secondary);
-            flex-shrink: 0;
-        }
-        
-        .camera-tab {
-            flex: 1;
-            padding: 12px 8px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
-        }
-        
-        .camera-tab:hover { background: var(--bg-primary); color: var(--text-primary); }
-        .camera-tab.active { background: var(--accent-blue); color: white; }
-        .camera-tab.closeup.active { background: var(--accent-orange); }
-        .camera-tab.handheld.active { background: var(--accent-purple); }
-        
-        /* Camera Info */
-        .camera-info {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 12px;
-            background: rgba(0,0,0,0.5);
-            font-size: 11px;
-            color: var(--text-secondary);
-            flex-shrink: 0;
-        }
-        
-        .camera-name { font-weight: 600; color: var(--text-primary); }
-        .resolution-badge { background: var(--bg-secondary); padding: 3px 8px; border-radius: 4px; }
-        .photo-count-badge { background: var(--accent-green); color: white; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
-        
-        /* Video */
-        .video-container {
-            flex: 1;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 0;
-        }
-        
-        .video-container video { width: 100%; height: 100%; object-fit: contain; }
-        .video-placeholder { color: var(--text-secondary); text-align: center; padding: 40px; }
-        
-        .capture-flash {
-            position: absolute;
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s;
-        }
-        
-        .capture-flash.active { opacity: 0.7; }
-        
-        /* Capture Area - Complete Button */
-        .capture-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding: 16px;
-            background: var(--bg-secondary);
-            flex-shrink: 0;
-        }
-        
-        .capture-btn {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: 4px solid var(--text-primary);
-            background: transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-        
-        .capture-btn::after {
-            content: '';
-            position: absolute;
-            inset: 5px;
-            border-radius: 50%;
-            background: var(--text-primary);
-            transition: all 0.2s;
-        }
-        
-        .capture-btn:hover::after { background: var(--accent-blue); }
-        .capture-btn:active { transform: scale(0.95); }
-        
-        .complete-btn-camera {
-            padding: 14px 24px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            background: var(--accent-green);
-            color: white;
-            transition: all 0.2s;
-        }
-        
-        .complete-btn-camera:hover { filter: brightness(1.1); }
-        .complete-btn-camera:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        /* AI Overlay */
-        .ai-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .ai-overlay.active { opacity: 1; visibility: visible; }
-        .spinner { width: 36px; height: 36px; border: 3px solid var(--bg-tertiary); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Measurements */
-        .measurement-list { display: flex; flex-direction: column; gap: 6px; }
-        
-        .measurement-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 10px;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        
-        .measurement-item.completed {
-            background: linear-gradient(90deg, rgba(34,197,94,0.2), transparent);
-            border-left: 3px solid var(--accent-green);
-        }
-        
-        .measurement-num {
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: var(--bg-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 600;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
-        
-        .measurement-name { flex: 1; }
-        .measurement-value { font-weight: 600; color: var(--accent-green); }
-        
-        /* Transcript Display */
-        .transcript-box {
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            display: none;
-        }
-        
-        .transcript-box.visible { display: block; }
-        .transcript-label { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-        .transcript-text { font-style: italic; }
         
         /* Buttons */
         .btn {
-            padding: 12px 16px;
+            padding: 10px 20px;
             border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
+            border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-        
-        .btn-primary { background: var(--accent-green); color: white; }
-        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
-        .btn-record { background: var(--accent-red); color: white; }
-        .btn-stop { background: #dc2626; color: white; animation: pulse-stop 1s infinite; }
-        .btn:hover { filter: brightness(1.1); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
-        @keyframes pulse-stop { 
-            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 
-            50% { opacity: 0.9; box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 
-        }
-        
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
             display: flex;
             align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .modal-overlay.active { opacity: 1; visibility: visible; }
-        
-        .modal {
-            background: var(--bg-secondary);
-            border-radius: var(--radius);
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        
-        .modal-title { font-size: 16px; font-weight: 600; }
-        
-        .modal-close {
-            width: 30px; height: 30px;
-            border: none;
-            border-radius: 50%;
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 16px;
-            cursor: pointer;
-        }
-        
-        .modal-body { padding: 16px; }
-        .form-group { margin-bottom: 14px; }
-        .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
-        
-        .form-select, .form-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 13px;
-        }
-        
-        .form-select:focus, .form-input:focus { outline: none; border-color: var(--accent-blue); }
-        
-        /* Barcode Scanner */
-        .barcode-container {
-            position: relative;
-            background: #000;
-            aspect-ratio: 4/3;
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-        
-        .barcode-container video, .barcode-container canvas { width: 100%; height: 100%; object-fit: cover; }
-        
-        .barcode-target {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 200px; height: 80px;
-            border: 3px solid var(--accent-yellow);
-            border-radius: 8px;
-        }
-        
-        .barcode-status {
-            position: absolute;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        
-        .barcode-status.success { background: var(--accent-green); }
-        
-        /* Toast */
-        .toast-container {
-            position: fixed;
-            top: 20px; right: 20px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .toast {
-            padding: 10px 16px;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
-        .toast.success { background: var(--accent-green); color: white; }
-        .toast.error { background: var(--accent-red); color: white; }
-        .toast.warning { background: var(--accent-yellow); color: black; }
-        .toast.info { background: var(--accent-blue); color: white; }
-        
-        /* Dymo Scale */
-        .scale-display {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background: var(--bg-tertiary);
-            border-radius: var(--radius);
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .scale-display.connected { border: 1px solid var(--accent-green); }
-        .scale-display.disconnected { border: 1px dashed var(--border-color); }
-        .scale-display.stable { border: 2px solid var(--accent-green); }
-        .scale-display.locked { border: 2px solid var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
-        .scale-display.motion { border: 2px solid var(--accent-orange); }
-        
-        .scale-status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--text-secondary);
-            flex-shrink: 0;
-        }
-        
-        .scale-status-indicator.stable { background: var(--accent-green); animation: pulse-green 1.5s infinite; }
-        .scale-status-indicator.motion { background: var(--accent-orange); animation: pulse-orange 0.5s infinite; }
-        .scale-status-indicator.locked { background: var(--accent-blue); }
-        .scale-status-indicator.waiting { background: var(--text-secondary); }
-        
-        @keyframes pulse-green {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-            50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-        }
-        
-        @keyframes pulse-orange {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .scale-weight {
-            font-size: 24px;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: var(--accent-green);
-            flex: 1;
-            min-width: 100px;
-        }
-        
-        .scale-weight.waiting { color: var(--text-secondary); font-size: 14px; }
-        .scale-weight.locked { color: var(--accent-blue); }
-        
-        .scale-unit {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .scale-buttons {
-            display: flex;
             gap: 6px;
-            flex-shrink: 0;
         }
         
-        .scale-btn {
-            padding: 8px 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 11px;
-            cursor: pointer;
-            background: var(--accent-purple);
+        .btn-primary {
+            background: linear-gradient(135deg, #e94560, #c73e54);
             color: white;
         }
         
-        .scale-btn:hover { filter: brightness(1.1); }
-        .scale-btn.disconnect { background: var(--accent-red); }
-        .scale-btn.lock { background: var(--accent-green); }
-        .scale-btn.unlock { background: var(--accent-orange); }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #0f3460;
+            color: #eee;
+            border: 1px solid #e94560;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            font-size: 1.1rem;
+            padding: 15px 30px;
+        }
+        
+        .btn-lg {
+            padding: 15px 30px;
+            font-size: 1rem;
+        }
+        
+        /* Category Selection */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .category-btn {
+            padding: 10px;
+            background: #0f3460;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: #eee;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+        
+        .category-btn:hover {
+            border-color: #e94560;
+        }
+        
+        .category-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+        }
+        
+        /* Measurement Display */
+        .measurement-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .measurement-item {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .measurement-item.completed {
+            border-left: 3px solid #2ecc71;
+        }
+        
+        .measurement-label {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        
+        .measurement-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2ecc71;
+        }
+        
+        /* Tag Data Display */
+        .tag-grid {
+            display: none;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #0f3460;
+            border-radius: 8px;
+        }
+        
+        .tag-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tag-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        .tag-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e94560;
+        }
+        
+        /* Timer */
+        .timer {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 15px;
+            background: #0f3460;
+            border-radius: 8px;
+            font-family: 'Monaco', monospace;
+        }
+        
+        .timer.warning { color: #f39c12; }
+        .timer.danger { color: #e74c3c; }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: #0f3460;
+            border-radius: 6px;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e94560;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+        
+        /* Weight Display */
+        .weight-display {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .weight-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3498db;
+        }
+        
+        .weight-status {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        /* Recording indicator */
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .recording-indicator.active {
+            display: flex;
+        }
+        
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: #e74c3c;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            max-width: 350px;
+        }
+        
+        .toast.success { background: #2ecc71; }
+        .toast.warning { background: #f39c12; }
+        .toast.error { background: #e74c3c; }
+        .toast.info { background: #3498db; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Retry badge */
+        .retry-badge {
+            display: none;
+            background: #f39c12;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        
+        .retry-badge.visible { display: block; }
+        
+        /* Action buttons row */
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-row .btn {
+            flex: 1;
+        }
+        
+        /* Phase indicator */
+        .phase-indicator {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0;
+        }
+        
+        .phase {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
+            background: #0f3460;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+        
+        .phase.active {
+            opacity: 1;
+            background: #e94560;
+        }
+        
+        .phase.complete {
+            opacity: 1;
+            background: #2ecc71;
+        }
+        
+        /* Async processing badge - NEW for v2.9.5 */
+        .async-badge {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .async-badge::before {
+            content: '⚡';
+        }
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>VintageLister</h1>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span class="async-badge">ZERO WAIT MODE</span>
+            <span class="version-badge">v2.9.5 ASYNC</span>
+            <span id="retry-badge" class="retry-badge" onclick="processRetryQueue()"></span>
+        </div>
+    </div>
+    
+    <div class="main-grid">
+        <!-- LEFT PANEL: Camera & Photos -->
+        <div class="panel">
+            <div class="panel-title">📷 Camera</div>
+            
+            <div class="camera-container">
+                <video id="camera-preview" autoplay playsinline></video>
+                <div class="camera-overlay">
+                    <span class="camera-badge" id="camera-name">No Camera</span>
+                    <span class="camera-badge" id="photo-count">0 photos</span>
+                </div>
+            </div>
+            
+            <div class="action-row">
+                <button class="btn btn-primary" onclick="capturePhoto()">📸 Capture</button>
+                <button class="btn btn-secondary" onclick="switchCamera()">🔄 Switch</button>
+            </div>
+            
+            <div class="panel-title" style="margin-top: 15px;">📁 Photos</div>
+            <div class="photo-grid" id="photo-grid"></div>
+        </div>
+        
+        <!-- CENTER PANEL: Main Controls -->
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <!-- SKU & Category -->
+            <div class="panel">
+                <div class="sku-section">
+                    <input type="text" class="sku-input" id="sku-input" placeholder="SCAN SKU..." autofocus>
+                    <button class="btn btn-secondary" onclick="resetItem()">🔄 Reset</button>
+                </div>
+                
+                <div class="panel-title">📂 Category</div>
+                <div class="category-grid" id="category-grid"></div>
+            </div>
+            
+            <!-- Phase Indicator -->
+            <div class="panel">
+                <div class="panel-title">📍 Workflow Phase</div>
+                <div class="phase-indicator">
+                    <div class="phase" id="phase-main">Main Photos</div>
+                    <div class="phase" id="phase-closeup">Closeups</div>
+                    <div class="phase" id="phase-measure">Measurements</div>
+                    <div class="phase" id="phase-complete">Complete</div>
+                </div>
+                
+                <div class="timer" id="timer">00:00</div>
+                
+                <div class="recording-indicator" id="recording-indicator">
+                    <div class="recording-dot"></div>
+                    <span>Recording measurements...</span>
+                </div>
+            </div>
+            
+            <!-- Measurements -->
+            <div class="panel">
+                <div class="panel-title">📏 Measurements</div>
+                <div class="measurement-grid" id="measurement-grid"></div>
+            </div>
+            
+            <!-- Complete Button -->
+            <button class="btn btn-success btn-lg" onclick="completeItem()" style="width: 100%;">
+                ✅ COMPLETE - INSTANT SUBMIT
+            </button>
+        </div>
+        
+        <!-- RIGHT PANEL: Data & Stats -->
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <!-- Weight -->
+            <div class="panel">
+                <div class="panel-title">⚖️ Weight</div>
+                <div class="weight-display">
+                    <div class="weight-value" id="weight-value">--</div>
+                    <div class="weight-status" id="weight-status">Waiting for scale...</div>
+                </div>
+            </div>
+            
+            <!-- Tag Data (populated by Lambda async) -->
+            <div class="panel">
+                <div class="panel-title">🏷️ Tag Data <span style="font-size: 0.65rem; color: #888;">(processed async)</span></div>
+                <div class="tag-grid" id="tag-grid">
+                    <div class="tag-item">
+                        <span class="tag-label">Brand</span>
+                        <span class="tag-value" id="tag-brand">-</span>
+                    </div>
+                    <div class="tag-item">
+                        <span class="tag-label">Size</span>
+                        <span class="tag-value" id="tag-size">-</span>
+                    </div>
+                    <div class="tag-item">
+                        <span class="tag-label">Materials</span>
+                        <span class="tag-value" id="tag-materials">-</span>
+                    </div>
+                    <div class="tag-item">
+                        <span class="tag-label">Country</span>
+                        <span class="tag-value" id="tag-country">-</span>
+                    </div>
+                </div>
+                <div style="text-align: center; padding: 10px; color: #666; font-size: 0.75rem;">
+                    AI processing happens after upload
+                </div>
+            </div>
+            
+            <!-- Session Stats -->
+            <div class="panel">
+                <div class="panel-title">📊 Session Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-completed">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-avg-time">0:00</div>
+                        <div class="stat-label">Avg Time</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-per-hour">0</div>
+                        <div class="stat-label">Per Hour</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Folder Selection -->
+            <div class="panel">
+                <div class="panel-title">💾 Save Location</div>
+                <button class="btn btn-secondary" onclick="selectSaveFolder()" style="width: 100%;">
+                    📁 Select Folder
+                </button>
+                <div id="folder-path" style="margin-top: 8px; font-size: 0.75rem; color: #888; word-break: break-all;"></div>
+            </div>
+        </div>
+    </div>
+    
     <div class="toast-container" id="toast-container"></div>
     
-    <div class="app-container">
-        <!-- Left Panel -->
-        <div class="panel panel-left">
-            <div class="header-bar">
-                <div class="timer-section">
-                    <div class="timer" id="timer">0:00</div>
-                    <div class="timer-label">Item Time</div>
-                </div>
-                <div class="stats-section">
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <div class="stat-value" id="item-count">0</div>
-                            <div class="stat-label">Items</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="avg-time">0:00</div>
-                            <div class="stat-label">Avg</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.4e</span>
-                    <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
-                </div>
-            </div>
-            
-            <div class="panel-scroll">
-                <!-- SKU - Fixed Layout -->
-                <div class="section-card">
-                    <div class="section-title">🏷️ Item SKU</div>
-                    <div class="sku-row" id="sku-row">
-                        <input type="text" class="sku-input" id="sku-input" placeholder="Scan or type SKU...">
-                        <button class="sku-btn sku-btn-scan" onclick="openBarcodeScanner()">📷</button>
-                        <button class="sku-btn sku-btn-start" onclick="startNewItem()">START</button>
-                    </div>
-                    <div class="sku-display" id="sku-display" onclick="cancelItem()"></div>
-                </div>
-                
-                <!-- Classification -->
-                <div class="section-card">
-                    <div class="section-title">🤖 AI Classification</div>
-                    <div class="classification-box" id="classification-box">
-                        <div class="classification-category" id="classification-category">Waiting...</div>
-                        <div class="classification-template">Template: <span id="classification-template">-</span></div>
-                    </div>
-                    <div class="tag-grid" id="tag-grid" style="display: none;">
-                        <div class="tag-item"><div class="tag-label">Brand</div><div class="tag-value" id="tag-brand">-</div></div>
-                        <div class="tag-item"><div class="tag-label">Size</div><div class="tag-value" id="tag-size">-</div></div>
-                        <div class="tag-item"><div class="tag-label">Materials</div><div class="tag-value" id="tag-materials">-</div></div>
-                        <div class="tag-item"><div class="tag-label">Country</div><div class="tag-value" id="tag-country">-</div></div>
-                    </div>
-                </div>
-                
-                <!-- Save Location -->
-                <div class="section-card">
-                    <div class="section-title">💾 Save Location</div>
-                    <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
-                </div>
-                
-                <!-- Dymo USB Scale -->
-                <div class="section-card">
-                    <div class="section-title">⚖️ USB Scale</div>
-                    <div class="scale-display disconnected" id="scale-display">
-                        <div class="scale-status-indicator" id="scale-status-indicator"></div>
-                        <div class="scale-weight waiting" id="scale-weight">Not connected</div>
-                        <span class="scale-unit" id="scale-unit"></span>
-                        <div class="scale-buttons">
-                            <button class="scale-btn" id="scale-btn" onclick="toggleScale()">Connect</button>
-                            <button class="scale-btn lock" id="scale-lock-btn" onclick="toggleWeightLock()" style="display: none;">🔒 Lock</button>
-                        </div>
-                    </div>
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
-                        Dymo M10 scale • <span id="scale-status-text">Disconnected</span>
-                    </div>
-                </div>
-                
-                <!-- Photos -->
-                <div class="section-card">
-                    <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
-                    <div class="photo-grid" id="photo-grid"></div>
-                </div>
-                
-                <button class="btn btn-secondary" onclick="openSettings()">⚙️ Settings</button>
-            </div>
-        </div>
-        
-        <!-- Camera Panel -->
-        <div class="panel camera-panel">
-            <div class="camera-tabs">
-                <button class="camera-tab active" data-mode="main" onclick="switchCameraMode('main')">📷 MAIN</button>
-                <button class="camera-tab closeup" data-mode="closeup" onclick="switchCameraMode('closeup')">🔍 CLOSEUP</button>
-                <button class="camera-tab handheld" data-mode="handheld" onclick="switchCameraMode('handheld')">📱 HANDHELD</button>
-            </div>
-            
-            <div class="camera-info">
-                <span class="camera-name" id="camera-name">No camera</span>
-                <span class="resolution-badge" id="resolution-badge">-</span>
-                <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
-            </div>
-            
-            <div class="video-container">
-                <video id="video-preview" autoplay playsinline muted></video>
-                <div class="video-placeholder" id="video-placeholder">📷 Select a camera in Settings</div>
-                <div class="capture-flash" id="capture-flash"></div>
-                <div class="ai-overlay" id="ai-overlay">
-                    <div class="spinner"></div>
-                    <div style="font-size: 13px; color: var(--text-secondary);">AI analyzing photos...</div>
-                </div>
-            </div>
-            
-            <div class="capture-area">
-                <button class="capture-btn" id="capture-btn" onclick="capturePhoto()"></button>
-                <button class="complete-btn-camera" id="complete-btn-camera" onclick="completeItem()" disabled>✅ COMPLETE</button>
-            </div>
-        </div>
-        
-        <!-- Right Panel - REMOVED COMPLETE & SAVE BUTTON -->
-        <div class="panel panel-right">
-            <div class="panel-scroll">
-                <div class="section-card">
-                    <div class="section-title">📏 Measurements</div>
-                    <div class="measurement-list" id="measurement-list">
-                        <div style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 16px;">
-                            Classify item first
-                        </div>
-                    </div>
-                    <div class="transcript-box" id="transcript-box">
-                        <div class="transcript-label">📝 Transcript:</div>
-                        <div class="transcript-text" id="transcript-text"></div>
-                    </div>
-                </div>
-                
-                <!-- Recording button - Changes to TAP TO STOP when recording -->
-                <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
-                
-                <!-- NOTE: "COMPLETE & SAVE" button REMOVED from here per user request -->
-                <!-- The COMPLETE button in the camera capture area is the only submit option -->
-            </div>
-        </div>
-    </div>
-    
-    <!-- Barcode Modal -->
-    <div class="modal-overlay" id="barcode-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">📷 Scan Barcode</div>
-                <button class="modal-close" onclick="closeBarcodeScanner()">×</button>
-            </div>
-            <div class="modal-body" style="padding: 0;">
-                <div class="barcode-container" id="barcode-container">
-                    <div class="barcode-target"></div>
-                    <div class="barcode-status" id="barcode-status">Starting scanner...</div>
-                </div>
-                <div style="padding: 12px; text-align: center;">
-                    <button class="btn btn-secondary" onclick="closeBarcodeScanner()">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <div class="modal-title">⚙️ Settings</div>
-                <button class="modal-close" onclick="closeSettings()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label class="form-label">Main Camera</label>
-                    <select class="form-select" id="camera-main"></select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Closeup Camera</label>
-                    <select class="form-select" id="camera-closeup"></select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Handheld Camera</label>
-                    <select class="form-select" id="camera-handheld"></select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Barcode Scanner Camera</label>
-                    <select class="form-select" id="camera-barcode"></select>
-                </div>
-                <hr style="border-color: var(--border-color); margin: 16px 0;">
-                <div class="form-group">
-                    <label class="form-label">Lambda URL</label>
-                    <input type="text" class="form-input" id="lambda-url" placeholder="https://...">
-                </div>
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-            </div>
-        </div>
-    </div>
-    
-    <canvas id="capture-canvas" style="display: none;"></canvas>
-    <canvas id="resize-canvas" style="display: none;"></canvas>
-    
     <script>
-        // =============================================================================
-        // VINTAGELISTER v2.9.4d - SCALE FIX + OCR MULTI-PHOTO + RAGLAN DETECTION
+        // =====================================================================
+        // VintageLister v2.9.5 ASYNC
         // 
-        // CHANGES FROM v2.9.4c:
-        // 1. Scale: Handle unit 255 (not ready) - show "Place item on scale..."
-        // 2. Scale: Better status handling (fault/negative/overload)
-        // 3. OCR: Process ALL closeup photos and merge results (not just first one)
-        // 4. Classification: Better raglan sleeve detection from photos
-        // 5. Lambda resolveTemplate now uses sleeveConstruction for raglan templates
+        // ARCHITECTURE CHANGE:
+        // - All AI processing (OCR, Image Processing, Photo Routing, Pipeline)
+        //   now happens ASYNCHRONOUSLY in Lambda AFTER S3 upload
+        // - Photographer sees INSTANT UI reset (< 1 second)
+        // - No more 10-30 second waits
         //
-        // CHANGES FROM v2.9.4b:
-        // 1. AI runs BEFORE JSON is built (not in background after)
-        // 2. Image Processing Agent called for crop/rotation metadata
-        // 3. Photo Routing Agent classifies closeups as tag/feature/defect
-        // 4. Matcher Agent results used for measurements (semantic matching)
-        // 5. Underwriter Agent results: era estimation, tag size analysis, QC flags
-        // 6. Photos routed to correct folders (not all to /tag/)
-        //
-        // CHANGES FROM v2.9.4:
-        // 1. Fixed scale handler - added debug logging, simplified parsing
-        // 2. Fixed OCR timing - runs at completion if tag data is missing
-        //
-        // CHANGES FROM v2.9.3:
-        // 1. Fixed Dymo M10 scale lb:oz parsing (was showing 1e+35)
-        // 2. Removed "COMPLETE & SAVE" button from right panel
-        // 3. Recording button shows "🛑 TAP TO STOP" when active
-        // 4. Discarded recordings saved for QC
-        // 5. File storage: main/raw/ and main/final/ subfolders
-        // 6. Recording duration KPI tracking
-        // =============================================================================
+        // Flow:
+        // 1. Photographer captures photos, records measurements
+        // 2. Clicks COMPLETE
+        // 3. Data captured, UI resets IMMEDIATELY
+        // 4. Background: uploads to S3, triggers Lambda
+        // 5. Lambda processes AI async, updates JSON in S3
+        // 6. n8n gets final processed data
+        // =====================================================================
         
-        const VERSION = '2.9.4d';
-        const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
-        const AI_IMAGE_MAX_SIZE = 1024;
+        const VERSION = '2.9.5-ASYNC';
+        const LAMBDA_URL = localStorage.getItem('lambdaUrl') || 'https://xxxxxxx.lambda-url.us-east-1.on.aws/';
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
         
+        // Categories
+        const CATEGORIES = {
+            'tops': { label: '👕 Tops', icon: '👕' },
+            'bottoms': { label: '👖 Bottoms', icon: '👖' },
+            'outerwear': { label: '🧥 Outerwear', icon: '🧥' },
+            'dresses': { label: '👗 Dresses', icon: '👗' },
+            'suits': { label: '🤵 Suits', icon: '🤵' },
+            'accessories': { label: '👜 Accessories', icon: '👜' },
+            'footwear': { label: '👟 Footwear', icon: '👟' },
+            'other': { label: '📦 Other', icon: '📦' }
+        };
+        
+        // State
         const state = {
-            lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
-            lambdaVersion: null,
-            currentSKU: '',
-            currentMode: 'main',
-            currentStream: null,
-            cameras: {
-                main: { deviceId: localStorage.getItem('camera-main') || null },
-                closeup: { deviceId: localStorage.getItem('camera-closeup') || null },
-                handheld: { deviceId: localStorage.getItem('camera-handheld') || null },
-                barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
-            },
-            availableCameras: [],
-            photos: { main: [], closeup: [], handheld: [] },
+            currentSKU: null,
             classification: null,
             templateKey: null,
             template: null,
-            tagData: null,
+            photos: { main: [], closeup: [], handheld: [] },
             measurements: {},
-            rawTranscript: '',
+            rawTranscript: null,
             audioBlob: null,
-            saveDirectoryHandle: null,
+            discardedRecordings: [],
+            lastRecordingDuration: 0,
+            weight: null,
             timerStart: null,
             timerInterval: null,
-            isRecording: false,
+            phase: 'main', // main, closeup, measurements
+            timing: {},
+            
+            // Camera
+            cameras: [],
+            currentCameraIndex: 0,
+            stream: null,
+            
+            // Recording
             mediaRecorder: null,
             audioChunks: [],
-            aiTriggered: false,
-            // Section timing
-            timing: { mainStart: null, closeupStart: null, measurementsStart: null },
-            // Stats
+            isRecording: false,
+            
+            // Save
+            saveDirectoryHandle: null,
+            
+            // Session stats
             completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
+            sessionStart: Date.now(),
+            
             // Retry queue
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
-            // Dymo USB Scale - v2.9.4d FIXED with lock functionality
-            scaleDevice: null,
-            scaleWeight: null,          // Decimal pounds (for storage)
-            scaleWeightDisplay: '',     // Display format "1 lb 13.0 oz"
-            scaleUnit: 'lb',
-            scaleStatus: 'disconnected', // disconnected, waiting, motion, stable, locked
-            scaleWeightLocked: false,    // v2.9.4d: Is the weight locked?
-            scaleLockedWeight: null,     // v2.9.4d: The locked weight value (decimal lbs)
-            scaleLockedDisplay: '',      // v2.9.4d: The locked display string
-            scaleStableStartTime: null,  // v2.9.4d: When did weight become stable?
-            scaleLastWeight: null,       // v2.9.4d: Previous weight for stability detection
-            // v2.9.4 - Discarded recordings for QC
-            discardedRecordings: [],
-            recordingStartTime: null,
-            // v2.9.4 - Photographer ID placeholder
-            photographerId: null
+            
+            // Templates (loaded from Lambda)
+            templates: {}
         };
         
         // =====================================================================
-        // INIT
+        // INITIALIZATION
         // =====================================================================
+        
         async function init() {
-            console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px;');
-            document.getElementById('lambda-url').value = state.lambdaUrl;
+            console.log(`🚀 VintageLister ${VERSION} initializing...`);
+            
+            // Build UI
+            buildCategoryGrid();
+            
+            // Initialize camera
+            await initCamera();
+            
+            // Load templates from Lambda
+            await loadTemplates();
+            
+            // Initialize Dymo scale
+            initDymoScale();
+            
+            // Set up keyboard shortcuts
+            setupKeyboardShortcuts();
+            
+            // Update stats display
             updateStats();
             updateRetryBadge();
-            await checkLambda();
-            await enumerateCameras();
-            if (state.cameras.main.deviceId) await startCamera('main');
             
-            // SPACE key for pedal capture
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
-                    e.preventDefault();
-                    capturePhoto();
-                }
-            });
-            
-            // Process retry queue
-            processRetryQueue();
-            
-            console.log('✅ Init complete - SPACE key enabled, scale fix applied');
-        }
-        
-        // =====================================================================
-        // LAMBDA
-        // =====================================================================
-        async function checkLambda() {
-            try {
-                const res = await fetch(state.lambdaUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'diagnostics' })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    state.lambdaVersion = data.version;
-                    document.getElementById('version-badge').textContent = `v${VERSION} | λ${data.version}`;
-                    console.log(`✅ Lambda v${data.version} healthy`);
-                    showToast('success', `Connected to Lambda v${data.version}`);
-                }
-            } catch (err) {
-                console.error('Lambda check failed:', err);
-                showToast('error', 'Lambda connection failed');
+            // Check for saved folder
+            const savedFolderName = localStorage.getItem('saveFolderName');
+            if (savedFolderName) {
+                document.getElementById('folder-path').textContent = `📁 ${savedFolderName}`;
             }
-        }
-        
-        async function callLambda(action, body = {}) {
-            const res = await fetch(state.lambdaUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, ...body })
-            });
-            return res.json();
+            
+            showToast('success', `VintageLister ${VERSION} ready!`);
+            console.log('✅ Initialization complete');
         }
         
         // =====================================================================
         // CAMERA
         // =====================================================================
-        async function enumerateCameras() {
+        
+        async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                stream.getTracks().forEach(t => t.stop());
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                state.availableCameras = devices.filter(d => d.kind === 'videoinput');
-                console.log(`📹 Found ${state.availableCameras.length} cameras`);
-                populateCameraSelects();
-            } catch (err) {
-                console.error('Camera enum failed:', err);
+                state.cameras = devices.filter(d => d.kind === 'videoinput');
+                
+                if (state.cameras.length === 0) {
+                    showToast('error', 'No cameras found');
+                    return;
+                }
+                
+                await startCamera(state.currentCameraIndex);
+            } catch (e) {
+                console.error('Camera init failed:', e);
+                showToast('error', 'Camera access denied');
             }
         }
         
-        function populateCameraSelects() {
-            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
-                const sel = document.getElementById(`camera-${mode}`);
-                sel.innerHTML = '<option value="">Select camera...</option>';
-                state.availableCameras.forEach((cam, i) => {
-                    const opt = document.createElement('option');
-                    opt.value = cam.deviceId;
-                    opt.textContent = cam.label || `Camera ${i + 1}`;
-                    if (cam.deviceId === state.cameras[mode].deviceId) opt.selected = true;
-                    sel.appendChild(opt);
-                });
-            });
-        }
-        
-        async function startCamera(mode) {
-            const deviceId = state.cameras[mode].deviceId;
-            if (!deviceId) {
-                document.getElementById('video-placeholder').style.display = 'block';
-                return;
+        async function startCamera(index) {
+            if (state.stream) {
+                state.stream.getTracks().forEach(t => t.stop());
             }
-            if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
+            
+            const camera = state.cameras[index];
+            const constraints = {
+                video: {
+                    deviceId: { exact: camera.deviceId },
+                    width: { ideal: 4000 },
+                    height: { ideal: 3000 }
+                }
+            };
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { deviceId: { exact: deviceId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
-                });
-                state.currentStream = stream;
-                document.getElementById('video-preview').srcObject = stream;
-                document.getElementById('video-placeholder').style.display = 'none';
-                const settings = stream.getVideoTracks()[0].getSettings();
-                document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
-                const cam = state.availableCameras.find(c => c.deviceId === deviceId);
-                document.getElementById('camera-name').textContent = cam?.label || 'Camera';
-                console.log(`📹 Started ${mode}: ${settings.width}×${settings.height}`);
-            } catch (err) {
-                console.error('Start camera failed:', err);
+                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                document.getElementById('camera-preview').srcObject = state.stream;
+                document.getElementById('camera-name').textContent = camera.label.split('(')[0].trim() || `Camera ${index + 1}`;
+            } catch (e) {
+                console.error('Failed to start camera:', e);
             }
         }
         
-        function switchCameraMode(mode) {
-            const prevMode = state.currentMode;
-            state.currentMode = mode;
-            document.querySelectorAll('.camera-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-            startCamera(mode);
-            updatePhotoCount();
-            
-            // Track timing
-            if (mode === 'closeup' && prevMode === 'main' && state.currentSKU) {
-                state.timing.closeupStart = Date.now();
-            }
-            
-            // Trigger AI when switching to closeup (after taking main photos)
-            if (prevMode === 'main' && mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
-                triggerAI();
-            }
+        function switchCamera() {
+            state.currentCameraIndex = (state.currentCameraIndex + 1) % state.cameras.length;
+            startCamera(state.currentCameraIndex);
         }
         
-        // =====================================================================
-        // PHOTO CAPTURE
-        // =====================================================================
-        function capturePhoto() {
-            if (!state.currentStream) {
-                showToast('warning', 'No camera active');
-                return;
-            }
+        async function capturePhoto() {
             if (!state.currentSKU) {
-                showToast('warning', 'Start an item first');
+                showToast('warning', 'Enter SKU first');
+                document.getElementById('sku-input').focus();
                 return;
             }
             
-            const video = document.getElementById('video-preview');
-            const canvas = document.getElementById('capture-canvas');
-            const ctx = canvas.getContext('2d');
+            const video = document.getElementById('camera-preview');
+            const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
+            canvas.getContext('2d').drawImage(video, 0, 0);
             
-            const flash = document.getElementById('capture-flash');
-            flash.classList.add('active');
-            setTimeout(() => flash.classList.remove('active'), 100);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
             
-            const currentMode = state.currentMode;
+            // Determine photo type based on phase
+            const photoType = state.phase === 'main' ? 'main' : 
+                             state.phase === 'closeup' ? 'closeup' : 'handheld';
             
-            canvas.toBlob(async blob => {
-                const photo = { blob, mode: currentMode, timestamp: Date.now() };
-                state.photos[currentMode].push(photo);
-                updatePhotoGrid();
-                updatePhotoCount();
-                console.log(`📷 Captured ${currentMode} #${state.photos[currentMode].length}`);
-                showToast('success', 'Photo captured');
-                
-                // Note: Photo routing happens in completeItem() for all closeups at once
-            }, 'image/jpeg', 0.92);
-        }
-        
-        function updatePhotoCount() {
-            const total = state.photos.main.length + state.photos.closeup.length + state.photos.handheld.length;
-            document.getElementById('photo-count').textContent = total;
-            document.getElementById('mode-photo-count').textContent = state.photos[state.currentMode].length;
+            const photoIndex = state.photos[photoType].length + 1;
+            const label = `${photoType}_${String(photoIndex).padStart(2, '0')}`;
+            
+            state.photos[photoType].push({
+                blob: blob,
+                label: label,
+                timestamp: Date.now()
+            });
+            
+            updatePhotoGrid();
+            updatePhotoCount();
+            
+            // Auto-advance phase
+            if (state.phase === 'main' && state.photos.main.length >= 4) {
+                advancePhase('closeup');
+            }
         }
         
         function updatePhotoGrid() {
             const grid = document.getElementById('photo-grid');
-            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.handheld];
-            grid.innerHTML = all.map((p, i) => `
-                <div class="photo-thumb">
-                    <img src="${URL.createObjectURL(p.blob)}">
-                    <div class="photo-thumb-label">${p.label || p.mode}</div>
-                    <button class="photo-thumb-delete" onclick="deletePhoto(${i})">×</button>
-                </div>
-            `).join('');
-        }
-        
-        function deletePhoto(idx) {
-            let count = 0;
-            for (const mode of ['main', 'closeup', 'handheld']) {
-                if (idx < count + state.photos[mode].length) {
-                    state.photos[mode].splice(idx - count, 1);
-                    break;
-                }
-                count += state.photos[mode].length;
-            }
-            updatePhotoGrid();
-            updatePhotoCount();
-        }
-        
-        // =====================================================================
-        // AI CLASSIFICATION
-        // =====================================================================
-        async function triggerAI() {
-            if (state.photos.main.length === 0) return;
-            state.aiTriggered = true;
-            document.getElementById('ai-overlay').classList.add('active');
+            grid.innerHTML = '';
             
-            try {
-                console.log(`🤖 AI: ${state.photos.main.length} photos`);
-                const mainPhotos = await Promise.all(state.photos.main.slice(0, 4).map(p => resizeImageForAI(p.blob)));
-                let tagPhoto = null;
-                if (state.photos.closeup.length > 0) tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
-                
-                const result = await callLambda('classify', { mainPhotos, tagPhoto });
-                if (result.success) {
-                    state.classification = result.category;
-                    state.templateKey = result.templateKey;
-                    state.template = result.template;
-                    state.tagData = result.tagData;
-                    
-                    // Update photo labels from AI
-                    if (result.photoLabels) {
-                        state.photos.main.forEach((p, i) => {
-                            if (result.photoLabels[i]) p.label = result.photoLabels[i];
-                        });
-                    }
-                    
-                    updateClassificationDisplay();
-                    updatePhotoGrid();
-                    updateMeasurementList();
-                    console.log(`✅ Classified: ${result.category}`);
-                    showToast('success', `Classified: ${result.category}`);
-                } else {
-                    throw new Error(result.error || 'Classification failed');
-                }
-            } catch (err) {
-                console.error('AI error:', err);
-                showToast('error', 'AI failed: ' + err.message);
-            } finally {
-                document.getElementById('ai-overlay').classList.remove('active');
-            }
-        }
-        
-        async function resizeImageForAI(blob) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.getElementById('resize-canvas');
-                    const ctx = canvas.getContext('2d');
-                    let w = img.width, h = img.height;
-                    if (w > AI_IMAGE_MAX_SIZE || h > AI_IMAGE_MAX_SIZE) {
-                        if (w > h) { h = Math.round(h * AI_IMAGE_MAX_SIZE / w); w = AI_IMAGE_MAX_SIZE; }
-                        else { w = Math.round(w * AI_IMAGE_MAX_SIZE / h); h = AI_IMAGE_MAX_SIZE; }
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    ctx.drawImage(img, 0, 0, w, h);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
-                };
-                img.src = URL.createObjectURL(blob);
+            const allPhotos = [
+                ...state.photos.main.map(p => ({ ...p, type: 'main' })),
+                ...state.photos.closeup.map(p => ({ ...p, type: 'closeup' })),
+                ...state.photos.handheld.map(p => ({ ...p, type: 'handheld' }))
+            ];
+            
+            allPhotos.forEach((photo, i) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'photo-thumb';
+                thumb.innerHTML = `
+                    <img src="${URL.createObjectURL(photo.blob)}" alt="${photo.label}">
+                    <div class="label">${photo.label}</div>
+                `;
+                thumb.onclick = () => deletePhoto(photo.type, state.photos[photo.type].indexOf(photo));
+                grid.appendChild(thumb);
             });
         }
         
-        function updateClassificationDisplay() {
-            document.getElementById('classification-box').classList.add('ready');
-            document.getElementById('classification-category').textContent = state.classification || 'Unknown';
-            document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
-            if (state.tagData && !state.tagData.error) {
-                document.getElementById('tag-grid').style.display = 'grid';
-                document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
-                document.getElementById('tag-size').textContent = state.tagData.size || '-';
-                document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
-                document.getElementById('tag-country').textContent = state.tagData.country || '-';
+        function deletePhoto(type, index) {
+            if (confirm('Delete this photo?')) {
+                state.photos[type].splice(index, 1);
+                updatePhotoGrid();
+                updatePhotoCount();
             }
         }
         
-        function updateMeasurementList() {
-            const list = document.getElementById('measurement-list');
-            if (!state.template?.measurements) {
-                list.innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
-                return;
-            }
-            list.innerHTML = state.template.measurements.map((m, i) => `
-                <div class="measurement-item" data-idx="${i}">
-                    <span class="measurement-num">${i + 1}</span>
-                    <span class="measurement-name">${m}</span>
-                    <span class="measurement-value" id="mv-${i}">-</span>
-                </div>
-            `).join('');
-            document.getElementById('complete-btn-camera').disabled = false;
+        function updatePhotoCount() {
+            const total = state.photos.main.length + state.photos.closeup.length + state.photos.handheld.length;
+            document.getElementById('photo-count').textContent = `${total} photos`;
+        }
+        
+        // =====================================================================
+        // CATEGORY & TEMPLATE
+        // =====================================================================
+        
+        function buildCategoryGrid() {
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
             
-            // Track measurements start time
-            state.timing.measurementsStart = Date.now();
+            Object.entries(CATEGORIES).forEach(([key, cat]) => {
+                const btn = document.createElement('button');
+                btn.className = 'category-btn';
+                btn.textContent = cat.label;
+                btn.onclick = () => selectCategory(key);
+                btn.dataset.category = key;
+                grid.appendChild(btn);
+            });
+        }
+        
+        function selectCategory(category) {
+            state.classification = category;
+            
+            // Update UI
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.category === category);
+            });
+            
+            // Load default template for category
+            const templateKey = getDefaultTemplateForCategory(category);
+            loadTemplate(templateKey);
+            
+            showToast('info', `Category: ${CATEGORIES[category].label}`);
+        }
+        
+        function getDefaultTemplateForCategory(category) {
+            const defaults = {
+                'tops': 'tshirt',
+                'bottoms': 'jeans',
+                'outerwear': 'jacket',
+                'dresses': 'dress',
+                'suits': 'suit_jacket',
+                'accessories': 'hat',
+                'footwear': 'sneakers',
+                'other': 'generic'
+            };
+            return defaults[category] || 'generic';
+        }
+        
+        async function loadTemplates() {
+            try {
+                const result = await callLambda('templates', {});
+                if (result.success && result.templates) {
+                    state.templates = result.templates;
+                    console.log(`📋 Loaded ${Object.keys(state.templates).length} templates`);
+                }
+            } catch (e) {
+                console.warn('Failed to load templates:', e);
+            }
+        }
+        
+        function loadTemplate(templateKey) {
+            state.templateKey = templateKey;
+            state.template = state.templates[templateKey] || { measurements: ['length', 'width'] };
+            
+            // Build measurement grid
+            const grid = document.getElementById('measurement-grid');
+            grid.innerHTML = '';
+            
+            if (state.template.measurements) {
+                state.template.measurements.forEach((m, i) => {
+                    const item = document.createElement('div');
+                    item.className = 'measurement-item';
+                    item.innerHTML = `
+                        <span class="measurement-label">${formatMeasurementName(m)}</span>
+                        <span class="measurement-value" id="mv-${i}">--</span>
+                    `;
+                    grid.appendChild(item);
+                });
+            }
+        }
+        
+        function formatMeasurementName(name) {
+            return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         }
         
         // =====================================================================
-        // VOICE RECORDING - v2.9.4 UPDATED
-        // - Button now shows "🛑 TAP TO STOP" when recording (clear and unmistakable)
-        // - Discarded recordings are saved for QC
-        // - Recording duration tracked for KPIs
+        // RECORDING (Measurements)
         // =====================================================================
-        async function toggleRecording() {
-            if (state.isRecording) stopRecording();
-            else startRecording();
-        }
         
         async function startRecording() {
+            if (state.isRecording) return;
+            
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
-                state.recordingStartTime = Date.now(); // Track duration
                 
-                state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
+                state.mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) state.audioChunks.push(e.data);
+                };
+                
                 state.mediaRecorder.onstop = async () => {
-                    const recordingDuration = (Date.now() - state.recordingStartTime) / 1000;
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                    
-                    // If there was a previous recording, save it as discarded
-                    if (state.audioBlob) {
-                        state.discardedRecordings.push({
-                            blob: state.audioBlob,
-                            duration: state.lastRecordingDuration || 0,
-                            timestamp: new Date().toISOString()
-                        });
-                        console.log(`📼 Previous recording saved as discarded (${state.discardedRecordings.length} total)`);
-                    }
-                    
                     state.audioBlob = blob;
-                    state.lastRecordingDuration = recordingDuration;
-                    stream.getTracks().forEach(t => t.stop());
+                    
+                    // Transcribe
                     await transcribeAudio(blob);
+                    
+                    stream.getTracks().forEach(t => t.stop());
                 };
                 
                 state.mediaRecorder.start();
                 state.isRecording = true;
+                state.recordingStart = Date.now();
+                document.getElementById('recording-indicator').classList.add('active');
                 
-                // v2.9.4: Clear button text change to "TAP TO STOP"
-                const btn = document.getElementById('record-btn');
-                btn.classList.remove('btn-record');
-                btn.classList.add('btn-stop');
-                btn.textContent = '🛑 TAP TO STOP';
-                
-            } catch (err) {
-                showToast('error', 'Mic access denied');
+            } catch (e) {
+                console.error('Recording failed:', e);
+                showToast('error', 'Microphone access denied');
             }
         }
         
         function stopRecording() {
-            if (state.mediaRecorder && state.isRecording) {
-                state.mediaRecorder.stop();
-                state.isRecording = false;
-                
-                // v2.9.4: Reset button to "TAP TO RECORD"
-                const btn = document.getElementById('record-btn');
-                btn.classList.remove('btn-stop');
-                btn.classList.add('btn-record');
-                btn.textContent = '🎤 TAP TO RECORD';
-            }
+            if (!state.isRecording) return;
+            
+            state.lastRecordingDuration = Math.round((Date.now() - state.recordingStart) / 1000);
+            state.mediaRecorder.stop();
+            state.isRecording = false;
+            document.getElementById('recording-indicator').classList.remove('active');
         }
         
         async function transcribeAudio(blob) {
             try {
-                showToast('info', 'Transcribing...');
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = async () => {
-                    const base64 = reader.result.split(',')[1];
-                    const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
-                    if (result.success && result.text) {
-                        state.rawTranscript = result.text;
-                        console.log('📝 Transcribed:', result.text);
-                        
-                        // Show transcript
-                        document.getElementById('transcript-text').textContent = result.text;
-                        document.getElementById('transcript-box').classList.add('visible');
-                        
-                        parseMeasurements(result.text);
-                        showToast('success', 'Transcription done');
-                    }
-                };
-            } catch (err) {
+                const base64 = await blobToBase64(blob);
+                const result = await callLambda('whisper', { audio: base64.split(',')[1] });
+                
+                if (result.success && result.transcript) {
+                    state.rawTranscript = result.transcript;
+                    
+                    // Simple parsing (full parsing happens async in Lambda)
+                    const parsed = parseTranscriptSimple(result.transcript);
+                    state.measurements = parsed;
+                    updateMeasurementDisplay();
+                    
+                    showToast('success', 'Measurements recorded');
+                }
+            } catch (e) {
+                console.error('Transcription failed:', e);
                 showToast('error', 'Transcription failed');
             }
         }
         
-        function parseMeasurements(text) {
-            // v2.9.4c: Just extract numbers for immediate UI display
-            // The actual field matching happens in fullPipeline via Lambda
-            // This is only for user feedback - final values come from AI
+        function parseTranscriptSimple(transcript) {
+            // Basic parsing - just extract numbers
+            // Full semantic matching happens in Lambda async
+            const measurements = {};
+            const pattern = /(\w+[\w\s]*?)\s*[:\-]?\s*(\d+(?:\.\d+)?)/gi;
+            let match;
             
-            const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
-            const matches = [...text.matchAll(regex)];
-            if (!state.template) return;
+            while ((match = pattern.exec(transcript)) !== null) {
+                const name = match[1].toLowerCase().trim();
+                const value = parseFloat(match[2]);
+                measurements[name] = value;
+            }
             
-            // Show extracted values but mark as "pending AI"
-            const extractedValues = matches.map(m => {
-                let val = parseFloat(m[1]);
-                const fullMatch = m[0].toLowerCase();
-                if (fullMatch.includes('half')) val += 0.5;
-                else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
-                else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
-                return val;
-            });
+            return measurements;
+        }
+        
+        function updateMeasurementDisplay() {
+            if (!state.template?.measurements) return;
             
-            console.log(`📏 Extracted ${extractedValues.length} values from transcript:`, extractedValues);
-            
-            // For UI display only - show that we got values but AI will match them
-            // Don't try to assign to specific fields (that's what caused the swap bug)
-            extractedValues.forEach((val, i) => {
-                if (i < state.template.measurements.length) {
-                    const el = document.getElementById(`mv-${i}`);
-                    if (el) {
-                        // Show value with indicator that AI will verify
-                        el.textContent = `${val}" ⏳`;
-                        el.title = 'AI will match to correct field';
+            state.template.measurements.forEach((m, i) => {
+                const el = document.getElementById(`mv-${i}`);
+                if (el) {
+                    const value = state.measurements[m] || state.measurements[m.toLowerCase()];
+                    if (value !== undefined) {
+                        el.textContent = `${value}"`;
                         el.closest('.measurement-item').classList.add('completed');
                     }
                 }
             });
-            
-            // Store raw values - fullPipeline will properly match them later
-            state.rawExtractedValues = extractedValues;
-            
-            // Note: We don't populate state.measurements here anymore
-            // That happens in processItemInBackground when fullPipeline runs
         }
         
         // =====================================================================
-        // FOLDER SAVE - v2.9.4 UPDATED for raw/final structure
+        // PHASE MANAGEMENT
         // =====================================================================
-        async function chooseSaveFolder() {
-            try {
-                state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-                const display = document.getElementById('folder-display');
-                display.textContent = `📁 ${state.saveDirectoryHandle.name}`;
-                display.classList.add('set');
-                showToast('success', `Folder: ${state.saveDirectoryHandle.name}`);
-            } catch (err) {
-                if (err.name !== 'AbortError') showToast('error', 'Folder selection failed');
-            }
-        }
         
-        async function saveToLocalFolder(itemData) {
-            if (!state.saveDirectoryHandle || !itemData.sku) return false;
-            try {
-                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
-                
-                // Create ALL folders including new raw/final structure
-                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
-                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
-                const finalFolder = await mainFolder.getDirectoryHandle('final', { create: true });
-                
-                // Other folders
-                const folders = ['tag', 'defects', 'features', 'weight', 'measurements', 'data'];
-                for (const f of folders) {
-                    await skuFolder.getDirectoryHandle(f, { create: true });
-                }
-                
-                // Save main photos to raw folder (final folder will be populated by backend processing)
-                if (itemData.photos.main.length > 0) {
-                    for (let i = 0; i < itemData.photos.main.length; i++) {
-                        const photo = itemData.photos.main[i];
-                        const filename = `${itemData.sku}_${photo.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        
-                        // Save to raw folder
-                        const rawHandle = await rawFolder.getFileHandle(filename, { create: true });
-                        const rawWritable = await rawHandle.createWritable();
-                        await rawWritable.write(photo.blob);
-                        await rawWritable.close();
-                        
-                        // Also save to final for now (backend will replace with processed version)
-                        const finalHandle = await finalFolder.getFileHandle(filename, { create: true });
-                        const finalWritable = await finalHandle.createWritable();
-                        await finalWritable.write(photo.blob);
-                        await finalWritable.close();
-                    }
-                } else {
-                    await createNAFile(rawFolder, null, itemData.sku);
-                    await createNAFile(finalFolder, null, itemData.sku);
-                }
-                
-                // v2.9.4c: Route closeup photos to appropriate folders based on AI classification
-                // Categories: tag (brand labels, size tags), features (hardware, details), defects (damage, stains)
-                const tagPhotos = [];
-                const featurePhotos = [];
-                const defectPhotos = [];
-                
-                for (const photo of itemData.photos.closeup) {
-                    const category = photo.routedCategory || 'tag'; // Default to tag
-                    if (category === 'defect' || category === 'defects') {
-                        defectPhotos.push(photo);
-                    } else if (category === 'feature' || category === 'features') {
-                        featurePhotos.push(photo);
-                    } else {
-                        tagPhotos.push(photo);
-                    }
-                }
-                
-                // Save tag photos
-                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
-                if (tagPhotos.length > 0) {
-                    for (let i = 0; i < tagPhotos.length; i++) {
-                        const photo = tagPhotos[i];
-                        const label = photo.routedLabel || 'tag';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await tagFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(tagFolder, null, itemData.sku);
-                }
-                
-                // Save feature photos
-                const featuresFolder = await skuFolder.getDirectoryHandle('features', { create: true });
-                if (featurePhotos.length > 0) {
-                    for (let i = 0; i < featurePhotos.length; i++) {
-                        const photo = featurePhotos[i];
-                        const label = photo.routedLabel || 'feature';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await featuresFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(featuresFolder, null, itemData.sku);
-                }
-                
-                // Save defect photos
-                const defectsFolder = await skuFolder.getDirectoryHandle('defects', { create: true });
-                if (defectPhotos.length > 0) {
-                    for (let i = 0; i < defectPhotos.length; i++) {
-                        const photo = defectPhotos[i];
-                        const label = photo.routedLabel || 'defect';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await defectsFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(defectsFolder, null, itemData.sku);
-                }
-                
-                // Weight from Dymo scale - v2.9.4 UPDATED format
-                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
-                if (itemData.weight && itemData.weight.pounds !== null) {
-                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
-                    const weightHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight.txt`, { create: true });
-                    const weightWritable = await weightHandle.createWritable();
-                    await weightWritable.write(weightContent);
-                    await weightWritable.close();
-                } else {
-                    await createNAFile(skuFolder, 'weight', itemData.sku);
-                }
-                
-                // Save measurements folder contents
-                const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
-                
-                // Final audio
-                if (itemData.audioBlob) {
-                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
-                    const audioWritable = await audioHandle.createWritable();
-                    await audioWritable.write(itemData.audioBlob);
-                    await audioWritable.close();
-                }
-                
-                // Discarded recordings - v2.9.4 NEW
-                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
-                    for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                        const discarded = itemData.discardedRecordings[i];
-                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
-                        const discardWritable = await discardHandle.createWritable();
-                        await discardWritable.write(discarded.blob);
-                        await discardWritable.close();
-                    }
-                }
-                
-                // Raw transcript
-                if (itemData.rawTranscript) {
-                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
-                    const transcriptWritable = await transcriptHandle.createWritable();
-                    await transcriptWritable.write(itemData.rawTranscript);
-                    await transcriptWritable.close();
-                }
-                
-                // Parsed measurements (clean format for listings)
-                if (Object.keys(itemData.measurements).length > 0) {
-                    const parsedContent = generateParsedMeasurements(itemData);
-                    const parsedHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_measurements_parsed.txt`, { create: true });
-                    const parsedWritable = await parsedHandle.createWritable();
-                    await parsedWritable.write(parsedContent);
-                    await parsedWritable.close();
-                }
-                
-                // Master JSON
-                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
-                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
-                const dataWritable = await dataHandle.createWritable();
-                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
-                await dataWritable.close();
-                
-                return true;
-            } catch (err) {
-                console.error('Local save error:', err);
-                return false;
-            }
-        }
-        
-        async function createNAFile(parentFolderOrNull, folderName, sku) {
-            let folder;
-            if (folderName) {
-                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
-            } else {
-                folder = parentFolderOrNull; // Already the folder
-            }
-            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(`No data for ${sku}`);
-            await writable.close();
-        }
-        
-        function generateParsedMeasurements(itemData) {
-            let content = `MEASUREMENTS - ${itemData.sku}\n`;
-            content += `Category: ${itemData.category || 'Unknown'}\n`;
-            content += `Template: ${itemData.template?.name || 'Unknown'}\n`;
-            content += `Note: All measurements are FLAT LAY (multiply by 2 for circumference)\n\n`;
+        function advancePhase(phase) {
+            state.phase = phase;
+            state.timing[`${phase}Start`] = Date.now();
             
-            for (const [name, value] of Object.entries(itemData.measurements)) {
-                content += `• ${name}: ${value}"\n`;
-            }
-            
-            return content;
-        }
-        
-        // =====================================================================
-        // S3 UPLOAD - v2.9.4 UPDATED for raw/final structure
-        // =====================================================================
-        async function uploadToS3(itemData) {
-            const files = [];
-            const sku = itemData.sku;
-            
-            // Main photos - save to both raw and final folders
-            for (let i = 0; i < itemData.photos.main.length; i++) {
-                const p = itemData.photos.main[i];
-                const filename = `${sku}_${p.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
-                
-                // Raw folder
-                files.push({
-                    name: `main/raw/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-                
-                // Final folder (same for now, backend will process)
-                files.push({
-                    name: `main/final/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (itemData.photos.main.length === 0) {
-                files.push({ name: `main/raw/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-                files.push({ name: `main/final/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            }
-            
-            // v2.9.4c: Route closeup photos to appropriate S3 folders based on AI classification
-            const tagPhotos = [];
-            const featurePhotos = [];
-            const defectPhotos = [];
-            
-            for (const photo of itemData.photos.closeup) {
-                const category = photo.routedCategory || 'tag';
-                if (category === 'defect' || category === 'defects') {
-                    defectPhotos.push(photo);
-                } else if (category === 'feature' || category === 'features') {
-                    featurePhotos.push(photo);
-                } else {
-                    tagPhotos.push(photo);
-                }
-            }
-            
-            // Upload tag photos
-            for (let i = 0; i < tagPhotos.length; i++) {
-                const p = tagPhotos[i];
-                const label = p.routedLabel || 'tag';
-                files.push({
-                    name: `tag/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (tagPhotos.length === 0) {
-                files.push({ name: `tag/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            }
-            
-            // Upload feature photos
-            for (let i = 0; i < featurePhotos.length; i++) {
-                const p = featurePhotos[i];
-                const label = p.routedLabel || 'feature';
-                files.push({
-                    name: `features/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (featurePhotos.length === 0) {
-                files.push({ name: `features/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            }
-            
-            // Upload defect photos
-            for (let i = 0; i < defectPhotos.length; i++) {
-                const p = defectPhotos[i];
-                const label = p.routedLabel || 'defect';
-                files.push({
-                    name: `defects/${sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (defectPhotos.length === 0) {
-                files.push({ name: `defects/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            }
-            
-            // Weight from Dymo scale - v2.9.4 UPDATED format
-            if (itemData.weight && itemData.weight.pounds !== null) {
-                const weightContent = `${sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
-                files.push({ name: `weight/${sku}_weight.txt`, contentType: 'text/plain', blob: new Blob([weightContent]) });
-            } else {
-                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No data for ${sku}`]) });
-            }
-            
-            // Measurements folder
-            if (itemData.audioBlob) {
-                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
-            }
-            
-            // Discarded recordings - v2.9.4 NEW
-            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
-                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                    const discarded = itemData.discardedRecordings[i];
-                    files.push({
-                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
-                        contentType: 'audio/webm',
-                        blob: discarded.blob
-                    });
-                }
-            }
-            
-            if (itemData.rawTranscript) {
-                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
-            }
-            if (Object.keys(itemData.measurements).length > 0) {
-                const parsed = generateParsedMeasurements(itemData);
-                files.push({ name: `measurements/${sku}_measurements_parsed.txt`, contentType: 'text/plain', blob: new Blob([parsed]) });
-            }
-            
-            // Master JSON
-            files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
-            
-            // Get presigned URLs
-            const presign = await callLambda('presign', {
-                sku: sku,
-                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+            // Update phase indicators
+            document.querySelectorAll('.phase').forEach(p => {
+                p.classList.remove('active', 'complete');
             });
             
-            if (!presign.success) throw new Error(presign.error || 'Presign failed');
+            const phases = ['main', 'closeup', 'measure', 'complete'];
+            const currentIndex = phases.indexOf(phase);
             
-            // Upload all files
-            for (const f of files) {
-                const url = presign.urls[f.name];
-                if (url) {
-                    await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
-                }
+            phases.forEach((p, i) => {
+                const el = document.getElementById(`phase-${p}`);
+                if (i < currentIndex) el.classList.add('complete');
+                if (i === currentIndex) el.classList.add('active');
+            });
+            
+            // Auto-start recording for measurements phase
+            if (phase === 'measurements') {
+                startRecording();
             }
             
-            return true;
+            showToast('info', `Phase: ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
         }
         
         // =====================================================================
-        // COMPLETE ITEM - v2.9.4c MAJOR REWRITE
-        // Now runs all AI agents BEFORE building JSON:
-        // 1. Image Processing on main photos
-        // 2. Photo Routing on closeup photos  
-        // 3. OCR on tag photos
-        // 4. Full Pipeline (Parser→Matcher→Underwriter) for measurements
+        // TIMER
         // =====================================================================
-        async function completeItem() {
-            if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
+        
+        function startTimer() {
+            state.timerStart = Date.now();
+            state.timerInterval = setInterval(updateTimer, 1000);
+            advancePhase('main');
+        }
+        
+        function stopTimer() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+        
+        function updateTimer() {
+            if (!state.timerStart) return;
             
-            showToast('info', '🤖 Running AI processing...');
-            const aiStartTime = Date.now();
+            const elapsed = Math.floor((Date.now() - state.timerStart) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
             
-            // ===== STEP 1: Run OCR on ALL tag photos and merge results =====
-            // v2.9.4d: Process multiple tag photos to capture all label info
-            if (state.photos.closeup.length > 0) {
-                try {
-                    console.log(`🏷️ Running OCR on ${state.photos.closeup.length} closeup photos...`);
-                    
-                    // Initialize merged tag data
-                    const mergedTagData = {
-                        brand: null,
-                        size: null,
-                        materials: null,
-                        country: null,
-                        rnNumber: null,
-                        careInstructions: null,
-                        confidence: 0
+            const timerEl = document.getElementById('timer');
+            timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            // Color coding
+            timerEl.classList.remove('warning', 'danger');
+            if (elapsed > 120) timerEl.classList.add('danger');
+            else if (elapsed > 90) timerEl.classList.add('warning');
+        }
+        
+        // =====================================================================
+        // WEIGHT (Dymo Scale)
+        // =====================================================================
+        
+        function initDymoScale() {
+            // Try to connect to Dymo scale via WebHID
+            if ('hid' in navigator) {
+                navigator.hid.getDevices().then(devices => {
+                    const dymo = devices.find(d => d.vendorId === 0x0922);
+                    if (dymo) connectDymoScale(dymo);
+                });
+            }
+            
+            // Fallback: manual weight entry
+            document.getElementById('weight-value').onclick = () => {
+                const weight = prompt('Enter weight (oz):');
+                if (weight) {
+                    const oz = parseFloat(weight);
+                    state.weight = {
+                        pounds: oz / 16,
+                        display: `${oz.toFixed(1)} oz`
                     };
-                    
-                    // Process each closeup photo for OCR
-                    for (let i = 0; i < state.photos.closeup.length; i++) {
-                        const photo = state.photos.closeup[i];
-                        try {
-                            const tagPhoto = await resizeImageForAI(photo.blob);
-                            const ocrResult = await callLambda('classify', { 
-                                mainPhotos: [],
-                                tagPhoto: tagPhoto 
-                            });
-                            
-                            if (ocrResult.success && ocrResult.tagData && !ocrResult.tagData.error) {
-                                const td = ocrResult.tagData;
-                                console.log(`📷 OCR closeup ${i+1}:`, td.brand || '-', td.size || '-', td.materials || '-');
-                                
-                                // Merge: prefer non-null values, keep highest confidence
-                                if (td.brand && td.brand !== 'N/A' && !mergedTagData.brand) {
-                                    mergedTagData.brand = td.brand;
-                                }
-                                if (td.size && td.size !== 'N/A' && !mergedTagData.size) {
-                                    mergedTagData.size = td.size;
-                                }
-                                if (td.materials && td.materials !== 'N/A' && !mergedTagData.materials) {
-                                    mergedTagData.materials = td.materials;
-                                }
-                                if (td.country && td.country !== 'N/A' && !mergedTagData.country) {
-                                    mergedTagData.country = td.country;
-                                }
-                                if (td.rnNumber && !mergedTagData.rnNumber) {
-                                    mergedTagData.rnNumber = td.rnNumber;
-                                }
-                                if (td.careInstructions && !mergedTagData.careInstructions) {
-                                    mergedTagData.careInstructions = td.careInstructions;
-                                }
-                                if (td.confidence && td.confidence > mergedTagData.confidence) {
-                                    mergedTagData.confidence = td.confidence;
-                                }
-                            }
-                        } catch (photoErr) {
-                            console.warn(`OCR closeup ${i+1} failed:`, photoErr.message);
-                        }
-                    }
-                    
-                    // Use merged results
-                    state.tagData = mergedTagData;
-                    console.log('✅ Merged OCR:', state.tagData.brand, state.tagData.size, state.tagData.materials, state.tagData.country);
-                    
-                    // Update display
-                    document.getElementById('tag-grid').style.display = 'grid';
-                    document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
-                    document.getElementById('tag-size').textContent = state.tagData.size || '-';
-                    document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
-                    document.getElementById('tag-country').textContent = state.tagData.country || '-';
-                    
-                } catch (e) {
-                    console.warn('OCR failed:', e.message);
+                    document.getElementById('weight-value').textContent = state.weight.display;
+                    document.getElementById('weight-status').textContent = 'Manual entry';
                 }
-            }
-            
-            // ===== STEP 2: Run Image Processing on main photos =====
-            // v2.9.4d: Only run visual measurements on folded photos, not extended poses
-            let imageProcessingResults = [];
-            if (state.photos.main.length > 0) {
-                try {
-                    console.log('🖼️ Running image processing...');
-                    for (let i = 0; i < Math.min(state.photos.main.length, 2); i++) {
-                        const photo = state.photos.main[i];
-                        const photoLabel = photo.label?.toLowerCase() || '';
-                        
-                        // v2.9.4d: Skip visual measurements on extended arm poses
-                        // Extended poses show arms at angles - bad for measurement
-                        const isExtendedPose = photoLabel.includes('extended') || 
-                                               photoLabel.includes('arms') ||
-                                               photoLabel.includes('-t') ||  // Front-T, Back-T naming
-                                               i < 2; // First 2 photos are typically extended poses
-                        
-                        const imageBase64 = await resizeImageForAI(photo.blob);
-                        const result = await callLambda('imageProcessing', {
-                            image: imageBase64,
-                            garmentType: state.template?.category || 'tops',
-                            skipVisualMeasurements: isExtendedPose // Tell Lambda to skip visual measurements
-                        });
-                        if (result.success) {
-                            imageProcessingResults.push({
-                                photoIndex: i,
-                                photoLabel: photo.label || `main_${i+1}`,
-                                isExtendedPose: isExtendedPose,
-                                ...result
-                            });
-                            if (isExtendedPose) {
-                                console.log(`✅ Image ${i+1} (extended pose): rotation ${result.rotation?.currentAngle?.toFixed(1)}°, visual measurements skipped`);
-                            } else {
-                                console.log(`✅ Image ${i+1} (folded): rotation ${result.rotation?.currentAngle?.toFixed(1)}°, ColorChecker: ${result.colorChecker?.detected}`);
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Image processing failed:', e.message);
-                }
-            }
-            
-            // ===== STEP 3: Run Photo Routing on closeup photos =====
-            let photoRoutingResults = [];
-            if (state.photos.closeup.length > 0) {
-                try {
-                    console.log('📸 Routing closeup photos...');
-                    for (let i = 0; i < state.photos.closeup.length; i++) {
-                        const photo = state.photos.closeup[i];
-                        const imageBase64 = await resizeImageForAI(photo.blob);
-                        const result = await callLambda('photoRouting', {
-                            image: imageBase64,
-                            sku: state.currentSKU
-                        });
-                        if (result.success) {
-                            // Update photo with routing info
-                            photo.routedCategory = result.category;
-                            photo.routedLabel = result.label;
-                            photo.label = `${result.category}: ${result.label}`;
-                            photoRoutingResults.push({
-                                photoIndex: i,
-                                category: result.category,
-                                label: result.label,
-                                confidence: result.confidence
-                            });
-                            console.log(`✅ Closeup ${i+1}: ${result.category} - ${result.label}`);
-                        }
-                    }
-                    updatePhotoGrid(); // Refresh with new labels
-                } catch (e) {
-                    console.warn('Photo routing failed:', e.message);
-                }
-            }
-            
-            // ===== STEP 4: Run Full Pipeline for measurements =====
-            let pipelineResults = null;
-            let finalMeasurements = state.measurements; // Fallback to dumb parser
-            let finalClassification = {
-                category: state.classification,
-                templateKey: state.templateKey,
-                wasChanged: false
             };
-            let eraEstimation = null;
-            let qcFlags = {};
-            let tagSizeAnalysis = null;
-            
-            if (state.rawTranscript && state.rawTranscript.length > 0) {
-                try {
-                    console.log('📏 Running measurement pipeline...');
-                    const mainPhotos = await Promise.all(
-                        state.photos.main.slice(0, 2).map(async p => {
-                            return await resizeImageForAI(p.blob);
-                        })
-                    );
-                    
-                    const result = await callLambda('fullPipeline', {
-                        transcript: state.rawTranscript,
-                        category: state.classification,
-                        templateKey: state.templateKey,
-                        tagData: state.tagData,
-                        weightData: getCurrentWeight(),
-                        photos: mainPhotos
-                    });
-                    
-                    if (result.success && !result.error) {
-                        pipelineResults = result;
-                        
-                        // Use Matcher Agent's measurements (semantically matched)
-                        if (result.matcher?.matchedMeasurements) {
-                            finalMeasurements = {};
-                            for (const [field, data] of Object.entries(result.matcher.matchedMeasurements)) {
-                                finalMeasurements[field] = data.value;
-                            }
-                            console.log('✅ Using Matcher Agent measurements');
-                            
-                            // Update UI with corrected measurements
-                            if (state.template?.measurements) {
-                                state.template.measurements.forEach((m, i) => {
-                                    const el = document.getElementById(`mv-${i}`);
-                                    if (el && finalMeasurements[m] !== undefined) {
-                                        el.textContent = `${finalMeasurements[m]}"`;
-                                        el.closest('.measurement-item').classList.add('completed');
-                                    }
-                                });
-                            }
-                        }
-                        
-                        // Check if Underwriter changed classification
-                        if (result.underwriter?.finalClassification) {
-                            finalClassification = result.underwriter.finalClassification;
-                            if (finalClassification.wasChanged) {
-                                console.log(`⚠️ Classification changed: ${state.classification} → ${finalClassification.category}`);
-                                showToast('warning', `Reclassified: ${finalClassification.category}`);
-                            }
-                        }
-                        
-                        // Era estimation
-                        if (result.underwriter?.eraEstimation) {
-                            eraEstimation = result.underwriter.eraEstimation;
-                            console.log(`📅 Era: ${eraEstimation.estimate} (${eraEstimation.confidence})`);
-                        }
-                        
-                        // Tag size analysis
-                        if (result.underwriter?.tagSizeAnalysis) {
-                            tagSizeAnalysis = result.underwriter.tagSizeAnalysis;
-                        }
-                        
-                        // QC flags
-                        if (result.underwriter?.qcFlags) {
-                            qcFlags = result.underwriter.qcFlags;
-                        }
-                        
-                        console.log(`✅ Pipeline complete in ${result.processingTime}ms`);
-                    } else if (result.error) {
-                        console.warn('Pipeline error:', result.error);
-                        qcFlags.pipelineFailed = true;
-                        qcFlags.pipelineError = result.error;
-                    }
-                } catch (e) {
-                    console.warn('Full pipeline failed:', e.message);
-                    qcFlags.pipelineFailed = true;
-                    qcFlags.pipelineError = e.message;
+        }
+        
+        async function connectDymoScale(device) {
+            try {
+                await device.open();
+                device.addEventListener('inputreport', handleDymoData);
+                document.getElementById('weight-status').textContent = 'Dymo connected';
+            } catch (e) {
+                console.warn('Dymo connection failed:', e);
+            }
+        }
+        
+        function handleDymoData(event) {
+            const data = new Uint8Array(event.data.buffer);
+            // Dymo M10 protocol: bytes 4-5 are weight in 0.1oz units
+            if (data.length >= 6) {
+                const rawWeight = (data[5] << 8) | data[4];
+                const oz = rawWeight / 10;
+                
+                if (oz > 0) {
+                    state.weight = {
+                        pounds: oz / 16,
+                        display: `${oz.toFixed(1)} oz`
+                    };
+                    document.getElementById('weight-value').textContent = state.weight.display;
+                    document.getElementById('weight-status').textContent = 'Live from Dymo';
                 }
             }
+        }
+        
+        function getCurrentWeight() {
+            return state.weight || { pounds: null, display: 'N/A' };
+        }
+        
+        // =====================================================================
+        // COMPLETE ITEM - v2.9.5 ASYNC (ZERO WAIT!)
+        // =====================================================================
+        
+        async function completeItem() {
+            if (!state.currentSKU) {
+                showToast('warning', 'No SKU');
+                return;
+            }
             
-            const aiProcessingTime = Date.now() - aiStartTime;
-            console.log(`🤖 AI processing complete in ${(aiProcessingTime/1000).toFixed(1)}s`);
+            // Stop recording if active
+            if (state.isRecording) {
+                stopRecording();
+                // Give a moment for transcription
+                await new Promise(r => setTimeout(r, 500));
+            }
             
-            // ===== Calculate timing =====
+            // ===== NO AI PROCESSING HERE! =====
+            // All AI runs async in Lambda after S3 upload
+            
             const now = Date.now();
             const totalDuration = Math.round((now - state.timerStart) / 1000);
             const mainDuration = state.timing.closeupStart ? Math.round((state.timing.closeupStart - state.timerStart) / 1000) : totalDuration;
             const closeupDuration = state.timing.measurementsStart && state.timing.closeupStart ? Math.round((state.timing.measurementsStart - state.timing.closeupStart) / 1000) : 0;
             const measurementsDuration = state.timing.measurementsStart ? Math.round((now - state.timing.measurementsStart) / 1000) : 0;
             
-            // Get weight from Dymo scale - v2.9.4 FIXED format
             const weightData = getCurrentWeight();
-            
-            // Recording KPI - v2.9.4 NEW
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
-            // Build complete item data - v2.9.4c uses AI results
+            // Build item data - NO AI results yet, just raw data
             const itemData = {
                 sku: state.currentSKU,
-                category: finalClassification.category || state.classification,
-                templateKey: finalClassification.templateKey || state.templateKey,
+                category: state.classification,
+                templateKey: state.templateKey,
                 template: state.template,
-                tagData: state.tagData,
-                measurements: finalMeasurements,
+                tagData: null, // Will be populated by Lambda async
+                measurements: state.measurements, // Simple parsed, Lambda will do semantic matching
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
                 discardedRecordings: state.discardedRecordings,
                 weight: weightData,
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
-                    closeup: state.photos.closeup.map(p => ({ 
-                        blob: p.blob, 
-                        label: p.label,
-                        routedCategory: p.routedCategory,
-                        routedLabel: p.routedLabel
-                    })),
+                    closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
                     handheld: state.photos.handheld.map(p => ({ blob: p.blob, label: p.label }))
                 },
                 timing: {
                     mainPhotosDuration: mainDuration,
                     closeupDuration: closeupDuration,
                     measurementsDuration: measurementsDuration,
-                    totalDuration: totalDuration,
-                    aiProcessingTime: aiProcessingTime
+                    totalDuration: totalDuration
                 },
                 jsonData: {
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
                     version: VERSION,
-                    // v2.9.4c: Use final classification (may have been corrected by Underwriter)
-                    category: finalClassification.category || state.classification,
-                    templateKey: finalClassification.templateKey || state.templateKey,
-                    originalCategory: finalClassification.wasChanged ? state.classification : null,
-                    classificationCorrected: finalClassification.wasChanged || false,
-                    tagData: state.tagData || { brand: 'N/A', size: 'N/A', materials: 'N/A', country: 'N/A' },
-                    // v2.9.4c: Use Matcher Agent measurements (semantically matched)
-                    measurements: finalMeasurements,
+                    
+                    // Raw classification (Lambda may update)
+                    category: state.classification,
+                    templateKey: state.templateKey,
+                    
+                    // Placeholder - Lambda will populate via OCR
+                    tagData: null,
+                    
+                    // Simple parsed measurements - Lambda will do semantic matching
+                    measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
-                    weight: weightData || { pounds: null, display: 'N/A' },
-                    // v2.9.4c: Pipeline results
-                    pipelineResults: pipelineResults ? {
-                        parser: pipelineResults.parser,
-                        matcher: pipelineResults.matcher,
-                        underwriter: pipelineResults.underwriter
-                    } : null,
-                    aiProviders: pipelineResults?.aiProviders || null,
-                    // v2.9.4c: Era estimation from Underwriter
-                    eraEstimation: eraEstimation,
-                    // v2.9.4c: Tag size vs measured size analysis
-                    tagSizeAnalysis: tagSizeAnalysis,
-                    // v2.9.4c: Image processing results (crop/rotation metadata)
-                    imageProcessing: imageProcessingResults.length > 0 ? imageProcessingResults : null,
-                    // v2.9.4c: Photo routing results
-                    photoRouting: photoRoutingResults.length > 0 ? photoRoutingResults : null,
-                    // v2.9.4c: QC flags from all agents
-                    qcFlags: Object.keys(qcFlags).length > 0 ? qcFlags : null,
-                    // Audio recording metadata
+                    
+                    weight: weightData,
+                    
+                    // Processing status - Lambda will update
+                    processingStatus: 'pending',
+                    aiProcessing: {
+                        ocr: { status: 'pending' },
+                        imageProcessing: { status: 'pending' },
+                        photoRouting: { status: 'pending' },
+                        pipeline: { status: 'pending' }
+                    },
+                    
+                    // Lambda will populate these
+                    pipelineResults: null,
+                    eraEstimation: null,
+                    tagSizeAnalysis: null,
+                    imageProcessing: null,
+                    photoRouting: null,
+                    qcFlags: null,
+                    
                     audioRecordings: {
                         final: {
                             duration: recordingDuration,
@@ -2074,18 +1307,16 @@
                         mainPhotosDuration: mainDuration,
                         closeupDuration: closeupDuration,
                         measurementsDuration: measurementsDuration,
-                        totalDuration: totalDuration
+                        totalDuration: totalDuration,
+                        browserProcessingTime: 0 // No AI processing in browser anymore!
                     },
                     photoCount: {
                         main: state.photos.main.length,
-                        tag: state.photos.closeup.length,
-                        defects: 0,
-                        features: 0,
-                        weight: 0
+                        closeup: state.photos.closeup.length,
+                        handheld: state.photos.handheld.length
                     },
-                    photographerId: state.photographerId, // v2.9.4 placeholder
+                    photographerId: localStorage.getItem('photographerId') || 'unknown',
                     flags: {},
-                    fitAnalysis: null,
                     confidence: {}
                 }
             };
@@ -2097,52 +1328,50 @@
             localStorage.setItem('totalTime', state.totalTime);
             updateStats();
             
-            // IMMEDIATELY reset UI for next item
-            showToast('success', `${state.currentSKU} submitted!`);
+            // ===== INSTANT UI RESET =====
+            showToast('success', `✅ ${state.currentSKU} submitted!`);
             stopTimer();
             resetItem();
             
-            // Process in background with retry
+            // Process in background (upload to S3, send to n8n)
             processItemInBackground(itemData);
         }
         
         // =====================================================================
-        // BACKGROUND PROCESSING - v2.9.4c SIMPLIFIED
-        // AI processing now happens in completeItem() before this is called
-        // This function just handles saving to local folder, S3, and n8n
+        // BACKGROUND PROCESSING
         // =====================================================================
+        
         async function processItemInBackground(itemData, retryCount = 0) {
             const sku = itemData.sku;
-            console.log(`🔄 [${sku}] Starting save/upload...`);
+            console.log(`🔄 [${sku}] Starting background upload...`);
             
             try {
-                // =================================================================
-                // STEP 1: SAVE TO LOCAL FOLDER
-                // =================================================================
-                console.log(`💾 [${sku}] Step 1: Saving to local folder...`);
-                
+                // STEP 1: Save to local folder (if selected)
                 if (state.saveDirectoryHandle) {
+                    console.log(`💾 [${sku}] Saving to local folder...`);
                     await saveToLocalFolder(itemData);
-                    console.log(`✅ [${sku}] Saved to local folder`);
                 }
                 
-                // =================================================================
-                // STEP 2: UPLOAD TO S3
-                // =================================================================
-                console.log(`☁️ [${sku}] Step 2: Uploading to S3...`);
-                
+                // STEP 2: Upload to S3
+                console.log(`☁️ [${sku}] Uploading to S3...`);
                 await uploadToS3(itemData);
                 console.log(`✅ [${sku}] Uploaded to S3`);
                 
-                // =================================================================
-                // STEP 3: SEND TO N8N
-                // =================================================================
-                console.log(`📤 [${sku}] Step 3: Sending to n8n...`);
+                // STEP 3: Trigger async processing
+                // This tells Lambda to process this item
+                console.log(`🚀 [${sku}] Triggering async processing...`);
+                await callLambda('triggerAsyncProcessing', {
+                    sku: sku,
+                    bucket: 'your-bucket-name', // Configure this
+                    category: itemData.category,
+                    templateKey: itemData.templateKey
+                });
                 
+                // STEP 4: Send to n8n (with pending status)
+                console.log(`📤 [${sku}] Sending to n8n...`);
                 await callLambda('n8n', { formData: itemData.jsonData });
-                console.log(`✅ [${sku}] Sent to n8n`);
                 
-                console.log(`🎉 [${sku}] Background processing complete!`);
+                console.log(`🎉 [${sku}] Background processing triggered!`);
                 
             } catch (err) {
                 console.error(`❌ [${sku}] Background process failed:`, err);
@@ -2157,8 +1386,155 @@
             }
         }
         
+        // =====================================================================
+        // S3 UPLOAD
+        // =====================================================================
+        
+        async function uploadToS3(itemData) {
+            const sku = itemData.sku;
+            const files = [];
+            
+            // Main photos → main/raw/
+            for (let i = 0; i < itemData.photos.main.length; i++) {
+                const p = itemData.photos.main[i];
+                files.push({
+                    name: `main/raw/${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            
+            // Closeup photos → tag/ (Lambda will route to correct folders)
+            for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                const p = itemData.photos.closeup[i];
+                files.push({
+                    name: `tag/${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            
+            // Handheld photos
+            for (let i = 0; i < itemData.photos.handheld.length; i++) {
+                const p = itemData.photos.handheld[i];
+                files.push({
+                    name: `handheld/${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            
+            // Weight
+            if (itemData.weight && itemData.weight.pounds !== null) {
+                const weightContent = `${sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10\nTimestamp: ${new Date().toISOString()}`;
+                files.push({ name: `weight/${sku}_weight.txt`, contentType: 'text/plain', blob: new Blob([weightContent]) });
+            }
+            
+            // Audio
+            if (itemData.audioBlob) {
+                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            }
+            
+            // Transcript
+            if (itemData.rawTranscript) {
+                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            }
+            
+            // Master JSON (with pending status)
+            files.push({
+                name: `data/${sku}_data.json`,
+                contentType: 'application/json',
+                blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)])
+            });
+            
+            // Get presigned URLs
+            const presign = await callLambda('presign', {
+                sku: sku,
+                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+            });
+            
+            if (!presign.success) throw new Error(presign.error || 'Presign failed');
+            
+            // Upload all files
+            const uploadPromises = files.map(f => {
+                const url = presign.urls[f.name];
+                if (url) {
+                    return fetch(url, {
+                        method: 'PUT',
+                        body: f.blob,
+                        headers: { 'Content-Type': f.contentType }
+                    });
+                }
+                return Promise.resolve();
+            });
+            
+            await Promise.all(uploadPromises);
+        }
+        
+        // =====================================================================
+        // LOCAL FOLDER SAVE
+        // =====================================================================
+        
+        async function selectSaveFolder() {
+            try {
+                state.saveDirectoryHandle = await window.showDirectoryPicker();
+                localStorage.setItem('saveFolderName', state.saveDirectoryHandle.name);
+                document.getElementById('folder-path').textContent = `📁 ${state.saveDirectoryHandle.name}`;
+                showToast('success', 'Save folder selected');
+            } catch (e) {
+                console.warn('Folder selection cancelled');
+            }
+        }
+        
+        async function saveToLocalFolder(itemData) {
+            if (!state.saveDirectoryHandle) return;
+            
+            const sku = itemData.sku;
+            
+            try {
+                // Create SKU folder
+                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(sku, { create: true });
+                
+                // Create subfolders
+                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
+                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
+                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
+                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+                
+                // Save main photos
+                for (let i = 0; i < itemData.photos.main.length; i++) {
+                    const p = itemData.photos.main[i];
+                    const file = await rawFolder.getFileHandle(`${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                    const writable = await file.createWritable();
+                    await writable.write(p.blob);
+                    await writable.close();
+                }
+                
+                // Save closeup photos
+                for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                    const p = itemData.photos.closeup[i];
+                    const file = await tagFolder.getFileHandle(`${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                    const writable = await file.createWritable();
+                    await writable.write(p.blob);
+                    await writable.close();
+                }
+                
+                // Save JSON
+                const jsonFile = await dataFolder.getFileHandle(`${sku}_data.json`, { create: true });
+                const jsonWritable = await jsonFile.createWritable();
+                await jsonWritable.write(JSON.stringify(itemData.jsonData, null, 2));
+                await jsonWritable.close();
+                
+            } catch (e) {
+                console.error('Local save failed:', e);
+            }
+        }
+        
+        // =====================================================================
+        // RETRY QUEUE
+        // =====================================================================
+        
         function addToRetryQueue(itemData) {
-            // Store minimal data (can't store blobs in localStorage)
             const queueItem = {
                 sku: itemData.sku,
                 jsonData: itemData.jsonData,
@@ -2182,6 +1558,8 @@
         async function processRetryQueue() {
             if (state.retryQueue.length === 0) return;
             
+            showToast('info', `Retrying ${state.retryQueue.length} items...`);
+            
             const toRetry = [...state.retryQueue];
             state.retryQueue = [];
             
@@ -2196,556 +1574,152 @@
             
             localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
             updateRetryBadge();
+            
+            if (state.retryQueue.length === 0) {
+                showToast('success', 'All retries successful!');
+            } else {
+                showToast('warning', `${state.retryQueue.length} items still pending`);
+            }
         }
         
         // =====================================================================
-        // SKU & TIMER
+        // RESET
         // =====================================================================
-        function startNewItem() {
-            const sku = document.getElementById('sku-input').value.trim().toUpperCase();
-            if (!sku) { showToast('warning', 'Enter a SKU'); return; }
-            
-            state.currentSKU = sku;
-            state.photos = { main: [], closeup: [], handheld: [] };
-            state.classification = null;
-            state.templateKey = null;
-            state.template = null;
-            state.tagData = null;
-            state.measurements = {};
-            state.rawTranscript = '';
-            state.audioBlob = null;
-            state.aiTriggered = false;
-            state.timing = { mainStart: Date.now(), closeupStart: null, measurementsStart: null };
-            state.discardedRecordings = []; // v2.9.4 reset
-            state.lastRecordingDuration = 0;
-            
-            document.getElementById('sku-row').style.display = 'none';
-            document.getElementById('sku-display').textContent = sku;
-            document.getElementById('sku-display').classList.add('visible');
-            
-            document.getElementById('classification-box').classList.remove('ready');
-            document.getElementById('classification-category').textContent = 'Waiting...';
-            document.getElementById('classification-template').textContent = '-';
-            document.getElementById('tag-grid').style.display = 'none';
-            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
-            document.getElementById('transcript-box').classList.remove('visible');
-            document.getElementById('complete-btn-camera').disabled = true;
-            
-            updatePhotoGrid();
-            updatePhotoCount();
-            startTimer();
-            switchCameraMode('main');
-            showToast('success', `Started: ${sku}`);
-        }
-        
-        function cancelItem() {
-            if (!confirm(`Cancel item ${state.currentSKU}?`)) return;
-            resetItem();
-            showToast('info', 'Item cancelled');
-        }
         
         function resetItem() {
-            state.currentSKU = '';
-            state.photos = { main: [], closeup: [], handheld: [] };
+            state.currentSKU = null;
             state.classification = null;
             state.templateKey = null;
             state.template = null;
-            state.tagData = null;
+            state.photos = { main: [], closeup: [], handheld: [] };
             state.measurements = {};
-            state.rawTranscript = '';
+            state.rawTranscript = null;
             state.audioBlob = null;
-            state.aiTriggered = false;
-            state.timing = { mainStart: null, closeupStart: null, measurementsStart: null };
-            state.discardedRecordings = []; // v2.9.4 reset
+            state.discardedRecordings = [];
             state.lastRecordingDuration = 0;
+            state.weight = null;
+            state.timerStart = null;
+            state.phase = 'main';
+            state.timing = {};
             
-            // v2.9.4d: Reset scale lock for new item (but keep connected)
-            state.scaleWeightLocked = false;
-            state.scaleLockedWeight = null;
-            state.scaleLockedDisplay = '';
-            state.scaleStableStartTime = null;
-            updateScaleUI();
-            
+            // Reset UI
             document.getElementById('sku-input').value = '';
-            document.getElementById('sku-row').style.display = 'flex';
-            document.getElementById('sku-display').classList.remove('visible');
-            
-            document.getElementById('classification-box').classList.remove('ready');
-            document.getElementById('classification-category').textContent = 'Waiting...';
-            document.getElementById('classification-template').textContent = '-';
+            document.getElementById('sku-input').focus();
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('timer').classList.remove('warning', 'danger');
+            document.getElementById('photo-count').textContent = '0 photos';
+            document.getElementById('photo-grid').innerHTML = '';
+            document.getElementById('measurement-grid').innerHTML = '';
+            document.getElementById('weight-value').textContent = '--';
             document.getElementById('tag-grid').style.display = 'none';
-            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
-            document.getElementById('transcript-box').classList.remove('visible');
-            document.getElementById('complete-btn-camera').disabled = true;
             
-            // Reset recording button state
-            const btn = document.getElementById('record-btn');
-            btn.classList.remove('btn-stop');
-            btn.classList.add('btn-record');
-            btn.textContent = '🎤 TAP TO RECORD';
-            
-            updatePhotoGrid();
-            updatePhotoCount();
-            stopTimer();
-            document.getElementById('timer').textContent = '0:00';
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active', 'complete'));
         }
         
-        function startTimer() {
-            stopTimer();
-            state.timerStart = Date.now();
-            state.timerInterval = setInterval(() => {
-                const s = Math.floor((Date.now() - state.timerStart) / 1000);
-                document.getElementById('timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-            }, 1000);
-        }
-        
-        function stopTimer() {
-            if (state.timerInterval) clearInterval(state.timerInterval);
-        }
+        // =====================================================================
+        // STATS
+        // =====================================================================
         
         function updateStats() {
-            document.getElementById('item-count').textContent = state.completedItems;
+            document.getElementById('stat-completed').textContent = state.completedItems;
+            
             if (state.completedItems > 0) {
-                const avg = Math.round(state.totalTime / state.completedItems);
-                document.getElementById('avg-time').textContent = `${Math.floor(avg / 60)}:${String(avg % 60).padStart(2, '0')}`;
+                const avgTime = Math.round(state.totalTime / state.completedItems);
+                const mins = Math.floor(avgTime / 60);
+                const secs = avgTime % 60;
+                document.getElementById('stat-avg-time').textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+                
+                const sessionHours = (Date.now() - state.sessionStart) / 3600000;
+                const perHour = sessionHours > 0 ? Math.round(state.completedItems / sessionHours) : 0;
+                document.getElementById('stat-per-hour').textContent = perHour;
             }
         }
         
         // =====================================================================
-        // BARCODE SCANNER (with debounce to prevent rapid-fire detection)
+        // UTILITIES
         // =====================================================================
-        let barcodeDetected = false;
         
-        function openBarcodeScanner() {
-            barcodeDetected = false;
-            document.getElementById('barcode-modal').classList.add('active');
-            document.getElementById('barcode-status').textContent = 'Starting...';
-            document.getElementById('barcode-status').classList.remove('success');
-            
-            const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
-            
-            Quagga.init({
-                inputStream: {
-                    type: 'LiveStream',
-                    target: document.getElementById('barcode-container'),
-                    constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' },
-                    willReadFrequently: true
-                },
-                decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
-                locate: true,
-                frequency: 10
-            }, err => {
-                if (err) {
-                    document.getElementById('barcode-status').textContent = 'Scanner error';
-                    console.error('Quagga init error:', err);
-                    return;
-                }
-                document.getElementById('barcode-status').textContent = 'Point at barcode...';
-                Quagga.start();
-                Quagga.onDetected(result => {
-                    if (barcodeDetected) return;
-                    barcodeDetected = true;
-                    Quagga.stop();
-                    
-                    const code = result.codeResult.code;
-                    console.log('📊 Barcode detected:', code);
-                    document.getElementById('barcode-status').textContent = code;
-                    document.getElementById('barcode-status').classList.add('success');
-                    document.getElementById('sku-input').value = code;
-                    
-                    setTimeout(() => { 
-                        closeBarcodeScanner(); 
-                        showToast('success', `Scanned: ${code}`); 
-                    }, 500);
-                });
+        async function callLambda(action, data) {
+            const response = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...data })
+            });
+            return response.json();
+        }
+        
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
         }
         
-        function closeBarcodeScanner() {
-            barcodeDetected = false;
-            try { Quagga.stop(); Quagga.offDetected(); } catch {}
-            document.getElementById('barcode-modal').classList.remove('active');
+        function showToast(type, message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 4000);
         }
         
         // =====================================================================
-        // SETTINGS
+        // KEYBOARD SHORTCUTS
         // =====================================================================
-        function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
-        function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         
-        function saveSettings() {
-            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
-                const sel = document.getElementById(`camera-${mode}`);
-                state.cameras[mode].deviceId = sel.value;
-                localStorage.setItem(`camera-${mode}`, sel.value);
-            });
-            const url = document.getElementById('lambda-url').value.trim();
-            if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
-            closeSettings();
-            showToast('success', 'Settings saved');
-            startCamera(state.currentMode);
-            checkLambda();
-        }
-        
-        // =====================================================================
-        // DYMO USB SCALE (WebHID) - v2.9.4 FIXED for M10 lb:oz format
-        // 
-        // The Dymo M10 displays weight as "1:13.0" meaning 1 lb 13 oz
-        // Previous code was misinterpreting the byte format, leading to 1e+35 errors
-        // This fix properly parses the compound lb:oz format
-        // =====================================================================
-        const DYMO_VENDOR_ID = 0x0922;
-        
-        async function toggleScale() {
-            if (state.scaleDevice) {
-                await disconnectScale();
-            } else {
-                await connectScale();
-            }
-        }
-        
-        async function connectScale() {
-            if (!('hid' in navigator)) {
-                showToast('error', 'WebHID not supported in this browser');
-                return;
-            }
-            
-            try {
-                const devices = await navigator.hid.requestDevice({
-                    filters: [{ vendorId: DYMO_VENDOR_ID }]
-                });
-                
-                if (devices.length === 0) {
-                    showToast('warning', 'No scale selected');
-                    return;
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Space = capture photo
+                if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    capturePhoto();
                 }
                 
-                state.scaleDevice = devices[0];
-                
-                if (!state.scaleDevice.opened) {
-                    await state.scaleDevice.open();
-                }
-                
-                console.log('⚖️ Scale connected:', state.scaleDevice.productName);
-                
-                state.scaleDevice.addEventListener('inputreport', handleScaleReport);
-                
-                state.scaleStatus = 'connected';
-                updateScaleUI();
-                showToast('success', `Scale connected: ${state.scaleDevice.productName}`);
-                
-            } catch (err) {
-                console.error('Scale connection error:', err);
-                if (err.name !== 'NotFoundError') {
-                    showToast('error', 'Scale connection failed: ' + err.message);
-                }
-            }
-        }
-        
-        async function disconnectScale() {
-            if (state.scaleDevice) {
-                try {
-                    state.scaleDevice.removeEventListener('inputreport', handleScaleReport);
-                    await state.scaleDevice.close();
-                } catch (e) {
-                    console.warn('Scale disconnect warning:', e);
-                }
-                state.scaleDevice = null;
-                state.scaleWeight = null;
-                state.scaleWeightDisplay = '';
-                state.scaleStatus = 'disconnected';
-                // v2.9.4d: Reset lock state on disconnect
-                state.scaleWeightLocked = false;
-                state.scaleLockedWeight = null;
-                state.scaleLockedDisplay = '';
-                state.scaleStableStartTime = null;
-                state.scaleLastWeight = null;
-                updateScaleUI();
-                showToast('info', 'Scale disconnected');
-            }
-        }
-        
-        // v2.9.4e FIXED - Correct byte positions per Dymo HID spec (Antradar documentation)
-        // Previous version had byte indices off by one, causing unit 255 "not ready" errors
-        function handleScaleReport(event) {
-            const data = new Uint8Array(event.data.buffer);
-            
-            // Log raw data for debugging
-            console.log('⚖️ Scale raw data:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
-            
-            // CORRECT Dymo M10/M25 HID report format (per Antradar docs):
-            // Byte 0: Status (2=stable, 4=in motion, 5=fault, 6=negative, 7=overload)
-            // Byte 1: Unit (2=grams, 11=ounces, 12=pounds)
-            // Byte 2: Scale factor (signed byte, power of 10) - 0xff = -1
-            // Byte 3: Weight low byte
-            // Byte 4: Weight high byte
-            // 
-            // Weight = (byte3 + byte4*256) * 10^scaleFactor
-            
-            const status = data[0];
-            const unitCode = data[1];
-            const scaleFactor = data[2] > 127 ? data[2] - 256 : data[2]; // Convert to signed
-            const weightLow = data[3] || 0;
-            const weightHigh = data[4] || 0;
-            
-            console.log(`⚖️ Status: ${status}, Unit: ${unitCode}, ScaleFactor: ${scaleFactor}, Weight bytes: ${weightLow}, ${weightHigh}`);
-            
-            // Handle status codes that indicate invalid reading
-            if (status === 5) {
-                state.scaleStatus = 'fault';
-                state.scaleWeightDisplay = 'FAULT';
-                updateScaleUI();
-                return;
-            }
-            if (status === 6) {
-                state.scaleStatus = 'negative';
-                state.scaleWeightDisplay = 'NEGATIVE';
-                updateScaleUI();
-                return;
-            }
-            if (status === 7) {
-                state.scaleStatus = 'overload';
-                state.scaleWeightDisplay = 'OVERLOAD';
-                updateScaleUI();
-                return;
-            }
-            
-            // Validate unit code
-            if (unitCode !== 2 && unitCode !== 11 && unitCode !== 12) {
-                console.warn(`⚖️ Unknown unit code ${unitCode}, waiting...`);
-                state.scaleStatus = 'waiting';
-                state.scaleWeightDisplay = 'Waiting...';
-                updateScaleUI();
-                return;
-            }
-            
-            // Calculate raw weight (little-endian 16-bit)
-            const rawWeight = weightLow + (weightHigh * 256);
-            const scaledWeight = rawWeight * Math.pow(10, scaleFactor);
-            
-            let decimalPounds = 0;
-            let displayWeight = '0 lb 0 oz';
-            let unit = 'lb';
-            
-            if (unitCode === 11) {
-                // OUNCES mode (most common for Dymo M10)
-                const totalOunces = scaledWeight;
-                decimalPounds = totalOunces / 16;
-                const lbs = Math.floor(totalOunces / 16);
-                const oz = totalOunces % 16;
-                displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
-                unit = 'lb';
-                console.log(`⚖️ Ounces mode: ${totalOunces} oz → ${displayWeight}`);
-                
-            } else if (unitCode === 12) {
-                // POUNDS mode
-                decimalPounds = scaledWeight;
-                const lbs = Math.floor(decimalPounds);
-                const oz = (decimalPounds - lbs) * 16;
-                displayWeight = `${lbs} lb ${oz.toFixed(1)} oz`;
-                unit = 'lb';
-                console.log(`⚖️ Pounds mode: ${decimalPounds} lb → ${displayWeight}`);
-                
-            } else if (unitCode === 2) {
-                // GRAMS mode
-                const grams = scaledWeight;
-                decimalPounds = grams / 453.592;
-                displayWeight = `${grams.toFixed(0)} g`;
-                unit = 'g';
-                console.log(`⚖️ Grams mode: ${grams} g → ${displayWeight}`);
-            }
-            
-            // Sanity check - reject obviously wrong values
-            if (decimalPounds < 0 || decimalPounds > 100) {
-                console.warn(`⚖️ Weight out of range (${decimalPounds}), skipping`);
-                return;
-            }
-            
-            // Status interpretation and stability tracking
-            const isStable = (status === 2 || status === 0);
-            
-            // If weight is locked, don't update the display weight
-            if (state.scaleWeightLocked) {
-                state.scaleWeight = decimalPounds;
-                state.scaleWeightDisplay = displayWeight;
-                state.scaleStatus = 'locked';
-                console.log(`⚖️ Weight locked at ${state.scaleLockedDisplay}, live: ${displayWeight}`);
-                updateScaleUI();
-                return;
-            }
-            
-            // Stability tracking for lock feature
-            const STABILITY_THRESHOLD = 0.01; // Weight must be within 0.01 lb to be "same"
-            
-            if (isStable && state.scaleLastWeight !== null) {
-                const weightDiff = Math.abs(decimalPounds - state.scaleLastWeight);
-                if (weightDiff < STABILITY_THRESHOLD) {
-                    if (!state.scaleStableStartTime) {
-                        state.scaleStableStartTime = Date.now();
+                // Enter in SKU field = start timer
+                if (e.code === 'Enter' && document.activeElement.id === 'sku-input') {
+                    const sku = document.getElementById('sku-input').value.trim().toUpperCase();
+                    if (sku) {
+                        state.currentSKU = sku;
+                        startTimer();
+                        showToast('info', `SKU: ${sku}`);
                     }
-                    state.scaleStatus = 'stable';
-                } else {
-                    state.scaleStableStartTime = null;
-                    state.scaleStatus = 'motion';
                 }
-            } else if (!isStable) {
-                state.scaleStableStartTime = null;
-                state.scaleStatus = 'motion';
-            } else {
-                state.scaleStatus = 'stable';
-            }
-            
-            state.scaleLastWeight = decimalPounds;
-            state.scaleWeight = decimalPounds;
-            state.scaleWeightDisplay = displayWeight;
-            state.scaleUnit = unit;
-            
-            console.log(`⚖️ Final: ${displayWeight} (${decimalPounds.toFixed(4)} lb), status: ${state.scaleStatus}`);
-            updateScaleUI();
-        }
-        
-        // v2.9.4d: Toggle weight lock
-        function toggleWeightLock() {
-            if (state.scaleWeightLocked) {
-                // Unlock
-                state.scaleWeightLocked = false;
-                state.scaleLockedWeight = null;
-                state.scaleLockedDisplay = '';
-                state.scaleStableStartTime = null;
-                showToast('info', 'Weight unlocked - ready to re-weigh');
-                console.log('⚖️ Weight UNLOCKED');
-            } else {
-                // Lock current weight
-                if (state.scaleWeight !== null && state.scaleWeight > 0) {
-                    state.scaleWeightLocked = true;
-                    state.scaleLockedWeight = state.scaleWeight;
-                    state.scaleLockedDisplay = state.scaleWeightDisplay;
-                    state.scaleStatus = 'locked';
-                    showToast('success', `Weight locked: ${state.scaleLockedDisplay}`);
-                    console.log(`⚖️ Weight LOCKED at ${state.scaleLockedDisplay}`);
-                } else {
-                    showToast('warning', 'No weight to lock - place item on scale first');
-                    return;
-                }
-            }
-            updateScaleUI();
-        }
-        
-        function updateScaleUI() {
-            const display = document.getElementById('scale-display');
-            const weightEl = document.getElementById('scale-weight');
-            const unitEl = document.getElementById('scale-unit');
-            const btn = document.getElementById('scale-btn');
-            const lockBtn = document.getElementById('scale-lock-btn');
-            const statusIndicator = document.getElementById('scale-status-indicator');
-            const statusText = document.getElementById('scale-status-text');
-            
-            // Reset classes
-            display.classList.remove('disconnected', 'connected', 'stable', 'locked', 'motion');
-            statusIndicator.classList.remove('stable', 'motion', 'locked', 'waiting');
-            weightEl.classList.remove('waiting', 'locked');
-            
-            if (state.scaleDevice) {
-                btn.textContent = 'Disconnect';
-                btn.classList.add('disconnect');
-                lockBtn.style.display = 'inline-block';
                 
-                // v2.9.4d: Handle locked state
-                if (state.scaleWeightLocked) {
-                    display.classList.add('locked');
-                    statusIndicator.classList.add('locked');
-                    weightEl.textContent = `🔒 ${state.scaleLockedDisplay}`;
-                    weightEl.classList.add('locked');
-                    unitEl.textContent = '';
-                    lockBtn.textContent = '🔓 Unlock';
-                    lockBtn.classList.remove('lock');
-                    lockBtn.classList.add('unlock');
-                    statusText.textContent = 'LOCKED';
-                } else if (state.scaleWeightDisplay) {
-                    weightEl.textContent = state.scaleWeightDisplay;
-                    unitEl.textContent = '';
-                    lockBtn.textContent = '🔒 Lock';
-                    lockBtn.classList.add('lock');
-                    lockBtn.classList.remove('unlock');
-                    
-                    // Show stability status
-                    if (state.scaleStatus === 'stable') {
-                        display.classList.add('stable');
-                        statusIndicator.classList.add('stable');
-                        statusText.textContent = '✓ Stable';
-                    } else if (state.scaleStatus === 'motion') {
-                        display.classList.add('motion');
-                        statusIndicator.classList.add('motion');
-                        statusText.textContent = 'Stabilizing...';
+                // R = start/stop recording
+                if (e.code === 'KeyR' && e.ctrlKey) {
+                    e.preventDefault();
+                    if (state.isRecording) {
+                        stopRecording();
                     } else {
-                        display.classList.add('connected');
-                        statusIndicator.classList.add('waiting');
-                        statusText.textContent = 'Reading...';
+                        advancePhase('measurements');
                     }
-                } else {
-                    display.classList.add('connected');
-                    weightEl.textContent = 'Waiting...';
-                    weightEl.classList.add('waiting');
-                    unitEl.textContent = '';
-                    statusIndicator.classList.add('waiting');
-                    statusText.textContent = 'Waiting for weight...';
-                    lockBtn.style.display = 'none';
                 }
-            } else {
-                display.classList.add('disconnected');
-                weightEl.textContent = 'Not connected';
-                weightEl.classList.add('waiting');
-                unitEl.textContent = '';
-                btn.textContent = 'Connect';
-                btn.classList.remove('disconnect');
-                lockBtn.style.display = 'none';
-                statusText.textContent = 'Disconnected';
-            }
-        }
-        
-        // v2.9.4d: Returns weight - uses LOCKED weight if locked, otherwise live weight
-        function getCurrentWeight() {
-            // If weight is locked, return the locked weight
-            if (state.scaleWeightLocked && state.scaleLockedWeight !== null) {
-                return {
-                    pounds: state.scaleLockedWeight,
-                    display: state.scaleLockedDisplay,
-                    raw: {
-                        value: state.scaleLockedWeight,
-                        unit: state.scaleUnit
-                    },
-                    source: 'Dymo M10 USB Scale',
-                    locked: true
-                };
-            }
-            
-            // Otherwise return live weight
-            if (state.scaleWeight !== null && state.scaleDevice) {
-                return {
-                    pounds: state.scaleWeight,
-                    display: state.scaleWeightDisplay || `${state.scaleWeight.toFixed(2)} lb`,
-                    raw: {
-                        value: state.scaleWeight,
-                        unit: state.scaleUnit
-                    },
-                    source: 'Dymo M10 USB Scale',
-                    locked: false
-                };
-            }
-            return null;
+                
+                // C = complete
+                if (e.code === 'KeyC' && e.ctrlKey && e.shiftKey) {
+                    e.preventDefault();
+                    completeItem();
+                }
+                
+                // 1-8 = select category
+                if (e.code.startsWith('Digit') && document.activeElement.tagName !== 'INPUT') {
+                    const num = parseInt(e.code.slice(5));
+                    const categories = Object.keys(CATEGORIES);
+                    if (num >= 1 && num <= categories.length) {
+                        selectCategory(categories[num - 1]);
+                    }
+                }
+            });
         }
         
         // =====================================================================
-        // TOAST
+        // INIT
         // =====================================================================
-        function showToast(type, msg) {
-            const c = document.getElementById('toast-container');
-            const t = document.createElement('div');
-            t.className = `toast ${type}`;
-            t.textContent = msg;
-            c.appendChild(t);
-            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
-        }
         
         document.addEventListener('DOMContentLoaded', init);
     </script>
