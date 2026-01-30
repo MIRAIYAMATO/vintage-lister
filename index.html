@@ -3,1288 +3,1792 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.5 ASYNC</title>
+    <title>VintageLister v2.9.5</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        /* =====================================================================
-           VintageLister v2.9.5 ASYNC - Zero Wait Time Architecture
-           
-           MAJOR CHANGE: All AI processing moved to Lambda (async)
-           - Photographer clicks COMPLETE → UI resets in < 1 second
-           - No more 10-30 second waits
-           - AI runs in background via Lambda after S3 upload
-           
-           What's removed from browser:
-           - OCR calls (moved to Lambda)
-           - Image Processing calls (moved to Lambda)
-           - Photo Routing calls (moved to Lambda)
-           - Full Pipeline calls (moved to Lambda)
-           
-           What's added:
-           - Trigger file upload to signal Lambda to process
-           - Status field in JSON for tracking processing state
-           ===================================================================== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #475569;
+            --radius: 8px;
+        }
+        
+        html, body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e; 
-            color: #eee;
-            min-height: 100vh;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
         }
         
-        .header {
-            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #0f3460;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .header h1 {
-            font-size: 1.4rem;
-            background: linear-gradient(90deg, #e94560, #0f3460);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .version-badge {
-            background: #e94560;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        .main-grid {
+        .app-container {
             display: grid;
-            grid-template-columns: 300px 1fr 320px;
-            gap: 15px;
-            padding: 15px;
-            max-width: 1800px;
-            margin: 0 auto;
+            grid-template-columns: 300px 1fr 300px;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 1200px) {
+            .app-container { grid-template-columns: 260px 1fr 260px; }
         }
         
         .panel {
-            background: #16213e;
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid #0f3460;
-        }
-        
-        .panel-title {
-            font-size: 0.85rem;
-            color: #e94560;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            background: var(--bg-primary);
+            border-right: 1px solid var(--border-color);
             display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        /* Camera & Preview */
-        .camera-container {
-            position: relative;
-            background: #000;
-            border-radius: 8px;
+            flex-direction: column;
             overflow: hidden;
-            aspect-ratio: 4/3;
         }
         
-        #camera-preview {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
+        .panel-right { border-right: none; border-left: 1px solid var(--border-color); }
         
-        .camera-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            display: flex;
-            justify-content: space-between;
-            pointer-events: none;
-        }
-        
-        .camera-badge {
-            background: rgba(0,0,0,0.7);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-        }
-        
-        /* Photo Grid */
-        .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 8px;
-            margin-top: 10px;
-            max-height: 200px;
+        .panel-scroll {
+            flex: 1;
             overflow-y: auto;
+            padding: 12px;
         }
         
-        .photo-thumb {
-            aspect-ratio: 1;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        
-        .photo-thumb:hover {
-            border-color: #e94560;
-            transform: scale(1.05);
-        }
-        
-        .photo-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .photo-thumb .label {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.8);
-            padding: 2px 4px;
-            font-size: 0.65rem;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* SKU Input */
-        .sku-section {
+        /* Header */
+        .header-bar {
             display: flex;
-            gap: 10px;
             align-items: center;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            flex-shrink: 0;
+        }
+        
+        .timer-section { text-align: left; }
+        .timer { font-size: 28px; font-weight: 700; font-family: 'Courier New', monospace; color: white; }
+        .timer-label { font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+        
+        .stats-section { text-align: center; }
+        .stats-row { display: flex; gap: 12px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 16px; font-weight: 700; color: white; }
+        .stat-label { font-size: 8px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+        
+        .version-info { text-align: right; }
+        .version-badge { font-size: 10px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; display: block; margin-bottom: 4px; }
+        .retry-badge { font-size: 9px; color: var(--accent-yellow); display: none; }
+        .retry-badge.visible { display: block; }
+        
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        /* SKU Input - Fixed Layout */
+        .sku-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-wrap: nowrap;
         }
         
         .sku-input {
             flex: 1;
-            background: #0f3460;
-            border: 2px solid #e94560;
-            color: #fff;
-            padding: 12px 15px;
-            border-radius: 8px;
-            font-size: 1.2rem;
+            min-width: 0;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 14px;
             font-weight: 600;
-            text-transform: uppercase;
         }
         
-        .sku-input:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
-        }
+        .sku-input:focus { outline: none; border-color: var(--accent-blue); }
         
-        /* Buttons */
-        .btn {
-            padding: 10px 20px;
+        .sku-btn {
+            padding: 10px 12px;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
+            border-radius: var(--radius);
+            font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         
-        .btn-primary {
-            background: linear-gradient(135deg, #e94560, #c73e54);
-            color: white;
-        }
+        .sku-btn-scan { background: var(--accent-purple); color: white; }
+        .sku-btn-start { background: var(--accent-green); color: white; font-weight: 600; }
+        .sku-btn:hover { filter: brightness(1.1); }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-        }
-        
-        .btn-secondary {
-            background: #0f3460;
-            color: #eee;
-            border: 1px solid #e94560;
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            color: white;
-            font-size: 1.1rem;
-            padding: 15px 30px;
-        }
-        
-        .btn-lg {
-            padding: 15px 30px;
-            font-size: 1rem;
-        }
-        
-        /* Category Selection */
-        .category-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .category-btn {
-            padding: 10px;
-            background: #0f3460;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            color: #eee;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.85rem;
-        }
-        
-        .category-btn:hover {
-            border-color: #e94560;
-        }
-        
-        .category-btn.active {
-            background: #e94560;
-            border-color: #e94560;
-        }
-        
-        /* Measurement Display */
-        .measurement-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .measurement-item {
-            background: #0f3460;
-            padding: 10px;
-            border-radius: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .measurement-item.completed {
-            border-left: 3px solid #2ecc71;
-        }
-        
-        .measurement-label {
-            font-size: 0.8rem;
-            color: #aaa;
-        }
-        
-        .measurement-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #2ecc71;
-        }
-        
-        /* Tag Data Display */
-        .tag-grid {
+        .sku-display {
             display: none;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
+            padding: 12px;
+            background: var(--accent-green);
+            border-radius: var(--radius);
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+        }
+        
+        .sku-display.visible { display: block; }
+        .sku-display:hover { background: #16a34a; }
+        
+        /* Classification */
+        .classification-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 12px;
+        }
+        
+        .classification-box.ready { border-color: var(--accent-green); }
+        .classification-category { font-size: 18px; font-weight: 700; color: var(--accent-yellow); }
+        .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .classification-template span { color: var(--accent-blue); font-weight: 600; }
+        
+        /* Tag Data */
+        .tag-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
             margin-top: 10px;
-            padding: 10px;
-            background: #0f3460;
-            border-radius: 8px;
         }
         
         .tag-item {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .tag-label {
-            font-size: 0.7rem;
-            color: #888;
-            text-transform: uppercase;
-        }
-        
-        .tag-value {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #e94560;
-        }
-        
-        /* Timer */
-        .timer {
-            font-size: 2rem;
-            font-weight: 700;
-            text-align: center;
-            padding: 15px;
-            background: #0f3460;
-            border-radius: 8px;
-            font-family: 'Monaco', monospace;
-        }
-        
-        .timer.warning { color: #f39c12; }
-        .timer.danger { color: #e74c3c; }
-        
-        /* Stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .stat-item {
-            text-align: center;
-            padding: 10px;
-            background: #0f3460;
+            background: var(--bg-secondary);
+            padding: 6px 8px;
             border-radius: 6px;
+            font-size: 11px;
         }
         
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #e94560;
-        }
+        .tag-label { color: var(--text-secondary); font-size: 9px; text-transform: uppercase; }
+        .tag-value { font-weight: 600; margin-top: 2px; }
         
-        .stat-label {
-            font-size: 0.7rem;
-            color: #888;
-            text-transform: uppercase;
-        }
-        
-        /* Weight Display */
-        .weight-display {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .weight-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #3498db;
-        }
-        
-        .weight-status {
-            font-size: 0.75rem;
-            color: #888;
-        }
-        
-        /* Recording indicator */
-        .recording-indicator {
-            display: none;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 15px;
-            background: rgba(231, 76, 60, 0.2);
-            border: 1px solid #e74c3c;
-            border-radius: 8px;
-            margin-top: 10px;
-        }
-        
-        .recording-indicator.active {
-            display: flex;
-        }
-        
-        .recording-dot {
-            width: 12px;
-            height: 12px;
-            background: #e74c3c;
-            border-radius: 50%;
-            animation: blink 1s infinite;
-        }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        /* Toast notifications */
-        .toast-container {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .toast {
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
-            max-width: 350px;
-        }
-        
-        .toast.success { background: #2ecc71; }
-        .toast.warning { background: #f39c12; }
-        .toast.error { background: #e74c3c; }
-        .toast.info { background: #3498db; }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        /* Retry badge */
-        .retry-badge {
-            display: none;
-            background: #f39c12;
-            color: #000;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.75rem;
+        /* Folder Display */
+        .folder-display {
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
             cursor: pointer;
         }
         
-        .retry-badge.visible { display: block; }
+        .folder-display.set { color: var(--accent-green); }
         
-        /* Action buttons row */
-        .action-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
+        /* Photo Grid */
+        .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        
+        .photo-thumb {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            background: var(--bg-tertiary);
         }
         
-        .action-row .btn {
-            flex: 1;
-        }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Phase indicator */
-        .phase-indicator {
-            display: flex;
-            gap: 5px;
-            margin: 15px 0;
-        }
-        
-        .phase {
-            flex: 1;
-            padding: 8px;
+        .photo-thumb-label {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.8);
+            padding: 3px;
+            font-size: 8px;
             text-align: center;
-            background: #0f3460;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            opacity: 0.5;
+            color: var(--accent-yellow);
+        }
+        
+        .photo-thumb-delete {
+            position: absolute;
+            top: 2px; right: 2px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-size: 10px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .photo-thumb:hover .photo-thumb-delete { opacity: 1; }
+        
+        /* Camera Panel */
+        .camera-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        .camera-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+        
+        .camera-tab {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+        
+        .camera-tab:hover { background: var(--bg-primary); color: var(--text-primary); }
+        .camera-tab.active { background: var(--accent-blue); color: white; }
+        .camera-tab.closeup.active { background: var(--accent-orange); }
+        .camera-tab.weight.active { background: var(--accent-green); }
+        .camera-tab.handheld.active { background: var(--accent-purple); }
+        
+        /* Camera Info */
+        .camera-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.5);
+            font-size: 11px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .camera-name { font-weight: 600; color: var(--text-primary); }
+        .resolution-badge { background: var(--bg-secondary); padding: 3px 8px; border-radius: 4px; }
+        .photo-count-badge { background: var(--accent-green); color: white; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
+        
+        /* Video */
+        .video-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+        
+        .video-container video { width: 100%; height: 100%; object-fit: contain; }
+        .video-placeholder { color: var(--text-secondary); text-align: center; padding: 40px; }
+        
+        .capture-flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+        
+        .capture-flash.active { opacity: 0.7; }
+        
+        /* Capture Area - Complete Button */
+        .capture-area {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 16px;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+        
+        .capture-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 4px solid var(--text-primary);
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .capture-btn::after {
+            content: '';
+            position: absolute;
+            inset: 5px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            transition: all 0.2s;
+        }
+        
+        .capture-btn:hover::after { background: var(--accent-blue); }
+        .capture-btn:active { transform: scale(0.95); }
+        
+        .complete-btn-camera {
+            padding: 14px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--accent-green);
+            color: white;
+            transition: all 0.2s;
+        }
+        
+        .complete-btn-camera:hover { filter: brightness(1.1); }
+        .complete-btn-camera:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* AI Overlay */
+        .ai-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            opacity: 0;
+            visibility: hidden;
             transition: all 0.3s;
         }
         
-        .phase.active {
-            opacity: 1;
-            background: #e94560;
-        }
+        .ai-overlay.active { opacity: 1; visibility: visible; }
+        .spinner { width: 36px; height: 36px; border: 3px solid var(--bg-tertiary); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
-        .phase.complete {
-            opacity: 1;
-            background: #2ecc71;
-        }
+        /* Measurements */
+        .measurement-list { display: flex; flex-direction: column; gap: 6px; }
         
-        /* Async processing badge - NEW for v2.9.5 */
-        .async-badge {
-            background: linear-gradient(135deg, #9b59b6, #8e44ad);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            display: inline-flex;
+        .measurement-item {
+            display: flex;
             align-items: center;
-            gap: 5px;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 12px;
         }
         
-        .async-badge::before {
-            content: '⚡';
+        .measurement-item.completed {
+            background: linear-gradient(90deg, rgba(34,197,94,0.2), transparent);
+            border-left: 3px solid var(--accent-green);
+        }
+        
+        .measurement-num {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        
+        .measurement-name { flex: 1; }
+        .measurement-value { font-weight: 600; color: var(--accent-green); }
+        
+        /* Transcript Display */
+        .transcript-box {
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: none;
+        }
+        
+        .transcript-box.visible { display: block; }
+        .transcript-label { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .transcript-text { font-style: italic; }
+        
+        /* Buttons */
+        .btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        .btn-primary { background: var(--accent-green); color: white; }
+        .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-record { background: var(--accent-red); color: white; }
+        .btn-stop { background: #dc2626; color: white; animation: pulse-stop 1s infinite; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        @keyframes pulse-stop { 
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 
+            50% { opacity: 0.9; box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .modal-title { font-size: 16px; font-weight: 600; }
+        
+        .modal-close {
+            width: 30px; height: 30px;
+            border: none;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .modal-body { padding: 16px; }
+        .form-group { margin-bottom: 14px; }
+        .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+        
+        .form-select, .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        
+        .form-select:focus, .form-input:focus { outline: none; border-color: var(--accent-blue); }
+        
+        /* Barcode Scanner */
+        .barcode-container {
+            position: relative;
+            background: #000;
+            aspect-ratio: 4/3;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .barcode-container video, .barcode-container canvas { width: 100%; height: 100%; object-fit: cover; }
+        
+        .barcode-target {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px; height: 80px;
+            border: 3px solid var(--accent-yellow);
+            border-radius: 8px;
+        }
+        
+        .barcode-status {
+            position: absolute;
+            bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .barcode-status.success { background: var(--accent-green); }
+        
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px; right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .toast {
+            padding: 10px 16px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        .toast.success { background: var(--accent-green); color: white; }
+        .toast.error { background: var(--accent-red); color: white; }
+        .toast.warning { background: var(--accent-yellow); color: black; }
+        .toast.info { background: var(--accent-blue); color: white; }
+        
+        /* v2.9.5: Weight Photo Status (replaces Dymo Scale) */
+        .weight-photo-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            border: 1px dashed var(--border-color);
+        }
+        
+        .weight-photo-status.captured {
+            border: 1px solid var(--accent-green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .weight-status-icon {
+            font-size: 20px;
+        }
+        
+        .weight-status-text {
+            font-size: 13px;
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>VintageLister</h1>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span class="async-badge">ZERO WAIT MODE</span>
-            <span class="version-badge">v2.9.5 ASYNC</span>
-            <span id="retry-badge" class="retry-badge" onclick="processRetryQueue()"></span>
-        </div>
-    </div>
-    
-    <div class="main-grid">
-        <!-- LEFT PANEL: Camera & Photos -->
-        <div class="panel">
-            <div class="panel-title">📷 Camera</div>
-            
-            <div class="camera-container">
-                <video id="camera-preview" autoplay playsinline></video>
-                <div class="camera-overlay">
-                    <span class="camera-badge" id="camera-name">No Camera</span>
-                    <span class="camera-badge" id="photo-count">0 photos</span>
-                </div>
-            </div>
-            
-            <div class="action-row">
-                <button class="btn btn-primary" onclick="capturePhoto()">📸 Capture</button>
-                <button class="btn btn-secondary" onclick="switchCamera()">🔄 Switch</button>
-            </div>
-            
-            <div class="panel-title" style="margin-top: 15px;">📁 Photos</div>
-            <div class="photo-grid" id="photo-grid"></div>
-        </div>
-        
-        <!-- CENTER PANEL: Main Controls -->
-        <div style="display: flex; flex-direction: column; gap: 15px;">
-            <!-- SKU & Category -->
-            <div class="panel">
-                <div class="sku-section">
-                    <input type="text" class="sku-input" id="sku-input" placeholder="SCAN SKU..." autofocus>
-                    <button class="btn btn-secondary" onclick="resetItem()">🔄 Reset</button>
-                </div>
-                
-                <div class="panel-title">📂 Category</div>
-                <div class="category-grid" id="category-grid"></div>
-            </div>
-            
-            <!-- Phase Indicator -->
-            <div class="panel">
-                <div class="panel-title">📍 Workflow Phase</div>
-                <div class="phase-indicator">
-                    <div class="phase" id="phase-main">Main Photos</div>
-                    <div class="phase" id="phase-closeup">Closeups</div>
-                    <div class="phase" id="phase-measure">Measurements</div>
-                    <div class="phase" id="phase-complete">Complete</div>
-                </div>
-                
-                <div class="timer" id="timer">00:00</div>
-                
-                <div class="recording-indicator" id="recording-indicator">
-                    <div class="recording-dot"></div>
-                    <span>Recording measurements...</span>
-                </div>
-            </div>
-            
-            <!-- Measurements -->
-            <div class="panel">
-                <div class="panel-title">📏 Measurements</div>
-                <div class="measurement-grid" id="measurement-grid"></div>
-            </div>
-            
-            <!-- Complete Button -->
-            <button class="btn btn-success btn-lg" onclick="completeItem()" style="width: 100%;">
-                ✅ COMPLETE - INSTANT SUBMIT
-            </button>
-        </div>
-        
-        <!-- RIGHT PANEL: Data & Stats -->
-        <div style="display: flex; flex-direction: column; gap: 15px;">
-            <!-- Weight -->
-            <div class="panel">
-                <div class="panel-title">⚖️ Weight</div>
-                <div class="weight-display">
-                    <div class="weight-value" id="weight-value">--</div>
-                    <div class="weight-status" id="weight-status">Waiting for scale...</div>
-                </div>
-            </div>
-            
-            <!-- Tag Data (populated by Lambda async) -->
-            <div class="panel">
-                <div class="panel-title">🏷️ Tag Data <span style="font-size: 0.65rem; color: #888;">(processed async)</span></div>
-                <div class="tag-grid" id="tag-grid">
-                    <div class="tag-item">
-                        <span class="tag-label">Brand</span>
-                        <span class="tag-value" id="tag-brand">-</span>
-                    </div>
-                    <div class="tag-item">
-                        <span class="tag-label">Size</span>
-                        <span class="tag-value" id="tag-size">-</span>
-                    </div>
-                    <div class="tag-item">
-                        <span class="tag-label">Materials</span>
-                        <span class="tag-value" id="tag-materials">-</span>
-                    </div>
-                    <div class="tag-item">
-                        <span class="tag-label">Country</span>
-                        <span class="tag-value" id="tag-country">-</span>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 10px; color: #666; font-size: 0.75rem;">
-                    AI processing happens after upload
-                </div>
-            </div>
-            
-            <!-- Session Stats -->
-            <div class="panel">
-                <div class="panel-title">📊 Session Stats</div>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-completed">0</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-avg-time">0:00</div>
-                        <div class="stat-label">Avg Time</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="stat-per-hour">0</div>
-                        <div class="stat-label">Per Hour</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Folder Selection -->
-            <div class="panel">
-                <div class="panel-title">💾 Save Location</div>
-                <button class="btn btn-secondary" onclick="selectSaveFolder()" style="width: 100%;">
-                    📁 Select Folder
-                </button>
-                <div id="folder-path" style="margin-top: 8px; font-size: 0.75rem; color: #888; word-break: break-all;"></div>
-            </div>
-        </div>
-    </div>
-    
     <div class="toast-container" id="toast-container"></div>
     
-    <script>
-        // =====================================================================
-        // VintageLister v2.9.5 ASYNC
-        // 
-        // ARCHITECTURE CHANGE:
-        // - All AI processing (OCR, Image Processing, Photo Routing, Pipeline)
-        //   now happens ASYNCHRONOUSLY in Lambda AFTER S3 upload
-        // - Photographer sees INSTANT UI reset (< 1 second)
-        // - No more 10-30 second waits
-        //
-        // Flow:
-        // 1. Photographer captures photos, records measurements
-        // 2. Clicks COMPLETE
-        // 3. Data captured, UI resets IMMEDIATELY
-        // 4. Background: uploads to S3, triggers Lambda
-        // 5. Lambda processes AI async, updates JSON in S3
-        // 6. n8n gets final processed data
-        // =====================================================================
+    <div class="app-container">
+        <!-- Left Panel -->
+        <div class="panel panel-left">
+            <div class="header-bar">
+                <div class="timer-section">
+                    <div class="timer" id="timer">0:00</div>
+                    <div class="timer-label">Item Time</div>
+                </div>
+                <div class="stats-section">
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="item-count">0</div>
+                            <div class="stat-label">Items</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avg-time">0:00</div>
+                            <div class="stat-label">Avg</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="version-info">
+                    <span class="version-badge" id="version-badge">v2.9.4e</span>
+                    <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
+                </div>
+            </div>
+            
+            <div class="panel-scroll">
+                <!-- SKU - Fixed Layout -->
+                <div class="section-card">
+                    <div class="section-title">🏷️ Item SKU</div>
+                    <div class="sku-row" id="sku-row">
+                        <input type="text" class="sku-input" id="sku-input" placeholder="Scan or type SKU...">
+                        <button class="sku-btn sku-btn-scan" onclick="openBarcodeScanner()">📷</button>
+                        <button class="sku-btn sku-btn-start" onclick="startNewItem()">START</button>
+                    </div>
+                    <div class="sku-display" id="sku-display" onclick="cancelItem()"></div>
+                </div>
+                
+                <!-- Classification -->
+                <div class="section-card">
+                    <div class="section-title">🤖 AI Classification</div>
+                    <div class="classification-box" id="classification-box">
+                        <div class="classification-category" id="classification-category">Waiting...</div>
+                        <div class="classification-template">Template: <span id="classification-template">-</span></div>
+                    </div>
+                    <div class="tag-grid" id="tag-grid" style="display: none;">
+                        <div class="tag-item"><div class="tag-label">Brand</div><div class="tag-value" id="tag-brand">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Size</div><div class="tag-value" id="tag-size">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Materials</div><div class="tag-value" id="tag-materials">-</div></div>
+                        <div class="tag-item"><div class="tag-label">Country</div><div class="tag-value" id="tag-country">-</div></div>
+                    </div>
+                </div>
+                
+                <!-- Save Location -->
+                <div class="section-card">
+                    <div class="section-title">💾 Save Location</div>
+                    <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
+                </div>
+                
+                <!-- Weight Photo Status (replaces USB Scale) -->
+                <div class="section-card">
+                    <div class="section-title">⚖️ Weight Photo</div>
+                    <div class="weight-photo-status" id="weight-photo-status">
+                        <span class="weight-status-icon">📷</span>
+                        <span class="weight-status-text" id="weight-status-text">No weight photo</span>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+                        Switch to WEIGHT camera to capture scale display
+                    </div>
+                </div>
+                
+                <!-- Photos -->
+                <div class="section-card">
+                    <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
+                    <div class="photo-grid" id="photo-grid"></div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="openSettings()">⚙️ Settings</button>
+            </div>
+        </div>
         
-        const VERSION = '2.9.5-ASYNC';
-        const LAMBDA_URL = localStorage.getItem('lambdaUrl') || 'https://xxxxxxx.lambda-url.us-east-1.on.aws/';
+        <!-- Camera Panel -->
+        <div class="panel camera-panel">
+            <div class="camera-tabs">
+                <button class="camera-tab active" data-mode="main" onclick="switchCameraMode('main')">📷 MAIN</button>
+                <button class="camera-tab closeup" data-mode="closeup" onclick="switchCameraMode('closeup')">🔍 CLOSEUP</button>
+                <button class="camera-tab weight" data-mode="weight" onclick="switchCameraMode('weight')">⚖️ WEIGHT</button>
+                <button class="camera-tab handheld" data-mode="handheld" onclick="switchCameraMode('handheld')">📱 HANDHELD</button>
+            </div>
+            
+            <div class="camera-info">
+                <span class="camera-name" id="camera-name">No camera</span>
+                <span class="resolution-badge" id="resolution-badge">-</span>
+                <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
+            </div>
+            
+            <div class="video-container">
+                <video id="video-preview" autoplay playsinline muted></video>
+                <div class="video-placeholder" id="video-placeholder">📷 Select a camera in Settings</div>
+                <div class="capture-flash" id="capture-flash"></div>
+                <div class="ai-overlay" id="ai-overlay">
+                    <div class="spinner"></div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">AI analyzing photos...</div>
+                </div>
+            </div>
+            
+            <div class="capture-area">
+                <button class="capture-btn" id="capture-btn" onclick="capturePhoto()"></button>
+                <button class="complete-btn-camera" id="complete-btn-camera" onclick="completeItem()" disabled>✅ COMPLETE</button>
+            </div>
+        </div>
+        
+        <!-- Right Panel - REMOVED COMPLETE & SAVE BUTTON -->
+        <div class="panel panel-right">
+            <div class="panel-scroll">
+                <div class="section-card">
+                    <div class="section-title">📏 Measurements</div>
+                    <div class="measurement-list" id="measurement-list">
+                        <div style="color: var(--text-secondary); font-size: 12px; text-align: center; padding: 16px;">
+                            Classify item first
+                        </div>
+                    </div>
+                    <div class="transcript-box" id="transcript-box">
+                        <div class="transcript-label">📝 Transcript:</div>
+                        <div class="transcript-text" id="transcript-text"></div>
+                    </div>
+                </div>
+                
+                <!-- Recording button - Changes to TAP TO STOP when recording -->
+                <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
+                
+                <!-- NOTE: "COMPLETE & SAVE" button REMOVED from here per user request -->
+                <!-- The COMPLETE button in the camera capture area is the only submit option -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Barcode Modal -->
+    <div class="modal-overlay" id="barcode-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">📷 Scan Barcode</div>
+                <button class="modal-close" onclick="closeBarcodeScanner()">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="barcode-container" id="barcode-container">
+                    <div class="barcode-target"></div>
+                    <div class="barcode-status" id="barcode-status">Starting scanner...</div>
+                </div>
+                <div style="padding: 12px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="closeBarcodeScanner()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ Settings</div>
+                <button class="modal-close" onclick="closeSettings()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Main Camera</label>
+                    <select class="form-select" id="camera-main"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Closeup Camera</label>
+                    <select class="form-select" id="camera-closeup"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Weight Camera (above scale)</label>
+                    <select class="form-select" id="camera-weight"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Handheld Camera</label>
+                    <select class="form-select" id="camera-handheld"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Barcode Scanner Camera</label>
+                    <select class="form-select" id="camera-barcode"></select>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 16px 0;">
+                <div class="form-group">
+                    <label class="form-label">Photographer ID</label>
+                    <input type="text" class="form-input" id="photographer-id" placeholder="photographer_1" value="photographer_1">
+                </div>
+                <hr style="border-color: var(--border-color); margin: 16px 0;">
+                <div class="form-group">
+                    <label class="form-label">Lambda URL</label>
+                    <input type="text" class="form-input" id="lambda-url" placeholder="https://...">
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <canvas id="capture-canvas" style="display: none;"></canvas>
+    <canvas id="resize-canvas" style="display: none;"></canvas>
+    
+    <script>
+        // =============================================================================
+        // VINTAGELISTER v2.9.5 - ASYNC ARCHITECTURE + WEIGHT CAMERA
+        // 
+        // MAJOR CHANGES FROM v2.9.4e:
+        // 
+        // 1. ASYNC AI PROCESSING
+        //    - Removed blocking AI from completeItem() (was causing 15-30 sec wait)
+        //    - OCR, Image Processing, Photo Routing, Full Pipeline → moved to n8n
+        //    - Photographer clicks COMPLETE → uploads in ~2-3 sec → UI resets
+        //    - n8n pulls from S3 and does all AI processing async
+        //
+        // 2. WEIGHT CAMERA (replaces Dymo USB scale)
+        //    - New 4th camera mode: WEIGHT
+        //    - Dedicated camera mounted above scale
+        //    - Photographer takes photo of scale display
+        //    - n8n does OCR to extract weight value
+        //    - Eliminates USB scale connection issues and extra clicks
+        //
+        // 3. SIMPLIFIED S3 FOLDER STRUCTURE
+        //    - main/      ← all main camera photos
+        //    - closeup/   ← all closeup photos (n8n categorizes later)
+        //    - weight/    ← scale display photo
+        //    - handheld/  ← handheld camera photos
+        //    - measurements/ ← audio, transcript
+        //    - data/      ← JSON file
+        //
+        // 4. DETAILED KPI TIMING
+        //    - Granular timestamps for each workflow phase
+        //    - Per-photographer, per-category analysis capability
+        //    - Supports efficiency optimization across item types
+        //
+        // AI KEPT IN BROWSER:
+        //    - classify (template selection) - photographer needs to see measurement list
+        //    - whisper (transcription) - photographer needs to verify transcript
+        //
+        // AI MOVED TO N8N:
+        //    - OCR (tag data extraction)
+        //    - Image Processing (rotation/crop analysis)
+        //    - Photo Routing (tag/feature/defect categorization)
+        //    - Full Pipeline (measurement parsing/matching/validation)
+        // =============================================================================
+        
+        const VERSION = '2.9.5';
+        const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
+        const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
         
-        // Categories
-        const CATEGORIES = {
-            'tops': { label: '👕 Tops', icon: '👕' },
-            'bottoms': { label: '👖 Bottoms', icon: '👖' },
-            'outerwear': { label: '🧥 Outerwear', icon: '🧥' },
-            'dresses': { label: '👗 Dresses', icon: '👗' },
-            'suits': { label: '🤵 Suits', icon: '🤵' },
-            'accessories': { label: '👜 Accessories', icon: '👜' },
-            'footwear': { label: '👟 Footwear', icon: '👟' },
-            'other': { label: '📦 Other', icon: '📦' }
-        };
-        
-        // State
         const state = {
-            currentSKU: null,
+            lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
+            lambdaVersion: null,
+            currentSKU: '',
+            currentMode: 'main',
+            currentStream: null,
+            cameras: {
+                main: { deviceId: localStorage.getItem('camera-main') || null },
+                closeup: { deviceId: localStorage.getItem('camera-closeup') || null },
+                weight: { deviceId: localStorage.getItem('camera-weight') || null },
+                handheld: { deviceId: localStorage.getItem('camera-handheld') || null },
+                barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
+            },
+            availableCameras: [],
+            photos: { main: [], closeup: [], weight: [], handheld: [] },
             classification: null,
             templateKey: null,
             template: null,
-            photos: { main: [], closeup: [], handheld: [] },
+            tagData: null,
             measurements: {},
-            rawTranscript: null,
+            rawTranscript: '',
             audioBlob: null,
-            discardedRecordings: [],
-            lastRecordingDuration: 0,
-            weight: null,
+            saveDirectoryHandle: null,
             timerStart: null,
             timerInterval: null,
-            phase: 'main', // main, closeup, measurements
-            timing: {},
-            
-            // Camera
-            cameras: [],
-            currentCameraIndex: 0,
-            stream: null,
-            
-            // Recording
+            isRecording: false,
             mediaRecorder: null,
             audioChunks: [],
-            isRecording: false,
-            
-            // Save
-            saveDirectoryHandle: null,
-            
-            // Session stats
+            aiTriggered: false,
+            // v2.9.5: Detailed KPI timing for each workflow phase
+            timing: {
+                itemStartTime: null,          // When SKU entered/scanned
+                classificationTime: null,     // When AI classification completed
+                mainPhotosStartTime: null,    // When started taking main photos
+                mainPhotosEndTime: null,      // When switched away from MAIN
+                closeupStartTime: null,       // When switched to CLOSEUP
+                closeupEndTime: null,         // When switched away from CLOSEUP
+                weightStartTime: null,        // When switched to WEIGHT
+                weightEndTime: null,          // When switched away from WEIGHT
+                measurementsStartTime: null,  // When started recording
+                measurementsEndTime: null,    // When recording stopped
+                completeTime: null            // When COMPLETE clicked
+            },
+            // Stats
             completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
-            sessionStart: Date.now(),
-            
             // Retry queue
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
-            
-            // Templates (loaded from Lambda)
-            templates: {}
+            // v2.9.5: Removed Dymo USB Scale - using weight camera instead
+            // Discarded recordings for QC
+            discardedRecordings: [],
+            recordingStartTime: null,
+            // v2.9.5: Photographer ID from settings
+            photographerId: localStorage.getItem('photographerId') || 'photographer_1'
         };
         
         // =====================================================================
-        // INITIALIZATION
+        // INIT
         // =====================================================================
-        
         async function init() {
-            console.log(`🚀 VintageLister ${VERSION} initializing...`);
-            
-            // Build UI
-            buildCategoryGrid();
-            
-            // Initialize camera
-            await initCamera();
-            
-            // Load templates from Lambda
-            await loadTemplates();
-            
-            // Initialize Dymo scale
-            initDymoScale();
-            
-            // Set up keyboard shortcuts
-            setupKeyboardShortcuts();
-            
-            // Update stats display
+            console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px;');
+            document.getElementById('lambda-url').value = state.lambdaUrl;
             updateStats();
             updateRetryBadge();
+            await checkLambda();
+            await enumerateCameras();
+            if (state.cameras.main.deviceId) await startCamera('main');
             
-            // Check for saved folder
-            const savedFolderName = localStorage.getItem('saveFolderName');
-            if (savedFolderName) {
-                document.getElementById('folder-path').textContent = `📁 ${savedFolderName}`;
+            // SPACE key for pedal capture
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
+                    e.preventDefault();
+                    capturePhoto();
+                }
+            });
+            
+            // Process retry queue
+            processRetryQueue();
+            
+            console.log('✅ Init complete - SPACE key enabled, scale fix applied');
+        }
+        
+        // =====================================================================
+        // LAMBDA
+        // =====================================================================
+        async function checkLambda() {
+            try {
+                const res = await fetch(state.lambdaUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'diagnostics' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    state.lambdaVersion = data.version;
+                    document.getElementById('version-badge').textContent = `v${VERSION} | λ${data.version}`;
+                    console.log(`✅ Lambda v${data.version} healthy`);
+                    showToast('success', `Connected to Lambda v${data.version}`);
+                }
+            } catch (err) {
+                console.error('Lambda check failed:', err);
+                showToast('error', 'Lambda connection failed');
             }
-            
-            showToast('success', `VintageLister ${VERSION} ready!`);
-            console.log('✅ Initialization complete');
+        }
+        
+        async function callLambda(action, body = {}) {
+            const res = await fetch(state.lambdaUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, ...body })
+            });
+            return res.json();
         }
         
         // =====================================================================
         // CAMERA
         // =====================================================================
-        
-        async function initCamera() {
+        async function enumerateCameras() {
             try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(t => t.stop());
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                state.cameras = devices.filter(d => d.kind === 'videoinput');
-                
-                if (state.cameras.length === 0) {
-                    showToast('error', 'No cameras found');
-                    return;
-                }
-                
-                await startCamera(state.currentCameraIndex);
-            } catch (e) {
-                console.error('Camera init failed:', e);
-                showToast('error', 'Camera access denied');
+                state.availableCameras = devices.filter(d => d.kind === 'videoinput');
+                console.log(`📹 Found ${state.availableCameras.length} cameras`);
+                populateCameraSelects();
+            } catch (err) {
+                console.error('Camera enum failed:', err);
             }
         }
         
-        async function startCamera(index) {
-            if (state.stream) {
-                state.stream.getTracks().forEach(t => t.stop());
+        function populateCameraSelects() {
+            // v2.9.5: Include weight camera
+            ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
+                const sel = document.getElementById(`camera-${mode}`);
+                if (!sel) return;
+                sel.innerHTML = '<option value="">Select camera...</option>';
+                state.availableCameras.forEach((cam, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = cam.deviceId;
+                    opt.textContent = cam.label || `Camera ${i + 1}`;
+                    if (cam.deviceId === state.cameras[mode].deviceId) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            });
+            
+            // v2.9.5: Load photographer ID into settings
+            const photographerInput = document.getElementById('photographer-id');
+            if (photographerInput) {
+                photographerInput.value = state.photographerId;
             }
-            
-            const camera = state.cameras[index];
-            const constraints = {
-                video: {
-                    deviceId: { exact: camera.deviceId },
-                    width: { ideal: 4000 },
-                    height: { ideal: 3000 }
-                }
-            };
-            
+        }
+        
+        async function startCamera(mode) {
+            const deviceId = state.cameras[mode].deviceId;
+            if (!deviceId) {
+                document.getElementById('video-placeholder').style.display = 'block';
+                return;
+            }
+            if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
             try {
-                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                document.getElementById('camera-preview').srcObject = state.stream;
-                document.getElementById('camera-name').textContent = camera.label.split('(')[0].trim() || `Camera ${index + 1}`;
-            } catch (e) {
-                console.error('Failed to start camera:', e);
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
+                });
+                state.currentStream = stream;
+                document.getElementById('video-preview').srcObject = stream;
+                document.getElementById('video-placeholder').style.display = 'none';
+                const settings = stream.getVideoTracks()[0].getSettings();
+                document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
+                const cam = state.availableCameras.find(c => c.deviceId === deviceId);
+                document.getElementById('camera-name').textContent = cam?.label || 'Camera';
+                console.log(`📹 Started ${mode}: ${settings.width}×${settings.height}`);
+            } catch (err) {
+                console.error('Start camera failed:', err);
             }
         }
         
-        function switchCamera() {
-            state.currentCameraIndex = (state.currentCameraIndex + 1) % state.cameras.length;
-            startCamera(state.currentCameraIndex);
+        function switchCameraMode(mode) {
+            const prevMode = state.currentMode;
+            const now = Date.now();
+            
+            // v2.9.5: Track end time for previous mode
+            if (state.currentSKU) {
+                if (prevMode === 'main' && state.timing.mainPhotosStartTime) {
+                    state.timing.mainPhotosEndTime = now;
+                } else if (prevMode === 'closeup' && state.timing.closeupStartTime) {
+                    state.timing.closeupEndTime = now;
+                } else if (prevMode === 'weight' && state.timing.weightStartTime) {
+                    state.timing.weightEndTime = now;
+                }
+            }
+            
+            state.currentMode = mode;
+            document.querySelectorAll('.camera-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+            startCamera(mode);
+            updatePhotoCount();
+            
+            // v2.9.5: Track start time for new mode
+            if (state.currentSKU) {
+                if (mode === 'closeup' && !state.timing.closeupStartTime) {
+                    state.timing.closeupStartTime = now;
+                } else if (mode === 'weight' && !state.timing.weightStartTime) {
+                    state.timing.weightStartTime = now;
+                }
+            }
+            
+            // Trigger AI when switching to closeup (after taking main photos)
+            if (prevMode === 'main' && mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
+                triggerAI();
+            }
         }
         
-        async function capturePhoto() {
+        // =====================================================================
+        // PHOTO CAPTURE
+        // =====================================================================
+        function capturePhoto() {
+            if (!state.currentStream) {
+                showToast('warning', 'No camera active');
+                return;
+            }
             if (!state.currentSKU) {
-                showToast('warning', 'Enter SKU first');
-                document.getElementById('sku-input').focus();
+                showToast('warning', 'Start an item first');
                 return;
             }
             
-            const video = document.getElementById('camera-preview');
-            const canvas = document.createElement('canvas');
+            const video = document.getElementById('video-preview');
+            const canvas = document.getElementById('capture-canvas');
+            const ctx = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
+            ctx.drawImage(video, 0, 0);
             
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+            const flash = document.getElementById('capture-flash');
+            flash.classList.add('active');
+            setTimeout(() => flash.classList.remove('active'), 100);
             
-            // Determine photo type based on phase
-            const photoType = state.phase === 'main' ? 'main' : 
-                             state.phase === 'closeup' ? 'closeup' : 'handheld';
+            const currentMode = state.currentMode;
             
-            const photoIndex = state.photos[photoType].length + 1;
-            const label = `${photoType}_${String(photoIndex).padStart(2, '0')}`;
-            
-            state.photos[photoType].push({
-                blob: blob,
-                label: label,
-                timestamp: Date.now()
-            });
-            
-            updatePhotoGrid();
-            updatePhotoCount();
-            
-            // Auto-advance phase
-            if (state.phase === 'main' && state.photos.main.length >= 4) {
-                advancePhase('closeup');
-            }
-        }
-        
-        function updatePhotoGrid() {
-            const grid = document.getElementById('photo-grid');
-            grid.innerHTML = '';
-            
-            const allPhotos = [
-                ...state.photos.main.map(p => ({ ...p, type: 'main' })),
-                ...state.photos.closeup.map(p => ({ ...p, type: 'closeup' })),
-                ...state.photos.handheld.map(p => ({ ...p, type: 'handheld' }))
-            ];
-            
-            allPhotos.forEach((photo, i) => {
-                const thumb = document.createElement('div');
-                thumb.className = 'photo-thumb';
-                thumb.innerHTML = `
-                    <img src="${URL.createObjectURL(photo.blob)}" alt="${photo.label}">
-                    <div class="label">${photo.label}</div>
-                `;
-                thumb.onclick = () => deletePhoto(photo.type, state.photos[photo.type].indexOf(photo));
-                grid.appendChild(thumb);
-            });
-        }
-        
-        function deletePhoto(type, index) {
-            if (confirm('Delete this photo?')) {
-                state.photos[type].splice(index, 1);
+            canvas.toBlob(async blob => {
+                const photo = { blob, mode: currentMode, timestamp: Date.now() };
+                state.photos[currentMode].push(photo);
                 updatePhotoGrid();
                 updatePhotoCount();
+                console.log(`📷 Captured ${currentMode} #${state.photos[currentMode].length}`);
+                showToast('success', 'Photo captured');
+                
+                // v2.9.5: Update weight photo status
+                if (currentMode === 'weight') {
+                    updateWeightPhotoStatus();
+                }
+            }, 'image/jpeg', 0.92);
+        }
+        
+        // v2.9.5: Update weight photo status display
+        function updateWeightPhotoStatus() {
+            const statusText = document.getElementById('weight-status-text');
+            const count = state.photos.weight.length;
+            if (count > 0) {
+                statusText.textContent = `✅ ${count} weight photo${count > 1 ? 's' : ''} captured`;
+                statusText.style.color = 'var(--accent-green)';
+            } else {
+                statusText.textContent = 'No weight photo';
+                statusText.style.color = 'var(--text-secondary)';
             }
         }
         
         function updatePhotoCount() {
-            const total = state.photos.main.length + state.photos.closeup.length + state.photos.handheld.length;
-            document.getElementById('photo-count').textContent = `${total} photos`;
+            const total = state.photos.main.length + state.photos.closeup.length + state.photos.weight.length + state.photos.handheld.length;
+            document.getElementById('photo-count').textContent = total;
+            document.getElementById('mode-photo-count').textContent = state.photos[state.currentMode].length;
         }
         
-        // =====================================================================
-        // CATEGORY & TEMPLATE
-        // =====================================================================
-        
-        function buildCategoryGrid() {
-            const grid = document.getElementById('category-grid');
-            grid.innerHTML = '';
-            
-            Object.entries(CATEGORIES).forEach(([key, cat]) => {
-                const btn = document.createElement('button');
-                btn.className = 'category-btn';
-                btn.textContent = cat.label;
-                btn.onclick = () => selectCategory(key);
-                btn.dataset.category = key;
-                grid.appendChild(btn);
-            });
+        function updatePhotoGrid() {
+            const grid = document.getElementById('photo-grid');
+            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
+            grid.innerHTML = all.map((p, i) => `
+                <div class="photo-thumb">
+                    <img src="${URL.createObjectURL(p.blob)}">
+                    <div class="photo-thumb-label">${p.label || p.mode}</div>
+                    <button class="photo-thumb-delete" onclick="deletePhoto(${i})">×</button>
+                </div>
+            `).join('');
         }
         
-        function selectCategory(category) {
-            state.classification = category;
-            
-            // Update UI
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.category === category);
-            });
-            
-            // Load default template for category
-            const templateKey = getDefaultTemplateForCategory(category);
-            loadTemplate(templateKey);
-            
-            showToast('info', `Category: ${CATEGORIES[category].label}`);
-        }
-        
-        function getDefaultTemplateForCategory(category) {
-            const defaults = {
-                'tops': 'tshirt',
-                'bottoms': 'jeans',
-                'outerwear': 'jacket',
-                'dresses': 'dress',
-                'suits': 'suit_jacket',
-                'accessories': 'hat',
-                'footwear': 'sneakers',
-                'other': 'generic'
-            };
-            return defaults[category] || 'generic';
-        }
-        
-        async function loadTemplates() {
-            try {
-                const result = await callLambda('templates', {});
-                if (result.success && result.templates) {
-                    state.templates = result.templates;
-                    console.log(`📋 Loaded ${Object.keys(state.templates).length} templates`);
+        function deletePhoto(idx) {
+            let count = 0;
+            for (const mode of ['main', 'closeup', 'handheld']) {
+                if (idx < count + state.photos[mode].length) {
+                    state.photos[mode].splice(idx - count, 1);
+                    break;
                 }
-            } catch (e) {
-                console.warn('Failed to load templates:', e);
+                count += state.photos[mode].length;
             }
-        }
-        
-        function loadTemplate(templateKey) {
-            state.templateKey = templateKey;
-            state.template = state.templates[templateKey] || { measurements: ['length', 'width'] };
-            
-            // Build measurement grid
-            const grid = document.getElementById('measurement-grid');
-            grid.innerHTML = '';
-            
-            if (state.template.measurements) {
-                state.template.measurements.forEach((m, i) => {
-                    const item = document.createElement('div');
-                    item.className = 'measurement-item';
-                    item.innerHTML = `
-                        <span class="measurement-label">${formatMeasurementName(m)}</span>
-                        <span class="measurement-value" id="mv-${i}">--</span>
-                    `;
-                    grid.appendChild(item);
-                });
-            }
-        }
-        
-        function formatMeasurementName(name) {
-            return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            updatePhotoGrid();
+            updatePhotoCount();
         }
         
         // =====================================================================
-        // RECORDING (Measurements)
+        // AI CLASSIFICATION
         // =====================================================================
+        async function triggerAI() {
+            if (state.photos.main.length === 0) return;
+            state.aiTriggered = true;
+            document.getElementById('ai-overlay').classList.add('active');
+            
+            try {
+                console.log(`🤖 AI: ${state.photos.main.length} photos`);
+                const mainPhotos = await Promise.all(state.photos.main.slice(0, 4).map(p => resizeImageForAI(p.blob)));
+                let tagPhoto = null;
+                if (state.photos.closeup.length > 0) tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
+                
+                const result = await callLambda('classify', { mainPhotos, tagPhoto });
+                if (result.success) {
+                    state.classification = result.category;
+                    state.templateKey = result.templateKey;
+                    state.template = result.template;
+                    state.tagData = result.tagData;
+                    
+                    // v2.9.5: Record classification time for KPI
+                    state.timing.classificationTime = Date.now();
+                    
+                    // Update photo labels from AI
+                    if (result.photoLabels) {
+                        state.photos.main.forEach((p, i) => {
+                            if (result.photoLabels[i]) p.label = result.photoLabels[i];
+                        });
+                    }
+                    
+                    updateClassificationDisplay();
+                    updatePhotoGrid();
+                    updateMeasurementList();
+                    console.log(`✅ Classified: ${result.category}`);
+                    showToast('success', `Classified: ${result.category}`);
+                } else {
+                    throw new Error(result.error || 'Classification failed');
+                }
+            } catch (err) {
+                console.error('AI error:', err);
+                showToast('error', 'AI failed: ' + err.message);
+            } finally {
+                document.getElementById('ai-overlay').classList.remove('active');
+            }
+        }
+        
+        async function resizeImageForAI(blob) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('resize-canvas');
+                    const ctx = canvas.getContext('2d');
+                    let w = img.width, h = img.height;
+                    if (w > AI_IMAGE_MAX_SIZE || h > AI_IMAGE_MAX_SIZE) {
+                        if (w > h) { h = Math.round(h * AI_IMAGE_MAX_SIZE / w); w = AI_IMAGE_MAX_SIZE; }
+                        else { w = Math.round(w * AI_IMAGE_MAX_SIZE / h); h = AI_IMAGE_MAX_SIZE; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
+                };
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+        
+        function updateClassificationDisplay() {
+            document.getElementById('classification-box').classList.add('ready');
+            document.getElementById('classification-category').textContent = state.classification || 'Unknown';
+            document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
+            if (state.tagData && !state.tagData.error) {
+                document.getElementById('tag-grid').style.display = 'grid';
+                document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
+                document.getElementById('tag-size').textContent = state.tagData.size || '-';
+                document.getElementById('tag-materials').textContent = state.tagData.materials || '-';
+                document.getElementById('tag-country').textContent = state.tagData.country || '-';
+            }
+        }
+        
+        function updateMeasurementList() {
+            const list = document.getElementById('measurement-list');
+            if (!state.template?.measurements) {
+                list.innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
+                return;
+            }
+            list.innerHTML = state.template.measurements.map((m, i) => `
+                <div class="measurement-item" data-idx="${i}">
+                    <span class="measurement-num">${i + 1}</span>
+                    <span class="measurement-name">${m}</span>
+                    <span class="measurement-value" id="mv-${i}">-</span>
+                </div>
+            `).join('');
+            document.getElementById('complete-btn-camera').disabled = false;
+            
+            // Track measurements start time
+            state.timing.measurementsStart = Date.now();
+        }
+        
+        // =====================================================================
+        // VOICE RECORDING - v2.9.4 UPDATED
+        // - Button now shows "🛑 TAP TO STOP" when recording (clear and unmistakable)
+        // - Discarded recordings are saved for QC
+        // - Recording duration tracked for KPIs
+        // =====================================================================
+        async function toggleRecording() {
+            if (state.isRecording) stopRecording();
+            else startRecording();
+        }
         
         async function startRecording() {
-            if (state.isRecording) return;
-            
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
+                state.recordingStartTime = Date.now(); // Track duration
                 
-                state.mediaRecorder.ondataavailable = e => {
-                    if (e.data.size > 0) state.audioChunks.push(e.data);
-                };
+                // v2.9.5: Track measurements start time
+                if (!state.timing.measurementsStartTime) {
+                    state.timing.measurementsStartTime = Date.now();
+                }
                 
+                state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
                 state.mediaRecorder.onstop = async () => {
+                    const recordingDuration = (Date.now() - state.recordingStartTime) / 1000;
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    
+                    // If there was a previous recording, save it as discarded
+                    if (state.audioBlob) {
+                        state.discardedRecordings.push({
+                            blob: state.audioBlob,
+                            duration: state.lastRecordingDuration || 0,
+                            timestamp: new Date().toISOString()
+                        });
+                        console.log(`📼 Previous recording saved as discarded (${state.discardedRecordings.length} total)`);
+                    }
+                    
                     state.audioBlob = blob;
-                    
-                    // Transcribe
-                    await transcribeAudio(blob);
-                    
+                    state.lastRecordingDuration = recordingDuration;
                     stream.getTracks().forEach(t => t.stop());
+                    await transcribeAudio(blob);
                 };
                 
                 state.mediaRecorder.start();
                 state.isRecording = true;
-                state.recordingStart = Date.now();
-                document.getElementById('recording-indicator').classList.add('active');
                 
-            } catch (e) {
-                console.error('Recording failed:', e);
-                showToast('error', 'Microphone access denied');
+                // v2.9.4: Clear button text change to "TAP TO STOP"
+                const btn = document.getElementById('record-btn');
+                btn.classList.remove('btn-record');
+                btn.classList.add('btn-stop');
+                btn.textContent = '🛑 TAP TO STOP';
+                
+            } catch (err) {
+                showToast('error', 'Mic access denied');
             }
         }
         
         function stopRecording() {
-            if (!state.isRecording) return;
-            
-            state.lastRecordingDuration = Math.round((Date.now() - state.recordingStart) / 1000);
-            state.mediaRecorder.stop();
-            state.isRecording = false;
-            document.getElementById('recording-indicator').classList.remove('active');
+            if (state.mediaRecorder && state.isRecording) {
+                state.mediaRecorder.stop();
+                state.isRecording = false;
+                
+                // v2.9.5: Track measurements end time
+                state.timing.measurementsEndTime = Date.now();
+                
+                // v2.9.4: Reset button to "TAP TO RECORD"
+                const btn = document.getElementById('record-btn');
+                btn.classList.remove('btn-stop');
+                btn.classList.add('btn-record');
+                btn.textContent = '🎤 TAP TO RECORD';
+            }
         }
         
         async function transcribeAudio(blob) {
             try {
-                const base64 = await blobToBase64(blob);
-                const result = await callLambda('whisper', { audio: base64.split(',')[1] });
-                
-                if (result.success && result.transcript) {
-                    state.rawTranscript = result.transcript;
-                    
-                    // Simple parsing (full parsing happens async in Lambda)
-                    const parsed = parseTranscriptSimple(result.transcript);
-                    state.measurements = parsed;
-                    updateMeasurementDisplay();
-                    
-                    showToast('success', 'Measurements recorded');
-                }
-            } catch (e) {
-                console.error('Transcription failed:', e);
+                showToast('info', 'Transcribing...');
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = async () => {
+                    const base64 = reader.result.split(',')[1];
+                    const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
+                    if (result.success && result.text) {
+                        state.rawTranscript = result.text;
+                        console.log('📝 Transcribed:', result.text);
+                        
+                        // Show transcript
+                        document.getElementById('transcript-text').textContent = result.text;
+                        document.getElementById('transcript-box').classList.add('visible');
+                        
+                        parseMeasurements(result.text);
+                        showToast('success', 'Transcription done');
+                    }
+                };
+            } catch (err) {
                 showToast('error', 'Transcription failed');
             }
         }
         
-        function parseTranscriptSimple(transcript) {
-            // Basic parsing - just extract numbers
-            // Full semantic matching happens in Lambda async
-            const measurements = {};
-            const pattern = /(\w+[\w\s]*?)\s*[:\-]?\s*(\d+(?:\.\d+)?)/gi;
-            let match;
+        function parseMeasurements(text) {
+            // v2.9.4c: Just extract numbers for immediate UI display
+            // The actual field matching happens in fullPipeline via Lambda
+            // This is only for user feedback - final values come from AI
             
-            while ((match = pattern.exec(transcript)) !== null) {
-                const name = match[1].toLowerCase().trim();
-                const value = parseFloat(match[2]);
-                measurements[name] = value;
-            }
+            const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
+            const matches = [...text.matchAll(regex)];
+            if (!state.template) return;
             
-            return measurements;
-        }
-        
-        function updateMeasurementDisplay() {
-            if (!state.template?.measurements) return;
+            // Show extracted values but mark as "pending AI"
+            const extractedValues = matches.map(m => {
+                let val = parseFloat(m[1]);
+                const fullMatch = m[0].toLowerCase();
+                if (fullMatch.includes('half')) val += 0.5;
+                else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
+                else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
+                return val;
+            });
             
-            state.template.measurements.forEach((m, i) => {
-                const el = document.getElementById(`mv-${i}`);
-                if (el) {
-                    const value = state.measurements[m] || state.measurements[m.toLowerCase()];
-                    if (value !== undefined) {
-                        el.textContent = `${value}"`;
+            console.log(`📏 Extracted ${extractedValues.length} values from transcript:`, extractedValues);
+            
+            // For UI display only - show that we got values but AI will match them
+            // Don't try to assign to specific fields (that's what caused the swap bug)
+            extractedValues.forEach((val, i) => {
+                if (i < state.template.measurements.length) {
+                    const el = document.getElementById(`mv-${i}`);
+                    if (el) {
+                        // Show value with indicator that AI will verify
+                        el.textContent = `${val}" ⏳`;
+                        el.title = 'AI will match to correct field';
                         el.closest('.measurement-item').classList.add('completed');
                     }
                 }
             });
+            
+            // Store raw values - fullPipeline will properly match them later
+            state.rawExtractedValues = extractedValues;
+            
+            // Note: We don't populate state.measurements here anymore
+            // That happens in processItemInBackground when fullPipeline runs
         }
         
         // =====================================================================
-        // PHASE MANAGEMENT
+        // FOLDER SAVE - v2.9.4 UPDATED for raw/final structure
         // =====================================================================
-        
-        function advancePhase(phase) {
-            state.phase = phase;
-            state.timing[`${phase}Start`] = Date.now();
-            
-            // Update phase indicators
-            document.querySelectorAll('.phase').forEach(p => {
-                p.classList.remove('active', 'complete');
-            });
-            
-            const phases = ['main', 'closeup', 'measure', 'complete'];
-            const currentIndex = phases.indexOf(phase);
-            
-            phases.forEach((p, i) => {
-                const el = document.getElementById(`phase-${p}`);
-                if (i < currentIndex) el.classList.add('complete');
-                if (i === currentIndex) el.classList.add('active');
-            });
-            
-            // Auto-start recording for measurements phase
-            if (phase === 'measurements') {
-                startRecording();
-            }
-            
-            showToast('info', `Phase: ${phase.charAt(0).toUpperCase() + phase.slice(1)}`);
-        }
-        
-        // =====================================================================
-        // TIMER
-        // =====================================================================
-        
-        function startTimer() {
-            state.timerStart = Date.now();
-            state.timerInterval = setInterval(updateTimer, 1000);
-            advancePhase('main');
-        }
-        
-        function stopTimer() {
-            if (state.timerInterval) {
-                clearInterval(state.timerInterval);
-                state.timerInterval = null;
+        async function chooseSaveFolder() {
+            try {
+                state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                const display = document.getElementById('folder-display');
+                display.textContent = `📁 ${state.saveDirectoryHandle.name}`;
+                display.classList.add('set');
+                showToast('success', `Folder: ${state.saveDirectoryHandle.name}`);
+            } catch (err) {
+                if (err.name !== 'AbortError') showToast('error', 'Folder selection failed');
             }
         }
         
-        function updateTimer() {
-            if (!state.timerStart) return;
+        async function saveToLocalFolder(itemData) {
+            if (!state.saveDirectoryHandle || !itemData.sku) return false;
+            try {
+                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
+                
+                // Create ALL folders including new raw/final structure
+                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
+                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
+                const finalFolder = await mainFolder.getDirectoryHandle('final', { create: true });
+                
+                // Other folders
+                const folders = ['tag', 'defects', 'features', 'weight', 'measurements', 'data'];
+                for (const f of folders) {
+                    await skuFolder.getDirectoryHandle(f, { create: true });
+                }
+                
+                // Save main photos to raw folder (final folder will be populated by backend processing)
+                if (itemData.photos.main.length > 0) {
+                    for (let i = 0; i < itemData.photos.main.length; i++) {
+                        const photo = itemData.photos.main[i];
+                        const filename = `${itemData.sku}_${photo.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        
+                        // Save to raw folder
+                        const rawHandle = await rawFolder.getFileHandle(filename, { create: true });
+                        const rawWritable = await rawHandle.createWritable();
+                        await rawWritable.write(photo.blob);
+                        await rawWritable.close();
+                        
+                        // Also save to final for now (backend will replace with processed version)
+                        const finalHandle = await finalFolder.getFileHandle(filename, { create: true });
+                        const finalWritable = await finalHandle.createWritable();
+                        await finalWritable.write(photo.blob);
+                        await finalWritable.close();
+                    }
+                } else {
+                    await createNAFile(rawFolder, null, itemData.sku);
+                    await createNAFile(finalFolder, null, itemData.sku);
+                }
+                
+                // v2.9.4c: Route closeup photos to appropriate folders based on AI classification
+                // Categories: tag (brand labels, size tags), features (hardware, details), defects (damage, stains)
+                const tagPhotos = [];
+                const featurePhotos = [];
+                const defectPhotos = [];
+                
+                for (const photo of itemData.photos.closeup) {
+                    const category = photo.routedCategory || 'tag'; // Default to tag
+                    if (category === 'defect' || category === 'defects') {
+                        defectPhotos.push(photo);
+                    } else if (category === 'feature' || category === 'features') {
+                        featurePhotos.push(photo);
+                    } else {
+                        tagPhotos.push(photo);
+                    }
+                }
+                
+                // Save tag photos
+                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
+                if (tagPhotos.length > 0) {
+                    for (let i = 0; i < tagPhotos.length; i++) {
+                        const photo = tagPhotos[i];
+                        const label = photo.routedLabel || 'tag';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await tagFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(tagFolder, null, itemData.sku);
+                }
+                
+                // Save feature photos
+                const featuresFolder = await skuFolder.getDirectoryHandle('features', { create: true });
+                if (featurePhotos.length > 0) {
+                    for (let i = 0; i < featurePhotos.length; i++) {
+                        const photo = featurePhotos[i];
+                        const label = photo.routedLabel || 'feature';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await featuresFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(featuresFolder, null, itemData.sku);
+                }
+                
+                // Save defect photos
+                const defectsFolder = await skuFolder.getDirectoryHandle('defects', { create: true });
+                if (defectPhotos.length > 0) {
+                    for (let i = 0; i < defectPhotos.length; i++) {
+                        const photo = defectPhotos[i];
+                        const label = photo.routedLabel || 'defect';
+                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await defectsFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(defectsFolder, null, itemData.sku);
+                }
+                
+                // Weight from Dymo scale - v2.9.4 UPDATED format
+                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
+                if (itemData.weight && itemData.weight.pounds !== null) {
+                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
+                    const weightHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight.txt`, { create: true });
+                    const weightWritable = await weightHandle.createWritable();
+                    await weightWritable.write(weightContent);
+                    await weightWritable.close();
+                } else {
+                    await createNAFile(skuFolder, 'weight', itemData.sku);
+                }
+                
+                // Save measurements folder contents
+                const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
+                
+                // Final audio
+                if (itemData.audioBlob) {
+                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
+                    const audioWritable = await audioHandle.createWritable();
+                    await audioWritable.write(itemData.audioBlob);
+                    await audioWritable.close();
+                }
+                
+                // Discarded recordings - v2.9.4 NEW
+                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                    for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                        const discarded = itemData.discardedRecordings[i];
+                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
+                        const discardWritable = await discardHandle.createWritable();
+                        await discardWritable.write(discarded.blob);
+                        await discardWritable.close();
+                    }
+                }
+                
+                // Raw transcript
+                if (itemData.rawTranscript) {
+                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
+                    const transcriptWritable = await transcriptHandle.createWritable();
+                    await transcriptWritable.write(itemData.rawTranscript);
+                    await transcriptWritable.close();
+                }
+                
+                // Parsed measurements (clean format for listings)
+                if (Object.keys(itemData.measurements).length > 0) {
+                    const parsedContent = generateParsedMeasurements(itemData);
+                    const parsedHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_measurements_parsed.txt`, { create: true });
+                    const parsedWritable = await parsedHandle.createWritable();
+                    await parsedWritable.write(parsedContent);
+                    await parsedWritable.close();
+                }
+                
+                // Master JSON
+                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
+                const dataWritable = await dataHandle.createWritable();
+                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
+                await dataWritable.close();
+                
+                return true;
+            } catch (err) {
+                console.error('Local save error:', err);
+                return false;
+            }
+        }
+        
+        async function createNAFile(parentFolderOrNull, folderName, sku) {
+            let folder;
+            if (folderName) {
+                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
+            } else {
+                folder = parentFolderOrNull; // Already the folder
+            }
+            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(`No data for ${sku}`);
+            await writable.close();
+        }
+        
+        function generateParsedMeasurements(itemData) {
+            let content = `MEASUREMENTS - ${itemData.sku}\n`;
+            content += `Category: ${itemData.category || 'Unknown'}\n`;
+            content += `Template: ${itemData.template?.name || 'Unknown'}\n`;
+            content += `Note: All measurements are FLAT LAY (multiply by 2 for circumference)\n\n`;
             
-            const elapsed = Math.floor((Date.now() - state.timerStart) / 1000);
-            const mins = Math.floor(elapsed / 60);
-            const secs = elapsed % 60;
+            for (const [name, value] of Object.entries(itemData.measurements)) {
+                content += `• ${name}: ${value}"\n`;
+            }
             
-            const timerEl = document.getElementById('timer');
-            timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            
-            // Color coding
-            timerEl.classList.remove('warning', 'danger');
-            if (elapsed > 120) timerEl.classList.add('danger');
-            else if (elapsed > 90) timerEl.classList.add('warning');
+            return content;
         }
         
         // =====================================================================
-        // WEIGHT (Dymo Scale)
+        // S3 UPLOAD - v2.9.5 SIMPLIFIED FOLDER STRUCTURE
+        // main/ - all main camera photos
+        // closeup/ - all closeup photos (n8n categorizes later)
+        // weight/ - scale display photos
+        // handheld/ - handheld camera photos
+        // measurements/ - audio, transcript
+        // data/ - JSON file
         // =====================================================================
-        
-        function initDymoScale() {
-            // Try to connect to Dymo scale via WebHID
-            if ('hid' in navigator) {
-                navigator.hid.getDevices().then(devices => {
-                    const dymo = devices.find(d => d.vendorId === 0x0922);
-                    if (dymo) connectDymoScale(dymo);
+        async function uploadToS3(itemData) {
+            const files = [];
+            const sku = itemData.sku;
+            
+            // Main photos
+            for (let i = 0; i < itemData.photos.main.length; i++) {
+                const p = itemData.photos.main[i];
+                const filename = `${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({
+                    name: `main/${filename}`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
                 });
             }
+            if (itemData.photos.main.length === 0) {
+                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No main photos for ${sku}`]) });
+            }
             
-            // Fallback: manual weight entry
-            document.getElementById('weight-value').onclick = () => {
-                const weight = prompt('Enter weight (oz):');
-                if (weight) {
-                    const oz = parseFloat(weight);
-                    state.weight = {
-                        pounds: oz / 16,
-                        display: `${oz.toFixed(1)} oz`
-                    };
-                    document.getElementById('weight-value').textContent = state.weight.display;
-                    document.getElementById('weight-status').textContent = 'Manual entry';
-                }
-            };
-        }
-        
-        async function connectDymoScale(device) {
-            try {
-                await device.open();
-                device.addEventListener('inputreport', handleDymoData);
-                document.getElementById('weight-status').textContent = 'Dymo connected';
-            } catch (e) {
-                console.warn('Dymo connection failed:', e);
+            // v2.9.5: ALL closeup photos go to closeup/ folder
+            // n8n will categorize them later (tag/feature/defect)
+            for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                const p = itemData.photos.closeup[i];
+                const filename = `${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({
+                    name: `closeup/${filename}`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
             }
-        }
-        
-        function handleDymoData(event) {
-            const data = new Uint8Array(event.data.buffer);
-            // Dymo M10 protocol: bytes 4-5 are weight in 0.1oz units
-            if (data.length >= 6) {
-                const rawWeight = (data[5] << 8) | data[4];
-                const oz = rawWeight / 10;
-                
-                if (oz > 0) {
-                    state.weight = {
-                        pounds: oz / 16,
-                        display: `${oz.toFixed(1)} oz`
-                    };
-                    document.getElementById('weight-value').textContent = state.weight.display;
-                    document.getElementById('weight-status').textContent = 'Live from Dymo';
+            if (itemData.photos.closeup.length === 0) {
+                files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
+            }
+            
+            // v2.9.5: Weight photos (scale display) - n8n will OCR to get value
+            for (let i = 0; i < itemData.photos.weight.length; i++) {
+                const p = itemData.photos.weight[i];
+                const filename = `${sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({
+                    name: `weight/${filename}`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (itemData.photos.weight.length === 0) {
+                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
+            }
+            
+            // Handheld photos
+            for (let i = 0; i < itemData.photos.handheld.length; i++) {
+                const p = itemData.photos.handheld[i];
+                const filename = `${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({
+                    name: `handheld/${filename}`,
+                    contentType: 'image/jpeg',
+                    blob: p.blob
+                });
+            }
+            if (itemData.photos.handheld.length === 0) {
+                files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
+            }
+            
+            // Measurements folder - audio and transcript
+            if (itemData.audioBlob) {
+                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            }
+            
+            // Discarded recordings for QC
+            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                    const discarded = itemData.discardedRecordings[i];
+                    files.push({
+                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
+                        contentType: 'audio/webm',
+                        blob: discarded.blob
+                    });
                 }
             }
-        }
-        
-        function getCurrentWeight() {
-            return state.weight || { pounds: null, display: 'N/A' };
+            
+            if (itemData.rawTranscript) {
+                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            }
+            
+            // Master JSON with processingStatus: "pending"
+            files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
+            
+            // Get presigned URLs
+            const presign = await callLambda('presign', {
+                sku: sku,
+                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+            });
+            
+            if (!presign.success) throw new Error(presign.error || 'Presign failed');
+            
+            // Upload all files
+            for (const f of files) {
+                const url = presign.urls[f.name];
+                if (url) {
+                    await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
+                }
+            }
+            
+            return true;
         }
         
         // =====================================================================
-        // COMPLETE ITEM - v2.9.5 ASYNC (ZERO WAIT!)
+        // COMPLETE ITEM - v2.9.4c MAJOR REWRITE
+        // Now runs all AI agents BEFORE building JSON:
+        // 1. Image Processing on main photos
+        // 2. Photo Routing on closeup photos  
+        // 3. OCR on tag photos
+        // 4. Full Pipeline (Parser→Matcher→Underwriter) for measurements
         // =====================================================================
-        
         async function completeItem() {
-            if (!state.currentSKU) {
-                showToast('warning', 'No SKU');
-                return;
-            }
+            if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
             
-            // Stop recording if active
-            if (state.isRecording) {
-                stopRecording();
-                // Give a moment for transcription
-                await new Promise(r => setTimeout(r, 500));
-            }
+            // v2.9.5: Record completion time
+            state.timing.completeTime = Date.now();
             
-            // ===== NO AI PROCESSING HERE! =====
-            // All AI runs async in Lambda after S3 upload
+            // v2.9.5: ASYNC ARCHITECTURE - No blocking AI processing!
+            // All AI (OCR, Image Processing, Photo Routing, Full Pipeline) moved to n8n
+            // Browser just captures data and uploads quickly
             
+            showToast('info', '📤 Uploading...');
+            const uploadStartTime = Date.now();
+            
+            // ===== Calculate detailed KPI timing =====
             const now = Date.now();
             const totalDuration = Math.round((now - state.timerStart) / 1000);
-            const mainDuration = state.timing.closeupStart ? Math.round((state.timing.closeupStart - state.timerStart) / 1000) : totalDuration;
-            const closeupDuration = state.timing.measurementsStart && state.timing.closeupStart ? Math.round((state.timing.measurementsStart - state.timing.closeupStart) / 1000) : 0;
-            const measurementsDuration = state.timing.measurementsStart ? Math.round((now - state.timing.measurementsStart) / 1000) : 0;
             
-            const weightData = getCurrentWeight();
+            // Calculate phase durations from detailed timing
+            const mainPhotosDuration = state.timing.mainPhotosEndTime && state.timing.mainPhotosStartTime 
+                ? Math.round((state.timing.mainPhotosEndTime - state.timing.mainPhotosStartTime) / 1000) 
+                : 0;
+            const closeupDuration = state.timing.closeupEndTime && state.timing.closeupStartTime 
+                ? Math.round((state.timing.closeupEndTime - state.timing.closeupStartTime) / 1000) 
+                : 0;
+            const weightDuration = state.timing.weightEndTime && state.timing.weightStartTime 
+                ? Math.round((state.timing.weightEndTime - state.timing.weightStartTime) / 1000) 
+                : 0;
+            const measurementsDuration = state.timing.measurementsEndTime && state.timing.measurementsStartTime 
+                ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) 
+                : 0;
+            
+            // Recording KPI
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
-            // Build item data - NO AI results yet, just raw data
+            // v2.9.5: Build item data - NO AI results yet, just raw capture data
+            // processingStatus: "pending" tells n8n this needs AI processing
             const itemData = {
                 sku: state.currentSKU,
-                category: state.classification,
+                category: state.classification,  // From initial classify (template selection)
                 templateKey: state.templateKey,
                 template: state.template,
-                tagData: null, // Will be populated by Lambda async
-                measurements: state.measurements, // Simple parsed, Lambda will do semantic matching
+                tagData: null,  // Will be filled by n8n OCR
+                measurements: state.measurements,  // Basic parsed values, n8n will improve with Matcher
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
                 discardedRecordings: state.discardedRecordings,
-                weight: weightData,
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
+                    weight: state.photos.weight.map(p => ({ blob: p.blob, label: p.label })),
                     handheld: state.photos.handheld.map(p => ({ blob: p.blob, label: p.label }))
-                },
-                timing: {
-                    mainPhotosDuration: mainDuration,
-                    closeupDuration: closeupDuration,
-                    measurementsDuration: measurementsDuration,
-                    totalDuration: totalDuration
                 },
                 jsonData: {
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
                     version: VERSION,
-                    
-                    // Raw classification (Lambda may update)
+                    // v2.9.5: Processing status for n8n to track
+                    processingStatus: 'pending',
+                    // Classification from initial AI (template selection only)
                     category: state.classification,
                     templateKey: state.templateKey,
-                    
-                    // Placeholder - Lambda will populate via OCR
+                    // Tag data will be populated by n8n OCR
                     tagData: null,
-                    
-                    // Simple parsed measurements - Lambda will do semantic matching
+                    // Basic measurements from parser - n8n will enhance with Matcher
                     measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
-                    
-                    weight: weightData,
-                    
-                    // Processing status - Lambda will update
-                    processingStatus: 'pending',
-                    aiProcessing: {
-                        ocr: { status: 'pending' },
-                        imageProcessing: { status: 'pending' },
-                        photoRouting: { status: 'pending' },
-                        pipeline: { status: 'pending' }
+                    // v2.9.5: Weight from photo (n8n will OCR), not USB scale
+                    weight: {
+                        source: 'photo',
+                        photoCount: state.photos.weight.length,
+                        value: null  // n8n will OCR from photo
                     },
-                    
-                    // Lambda will populate these
-                    pipelineResults: null,
-                    eraEstimation: null,
-                    tagSizeAnalysis: null,
-                    imageProcessing: null,
-                    photoRouting: null,
-                    qcFlags: null,
-                    
+                    // Audio recording metadata
                     audioRecordings: {
                         final: {
                             duration: recordingDuration,
@@ -1303,21 +1807,42 @@
                             rating: recordingRating
                         }
                     },
+                    // v2.9.5: Detailed KPI timing for analysis
                     timing: {
-                        mainPhotosDuration: mainDuration,
-                        closeupDuration: closeupDuration,
-                        measurementsDuration: measurementsDuration,
-                        totalDuration: totalDuration,
-                        browserProcessingTime: 0 // No AI processing in browser anymore!
+                        itemStartTime: state.timing.itemStartTime ? new Date(state.timing.itemStartTime).toISOString() : null,
+                        classificationTime: state.timing.classificationTime ? new Date(state.timing.classificationTime).toISOString() : null,
+                        mainPhotosStartTime: state.timing.mainPhotosStartTime ? new Date(state.timing.mainPhotosStartTime).toISOString() : null,
+                        mainPhotosEndTime: state.timing.mainPhotosEndTime ? new Date(state.timing.mainPhotosEndTime).toISOString() : null,
+                        closeupStartTime: state.timing.closeupStartTime ? new Date(state.timing.closeupStartTime).toISOString() : null,
+                        closeupEndTime: state.timing.closeupEndTime ? new Date(state.timing.closeupEndTime).toISOString() : null,
+                        weightStartTime: state.timing.weightStartTime ? new Date(state.timing.weightStartTime).toISOString() : null,
+                        weightEndTime: state.timing.weightEndTime ? new Date(state.timing.weightEndTime).toISOString() : null,
+                        measurementsStartTime: state.timing.measurementsStartTime ? new Date(state.timing.measurementsStartTime).toISOString() : null,
+                        measurementsEndTime: state.timing.measurementsEndTime ? new Date(state.timing.measurementsEndTime).toISOString() : null,
+                        completeTime: state.timing.completeTime ? new Date(state.timing.completeTime).toISOString() : null,
+                        // Calculated durations in seconds
+                        durations: {
+                            mainPhotos: mainPhotosDuration,
+                            closeup: closeupDuration,
+                            weight: weightDuration,
+                            measurements: measurementsDuration,
+                            total: totalDuration
+                        }
                     },
+                    // Photo counts
                     photoCount: {
                         main: state.photos.main.length,
                         closeup: state.photos.closeup.length,
+                        weight: state.photos.weight.length,
                         handheld: state.photos.handheld.length
                     },
-                    photographerId: localStorage.getItem('photographerId') || 'unknown',
-                    flags: {},
-                    confidence: {}
+                    // Photographer tracking
+                    photographerId: state.photographerId,
+                    // Placeholders for n8n to fill
+                    aiResults: null,  // n8n will populate with OCR, routing, pipeline results
+                    qcFlags: null,
+                    eraEstimation: null,
+                    tagSizeAnalysis: null
                 }
             };
             
@@ -1328,50 +1853,52 @@
             localStorage.setItem('totalTime', state.totalTime);
             updateStats();
             
-            // ===== INSTANT UI RESET =====
-            showToast('success', `✅ ${state.currentSKU} submitted!`);
+            // IMMEDIATELY reset UI for next item - no waiting for upload
+            showToast('success', `${state.currentSKU} submitted!`);
             stopTimer();
             resetItem();
             
-            // Process in background (upload to S3, send to n8n)
+            // Process upload in background with retry
             processItemInBackground(itemData);
         }
         
         // =====================================================================
-        // BACKGROUND PROCESSING
+        // BACKGROUND PROCESSING - v2.9.4c SIMPLIFIED
+        // AI processing now happens in completeItem() before this is called
+        // This function just handles saving to local folder, S3, and n8n
         // =====================================================================
-        
         async function processItemInBackground(itemData, retryCount = 0) {
             const sku = itemData.sku;
-            console.log(`🔄 [${sku}] Starting background upload...`);
+            console.log(`🔄 [${sku}] Starting save/upload...`);
             
             try {
-                // STEP 1: Save to local folder (if selected)
+                // =================================================================
+                // STEP 1: SAVE TO LOCAL FOLDER
+                // =================================================================
+                console.log(`💾 [${sku}] Step 1: Saving to local folder...`);
+                
                 if (state.saveDirectoryHandle) {
-                    console.log(`💾 [${sku}] Saving to local folder...`);
                     await saveToLocalFolder(itemData);
+                    console.log(`✅ [${sku}] Saved to local folder`);
                 }
                 
-                // STEP 2: Upload to S3
-                console.log(`☁️ [${sku}] Uploading to S3...`);
+                // =================================================================
+                // STEP 2: UPLOAD TO S3
+                // =================================================================
+                console.log(`☁️ [${sku}] Step 2: Uploading to S3...`);
+                
                 await uploadToS3(itemData);
                 console.log(`✅ [${sku}] Uploaded to S3`);
                 
-                // STEP 3: Trigger async processing
-                // This tells Lambda to process this item
-                console.log(`🚀 [${sku}] Triggering async processing...`);
-                await callLambda('triggerAsyncProcessing', {
-                    sku: sku,
-                    bucket: 'your-bucket-name', // Configure this
-                    category: itemData.category,
-                    templateKey: itemData.templateKey
-                });
+                // =================================================================
+                // STEP 3: SEND TO N8N
+                // =================================================================
+                console.log(`📤 [${sku}] Step 3: Sending to n8n...`);
                 
-                // STEP 4: Send to n8n (with pending status)
-                console.log(`📤 [${sku}] Sending to n8n...`);
                 await callLambda('n8n', { formData: itemData.jsonData });
+                console.log(`✅ [${sku}] Sent to n8n`);
                 
-                console.log(`🎉 [${sku}] Background processing triggered!`);
+                console.log(`🎉 [${sku}] Background processing complete!`);
                 
             } catch (err) {
                 console.error(`❌ [${sku}] Background process failed:`, err);
@@ -1386,155 +1913,8 @@
             }
         }
         
-        // =====================================================================
-        // S3 UPLOAD
-        // =====================================================================
-        
-        async function uploadToS3(itemData) {
-            const sku = itemData.sku;
-            const files = [];
-            
-            // Main photos → main/raw/
-            for (let i = 0; i < itemData.photos.main.length; i++) {
-                const p = itemData.photos.main[i];
-                files.push({
-                    name: `main/raw/${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            
-            // Closeup photos → tag/ (Lambda will route to correct folders)
-            for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                const p = itemData.photos.closeup[i];
-                files.push({
-                    name: `tag/${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            
-            // Handheld photos
-            for (let i = 0; i < itemData.photos.handheld.length; i++) {
-                const p = itemData.photos.handheld[i];
-                files.push({
-                    name: `handheld/${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            
-            // Weight
-            if (itemData.weight && itemData.weight.pounds !== null) {
-                const weightContent = `${sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10\nTimestamp: ${new Date().toISOString()}`;
-                files.push({ name: `weight/${sku}_weight.txt`, contentType: 'text/plain', blob: new Blob([weightContent]) });
-            }
-            
-            // Audio
-            if (itemData.audioBlob) {
-                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
-            }
-            
-            // Transcript
-            if (itemData.rawTranscript) {
-                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
-            }
-            
-            // Master JSON (with pending status)
-            files.push({
-                name: `data/${sku}_data.json`,
-                contentType: 'application/json',
-                blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)])
-            });
-            
-            // Get presigned URLs
-            const presign = await callLambda('presign', {
-                sku: sku,
-                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
-            });
-            
-            if (!presign.success) throw new Error(presign.error || 'Presign failed');
-            
-            // Upload all files
-            const uploadPromises = files.map(f => {
-                const url = presign.urls[f.name];
-                if (url) {
-                    return fetch(url, {
-                        method: 'PUT',
-                        body: f.blob,
-                        headers: { 'Content-Type': f.contentType }
-                    });
-                }
-                return Promise.resolve();
-            });
-            
-            await Promise.all(uploadPromises);
-        }
-        
-        // =====================================================================
-        // LOCAL FOLDER SAVE
-        // =====================================================================
-        
-        async function selectSaveFolder() {
-            try {
-                state.saveDirectoryHandle = await window.showDirectoryPicker();
-                localStorage.setItem('saveFolderName', state.saveDirectoryHandle.name);
-                document.getElementById('folder-path').textContent = `📁 ${state.saveDirectoryHandle.name}`;
-                showToast('success', 'Save folder selected');
-            } catch (e) {
-                console.warn('Folder selection cancelled');
-            }
-        }
-        
-        async function saveToLocalFolder(itemData) {
-            if (!state.saveDirectoryHandle) return;
-            
-            const sku = itemData.sku;
-            
-            try {
-                // Create SKU folder
-                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(sku, { create: true });
-                
-                // Create subfolders
-                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
-                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
-                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
-                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
-                
-                // Save main photos
-                for (let i = 0; i < itemData.photos.main.length; i++) {
-                    const p = itemData.photos.main[i];
-                    const file = await rawFolder.getFileHandle(`${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                    const writable = await file.createWritable();
-                    await writable.write(p.blob);
-                    await writable.close();
-                }
-                
-                // Save closeup photos
-                for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                    const p = itemData.photos.closeup[i];
-                    const file = await tagFolder.getFileHandle(`${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                    const writable = await file.createWritable();
-                    await writable.write(p.blob);
-                    await writable.close();
-                }
-                
-                // Save JSON
-                const jsonFile = await dataFolder.getFileHandle(`${sku}_data.json`, { create: true });
-                const jsonWritable = await jsonFile.createWritable();
-                await jsonWritable.write(JSON.stringify(itemData.jsonData, null, 2));
-                await jsonWritable.close();
-                
-            } catch (e) {
-                console.error('Local save failed:', e);
-            }
-        }
-        
-        // =====================================================================
-        // RETRY QUEUE
-        // =====================================================================
-        
         function addToRetryQueue(itemData) {
+            // Store minimal data (can't store blobs in localStorage)
             const queueItem = {
                 sku: itemData.sku,
                 jsonData: itemData.jsonData,
@@ -1558,8 +1938,6 @@
         async function processRetryQueue() {
             if (state.retryQueue.length === 0) return;
             
-            showToast('info', `Retrying ${state.retryQueue.length} items...`);
-            
             const toRetry = [...state.retryQueue];
             state.retryQueue = [];
             
@@ -1574,152 +1952,249 @@
             
             localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
             updateRetryBadge();
-            
-            if (state.retryQueue.length === 0) {
-                showToast('success', 'All retries successful!');
-            } else {
-                showToast('warning', `${state.retryQueue.length} items still pending`);
-            }
         }
         
         // =====================================================================
-        // RESET
+        // SKU & TIMER
         // =====================================================================
-        
-        function resetItem() {
-            state.currentSKU = null;
+        function startNewItem() {
+            const sku = document.getElementById('sku-input').value.trim().toUpperCase();
+            if (!sku) { showToast('warning', 'Enter a SKU'); return; }
+            
+            const now = Date.now();
+            state.currentSKU = sku;
+            state.photos = { main: [], closeup: [], weight: [], handheld: [] };
             state.classification = null;
             state.templateKey = null;
             state.template = null;
-            state.photos = { main: [], closeup: [], handheld: [] };
+            state.tagData = null;
             state.measurements = {};
-            state.rawTranscript = null;
+            state.rawTranscript = '';
             state.audioBlob = null;
+            state.aiTriggered = false;
+            // v2.9.5: Detailed timing for KPIs
+            state.timing = {
+                itemStartTime: now,
+                classificationTime: null,
+                mainPhotosStartTime: now,  // Starting in main mode
+                mainPhotosEndTime: null,
+                closeupStartTime: null,
+                closeupEndTime: null,
+                weightStartTime: null,
+                weightEndTime: null,
+                measurementsStartTime: null,
+                measurementsEndTime: null,
+                completeTime: null
+            };
             state.discardedRecordings = [];
             state.lastRecordingDuration = 0;
-            state.weight = null;
-            state.timerStart = null;
-            state.phase = 'main';
-            state.timing = {};
             
-            // Reset UI
-            document.getElementById('sku-input').value = '';
-            document.getElementById('sku-input').focus();
-            document.getElementById('timer').textContent = '00:00';
-            document.getElementById('timer').classList.remove('warning', 'danger');
-            document.getElementById('photo-count').textContent = '0 photos';
-            document.getElementById('photo-grid').innerHTML = '';
-            document.getElementById('measurement-grid').innerHTML = '';
-            document.getElementById('weight-value').textContent = '--';
+            document.getElementById('sku-row').style.display = 'none';
+            document.getElementById('sku-display').textContent = sku;
+            document.getElementById('sku-display').classList.add('visible');
+            
+            document.getElementById('classification-box').classList.remove('ready');
+            document.getElementById('classification-category').textContent = 'Waiting...';
+            document.getElementById('classification-template').textContent = '-';
             document.getElementById('tag-grid').style.display = 'none';
+            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
+            document.getElementById('transcript-box').classList.remove('visible');
+            document.getElementById('complete-btn-camera').disabled = true;
             
-            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.phase').forEach(p => p.classList.remove('active', 'complete'));
+            // v2.9.5: Reset weight photo status
+            updateWeightPhotoStatus();
+            
+            updatePhotoGrid();
+            updatePhotoCount();
+            startTimer();
+            switchCameraMode('main');
+            showToast('success', `Started: ${sku}`);
         }
         
-        // =====================================================================
-        // STATS
-        // =====================================================================
+        function cancelItem() {
+            if (!confirm(`Cancel item ${state.currentSKU}?`)) return;
+            resetItem();
+            showToast('info', 'Item cancelled');
+        }
+        
+        function resetItem() {
+            state.currentSKU = '';
+            state.photos = { main: [], closeup: [], weight: [], handheld: [] };
+            state.classification = null;
+            state.templateKey = null;
+            state.template = null;
+            state.tagData = null;
+            state.measurements = {};
+            state.rawTranscript = '';
+            state.audioBlob = null;
+            state.aiTriggered = false;
+            // v2.9.5: Reset detailed timing
+            state.timing = {
+                itemStartTime: null,
+                classificationTime: null,
+                mainPhotosStartTime: null,
+                mainPhotosEndTime: null,
+                closeupStartTime: null,
+                closeupEndTime: null,
+                weightStartTime: null,
+                weightEndTime: null,
+                measurementsStartTime: null,
+                measurementsEndTime: null,
+                completeTime: null
+            };
+            state.discardedRecordings = [];
+            state.lastRecordingDuration = 0;
+            
+            document.getElementById('sku-input').value = '';
+            document.getElementById('sku-row').style.display = 'flex';
+            document.getElementById('sku-display').classList.remove('visible');
+            
+            document.getElementById('classification-box').classList.remove('ready');
+            document.getElementById('classification-category').textContent = 'Waiting...';
+            document.getElementById('classification-template').textContent = '-';
+            document.getElementById('tag-grid').style.display = 'none';
+            document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
+            document.getElementById('transcript-box').classList.remove('visible');
+            document.getElementById('complete-btn-camera').disabled = true;
+            
+            // v2.9.5: Reset weight photo status
+            updateWeightPhotoStatus();
+            
+            // Reset recording button state
+            const btn = document.getElementById('record-btn');
+            btn.classList.remove('btn-stop');
+            btn.classList.add('btn-record');
+            btn.textContent = '🎤 TAP TO RECORD';
+            
+            updatePhotoGrid();
+            updatePhotoCount();
+            stopTimer();
+            document.getElementById('timer').textContent = '0:00';
+        }
+        
+        function startTimer() {
+            stopTimer();
+            state.timerStart = Date.now();
+            state.timerInterval = setInterval(() => {
+                const s = Math.floor((Date.now() - state.timerStart) / 1000);
+                document.getElementById('timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+        }
         
         function updateStats() {
-            document.getElementById('stat-completed').textContent = state.completedItems;
-            
+            document.getElementById('item-count').textContent = state.completedItems;
             if (state.completedItems > 0) {
-                const avgTime = Math.round(state.totalTime / state.completedItems);
-                const mins = Math.floor(avgTime / 60);
-                const secs = avgTime % 60;
-                document.getElementById('stat-avg-time').textContent = `${mins}:${String(secs).padStart(2, '0')}`;
-                
-                const sessionHours = (Date.now() - state.sessionStart) / 3600000;
-                const perHour = sessionHours > 0 ? Math.round(state.completedItems / sessionHours) : 0;
-                document.getElementById('stat-per-hour').textContent = perHour;
+                const avg = Math.round(state.totalTime / state.completedItems);
+                document.getElementById('avg-time').textContent = `${Math.floor(avg / 60)}:${String(avg % 60).padStart(2, '0')}`;
             }
         }
         
         // =====================================================================
-        // UTILITIES
+        // BARCODE SCANNER (with debounce to prevent rapid-fire detection)
         // =====================================================================
+        let barcodeDetected = false;
         
-        async function callLambda(action, data) {
-            const response = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, ...data })
-            });
-            return response.json();
-        }
-        
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-        
-        function showToast(type, message) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
+        function openBarcodeScanner() {
+            barcodeDetected = false;
+            document.getElementById('barcode-modal').classList.add('active');
+            document.getElementById('barcode-status').textContent = 'Starting...';
+            document.getElementById('barcode-status').classList.remove('success');
             
-            setTimeout(() => toast.remove(), 4000);
-        }
-        
-        // =====================================================================
-        // KEYBOARD SHORTCUTS
-        // =====================================================================
-        
-        function setupKeyboardShortcuts() {
-            document.addEventListener('keydown', (e) => {
-                // Space = capture photo
-                if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
-                    e.preventDefault();
-                    capturePhoto();
+            const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
+            
+            Quagga.init({
+                inputStream: {
+                    type: 'LiveStream',
+                    target: document.getElementById('barcode-container'),
+                    constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' },
+                    willReadFrequently: true
+                },
+                decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
+                locate: true,
+                frequency: 10
+            }, err => {
+                if (err) {
+                    document.getElementById('barcode-status').textContent = 'Scanner error';
+                    console.error('Quagga init error:', err);
+                    return;
                 }
-                
-                // Enter in SKU field = start timer
-                if (e.code === 'Enter' && document.activeElement.id === 'sku-input') {
-                    const sku = document.getElementById('sku-input').value.trim().toUpperCase();
-                    if (sku) {
-                        state.currentSKU = sku;
-                        startTimer();
-                        showToast('info', `SKU: ${sku}`);
-                    }
-                }
-                
-                // R = start/stop recording
-                if (e.code === 'KeyR' && e.ctrlKey) {
-                    e.preventDefault();
-                    if (state.isRecording) {
-                        stopRecording();
-                    } else {
-                        advancePhase('measurements');
-                    }
-                }
-                
-                // C = complete
-                if (e.code === 'KeyC' && e.ctrlKey && e.shiftKey) {
-                    e.preventDefault();
-                    completeItem();
-                }
-                
-                // 1-8 = select category
-                if (e.code.startsWith('Digit') && document.activeElement.tagName !== 'INPUT') {
-                    const num = parseInt(e.code.slice(5));
-                    const categories = Object.keys(CATEGORIES);
-                    if (num >= 1 && num <= categories.length) {
-                        selectCategory(categories[num - 1]);
-                    }
-                }
+                document.getElementById('barcode-status').textContent = 'Point at barcode...';
+                Quagga.start();
+                Quagga.onDetected(result => {
+                    if (barcodeDetected) return;
+                    barcodeDetected = true;
+                    Quagga.stop();
+                    
+                    const code = result.codeResult.code;
+                    console.log('📊 Barcode detected:', code);
+                    document.getElementById('barcode-status').textContent = code;
+                    document.getElementById('barcode-status').classList.add('success');
+                    document.getElementById('sku-input').value = code;
+                    
+                    setTimeout(() => { 
+                        closeBarcodeScanner(); 
+                        showToast('success', `Scanned: ${code}`); 
+                    }, 500);
+                });
             });
         }
         
+        function closeBarcodeScanner() {
+            barcodeDetected = false;
+            try { Quagga.stop(); Quagga.offDetected(); } catch {}
+            document.getElementById('barcode-modal').classList.remove('active');
+        }
+        
         // =====================================================================
-        // INIT
+        // SETTINGS
         // =====================================================================
+        function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
+        
+        function saveSettings() {
+            // v2.9.5: Include weight camera
+            ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
+                const sel = document.getElementById(`camera-${mode}`);
+                if (sel) {
+                    state.cameras[mode].deviceId = sel.value;
+                    localStorage.setItem(`camera-${mode}`, sel.value);
+                }
+            });
+            const url = document.getElementById('lambda-url').value.trim();
+            if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
+            
+            // v2.9.5: Save photographer ID
+            const photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
+            state.photographerId = photographerId;
+            localStorage.setItem('photographerId', photographerId);
+            
+            closeSettings();
+            showToast('success', 'Settings saved');
+            startCamera(state.currentMode);
+            checkLambda();
+        }
+        
+        // =====================================================================
+        // v2.9.5: DYMO USB SCALE REMOVED
+        // Weight is now captured via photo of scale display
+        // n8n will OCR the weight photo to extract the value
+        // =====================================================================
+        
+        // =====================================================================
+        // TOAST
+        // =====================================================================
+        function showToast(type, msg) {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
         
         document.addEventListener('DOMContentLoaded', init);
     </script>
