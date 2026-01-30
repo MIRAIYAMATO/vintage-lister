@@ -1,9 +1,31 @@
 <!DOCTYPE html>
+<!--
+    VintageLister v2.9.6 - ASYNC ARCHITECTURE + BUG FIXES
+    
+    CHANGELOG:
+    v2.9.6 (2026-01-30):
+    - CRITICAL FIX: AI classification now triggers when entering closeup from ANY mode
+      (not just main→closeup). Fixes workflow: main → weight → closeup
+    - HIGH FIX: resizeImageForAI() now has error handler - prevents infinite hang on corrupt images
+    - FIX: Weight photo status CSS class now toggles properly
+    - FIX: Object URL memory leak in photo grid - old URLs now revoked
+    - ADDED: Handheld timing tracking (start/end/duration in KPIs)
+    - ADDED: Full template object in jsonData (n8n knows expected measurements)
+    - REMOVED: Dead code (generateParsedMeasurements, rawExtractedValues)
+    - CLEANUP: Removed all stale v2.9.4 comment references
+    
+    v2.9.5 (2026-01-29):
+    - MAJOR: Async architecture - AI processing moved to n8n
+    - Weight camera replaces USB scale (Dymo M10 removed)
+    - 4-camera workflow: MAIN, CLOSEUP, WEIGHT, HANDHELD
+    - Comprehensive KPI timing system
+    - Simplified S3 folder structure
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.5</title>
+    <title>VintageLister v2.9.6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -618,7 +640,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.4e</span>
+                    <span class="version-badge" id="version-badge">v2.9.6</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -801,48 +823,39 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.5 - ASYNC ARCHITECTURE + WEIGHT CAMERA
+        // VINTAGELISTER v2.9.6 - ASYNC ARCHITECTURE + WEIGHT CAMERA
         // 
-        // MAJOR CHANGES FROM v2.9.4e:
-        // 
+        // v2.9.6 FIXES:
+        // - AI trigger now fires when entering closeup from ANY mode
+        // - resizeImageForAI() has error handler (prevents infinite hang)
+        // - Weight photo status CSS class toggles properly
+        // - Object URL memory leak fixed
+        // - Handheld timing tracking added
+        // - Dead code removed
+        //
+        // v2.9.5 ARCHITECTURE:
+        //
         // 1. ASYNC AI PROCESSING
-        //    - Removed blocking AI from completeItem() (was causing 15-30 sec wait)
-        //    - OCR, Image Processing, Photo Routing, Full Pipeline → moved to n8n
-        //    - Photographer clicks COMPLETE → uploads in ~2-3 sec → UI resets
-        //    - n8n pulls from S3 and does all AI processing async
+        //    - Removed blocking AI from completeItem()
+        //    - OCR, Image Processing, Photo Routing, Full Pipeline → n8n
+        //    - COMPLETE → uploads ~2-3 sec → UI resets
         //
         // 2. WEIGHT CAMERA (replaces Dymo USB scale)
-        //    - New 4th camera mode: WEIGHT
-        //    - Dedicated camera mounted above scale
-        //    - Photographer takes photo of scale display
-        //    - n8n does OCR to extract weight value
-        //    - Eliminates USB scale connection issues and extra clicks
+        //    - 4th camera mode: WEIGHT
+        //    - Photo of scale display, n8n OCRs the value
         //
-        // 3. SIMPLIFIED S3 FOLDER STRUCTURE
-        //    - main/      ← all main camera photos
-        //    - closeup/   ← all closeup photos (n8n categorizes later)
-        //    - weight/    ← scale display photo
-        //    - handheld/  ← handheld camera photos
-        //    - measurements/ ← audio, transcript
-        //    - data/      ← JSON file
+        // 3. S3 FOLDER STRUCTURE
+        //    - main/, closeup/, weight/, handheld/, measurements/, data/
         //
         // 4. DETAILED KPI TIMING
         //    - Granular timestamps for each workflow phase
-        //    - Per-photographer, per-category analysis capability
-        //    - Supports efficiency optimization across item types
+        //    - Per-photographer, per-category analysis
         //
-        // AI KEPT IN BROWSER:
-        //    - classify (template selection) - photographer needs to see measurement list
-        //    - whisper (transcription) - photographer needs to verify transcript
-        //
-        // AI MOVED TO N8N:
-        //    - OCR (tag data extraction)
-        //    - Image Processing (rotation/crop analysis)
-        //    - Photo Routing (tag/feature/defect categorization)
-        //    - Full Pipeline (measurement parsing/matching/validation)
+        // AI IN BROWSER: classify, whisper
+        // AI IN N8N: OCR, imageProcessing, photoRouting, fullPipeline
         // =============================================================================
         
-        const VERSION = '2.9.5';
+        const VERSION = '2.9.6';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -887,6 +900,8 @@
                 closeupEndTime: null,         // When switched away from CLOSEUP
                 weightStartTime: null,        // When switched to WEIGHT
                 weightEndTime: null,          // When switched away from WEIGHT
+                handheldStartTime: null,      // v2.9.6: When switched to HANDHELD
+                handheldEndTime: null,        // v2.9.6: When switched away from HANDHELD
                 measurementsStartTime: null,  // When started recording
                 measurementsEndTime: null,    // When recording stopped
                 completeTime: null            // When COMPLETE clicked
@@ -1036,6 +1051,8 @@
                     state.timing.closeupEndTime = now;
                 } else if (prevMode === 'weight' && state.timing.weightStartTime) {
                     state.timing.weightEndTime = now;
+                } else if (prevMode === 'handheld' && state.timing.handheldStartTime) {
+                    state.timing.handheldEndTime = now;
                 }
             }
             
@@ -1044,17 +1061,20 @@
             startCamera(mode);
             updatePhotoCount();
             
-            // v2.9.5: Track start time for new mode
+            // v2.9.6: Track start time for new mode (including handheld)
             if (state.currentSKU) {
                 if (mode === 'closeup' && !state.timing.closeupStartTime) {
                     state.timing.closeupStartTime = now;
                 } else if (mode === 'weight' && !state.timing.weightStartTime) {
                     state.timing.weightStartTime = now;
+                } else if (mode === 'handheld' && !state.timing.handheldStartTime) {
+                    state.timing.handheldStartTime = now;
                 }
             }
             
-            // Trigger AI when switching to closeup (after taking main photos)
-            if (prevMode === 'main' && mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
+            // v2.9.6: Trigger AI when entering closeup from ANY mode (not just main)
+            // This allows workflows like: main → weight → closeup
+            if (mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
                 triggerAI();
             }
         }
@@ -1103,13 +1123,16 @@
         // v2.9.5: Update weight photo status display
         function updateWeightPhotoStatus() {
             const statusText = document.getElementById('weight-status-text');
+            const statusContainer = document.getElementById('weight-photo-status');
             const count = state.photos.weight.length;
             if (count > 0) {
                 statusText.textContent = `✅ ${count} weight photo${count > 1 ? 's' : ''} captured`;
                 statusText.style.color = 'var(--accent-green)';
+                statusContainer.classList.add('captured');
             } else {
                 statusText.textContent = 'No weight photo';
                 statusText.style.color = 'var(--text-secondary)';
+                statusContainer.classList.remove('captured');
             }
         }
         
@@ -1121,6 +1144,10 @@
         
         function updatePhotoGrid() {
             const grid = document.getElementById('photo-grid');
+            // v2.9.6: Revoke old Object URLs to prevent memory leak
+            grid.querySelectorAll('img').forEach(img => {
+                if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+            });
             const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
             grid.innerHTML = all.map((p, i) => `
                 <div class="photo-thumb">
@@ -1133,9 +1160,11 @@
         
         function deletePhoto(idx) {
             let count = 0;
-            for (const mode of ['main', 'closeup', 'handheld']) {
+            for (const mode of ['main', 'closeup', 'weight', 'handheld']) {
                 if (idx < count + state.photos[mode].length) {
                     state.photos[mode].splice(idx - count, 1);
+                    // v2.9.5: Update weight status if deleting weight photo
+                    if (mode === 'weight') updateWeightPhotoStatus();
                     break;
                 }
                 count += state.photos[mode].length;
@@ -1192,8 +1221,9 @@
         }
         
         async function resizeImageForAI(blob) {
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 const img = new Image();
+                const objectUrl = URL.createObjectURL(blob);
                 img.onload = () => {
                     const canvas = document.getElementById('resize-canvas');
                     const ctx = canvas.getContext('2d');
@@ -1205,9 +1235,14 @@
                     canvas.width = w;
                     canvas.height = h;
                     ctx.drawImage(img, 0, 0, w, h);
+                    URL.revokeObjectURL(objectUrl);
                     resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
                 };
-                img.src = URL.createObjectURL(blob);
+                img.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error('Failed to load image for resize'));
+                };
+                img.src = objectUrl;
             });
         }
         
@@ -1239,14 +1274,16 @@
             `).join('');
             document.getElementById('complete-btn-camera').disabled = false;
             
-            // Track measurements start time
-            state.timing.measurementsStart = Date.now();
+            // Track measurements start time (when template loaded, before recording)
+            if (!state.timing.measurementsStartTime) {
+                state.timing.measurementsStartTime = Date.now();
+            }
         }
         
         // =====================================================================
-        // VOICE RECORDING - v2.9.4 UPDATED
-        // - Button now shows "🛑 TAP TO STOP" when recording (clear and unmistakable)
-        // - Discarded recordings are saved for QC
+        // VOICE RECORDING
+        // - Button shows "🛑 TAP TO STOP" when recording
+        // - Discarded recordings saved for QC
         // - Recording duration tracked for KPIs
         // =====================================================================
         async function toggleRecording() {
@@ -1290,7 +1327,7 @@
                 state.mediaRecorder.start();
                 state.isRecording = true;
                 
-                // v2.9.4: Clear button text change to "TAP TO STOP"
+                // Update button to stop state
                 const btn = document.getElementById('record-btn');
                 btn.classList.remove('btn-record');
                 btn.classList.add('btn-stop');
@@ -1306,10 +1343,10 @@
                 state.mediaRecorder.stop();
                 state.isRecording = false;
                 
-                // v2.9.5: Track measurements end time
+                // Track measurements end time
                 state.timing.measurementsEndTime = Date.now();
                 
-                // v2.9.4: Reset button to "TAP TO RECORD"
+                // Reset button to record state
                 const btn = document.getElementById('record-btn');
                 btn.classList.remove('btn-stop');
                 btn.classList.add('btn-record');
@@ -1343,9 +1380,9 @@
         }
         
         function parseMeasurements(text) {
-            // v2.9.4c: Just extract numbers for immediate UI display
-            // The actual field matching happens in fullPipeline via Lambda
-            // This is only for user feedback - final values come from AI
+            // Extract numbers for immediate UI display only
+            // Actual field matching happens in n8n via fullPipeline
+            // This is user feedback - final values come from AI
             
             const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
             const matches = [...text.matchAll(regex)];
@@ -1377,15 +1414,12 @@
                 }
             });
             
-            // Store raw values - fullPipeline will properly match them later
-            state.rawExtractedValues = extractedValues;
-            
-            // Note: We don't populate state.measurements here anymore
-            // That happens in processItemInBackground when fullPipeline runs
+            // v2.9.6: Removed rawExtractedValues - was never used
+            // n8n will re-parse transcript with Full Pipeline
         }
         
         // =====================================================================
-        // FOLDER SAVE - v2.9.4 UPDATED for raw/final structure
+        // LOCAL FOLDER SAVE
         // =====================================================================
         async function chooseSaveFolder() {
             try {
@@ -1404,115 +1438,70 @@
             try {
                 const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
                 
-                // Create ALL folders including new raw/final structure
-                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
-                const rawFolder = await mainFolder.getDirectoryHandle('raw', { create: true });
-                const finalFolder = await mainFolder.getDirectoryHandle('final', { create: true });
-                
-                // Other folders
-                const folders = ['tag', 'defects', 'features', 'weight', 'measurements', 'data'];
+                // v2.9.5: Simplified folder structure (matches S3)
+                const folders = ['main', 'closeup', 'weight', 'handheld', 'measurements', 'data'];
                 for (const f of folders) {
                     await skuFolder.getDirectoryHandle(f, { create: true });
                 }
                 
-                // Save main photos to raw folder (final folder will be populated by backend processing)
+                // Save main photos
+                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
                 if (itemData.photos.main.length > 0) {
                     for (let i = 0; i < itemData.photos.main.length; i++) {
                         const photo = itemData.photos.main[i];
-                        const filename = `${itemData.sku}_${photo.label || 'main'}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        
-                        // Save to raw folder
-                        const rawHandle = await rawFolder.getFileHandle(filename, { create: true });
-                        const rawWritable = await rawHandle.createWritable();
-                        await rawWritable.write(photo.blob);
-                        await rawWritable.close();
-                        
-                        // Also save to final for now (backend will replace with processed version)
-                        const finalHandle = await finalFolder.getFileHandle(filename, { create: true });
-                        const finalWritable = await finalHandle.createWritable();
-                        await finalWritable.write(photo.blob);
-                        await finalWritable.close();
-                    }
-                } else {
-                    await createNAFile(rawFolder, null, itemData.sku);
-                    await createNAFile(finalFolder, null, itemData.sku);
-                }
-                
-                // v2.9.4c: Route closeup photos to appropriate folders based on AI classification
-                // Categories: tag (brand labels, size tags), features (hardware, details), defects (damage, stains)
-                const tagPhotos = [];
-                const featurePhotos = [];
-                const defectPhotos = [];
-                
-                for (const photo of itemData.photos.closeup) {
-                    const category = photo.routedCategory || 'tag'; // Default to tag
-                    if (category === 'defect' || category === 'defects') {
-                        defectPhotos.push(photo);
-                    } else if (category === 'feature' || category === 'features') {
-                        featurePhotos.push(photo);
-                    } else {
-                        tagPhotos.push(photo);
-                    }
-                }
-                
-                // Save tag photos
-                const tagFolder = await skuFolder.getDirectoryHandle('tag', { create: true });
-                if (tagPhotos.length > 0) {
-                    for (let i = 0; i < tagPhotos.length; i++) {
-                        const photo = tagPhotos[i];
-                        const label = photo.routedLabel || 'tag';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await tagFolder.getFileHandle(filename, { create: true });
+                        const filename = `${itemData.sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await mainFolder.getFileHandle(filename, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(photo.blob);
                         await writable.close();
                     }
                 } else {
-                    await createNAFile(tagFolder, null, itemData.sku);
+                    await createNAFile(mainFolder, null, itemData.sku);
                 }
                 
-                // Save feature photos
-                const featuresFolder = await skuFolder.getDirectoryHandle('features', { create: true });
-                if (featurePhotos.length > 0) {
-                    for (let i = 0; i < featurePhotos.length; i++) {
-                        const photo = featurePhotos[i];
-                        const label = photo.routedLabel || 'feature';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await featuresFolder.getFileHandle(filename, { create: true });
+                // v2.9.5: Save ALL closeup photos to closeup/ folder (n8n categorizes later)
+                const closeupFolder = await skuFolder.getDirectoryHandle('closeup', { create: true });
+                if (itemData.photos.closeup.length > 0) {
+                    for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                        const photo = itemData.photos.closeup[i];
+                        const filename = `${itemData.sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await closeupFolder.getFileHandle(filename, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(photo.blob);
                         await writable.close();
                     }
                 } else {
-                    await createNAFile(featuresFolder, null, itemData.sku);
+                    await createNAFile(closeupFolder, null, itemData.sku);
                 }
                 
-                // Save defect photos
-                const defectsFolder = await skuFolder.getDirectoryHandle('defects', { create: true });
-                if (defectPhotos.length > 0) {
-                    for (let i = 0; i < defectPhotos.length; i++) {
-                        const photo = defectPhotos[i];
-                        const label = photo.routedLabel || 'defect';
-                        const filename = `${itemData.sku}_${label}_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await defectsFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(defectsFolder, null, itemData.sku);
-                }
-                
-                // Weight from Dymo scale - v2.9.4 UPDATED format
+                // v2.9.5: Save weight PHOTOS (not Dymo text file)
                 const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
-                if (itemData.weight && itemData.weight.pounds !== null) {
-                    const weightContent = `${itemData.sku}\nWeight: ${itemData.weight.display}\nDecimal Pounds: ${itemData.weight.pounds.toFixed(4)}\nSource: Dymo M10 USB Scale\nTimestamp: ${new Date().toISOString()}`;
-                    const weightHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight.txt`, { create: true });
-                    const weightWritable = await weightHandle.createWritable();
-                    await weightWritable.write(weightContent);
-                    await weightWritable.close();
+                if (itemData.photos.weight.length > 0) {
+                    for (let i = 0; i < itemData.photos.weight.length; i++) {
+                        const photo = itemData.photos.weight[i];
+                        const filename = `${itemData.sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await weightFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
                 } else {
-                    await createNAFile(skuFolder, 'weight', itemData.sku);
+                    await createNAFile(weightFolder, null, itemData.sku);
+                }
+                
+                // v2.9.5: Save handheld photos
+                const handheldFolder = await skuFolder.getDirectoryHandle('handheld', { create: true });
+                if (itemData.photos.handheld.length > 0) {
+                    for (let i = 0; i < itemData.photos.handheld.length; i++) {
+                        const photo = itemData.photos.handheld[i];
+                        const filename = `${itemData.sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
+                        const fileHandle = await handheldFolder.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(handheldFolder, null, itemData.sku);
                 }
                 
                 // Save measurements folder contents
@@ -1526,7 +1515,7 @@
                     await audioWritable.close();
                 }
                 
-                // Discarded recordings - v2.9.4 NEW
+                // Discarded recordings for QC
                 if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
                     for (let i = 0; i < itemData.discardedRecordings.length; i++) {
                         const discarded = itemData.discardedRecordings[i];
@@ -1543,15 +1532,6 @@
                     const transcriptWritable = await transcriptHandle.createWritable();
                     await transcriptWritable.write(itemData.rawTranscript);
                     await transcriptWritable.close();
-                }
-                
-                // Parsed measurements (clean format for listings)
-                if (Object.keys(itemData.measurements).length > 0) {
-                    const parsedContent = generateParsedMeasurements(itemData);
-                    const parsedHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_measurements_parsed.txt`, { create: true });
-                    const parsedWritable = await parsedHandle.createWritable();
-                    await parsedWritable.write(parsedContent);
-                    await parsedWritable.close();
                 }
                 
                 // Master JSON
@@ -1579,19 +1559,6 @@
             const writable = await fileHandle.createWritable();
             await writable.write(`No data for ${sku}`);
             await writable.close();
-        }
-        
-        function generateParsedMeasurements(itemData) {
-            let content = `MEASUREMENTS - ${itemData.sku}\n`;
-            content += `Category: ${itemData.category || 'Unknown'}\n`;
-            content += `Template: ${itemData.template?.name || 'Unknown'}\n`;
-            content += `Note: All measurements are FLAT LAY (multiply by 2 for circumference)\n\n`;
-            
-            for (const [name, value] of Object.entries(itemData.measurements)) {
-                content += `• ${name}: ${value}"\n`;
-            }
-            
-            return content;
         }
         
         // =====================================================================
@@ -1708,12 +1675,13 @@
         }
         
         // =====================================================================
-        // COMPLETE ITEM - v2.9.4c MAJOR REWRITE
-        // Now runs all AI agents BEFORE building JSON:
-        // 1. Image Processing on main photos
-        // 2. Photo Routing on closeup photos  
-        // 3. OCR on tag photos
-        // 4. Full Pipeline (Parser→Matcher→Underwriter) for measurements
+        // COMPLETE ITEM - v2.9.5+ ASYNC ARCHITECTURE
+        // Browser captures data and uploads quickly (2-3 sec), then resets.
+        // n8n handles all heavy AI processing asynchronously:
+        // - OCR on closeup photos
+        // - Weight OCR from scale photos
+        // - Photo routing (tag/feature/defect categorization)
+        // - Full Pipeline (measurement parsing/matching)
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
@@ -1741,6 +1709,9 @@
                 : 0;
             const weightDuration = state.timing.weightEndTime && state.timing.weightStartTime 
                 ? Math.round((state.timing.weightEndTime - state.timing.weightStartTime) / 1000) 
+                : 0;
+            const handheldDuration = state.timing.handheldEndTime && state.timing.handheldStartTime 
+                ? Math.round((state.timing.handheldEndTime - state.timing.handheldStartTime) / 1000) 
                 : 0;
             const measurementsDuration = state.timing.measurementsEndTime && state.timing.measurementsStartTime 
                 ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) 
@@ -1772,17 +1743,19 @@
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
                     version: VERSION,
-                    // v2.9.5: Processing status for n8n to track
+                    // Processing status for n8n to track
                     processingStatus: 'pending',
                     // Classification from initial AI (template selection only)
                     category: state.classification,
                     templateKey: state.templateKey,
+                    // v2.9.6: Include full template so n8n knows expected measurements
+                    template: state.template,
                     // Tag data will be populated by n8n OCR
                     tagData: null,
-                    // Basic measurements from parser - n8n will enhance with Matcher
-                    measurements: state.measurements,
+                    // Measurements placeholder - n8n will populate via fullPipeline
+                    measurements: {},
                     rawTranscript: state.rawTranscript,
-                    // v2.9.5: Weight from photo (n8n will OCR), not USB scale
+                    // Weight from photo (n8n will OCR)
                     weight: {
                         source: 'photo',
                         photoCount: state.photos.weight.length,
@@ -1807,7 +1780,7 @@
                             rating: recordingRating
                         }
                     },
-                    // v2.9.5: Detailed KPI timing for analysis
+                    // v2.9.6: Detailed KPI timing for analysis
                     timing: {
                         itemStartTime: state.timing.itemStartTime ? new Date(state.timing.itemStartTime).toISOString() : null,
                         classificationTime: state.timing.classificationTime ? new Date(state.timing.classificationTime).toISOString() : null,
@@ -1817,6 +1790,8 @@
                         closeupEndTime: state.timing.closeupEndTime ? new Date(state.timing.closeupEndTime).toISOString() : null,
                         weightStartTime: state.timing.weightStartTime ? new Date(state.timing.weightStartTime).toISOString() : null,
                         weightEndTime: state.timing.weightEndTime ? new Date(state.timing.weightEndTime).toISOString() : null,
+                        handheldStartTime: state.timing.handheldStartTime ? new Date(state.timing.handheldStartTime).toISOString() : null,
+                        handheldEndTime: state.timing.handheldEndTime ? new Date(state.timing.handheldEndTime).toISOString() : null,
                         measurementsStartTime: state.timing.measurementsStartTime ? new Date(state.timing.measurementsStartTime).toISOString() : null,
                         measurementsEndTime: state.timing.measurementsEndTime ? new Date(state.timing.measurementsEndTime).toISOString() : null,
                         completeTime: state.timing.completeTime ? new Date(state.timing.completeTime).toISOString() : null,
@@ -1825,6 +1800,7 @@
                             mainPhotos: mainPhotosDuration,
                             closeup: closeupDuration,
                             weight: weightDuration,
+                            handheld: handheldDuration,
                             measurements: measurementsDuration,
                             total: totalDuration
                         }
@@ -1863,9 +1839,9 @@
         }
         
         // =====================================================================
-        // BACKGROUND PROCESSING - v2.9.4c SIMPLIFIED
-        // AI processing now happens in completeItem() before this is called
-        // This function just handles saving to local folder, S3, and n8n
+        // BACKGROUND PROCESSING - ASYNC ARCHITECTURE
+        // No AI processing here - just upload to S3 and trigger n8n
+        // n8n handles: OCR, image processing, photo routing, full pipeline
         // =====================================================================
         async function processItemInBackground(itemData, retryCount = 0) {
             const sku = itemData.sku;
@@ -2028,7 +2004,7 @@
             state.rawTranscript = '';
             state.audioBlob = null;
             state.aiTriggered = false;
-            // v2.9.5: Reset detailed timing
+            // v2.9.6: Reset detailed timing (including handheld)
             state.timing = {
                 itemStartTime: null,
                 classificationTime: null,
@@ -2038,6 +2014,8 @@
                 closeupEndTime: null,
                 weightStartTime: null,
                 weightEndTime: null,
+                handheldStartTime: null,
+                handheldEndTime: null,
                 measurementsStartTime: null,
                 measurementsEndTime: null,
                 completeTime: null
