@@ -1,31 +1,34 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.6 - ASYNC ARCHITECTURE + BUG FIXES
+    VintageLister v2.9.7 - BARCODE CONFIDENCE + PREVIEW MODAL
     
     CHANGELOG:
+    v2.9.7 (2026-02-04):
+    - FIX: Barcode scanner now checks confidence - only accepts >80% confident scans
+    - FIX: Shows confidence % during scanning so user knows scan quality
+    - ADDED: Preview modal - double-click video to see full-size freeze frame
+    - ADDED: Click any photo thumbnail to view larger in preview modal
+    - ADDED: Barcode scanner shows "Low confidence - try again" for bad scans
+    
     v2.9.6 (2026-01-30):
     - CRITICAL FIX: AI classification now triggers when entering closeup from ANY mode
-      (not just main→closeup). Fixes workflow: main → weight → closeup
-    - HIGH FIX: resizeImageForAI() now has error handler - prevents infinite hang on corrupt images
-    - FIX: Weight photo status CSS class now toggles properly
-    - FIX: Object URL memory leak in photo grid - old URLs now revoked
-    - ADDED: Handheld timing tracking (start/end/duration in KPIs)
-    - ADDED: Full template object in jsonData (n8n knows expected measurements)
-    - REMOVED: Dead code (generateParsedMeasurements, rawExtractedValues)
-    - CLEANUP: Removed all stale v2.9.4 comment references
+    - HIGH FIX: resizeImageForAI() now has error handler
+    - FIX: Weight photo status CSS class toggles properly
+    - FIX: Object URL memory leak - old URLs now revoked
+    - ADDED: Handheld timing tracking
+    - ADDED: Full template object in jsonData
+    - REMOVED: Dead code
     
     v2.9.5 (2026-01-29):
     - MAJOR: Async architecture - AI processing moved to n8n
-    - Weight camera replaces USB scale (Dymo M10 removed)
+    - Weight camera replaces USB scale
     - 4-camera workflow: MAIN, CLOSEUP, WEIGHT, HANDHELD
-    - Comprehensive KPI timing system
-    - Simplified S3 folder structure
 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.6</title>
+    <title>VintageLister v2.9.7</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -226,7 +229,10 @@
             border-radius: 6px;
             overflow: hidden;
             background: var(--bg-tertiary);
+            cursor: pointer;
         }
+        
+        .photo-thumb:hover { outline: 2px solid var(--accent-blue); }
         
         .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         
@@ -315,10 +321,29 @@
             align-items: center;
             justify-content: center;
             min-height: 0;
+            cursor: pointer;
         }
         
         .video-container video { width: 100%; height: 100%; object-fit: contain; }
         .video-placeholder { color: var(--text-secondary); text-align: center; padding: 40px; }
+        
+        /* v2.9.7: Hint for double-click */
+        .video-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .video-container:hover .video-hint { opacity: 1; }
         
         .capture-flash {
             position: absolute;
@@ -561,9 +586,25 @@
             padding: 8px 16px;
             border-radius: 6px;
             font-size: 12px;
+            text-align: center;
         }
         
         .barcode-status.success { background: var(--accent-green); }
+        .barcode-status.warning { background: var(--accent-yellow); color: black; }
+        
+        /* v2.9.7: Confidence indicator for barcode scanner */
+        .barcode-confidence {
+            position: absolute;
+            top: 10px; right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+        
+        .barcode-confidence.good { color: var(--accent-green); }
+        .barcode-confidence.medium { color: var(--accent-yellow); }
+        .barcode-confidence.poor { color: var(--accent-red); }
         
         /* Toast */
         .toast-container {
@@ -590,7 +631,7 @@
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
         
-        /* v2.9.5: Weight Photo Status (replaces Dymo Scale) */
+        /* Weight Photo Status */
         .weight-photo-status {
             display: flex;
             align-items: center;
@@ -606,12 +647,60 @@
             background: rgba(34, 197, 94, 0.1);
         }
         
-        .weight-status-icon {
-            font-size: 20px;
+        .weight-status-icon { font-size: 20px; }
+        .weight-status-text { font-size: 13px; color: var(--text-secondary); }
+        
+        /* v2.9.7: Preview Modal - Full screen photo/video preview */
+        .preview-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            cursor: zoom-out;
         }
         
-        .weight-status-text {
-            font-size: 13px;
+        .preview-modal.active { opacity: 1; visibility: visible; }
+        
+        .preview-modal img, .preview-modal canvas {
+            max-width: 95vw;
+            max-height: 95vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        .preview-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .preview-close:hover { background: var(--accent-red); }
+        
+        .preview-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
             color: var(--text-secondary);
         }
     </style>
@@ -640,7 +729,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.6</span>
+                    <span class="version-badge" id="version-badge">v2.9.7</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -678,7 +767,7 @@
                     <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
                 </div>
                 
-                <!-- Weight Photo Status (replaces USB Scale) -->
+                <!-- Weight Photo Status -->
                 <div class="section-card">
                     <div class="section-title">⚖️ Weight Photo</div>
                     <div class="weight-photo-status" id="weight-photo-status">
@@ -715,7 +804,7 @@
                 <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
             </div>
             
-            <div class="video-container">
+            <div class="video-container" ondblclick="openVideoPreview()">
                 <video id="video-preview" autoplay playsinline muted></video>
                 <div class="video-placeholder" id="video-placeholder">📷 Select a camera in Settings</div>
                 <div class="capture-flash" id="capture-flash"></div>
@@ -723,6 +812,7 @@
                     <div class="spinner"></div>
                     <div style="font-size: 13px; color: var(--text-secondary);">AI analyzing photos...</div>
                 </div>
+                <div class="video-hint">Double-click to preview full size</div>
             </div>
             
             <div class="capture-area">
@@ -731,7 +821,7 @@
             </div>
         </div>
         
-        <!-- Right Panel - REMOVED COMPLETE & SAVE BUTTON -->
+        <!-- Right Panel -->
         <div class="panel panel-right">
             <div class="panel-scroll">
                 <div class="section-card">
@@ -747,11 +837,7 @@
                     </div>
                 </div>
                 
-                <!-- Recording button - Changes to TAP TO STOP when recording -->
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
-                
-                <!-- NOTE: "COMPLETE & SAVE" button REMOVED from here per user request -->
-                <!-- The COMPLETE button in the camera capture area is the only submit option -->
             </div>
         </div>
     </div>
@@ -766,9 +852,13 @@
             <div class="modal-body" style="padding: 0;">
                 <div class="barcode-container" id="barcode-container">
                     <div class="barcode-target"></div>
+                    <div class="barcode-confidence" id="barcode-confidence">--</div>
                     <div class="barcode-status" id="barcode-status">Starting scanner...</div>
                 </div>
                 <div style="padding: 12px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">
+                        Hold barcode steady • Good lighting helps • Min 80% confidence required
+                    </div>
                     <button class="btn btn-secondary" onclick="closeBarcodeScanner()">Cancel</button>
                 </div>
             </div>
@@ -818,48 +908,48 @@
         </div>
     </div>
     
+    <!-- v2.9.7: Preview Modal - Full size photo/video preview -->
+    <div class="preview-modal" id="preview-modal" onclick="closePreviewModal(event)">
+        <button class="preview-close" onclick="closePreviewModal(event)">×</button>
+        <canvas id="preview-canvas"></canvas>
+        <img id="preview-image" style="display: none;">
+        <div class="preview-info" id="preview-info"></div>
+    </div>
+    
     <canvas id="capture-canvas" style="display: none;"></canvas>
     <canvas id="resize-canvas" style="display: none;"></canvas>
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.6 - ASYNC ARCHITECTURE + WEIGHT CAMERA
+        // VINTAGELISTER v2.9.7 - BARCODE CONFIDENCE + PREVIEW MODAL
         // 
+        // v2.9.7 FIXES:
+        // - Barcode scanner checks confidence (>80% required)
+        // - Shows confidence % during scanning
+        // - Preview modal for video/photos (double-click)
+        //
         // v2.9.6 FIXES:
         // - AI trigger now fires when entering closeup from ANY mode
-        // - resizeImageForAI() has error handler (prevents infinite hang)
+        // - resizeImageForAI() has error handler
         // - Weight photo status CSS class toggles properly
         // - Object URL memory leak fixed
         // - Handheld timing tracking added
-        // - Dead code removed
         //
         // v2.9.5 ARCHITECTURE:
-        //
-        // 1. ASYNC AI PROCESSING
-        //    - Removed blocking AI from completeItem()
-        //    - OCR, Image Processing, Photo Routing, Full Pipeline → n8n
-        //    - COMPLETE → uploads ~2-3 sec → UI resets
-        //
-        // 2. WEIGHT CAMERA (replaces Dymo USB scale)
-        //    - 4th camera mode: WEIGHT
-        //    - Photo of scale display, n8n OCRs the value
-        //
-        // 3. S3 FOLDER STRUCTURE
-        //    - main/, closeup/, weight/, handheld/, measurements/, data/
-        //
+        // 1. ASYNC AI PROCESSING - OCR, Image Processing, Photo Routing → n8n
+        // 2. WEIGHT CAMERA - Photo of scale display, n8n OCRs the value
+        // 3. S3 FOLDER STRUCTURE - main/, closeup/, weight/, handheld/, etc.
         // 4. DETAILED KPI TIMING
-        //    - Granular timestamps for each workflow phase
-        //    - Per-photographer, per-category analysis
-        //
-        // AI IN BROWSER: classify, whisper
-        // AI IN N8N: OCR, imageProcessing, photoRouting, fullPipeline
         // =============================================================================
         
-        const VERSION = '2.9.6';
+        const VERSION = '2.9.7';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
+        
+        // v2.9.7: Barcode confidence threshold (0-1, 80% = 0.80)
+        const BARCODE_MIN_CONFIDENCE = 0.80;
         
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
@@ -890,32 +980,26 @@
             mediaRecorder: null,
             audioChunks: [],
             aiTriggered: false,
-            // v2.9.5: Detailed KPI timing for each workflow phase
             timing: {
-                itemStartTime: null,          // When SKU entered/scanned
-                classificationTime: null,     // When AI classification completed
-                mainPhotosStartTime: null,    // When started taking main photos
-                mainPhotosEndTime: null,      // When switched away from MAIN
-                closeupStartTime: null,       // When switched to CLOSEUP
-                closeupEndTime: null,         // When switched away from CLOSEUP
-                weightStartTime: null,        // When switched to WEIGHT
-                weightEndTime: null,          // When switched away from WEIGHT
-                handheldStartTime: null,      // v2.9.6: When switched to HANDHELD
-                handheldEndTime: null,        // v2.9.6: When switched away from HANDHELD
-                measurementsStartTime: null,  // When started recording
-                measurementsEndTime: null,    // When recording stopped
-                completeTime: null            // When COMPLETE clicked
+                itemStartTime: null,
+                classificationTime: null,
+                mainPhotosStartTime: null,
+                mainPhotosEndTime: null,
+                closeupStartTime: null,
+                closeupEndTime: null,
+                weightStartTime: null,
+                weightEndTime: null,
+                handheldStartTime: null,
+                handheldEndTime: null,
+                measurementsStartTime: null,
+                measurementsEndTime: null,
+                completeTime: null
             },
-            // Stats
             completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
             totalTime: parseInt(localStorage.getItem('totalTime') || '0'),
-            // Retry queue
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
-            // v2.9.5: Removed Dymo USB Scale - using weight camera instead
-            // Discarded recordings for QC
             discardedRecordings: [],
             recordingStartTime: null,
-            // v2.9.5: Photographer ID from settings
             photographerId: localStorage.getItem('photographerId') || 'photographer_1'
         };
         
@@ -939,10 +1023,16 @@
                 }
             });
             
-            // Process retry queue
+            // ESC key to close preview modal
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Escape') {
+                    closePreviewModal();
+                }
+            });
+            
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled, scale fix applied');
+            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled');
         }
         
         // =====================================================================
@@ -994,7 +1084,6 @@
         }
         
         function populateCameraSelects() {
-            // v2.9.5: Include weight camera
             ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
                 const sel = document.getElementById(`camera-${mode}`);
                 if (!sel) return;
@@ -1008,7 +1097,6 @@
                 });
             });
             
-            // v2.9.5: Load photographer ID into settings
             const photographerInput = document.getElementById('photographer-id');
             if (photographerInput) {
                 photographerInput.value = state.photographerId;
@@ -1016,18 +1104,23 @@
         }
         
         async function startCamera(mode) {
+            if (state.currentStream) {
+                state.currentStream.getTracks().forEach(t => t.stop());
+            }
             const deviceId = state.cameras[mode].deviceId;
             if (!deviceId) {
                 document.getElementById('video-placeholder').style.display = 'block';
+                document.getElementById('video-preview').style.display = 'none';
                 return;
             }
-            if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { exact: deviceId }, width: { ideal: 4096 }, height: { ideal: 2160 } }
                 });
                 state.currentStream = stream;
-                document.getElementById('video-preview').srcObject = stream;
+                const video = document.getElementById('video-preview');
+                video.srcObject = stream;
+                video.style.display = 'block';
                 document.getElementById('video-placeholder').style.display = 'none';
                 const settings = stream.getVideoTracks()[0].getSettings();
                 document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
@@ -1043,7 +1136,6 @@
             const prevMode = state.currentMode;
             const now = Date.now();
             
-            // v2.9.5: Track end time for previous mode
             if (state.currentSKU) {
                 if (prevMode === 'main' && state.timing.mainPhotosStartTime) {
                     state.timing.mainPhotosEndTime = now;
@@ -1061,7 +1153,6 @@
             startCamera(mode);
             updatePhotoCount();
             
-            // v2.9.6: Track start time for new mode (including handheld)
             if (state.currentSKU) {
                 if (mode === 'closeup' && !state.timing.closeupStartTime) {
                     state.timing.closeupStartTime = now;
@@ -1072,8 +1163,7 @@
                 }
             }
             
-            // v2.9.6: Trigger AI when entering closeup from ANY mode (not just main)
-            // This allows workflows like: main → weight → closeup
+            // v2.9.6: Trigger AI when entering closeup from ANY mode
             if (mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
                 triggerAI();
             }
@@ -1113,14 +1203,12 @@
                 console.log(`📷 Captured ${currentMode} #${state.photos[currentMode].length}`);
                 showToast('success', 'Photo captured');
                 
-                // v2.9.5: Update weight photo status
                 if (currentMode === 'weight') {
                     updateWeightPhotoStatus();
                 }
             }, 'image/jpeg', 0.92);
         }
         
-        // v2.9.5: Update weight photo status display
         function updateWeightPhotoStatus() {
             const statusText = document.getElementById('weight-status-text');
             const statusContainer = document.getElementById('weight-photo-status');
@@ -1149,11 +1237,12 @@
                 if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
             });
             const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
+            // v2.9.7: Added onclick to open preview modal
             grid.innerHTML = all.map((p, i) => `
-                <div class="photo-thumb">
+                <div class="photo-thumb" onclick="openPhotoPreview(${i})">
                     <img src="${URL.createObjectURL(p.blob)}">
                     <div class="photo-thumb-label">${p.label || p.mode}</div>
-                    <button class="photo-thumb-delete" onclick="deletePhoto(${i})">×</button>
+                    <button class="photo-thumb-delete" onclick="event.stopPropagation(); deletePhoto(${i})">×</button>
                 </div>
             `).join('');
         }
@@ -1163,7 +1252,6 @@
             for (const mode of ['main', 'closeup', 'weight', 'handheld']) {
                 if (idx < count + state.photos[mode].length) {
                     state.photos[mode].splice(idx - count, 1);
-                    // v2.9.5: Update weight status if deleting weight photo
                     if (mode === 'weight') updateWeightPhotoStatus();
                     break;
                 }
@@ -1171,6 +1259,70 @@
             }
             updatePhotoGrid();
             updatePhotoCount();
+        }
+        
+        // =====================================================================
+        // v2.9.7: PREVIEW MODAL - View video freeze frame or photos full size
+        // =====================================================================
+        function openVideoPreview() {
+            if (!state.currentStream) return;
+            
+            const video = document.getElementById('video-preview');
+            const canvas = document.getElementById('preview-canvas');
+            const img = document.getElementById('preview-image');
+            const info = document.getElementById('preview-info');
+            
+            // Hide image, show canvas
+            img.style.display = 'none';
+            canvas.style.display = 'block';
+            
+            // Capture current frame to preview canvas
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Show info
+            info.textContent = `${state.currentMode.toUpperCase()} camera • ${video.videoWidth}×${video.videoHeight} • Click anywhere to close`;
+            
+            document.getElementById('preview-modal').classList.add('active');
+        }
+        
+        function openPhotoPreview(idx) {
+            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
+            if (idx < 0 || idx >= all.length) return;
+            
+            const photo = all[idx];
+            const canvas = document.getElementById('preview-canvas');
+            const img = document.getElementById('preview-image');
+            const info = document.getElementById('preview-info');
+            
+            // Hide canvas, show image
+            canvas.style.display = 'none';
+            img.style.display = 'block';
+            
+            // Set image source
+            img.src = URL.createObjectURL(photo.blob);
+            
+            // Show info
+            const label = photo.label || photo.mode;
+            info.textContent = `${label.toUpperCase()} • Photo ${idx + 1} of ${all.length} • Click anywhere to close`;
+            
+            document.getElementById('preview-modal').classList.add('active');
+        }
+        
+        function closePreviewModal(event) {
+            // If clicked on the close button or the modal background, close it
+            if (!event || event.target.id === 'preview-modal' || event.target.classList.contains('preview-close')) {
+                document.getElementById('preview-modal').classList.remove('active');
+                
+                // Revoke the image URL if it was set
+                const img = document.getElementById('preview-image');
+                if (img.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(img.src);
+                    img.src = '';
+                }
+            }
         }
         
         // =====================================================================
@@ -1194,10 +1346,8 @@
                     state.template = result.template;
                     state.tagData = result.tagData;
                     
-                    // v2.9.5: Record classification time for KPI
                     state.timing.classificationTime = Date.now();
                     
-                    // Update photo labels from AI
                     if (result.photoLabels) {
                         state.photos.main.forEach((p, i) => {
                             if (result.photoLabels[i]) p.label = result.photoLabels[i];
@@ -1274,7 +1424,6 @@
             `).join('');
             document.getElementById('complete-btn-camera').disabled = false;
             
-            // Track measurements start time (when template loaded, before recording)
             if (!state.timing.measurementsStartTime) {
                 state.timing.measurementsStartTime = Date.now();
             }
@@ -1282,9 +1431,6 @@
         
         // =====================================================================
         // VOICE RECORDING
-        // - Button shows "🛑 TAP TO STOP" when recording
-        // - Discarded recordings saved for QC
-        // - Recording duration tracked for KPIs
         // =====================================================================
         async function toggleRecording() {
             if (state.isRecording) stopRecording();
@@ -1296,9 +1442,8 @@
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
-                state.recordingStartTime = Date.now(); // Track duration
+                state.recordingStartTime = Date.now();
                 
-                // v2.9.5: Track measurements start time
                 if (!state.timing.measurementsStartTime) {
                     state.timing.measurementsStartTime = Date.now();
                 }
@@ -1308,7 +1453,6 @@
                     const recordingDuration = (Date.now() - state.recordingStartTime) / 1000;
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
                     
-                    // If there was a previous recording, save it as discarded
                     if (state.audioBlob) {
                         state.discardedRecordings.push({
                             blob: state.audioBlob,
@@ -1327,7 +1471,6 @@
                 state.mediaRecorder.start();
                 state.isRecording = true;
                 
-                // Update button to stop state
                 const btn = document.getElementById('record-btn');
                 btn.classList.remove('btn-record');
                 btn.classList.add('btn-stop');
@@ -1343,10 +1486,8 @@
                 state.mediaRecorder.stop();
                 state.isRecording = false;
                 
-                // Track measurements end time
                 state.timing.measurementsEndTime = Date.now();
                 
-                // Reset button to record state
                 const btn = document.getElementById('record-btn');
                 btn.classList.remove('btn-stop');
                 btn.classList.add('btn-record');
@@ -1366,7 +1507,6 @@
                         state.rawTranscript = result.text;
                         console.log('📝 Transcribed:', result.text);
                         
-                        // Show transcript
                         document.getElementById('transcript-text').textContent = result.text;
                         document.getElementById('transcript-box').classList.add('visible');
                         
@@ -1380,15 +1520,10 @@
         }
         
         function parseMeasurements(text) {
-            // Extract numbers for immediate UI display only
-            // Actual field matching happens in n8n via fullPipeline
-            // This is user feedback - final values come from AI
-            
             const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
             const matches = [...text.matchAll(regex)];
             if (!state.template) return;
             
-            // Show extracted values but mark as "pending AI"
             const extractedValues = matches.map(m => {
                 let val = parseFloat(m[1]);
                 const fullMatch = m[0].toLowerCase();
@@ -1398,309 +1533,44 @@
                 return val;
             });
             
-            console.log(`📏 Extracted ${extractedValues.length} values from transcript:`, extractedValues);
-            
-            // For UI display only - show that we got values but AI will match them
-            // Don't try to assign to specific fields (that's what caused the swap bug)
-            extractedValues.forEach((val, i) => {
-                if (i < state.template.measurements.length) {
-                    const el = document.getElementById(`mv-${i}`);
-                    if (el) {
-                        // Show value with indicator that AI will verify
-                        el.textContent = `${val}" ⏳`;
-                        el.title = 'AI will match to correct field';
-                        el.closest('.measurement-item').classList.add('completed');
-                    }
+            state.template.measurements.forEach((m, i) => {
+                const el = document.getElementById(`mv-${i}`);
+                const item = document.querySelector(`.measurement-item[data-idx="${i}"]`);
+                if (extractedValues[i] !== undefined) {
+                    el.textContent = extractedValues[i] + '"';
+                    item?.classList.add('completed');
+                    state.measurements[m] = extractedValues[i];
                 }
             });
-            
-            // v2.9.6: Removed rawExtractedValues - was never used
-            // n8n will re-parse transcript with Full Pipeline
         }
         
         // =====================================================================
-        // LOCAL FOLDER SAVE
+        // FOLDER SELECTION
         // =====================================================================
         async function chooseSaveFolder() {
             try {
                 state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
                 const display = document.getElementById('folder-display');
-                display.textContent = `📁 ${state.saveDirectoryHandle.name}`;
+                display.textContent = `📂 ${state.saveDirectoryHandle.name}`;
                 display.classList.add('set');
                 showToast('success', `Folder: ${state.saveDirectoryHandle.name}`);
             } catch (err) {
-                if (err.name !== 'AbortError') showToast('error', 'Folder selection failed');
+                if (err.name !== 'AbortError') showToast('error', 'Folder access denied');
             }
-        }
-        
-        async function saveToLocalFolder(itemData) {
-            if (!state.saveDirectoryHandle || !itemData.sku) return false;
-            try {
-                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
-                
-                // v2.9.5: Simplified folder structure (matches S3)
-                const folders = ['main', 'closeup', 'weight', 'handheld', 'measurements', 'data'];
-                for (const f of folders) {
-                    await skuFolder.getDirectoryHandle(f, { create: true });
-                }
-                
-                // Save main photos
-                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
-                if (itemData.photos.main.length > 0) {
-                    for (let i = 0; i < itemData.photos.main.length; i++) {
-                        const photo = itemData.photos.main[i];
-                        const filename = `${itemData.sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await mainFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(mainFolder, null, itemData.sku);
-                }
-                
-                // v2.9.5: Save ALL closeup photos to closeup/ folder (n8n categorizes later)
-                const closeupFolder = await skuFolder.getDirectoryHandle('closeup', { create: true });
-                if (itemData.photos.closeup.length > 0) {
-                    for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                        const photo = itemData.photos.closeup[i];
-                        const filename = `${itemData.sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await closeupFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(closeupFolder, null, itemData.sku);
-                }
-                
-                // v2.9.5: Save weight PHOTOS (not Dymo text file)
-                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
-                if (itemData.photos.weight.length > 0) {
-                    for (let i = 0; i < itemData.photos.weight.length; i++) {
-                        const photo = itemData.photos.weight[i];
-                        const filename = `${itemData.sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await weightFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(weightFolder, null, itemData.sku);
-                }
-                
-                // v2.9.5: Save handheld photos
-                const handheldFolder = await skuFolder.getDirectoryHandle('handheld', { create: true });
-                if (itemData.photos.handheld.length > 0) {
-                    for (let i = 0; i < itemData.photos.handheld.length; i++) {
-                        const photo = itemData.photos.handheld[i];
-                        const filename = `${itemData.sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
-                        const fileHandle = await handheldFolder.getFileHandle(filename, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
-                    }
-                } else {
-                    await createNAFile(handheldFolder, null, itemData.sku);
-                }
-                
-                // Save measurements folder contents
-                const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
-                
-                // Final audio
-                if (itemData.audioBlob) {
-                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
-                    const audioWritable = await audioHandle.createWritable();
-                    await audioWritable.write(itemData.audioBlob);
-                    await audioWritable.close();
-                }
-                
-                // Discarded recordings for QC
-                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
-                    for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                        const discarded = itemData.discardedRecordings[i];
-                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
-                        const discardWritable = await discardHandle.createWritable();
-                        await discardWritable.write(discarded.blob);
-                        await discardWritable.close();
-                    }
-                }
-                
-                // Raw transcript
-                if (itemData.rawTranscript) {
-                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
-                    const transcriptWritable = await transcriptHandle.createWritable();
-                    await transcriptWritable.write(itemData.rawTranscript);
-                    await transcriptWritable.close();
-                }
-                
-                // Master JSON
-                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
-                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
-                const dataWritable = await dataHandle.createWritable();
-                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
-                await dataWritable.close();
-                
-                return true;
-            } catch (err) {
-                console.error('Local save error:', err);
-                return false;
-            }
-        }
-        
-        async function createNAFile(parentFolderOrNull, folderName, sku) {
-            let folder;
-            if (folderName) {
-                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
-            } else {
-                folder = parentFolderOrNull; // Already the folder
-            }
-            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(`No data for ${sku}`);
-            await writable.close();
         }
         
         // =====================================================================
-        // S3 UPLOAD - v2.9.5 SIMPLIFIED FOLDER STRUCTURE
-        // main/ - all main camera photos
-        // closeup/ - all closeup photos (n8n categorizes later)
-        // weight/ - scale display photos
-        // handheld/ - handheld camera photos
-        // measurements/ - audio, transcript
-        // data/ - JSON file
-        // =====================================================================
-        async function uploadToS3(itemData) {
-            const files = [];
-            const sku = itemData.sku;
-            
-            // Main photos
-            for (let i = 0; i < itemData.photos.main.length; i++) {
-                const p = itemData.photos.main[i];
-                const filename = `${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({
-                    name: `main/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (itemData.photos.main.length === 0) {
-                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No main photos for ${sku}`]) });
-            }
-            
-            // v2.9.5: ALL closeup photos go to closeup/ folder
-            // n8n will categorize them later (tag/feature/defect)
-            for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                const p = itemData.photos.closeup[i];
-                const filename = `${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({
-                    name: `closeup/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (itemData.photos.closeup.length === 0) {
-                files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
-            }
-            
-            // v2.9.5: Weight photos (scale display) - n8n will OCR to get value
-            for (let i = 0; i < itemData.photos.weight.length; i++) {
-                const p = itemData.photos.weight[i];
-                const filename = `${sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({
-                    name: `weight/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (itemData.photos.weight.length === 0) {
-                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
-            }
-            
-            // Handheld photos
-            for (let i = 0; i < itemData.photos.handheld.length; i++) {
-                const p = itemData.photos.handheld[i];
-                const filename = `${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({
-                    name: `handheld/${filename}`,
-                    contentType: 'image/jpeg',
-                    blob: p.blob
-                });
-            }
-            if (itemData.photos.handheld.length === 0) {
-                files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
-            }
-            
-            // Measurements folder - audio and transcript
-            if (itemData.audioBlob) {
-                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
-            }
-            
-            // Discarded recordings for QC
-            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
-                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                    const discarded = itemData.discardedRecordings[i];
-                    files.push({
-                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
-                        contentType: 'audio/webm',
-                        blob: discarded.blob
-                    });
-                }
-            }
-            
-            if (itemData.rawTranscript) {
-                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
-            }
-            
-            // Master JSON with processingStatus: "pending"
-            files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
-            
-            // Get presigned URLs
-            const presign = await callLambda('presign', {
-                sku: sku,
-                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
-            });
-            
-            if (!presign.success) throw new Error(presign.error || 'Presign failed');
-            
-            // Upload all files
-            for (const f of files) {
-                const url = presign.urls[f.name];
-                if (url) {
-                    await fetch(url, { method: 'PUT', body: f.blob, headers: { 'Content-Type': f.contentType } });
-                }
-            }
-            
-            return true;
-        }
-        
-        // =====================================================================
-        // COMPLETE ITEM - v2.9.5+ ASYNC ARCHITECTURE
-        // Browser captures data and uploads quickly (2-3 sec), then resets.
-        // n8n handles all heavy AI processing asynchronously:
-        // - OCR on closeup photos
-        // - Weight OCR from scale photos
-        // - Photo routing (tag/feature/defect categorization)
-        // - Full Pipeline (measurement parsing/matching)
+        // COMPLETE ITEM
         // =====================================================================
         async function completeItem() {
-            if (!state.currentSKU) { showToast('warning', 'No SKU'); return; }
+            if (!state.currentSKU) return;
             
-            // v2.9.5: Record completion time
             state.timing.completeTime = Date.now();
             
-            // v2.9.5: ASYNC ARCHITECTURE - No blocking AI processing!
-            // All AI (OCR, Image Processing, Photo Routing, Full Pipeline) moved to n8n
-            // Browser just captures data and uploads quickly
-            
-            showToast('info', '📤 Uploading...');
-            const uploadStartTime = Date.now();
-            
-            // ===== Calculate detailed KPI timing =====
-            const now = Date.now();
-            const totalDuration = Math.round((now - state.timerStart) / 1000);
-            
-            // Calculate phase durations from detailed timing
+            // Calculate durations
+            const totalDuration = state.timing.itemStartTime 
+                ? Math.round((state.timing.completeTime - state.timing.itemStartTime) / 1000) 
+                : 0;
             const mainPhotosDuration = state.timing.mainPhotosEndTime && state.timing.mainPhotosStartTime 
                 ? Math.round((state.timing.mainPhotosEndTime - state.timing.mainPhotosStartTime) / 1000) 
                 : 0;
@@ -1717,19 +1587,16 @@
                 ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) 
                 : 0;
             
-            // Recording KPI
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
-            // v2.9.5: Build item data - NO AI results yet, just raw capture data
-            // processingStatus: "pending" tells n8n this needs AI processing
             const itemData = {
                 sku: state.currentSKU,
-                category: state.classification,  // From initial classify (template selection)
+                category: state.classification,
                 templateKey: state.templateKey,
                 template: state.template,
-                tagData: null,  // Will be filled by n8n OCR
-                measurements: state.measurements,  // Basic parsed values, n8n will improve with Matcher
+                tagData: null,
+                measurements: state.measurements,
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
                 discardedRecordings: state.discardedRecordings,
@@ -1743,25 +1610,18 @@
                     sku: state.currentSKU,
                     timestamp: new Date().toISOString(),
                     version: VERSION,
-                    // Processing status for n8n to track
                     processingStatus: 'pending',
-                    // Classification from initial AI (template selection only)
                     category: state.classification,
                     templateKey: state.templateKey,
-                    // v2.9.6: Include full template so n8n knows expected measurements
                     template: state.template,
-                    // Tag data will be populated by n8n OCR
                     tagData: null,
-                    // Measurements placeholder - n8n will populate via fullPipeline
                     measurements: {},
                     rawTranscript: state.rawTranscript,
-                    // Weight from photo (n8n will OCR)
                     weight: {
                         source: 'photo',
                         photoCount: state.photos.weight.length,
-                        value: null  // n8n will OCR from photo
+                        value: null
                     },
-                    // Audio recording metadata
                     audioRecordings: {
                         final: {
                             duration: recordingDuration,
@@ -1780,7 +1640,6 @@
                             rating: recordingRating
                         }
                     },
-                    // v2.9.6: Detailed KPI timing for analysis
                     timing: {
                         itemStartTime: state.timing.itemStartTime ? new Date(state.timing.itemStartTime).toISOString() : null,
                         classificationTime: state.timing.classificationTime ? new Date(state.timing.classificationTime).toISOString() : null,
@@ -1795,7 +1654,6 @@
                         measurementsStartTime: state.timing.measurementsStartTime ? new Date(state.timing.measurementsStartTime).toISOString() : null,
                         measurementsEndTime: state.timing.measurementsEndTime ? new Date(state.timing.measurementsEndTime).toISOString() : null,
                         completeTime: state.timing.completeTime ? new Date(state.timing.completeTime).toISOString() : null,
-                        // Calculated durations in seconds
                         durations: {
                             mainPhotos: mainPhotosDuration,
                             closeup: closeupDuration,
@@ -1805,52 +1663,41 @@
                             total: totalDuration
                         }
                     },
-                    // Photo counts
                     photoCount: {
                         main: state.photos.main.length,
                         closeup: state.photos.closeup.length,
                         weight: state.photos.weight.length,
                         handheld: state.photos.handheld.length
                     },
-                    // Photographer tracking
                     photographerId: state.photographerId,
-                    // Placeholders for n8n to fill
-                    aiResults: null,  // n8n will populate with OCR, routing, pipeline results
+                    aiResults: null,
                     qcFlags: null,
                     eraEstimation: null,
                     tagSizeAnalysis: null
                 }
             };
             
-            // Update stats
             state.completedItems++;
             state.totalTime += totalDuration;
             localStorage.setItem('completedItems', state.completedItems);
             localStorage.setItem('totalTime', state.totalTime);
             updateStats();
             
-            // IMMEDIATELY reset UI for next item - no waiting for upload
             showToast('success', `${state.currentSKU} submitted!`);
             stopTimer();
             resetItem();
             
-            // Process upload in background with retry
             processItemInBackground(itemData);
         }
         
         // =====================================================================
-        // BACKGROUND PROCESSING - ASYNC ARCHITECTURE
-        // No AI processing here - just upload to S3 and trigger n8n
-        // n8n handles: OCR, image processing, photo routing, full pipeline
+        // BACKGROUND PROCESSING
         // =====================================================================
         async function processItemInBackground(itemData, retryCount = 0) {
             const sku = itemData.sku;
             console.log(`🔄 [${sku}] Starting save/upload...`);
             
             try {
-                // =================================================================
-                // STEP 1: SAVE TO LOCAL FOLDER
-                // =================================================================
                 console.log(`💾 [${sku}] Step 1: Saving to local folder...`);
                 
                 if (state.saveDirectoryHandle) {
@@ -1858,19 +1705,11 @@
                     console.log(`✅ [${sku}] Saved to local folder`);
                 }
                 
-                // =================================================================
-                // STEP 2: UPLOAD TO S3
-                // =================================================================
                 console.log(`☁️ [${sku}] Step 2: Uploading to S3...`);
-                
                 await uploadToS3(itemData);
                 console.log(`✅ [${sku}] Uploaded to S3`);
                 
-                // =================================================================
-                // STEP 3: SEND TO N8N
-                // =================================================================
                 console.log(`📤 [${sku}] Step 3: Sending to n8n...`);
-                
                 await callLambda('n8n', { formData: itemData.jsonData });
                 console.log(`✅ [${sku}] Sent to n8n`);
                 
@@ -1889,8 +1728,220 @@
             }
         }
         
+        async function saveToLocalFolder(itemData) {
+            try {
+                const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
+                
+                // Main photos
+                const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
+                if (itemData.photos.main.length > 0) {
+                    for (let i = 0; i < itemData.photos.main.length; i++) {
+                        const photo = itemData.photos.main[i];
+                        const fileHandle = await mainFolder.getFileHandle(`${itemData.sku}_main_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(mainFolder, null, itemData.sku);
+                }
+                
+                // Closeup photos
+                const closeupFolder = await skuFolder.getDirectoryHandle('closeup', { create: true });
+                if (itemData.photos.closeup.length > 0) {
+                    for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                        const photo = itemData.photos.closeup[i];
+                        const fileHandle = await closeupFolder.getFileHandle(`${itemData.sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(closeupFolder, null, itemData.sku);
+                }
+                
+                // Weight photos
+                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
+                if (itemData.photos.weight.length > 0) {
+                    for (let i = 0; i < itemData.photos.weight.length; i++) {
+                        const photo = itemData.photos.weight[i];
+                        const fileHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(weightFolder, null, itemData.sku);
+                }
+                
+                // Handheld photos
+                const handheldFolder = await skuFolder.getDirectoryHandle('handheld', { create: true });
+                if (itemData.photos.handheld.length > 0) {
+                    for (let i = 0; i < itemData.photos.handheld.length; i++) {
+                        const photo = itemData.photos.handheld[i];
+                        const fileHandle = await handheldFolder.getFileHandle(`${itemData.sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(photo.blob);
+                        await writable.close();
+                    }
+                } else {
+                    await createNAFile(handheldFolder, null, itemData.sku);
+                }
+                
+                // Measurements folder
+                const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
+                
+                if (itemData.audioBlob) {
+                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
+                    const audioWritable = await audioHandle.createWritable();
+                    await audioWritable.write(itemData.audioBlob);
+                    await audioWritable.close();
+                }
+                
+                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                    for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                        const discarded = itemData.discardedRecordings[i];
+                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
+                        const discardWritable = await discardHandle.createWritable();
+                        await discardWritable.write(discarded.blob);
+                        await discardWritable.close();
+                    }
+                }
+                
+                if (itemData.rawTranscript) {
+                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
+                    const transcriptWritable = await transcriptHandle.createWritable();
+                    await transcriptWritable.write(itemData.rawTranscript);
+                    await transcriptWritable.close();
+                }
+                
+                // Data folder with JSON
+                const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
+                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
+                const dataWritable = await dataHandle.createWritable();
+                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
+                await dataWritable.close();
+                
+                return true;
+            } catch (err) {
+                console.error('Local save error:', err);
+                return false;
+            }
+        }
+        
+        async function createNAFile(parentFolderOrNull, folderName, sku) {
+            let folder;
+            if (folderName) {
+                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
+            } else {
+                folder = parentFolderOrNull;
+            }
+            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(`No data for ${sku}`);
+            await writable.close();
+        }
+        
+        // =====================================================================
+        // S3 UPLOAD
+        // =====================================================================
+        async function uploadToS3(itemData) {
+            const files = [];
+            const sku = itemData.sku;
+            
+            // Main photos
+            for (let i = 0; i < itemData.photos.main.length; i++) {
+                const p = itemData.photos.main[i];
+                const filename = `${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({ name: `main/${filename}`, contentType: 'image/jpeg', blob: p.blob });
+            }
+            if (itemData.photos.main.length === 0) {
+                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No main photos for ${sku}`]) });
+            }
+            
+            // Closeup photos
+            for (let i = 0; i < itemData.photos.closeup.length; i++) {
+                const p = itemData.photos.closeup[i];
+                const filename = `${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({ name: `closeup/${filename}`, contentType: 'image/jpeg', blob: p.blob });
+            }
+            if (itemData.photos.closeup.length === 0) {
+                files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
+            }
+            
+            // Weight photos
+            for (let i = 0; i < itemData.photos.weight.length; i++) {
+                const p = itemData.photos.weight[i];
+                const filename = `${sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({ name: `weight/${filename}`, contentType: 'image/jpeg', blob: p.blob });
+            }
+            if (itemData.photos.weight.length === 0) {
+                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
+            }
+            
+            // Handheld photos
+            for (let i = 0; i < itemData.photos.handheld.length; i++) {
+                const p = itemData.photos.handheld[i];
+                const filename = `${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
+                files.push({ name: `handheld/${filename}`, contentType: 'image/jpeg', blob: p.blob });
+            }
+            if (itemData.photos.handheld.length === 0) {
+                files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
+            }
+            
+            // Audio
+            if (itemData.audioBlob) {
+                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            }
+            
+            // Discarded recordings
+            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
+                    const discarded = itemData.discardedRecordings[i];
+                    files.push({
+                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
+                        contentType: 'audio/webm',
+                        blob: discarded.blob
+                    });
+                }
+            }
+            
+            // Transcript
+            if (itemData.rawTranscript) {
+                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            }
+            
+            // JSON data
+            files.push({
+                name: `data/${sku}_data.json`,
+                contentType: 'application/json',
+                blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)])
+            });
+            
+            // Get presigned URLs
+            const presignResult = await callLambda('presign', {
+                sku: sku,
+                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
+            });
+            
+            if (!presignResult.success) {
+                throw new Error('Failed to get presigned URLs');
+            }
+            
+            // Upload each file
+            for (const file of files) {
+                const url = presignResult.urls[file.name];
+                if (!url) continue;
+                
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': file.contentType },
+                    body: file.blob
+                });
+            }
+        }
+        
         function addToRetryQueue(itemData) {
-            // Store minimal data (can't store blobs in localStorage)
             const queueItem = {
                 sku: itemData.sku,
                 jsonData: itemData.jsonData,
@@ -1948,16 +1999,17 @@
             state.rawTranscript = '';
             state.audioBlob = null;
             state.aiTriggered = false;
-            // v2.9.5: Detailed timing for KPIs
             state.timing = {
                 itemStartTime: now,
                 classificationTime: null,
-                mainPhotosStartTime: now,  // Starting in main mode
+                mainPhotosStartTime: now,
                 mainPhotosEndTime: null,
                 closeupStartTime: null,
                 closeupEndTime: null,
                 weightStartTime: null,
                 weightEndTime: null,
+                handheldStartTime: null,
+                handheldEndTime: null,
                 measurementsStartTime: null,
                 measurementsEndTime: null,
                 completeTime: null
@@ -1977,9 +2029,7 @@
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
             
-            // v2.9.5: Reset weight photo status
             updateWeightPhotoStatus();
-            
             updatePhotoGrid();
             updatePhotoCount();
             startTimer();
@@ -2004,7 +2054,6 @@
             state.rawTranscript = '';
             state.audioBlob = null;
             state.aiTriggered = false;
-            // v2.9.6: Reset detailed timing (including handheld)
             state.timing = {
                 itemStartTime: null,
                 classificationTime: null,
@@ -2035,10 +2084,8 @@
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
             
-            // v2.9.5: Reset weight photo status
             updateWeightPhotoStatus();
             
-            // Reset recording button state
             const btn = document.getElementById('record-btn');
             btn.classList.remove('btn-stop');
             btn.classList.add('btn-record');
@@ -2072,15 +2119,20 @@
         }
         
         // =====================================================================
-        // BARCODE SCANNER (with debounce to prevent rapid-fire detection)
+        // v2.9.7: BARCODE SCANNER WITH CONFIDENCE CHECK
+        // Only accepts scans with >80% confidence to prevent false positives
         // =====================================================================
         let barcodeDetected = false;
+        let lastConfidence = 0;
         
         function openBarcodeScanner() {
             barcodeDetected = false;
+            lastConfidence = 0;
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting...';
-            document.getElementById('barcode-status').classList.remove('success');
+            document.getElementById('barcode-status').classList.remove('success', 'warning');
+            document.getElementById('barcode-confidence').textContent = '--';
+            document.getElementById('barcode-confidence').className = 'barcode-confidence';
             
             const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
             
@@ -2102,28 +2154,106 @@
                 }
                 document.getElementById('barcode-status').textContent = 'Point at barcode...';
                 Quagga.start();
+                
+                // v2.9.7: Process results to show confidence even when not accepting
+                Quagga.onProcessed(result => {
+                    if (result && result.codeResult) {
+                        const confidence = calculateBarcodeConfidence(result);
+                        updateConfidenceDisplay(confidence, result.codeResult.code);
+                    }
+                });
+                
                 Quagga.onDetected(result => {
                     if (barcodeDetected) return;
-                    barcodeDetected = true;
-                    Quagga.stop();
                     
+                    // v2.9.7: Calculate confidence from error data
+                    const confidence = calculateBarcodeConfidence(result);
                     const code = result.codeResult.code;
-                    console.log('📊 Barcode detected:', code);
-                    document.getElementById('barcode-status').textContent = code;
-                    document.getElementById('barcode-status').classList.add('success');
-                    document.getElementById('sku-input').value = code;
                     
-                    setTimeout(() => { 
-                        closeBarcodeScanner(); 
-                        showToast('success', `Scanned: ${code}`); 
-                    }, 500);
+                    console.log(`📊 Barcode candidate: ${code} (confidence: ${(confidence * 100).toFixed(1)}%)`);
+                    
+                    // Only accept if confidence is above threshold
+                    if (confidence >= BARCODE_MIN_CONFIDENCE) {
+                        barcodeDetected = true;
+                        Quagga.stop();
+                        
+                        document.getElementById('barcode-status').textContent = `✅ ${code}`;
+                        document.getElementById('barcode-status').classList.add('success');
+                        document.getElementById('sku-input').value = code;
+                        
+                        setTimeout(() => { 
+                            closeBarcodeScanner(); 
+                            showToast('success', `Scanned: ${code} (${(confidence * 100).toFixed(0)}% confidence)`); 
+                        }, 500);
+                    } else {
+                        // Show warning for low confidence scans
+                        document.getElementById('barcode-status').textContent = `⚠️ Low confidence - hold steady`;
+                        document.getElementById('barcode-status').classList.add('warning');
+                        document.getElementById('barcode-status').classList.remove('success');
+                        
+                        // Clear warning after a moment
+                        setTimeout(() => {
+                            if (!barcodeDetected) {
+                                document.getElementById('barcode-status').textContent = 'Point at barcode...';
+                                document.getElementById('barcode-status').classList.remove('warning');
+                            }
+                        }, 1500);
+                    }
                 });
             });
         }
         
+        // v2.9.7: Calculate confidence from QuaggaJS error data
+        function calculateBarcodeConfidence(result) {
+            if (!result || !result.codeResult || !result.codeResult.decodedCodes) {
+                return 0;
+            }
+            
+            const decodedCodes = result.codeResult.decodedCodes;
+            let totalError = 0;
+            let errorCount = 0;
+            
+            for (const decoded of decodedCodes) {
+                if (decoded.error !== undefined && decoded.error !== null) {
+                    totalError += decoded.error;
+                    errorCount++;
+                }
+            }
+            
+            if (errorCount === 0) return 0.5; // Unknown confidence
+            
+            // Average error, lower is better
+            // Error typically ranges from 0 to ~0.5
+            // Convert to confidence (1 - error)
+            const avgError = totalError / errorCount;
+            const confidence = Math.max(0, Math.min(1, 1 - (avgError * 2)));
+            
+            return confidence;
+        }
+        
+        // v2.9.7: Update confidence display in real-time
+        function updateConfidenceDisplay(confidence, code) {
+            const el = document.getElementById('barcode-confidence');
+            const pct = (confidence * 100).toFixed(0);
+            el.textContent = `${pct}%`;
+            
+            el.classList.remove('good', 'medium', 'poor');
+            if (confidence >= 0.80) {
+                el.classList.add('good');
+            } else if (confidence >= 0.60) {
+                el.classList.add('medium');
+            } else {
+                el.classList.add('poor');
+            }
+        }
+        
         function closeBarcodeScanner() {
             barcodeDetected = false;
-            try { Quagga.stop(); Quagga.offDetected(); } catch {}
+            try { 
+                Quagga.stop(); 
+                Quagga.offDetected(); 
+                Quagga.offProcessed();
+            } catch {}
             document.getElementById('barcode-modal').classList.remove('active');
         }
         
@@ -2134,7 +2264,6 @@
         function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         
         function saveSettings() {
-            // v2.9.5: Include weight camera
             ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
                 const sel = document.getElementById(`camera-${mode}`);
                 if (sel) {
@@ -2145,7 +2274,6 @@
             const url = document.getElementById('lambda-url').value.trim();
             if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
             
-            // v2.9.5: Save photographer ID
             const photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
             state.photographerId = photographerId;
             localStorage.setItem('photographerId', photographerId);
@@ -2155,12 +2283,6 @@
             startCamera(state.currentMode);
             checkLambda();
         }
-        
-        // =====================================================================
-        // v2.9.5: DYMO USB SCALE REMOVED
-        // Weight is now captured via photo of scale display
-        // n8n will OCR the weight photo to extract the value
-        // =====================================================================
         
         // =====================================================================
         // TOAST
