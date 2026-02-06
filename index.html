@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.7 - BARCODE CONFIDENCE + PREVIEW MODAL
+    VintageLister v2.9.8 - SAVE FOLDER REQUIREMENT
     
     CHANGELOG:
+    v2.9.8 (2026-02-05):
+    - SAFETY: Cannot start item without save folder selected
+    - SAFETY: Cannot capture photos without save folder selected
+    - ADDED: Visual warning when folder not set (red pulse animation)
+    - ADDED: Clear error messages guiding user to select folder
+    
     v2.9.7 (2026-02-04):
     - FIX: Barcode scanner now checks confidence - only accepts >80% confident scans
     - FIX: Shows confidence % during scanning so user knows scan quality
@@ -28,7 +34,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.7</title>
+    <title>VintageLister v2.9.8</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -219,6 +225,15 @@
         }
         
         .folder-display.set { color: var(--accent-green); }
+        .folder-display.warning { 
+            border: 2px solid var(--accent-red); 
+            animation: pulse-warning 1s ease-in-out 3;
+            color: var(--accent-red);
+        }
+        @keyframes pulse-warning {
+            0%, 100% { background: var(--bg-tertiary); }
+            50% { background: rgba(239, 68, 68, 0.3); }
+        }
         
         /* Photo Grid */
         .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -921,8 +936,13 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.7 - BARCODE CONFIDENCE + PREVIEW MODAL
+        // VINTAGELISTER v2.9.8 - SAVE FOLDER REQUIREMENT
         // 
+        // v2.9.8 SAFETY FEATURES:
+        // - Cannot start item without save folder selected
+        // - Cannot capture photos without save folder selected
+        // - Visual warning when folder not set
+        //
         // v2.9.7 FIXES:
         // - Barcode scanner checks confidence (>80% required)
         // - Shows confidence % during scanning
@@ -942,7 +962,7 @@
         // 4. DETAILED KPI TIMING
         // =============================================================================
         
-        const VERSION = '2.9.7';
+        const VERSION = '2.9.8';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1032,7 +1052,7 @@
             
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled');
+            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED');
         }
         
         // =====================================================================
@@ -1173,6 +1193,13 @@
         // PHOTO CAPTURE
         // =====================================================================
         function capturePhoto() {
+            // v2.9.8: SAFETY CHECK - Must have save folder selected
+            if (!state.saveDirectoryHandle) {
+                showToast('error', '⚠️ SELECT SAVE FOLDER FIRST');
+                highlightFolderSelector();
+                return;
+            }
+            
             if (!state.currentStream) {
                 showToast('warning', 'No camera active');
                 return;
@@ -1547,6 +1574,26 @@
         // =====================================================================
         // FOLDER SELECTION
         // =====================================================================
+        // =====================================================================
+        // FOLDER SELECTION - v2.9.8: Required before capturing
+        // =====================================================================
+        function highlightFolderSelector() {
+            const display = document.getElementById('folder-display');
+            display.classList.add('warning');
+            display.textContent = '⚠️ CLICK TO SELECT FOLDER - REQUIRED';
+            
+            // Scroll the folder section into view
+            display.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Remove warning class after animation completes
+            setTimeout(() => {
+                if (!state.saveDirectoryHandle) {
+                    display.classList.remove('warning');
+                    display.textContent = '📁 Click to choose folder';
+                }
+            }, 3000);
+        }
+        
         async function chooseSaveFolder() {
             try {
                 state.saveDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
@@ -1987,6 +2034,13 @@
         function startNewItem() {
             const sku = document.getElementById('sku-input').value.trim().toUpperCase();
             if (!sku) { showToast('warning', 'Enter a SKU'); return; }
+            
+            // v2.9.8: SAFETY CHECK - Must have save folder selected before starting
+            if (!state.saveDirectoryHandle) {
+                showToast('error', '⚠️ SELECT SAVE FOLDER BEFORE STARTING');
+                highlightFolderSelector();
+                return;
+            }
             
             const now = Date.now();
             state.currentSKU = sku;
