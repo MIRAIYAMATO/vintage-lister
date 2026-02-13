@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.11 - COMPLETION VALIDATION
+    VintageLister v2.9.12 - LAMBDA API KEY AUTH
     
     CHANGELOG:
+    v2.9.12 (2026-02-12):
+    - SECURITY: Lambda requests now require API key (x-api-key header)
+    - SECURITY: API key stored in localStorage only - NOT in source code
+    - SECURITY: App blocks all operations if API key not configured
+    - ADDED: API Key field in Settings modal
+    - CHANGED: callLambda() sends x-api-key header with every request
+    
     v2.9.11 (2026-02-12):
     - SAFETY: Cannot complete item without measurement recording
     - SAFETY: Cannot complete item without audio notes recording
@@ -54,7 +61,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.11</title>
+    <title>VintageLister v2.9.12</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -764,7 +771,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.11</span>
+                    <span class="version-badge" id="version-badge">v2.9.12</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -953,6 +960,14 @@
                     <label class="form-label">Lambda URL</label>
                     <input type="text" class="form-input" id="lambda-url" placeholder="https://...">
                 </div>
+                <!-- v2.9.12: API Key for Lambda authentication -->
+                <div class="form-group">
+                    <label class="form-label">🔐 API Key (required)</label>
+                    <input type="password" class="form-input" id="api-key" placeholder="Enter API key...">
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+                        Authenticates requests to Lambda. Get this from your team lead.
+                    </div>
+                </div>
                 <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
             </div>
         </div>
@@ -971,8 +986,13 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.11 - COMPLETION VALIDATION
+        // VINTAGELISTER v2.9.12 - LAMBDA API KEY AUTH
         // 
+        // v2.9.12 SECURITY:
+        // - All Lambda requests include x-api-key header
+        // - API key stored in localStorage only, never in source code
+        // - App warns if API key not configured
+        //
         // v2.9.11 FEATURES:
         // - Cannot complete without measurement recording, notes recording, weight photo
         // - Clear toast messages for missing items
@@ -1012,7 +1032,7 @@
         // 4. DETAILED KPI TIMING
         // =============================================================================
         
-        const VERSION = '2.9.11';
+        const VERSION = '2.9.12';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1023,6 +1043,8 @@
         
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
+            // v2.9.12: API key for Lambda authentication (stored in localStorage only)
+            apiKey: localStorage.getItem('vl-api-key') || '',
             lambdaVersion: null,
             currentSKU: '',
             currentMode: 'main',
@@ -1090,6 +1112,12 @@
         async function init() {
             console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px;');
             document.getElementById('lambda-url').value = state.lambdaUrl;
+            // v2.9.12: Load API key into settings field
+            document.getElementById('api-key').value = state.apiKey;
+            if (!state.apiKey) {
+                showToast('error', '🔐 API KEY REQUIRED - Open Settings to configure');
+                console.warn('⚠️ No API key configured. Open Settings and enter your API key.');
+            }
             updateStats();
             updateRetryBadge();
             await checkLambda();
@@ -1113,7 +1141,7 @@
             
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED, notes recorder enabled, mic selection enabled, completion validation enabled');
+            console.log('✅ Init complete - API key auth enabled, completion validation, notes recorder, mic selection');
         }
         
         // =====================================================================
@@ -1121,9 +1149,12 @@
         // =====================================================================
         async function checkLambda() {
             try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (state.apiKey) headers['x-api-key'] = state.apiKey;
+                
                 const res = await fetch(state.lambdaUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({ action: 'diagnostics' })
                 });
                 const data = await res.json();
@@ -1140,9 +1171,13 @@
         }
         
         async function callLambda(action, body = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            // v2.9.12: Include API key if configured
+            if (state.apiKey) headers['x-api-key'] = state.apiKey;
+            
             const res = await fetch(state.lambdaUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ action, ...body })
             });
             return res.json();
@@ -2593,6 +2628,16 @@
             });
             const url = document.getElementById('lambda-url').value.trim();
             if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
+            
+            // v2.9.12: Save API key
+            const apiKey = document.getElementById('api-key').value.trim();
+            state.apiKey = apiKey;
+            if (apiKey) {
+                localStorage.setItem('vl-api-key', apiKey);
+            } else {
+                localStorage.removeItem('vl-api-key');
+                showToast('warning', '⚠️ No API key set - Lambda requests will fail');
+            }
             
             const photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
             state.photographerId = photographerId;
