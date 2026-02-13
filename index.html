@@ -1,8 +1,14 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.10 - MIC SELECTION IN SETTINGS
+    VintageLister v2.9.11 - COMPLETION VALIDATION
     
     CHANGELOG:
+    v2.9.11 (2026-02-12):
+    - SAFETY: Cannot complete item without measurement recording
+    - SAFETY: Cannot complete item without audio notes recording
+    - SAFETY: Cannot complete item without weight photo
+    - ADDED: Clear toast messages telling photographer exactly what's missing
+    
     v2.9.10 (2026-02-12):
     - ADDED: Microphone selection dropdown in Settings modal
     - ADDED: Mic choice saved to localStorage (persists between sessions)
@@ -48,7 +54,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.10</title>
+    <title>VintageLister v2.9.11</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -758,7 +764,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.10</span>
+                    <span class="version-badge" id="version-badge">v2.9.11</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -965,8 +971,12 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.10 - MIC SELECTION IN SETTINGS
+        // VINTAGELISTER v2.9.11 - COMPLETION VALIDATION
         // 
+        // v2.9.11 FEATURES:
+        // - Cannot complete without measurement recording, notes recording, weight photo
+        // - Clear toast messages for missing items
+        //
         // v2.9.10 FEATURES:
         // - Microphone selection dropdown in Settings modal
         // - Mic choice saved to localStorage (persists between sessions)
@@ -1002,7 +1012,7 @@
         // 4. DETAILED KPI TIMING
         // =============================================================================
         
-        const VERSION = '2.9.10';
+        const VERSION = '2.9.11';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1103,7 +1113,7 @@
             
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED, notes recorder enabled, mic selection enabled');
+            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED, notes recorder enabled, mic selection enabled, completion validation enabled');
         }
         
         // =====================================================================
@@ -1774,6 +1784,18 @@
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) return;
+            
+            // v2.9.11: COMPLETION VALIDATION - Must have all required data
+            const missing = [];
+            if (!state.audioBlob) missing.push('📏 Measurement recording');
+            if (!state.notesAudioBlob) missing.push('🗒️ Audio notes recording');
+            if (state.photos.weight.length === 0) missing.push('⚖️ Weight photo');
+            
+            if (missing.length > 0) {
+                missing.forEach(item => showToast('error', `Missing: ${item}`));
+                showToast('warning', `Complete these ${missing.length} item${missing.length > 1 ? 's' : ''} before finishing`);
+                return;
+            }
             
             state.timing.completeTime = Date.now();
             
