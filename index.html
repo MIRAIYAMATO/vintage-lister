@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.8 - SAVE FOLDER REQUIREMENT
+    VintageLister v2.9.10 - MIC SELECTION IN SETTINGS
     
     CHANGELOG:
+    v2.9.10 (2026-02-12):
+    - ADDED: Microphone selection dropdown in Settings modal
+    - ADDED: Mic choice saved to localStorage (persists between sessions)
+    - ADDED: Available mics enumerated alongside cameras on init
+    - CHANGED: Both recorders (measurement + notes) use the selected mic
+    
+    v2.9.9 (2026-02-12):
+    - ADDED: Notes audio recorder on right panel for photographer verbal notes
+    - ADDED: notes/ folder in local save and S3 upload
+    - ADDED: Notes audio metadata in JSON data (notesAudio object)
+    - ADDED: Mutual exclusion - measurement and notes recorders cannot run simultaneously
+    - ADDED: Override protection on BOTH recorders - confirm() dialog before re-recording
+    - FILE: notes/{SKU}_audio_notes.webm (follows existing naming convention)
+    
     v2.9.8 (2026-02-05):
     - SAFETY: Cannot start item without save folder selected
     - SAFETY: Cannot capture photos without save folder selected
@@ -34,7 +48,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.8</title>
+    <title>VintageLister v2.9.10</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -744,7 +758,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.7</span>
+                    <span class="version-badge" id="version-badge">v2.9.10</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -853,6 +867,15 @@
                 </div>
                 
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
+                
+                <!-- v2.9.9: Notes Audio Recording -->
+                <div class="section-card">
+                    <div class="section-title">🗒️ Audio Notes</div>
+                    <button class="btn btn-record" id="notes-record-btn" onclick="toggleNotesRecording()">🎤 TAP TO RECORD NOTES</button>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: -4px;">
+                        Verbal notes on features, condition, or insights
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -909,6 +932,12 @@
                     <select class="form-select" id="camera-barcode"></select>
                 </div>
                 <hr style="border-color: var(--border-color); margin: 16px 0;">
+                <!-- v2.9.10: Microphone Selection -->
+                <div class="form-group">
+                    <label class="form-label">🎤 Microphone (Measurements + Notes)</label>
+                    <select class="form-select" id="mic-device"></select>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 16px 0;">
                 <div class="form-group">
                     <label class="form-label">Photographer ID</label>
                     <input type="text" class="form-input" id="photographer-id" placeholder="photographer_1" value="photographer_1">
@@ -936,8 +965,19 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.8 - SAVE FOLDER REQUIREMENT
+        // VINTAGELISTER v2.9.10 - MIC SELECTION IN SETTINGS
         // 
+        // v2.9.10 FEATURES:
+        // - Microphone selection dropdown in Settings modal
+        // - Mic choice saved to localStorage (persists between sessions)
+        // - Both recorders (measurement + notes) use the selected mic
+        //
+        // v2.9.9 FEATURES:
+        // - Notes audio recorder for photographer verbal notes/insights
+        // - notes/ folder in local save and S3 upload
+        // - Mutual exclusion between measurement and notes recorders
+        // - Override protection (confirm dialog) on both recorders
+        //
         // v2.9.8 SAFETY FEATURES:
         // - Cannot start item without save folder selected
         // - Cannot capture photos without save folder selected
@@ -958,11 +998,11 @@
         // v2.9.5 ARCHITECTURE:
         // 1. ASYNC AI PROCESSING - OCR, Image Processing, Photo Routing → n8n
         // 2. WEIGHT CAMERA - Photo of scale display, n8n OCRs the value
-        // 3. S3 FOLDER STRUCTURE - main/, closeup/, weight/, handheld/, etc.
+        // 3. S3 FOLDER STRUCTURE - main/, closeup/, weight/, handheld/, measurements/, notes/, data/
         // 4. DETAILED KPI TIMING
         // =============================================================================
         
-        const VERSION = '2.9.8';
+        const VERSION = '2.9.10';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -985,6 +1025,9 @@
                 barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
             },
             availableCameras: [],
+            // v2.9.10: Microphone selection
+            availableMics: [],
+            micDeviceId: localStorage.getItem('mic-device') || null,
             photos: { main: [], closeup: [], weight: [], handheld: [] },
             classification: null,
             templateKey: null,
@@ -1020,7 +1063,15 @@
             retryQueue: JSON.parse(localStorage.getItem('retryQueue') || '[]'),
             discardedRecordings: [],
             recordingStartTime: null,
-            photographerId: localStorage.getItem('photographerId') || 'photographer_1'
+            photographerId: localStorage.getItem('photographerId') || 'photographer_1',
+            // v2.9.9: Notes audio recording state
+            notesAudioBlob: null,
+            notesAudioChunks: [],
+            isRecordingNotes: false,
+            notesMediaRecorder: null,
+            notesRecordingStartTime: null,
+            lastNotesRecordingDuration: 0,
+            discardedNotesRecordings: []
         };
         
         // =====================================================================
@@ -1052,7 +1103,7 @@
             
             processRetryQueue();
             
-            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED');
+            console.log('✅ Init complete - SPACE key enabled, barcode confidence check enabled, save folder REQUIRED, notes recorder enabled, mic selection enabled');
         }
         
         // =====================================================================
@@ -1092,14 +1143,17 @@
         // =====================================================================
         async function enumerateCameras() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 stream.getTracks().forEach(t => t.stop());
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 state.availableCameras = devices.filter(d => d.kind === 'videoinput');
+                // v2.9.10: Enumerate microphones
+                state.availableMics = devices.filter(d => d.kind === 'audioinput');
                 console.log(`📹 Found ${state.availableCameras.length} cameras`);
+                console.log(`🎤 Found ${state.availableMics.length} microphones`);
                 populateCameraSelects();
             } catch (err) {
-                console.error('Camera enum failed:', err);
+                console.error('Device enum failed:', err);
             }
         }
         
@@ -1120,6 +1174,19 @@
             const photographerInput = document.getElementById('photographer-id');
             if (photographerInput) {
                 photographerInput.value = state.photographerId;
+            }
+            
+            // v2.9.10: Populate microphone dropdown
+            const micSel = document.getElementById('mic-device');
+            if (micSel) {
+                micSel.innerHTML = '<option value="">Default microphone</option>';
+                state.availableMics.forEach((mic, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = mic.deviceId;
+                    opt.textContent = mic.label || `Microphone ${i + 1}`;
+                    if (mic.deviceId === state.micDeviceId) opt.selected = true;
+                    micSel.appendChild(opt);
+                });
             }
         }
         
@@ -1465,8 +1532,25 @@
         }
         
         async function startRecording() {
+            // v2.9.9: Mutual exclusion - cannot record while notes is recording
+            if (state.isRecordingNotes) {
+                showToast('error', '⚠️ Stop notes recording first');
+                return;
+            }
+            
+            // v2.9.9: Override protection - warn before re-recording
+            if (state.audioBlob) {
+                if (!confirm('You already have a measurement recording. Re-recording will replace it. Continue?')) {
+                    return;
+                }
+            }
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // v2.9.10: Use selected microphone if set
+                const audioConstraints = state.micDeviceId 
+                    ? { deviceId: { exact: state.micDeviceId } } 
+                    : true;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
                 state.recordingStartTime = Date.now();
@@ -1519,6 +1603,85 @@
                 btn.classList.remove('btn-stop');
                 btn.classList.add('btn-record');
                 btn.textContent = '🎤 TAP TO RECORD';
+            }
+        }
+        
+        // =====================================================================
+        // v2.9.9: NOTES AUDIO RECORDING
+        // Separate recorder for photographer verbal notes on item features,
+        // condition, insights, etc. Stored in notes/ folder.
+        // =====================================================================
+        async function toggleNotesRecording() {
+            if (state.isRecordingNotes) stopNotesRecording();
+            else startNotesRecording();
+        }
+        
+        async function startNotesRecording() {
+            // v2.9.9: Mutual exclusion - cannot record while measurement is recording
+            if (state.isRecording) {
+                showToast('error', '⚠️ Stop measurement recording first');
+                return;
+            }
+            
+            // v2.9.9: Override protection - warn before re-recording
+            if (state.notesAudioBlob) {
+                if (!confirm('You already have a notes recording. Re-recording will replace it. Continue?')) {
+                    return;
+                }
+            }
+            
+            try {
+                // v2.9.10: Use selected microphone if set
+                const audioConstraints = state.micDeviceId 
+                    ? { deviceId: { exact: state.micDeviceId } } 
+                    : true;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                state.notesMediaRecorder = new MediaRecorder(stream);
+                state.notesAudioChunks = [];
+                state.notesRecordingStartTime = Date.now();
+                
+                state.notesMediaRecorder.ondataavailable = e => state.notesAudioChunks.push(e.data);
+                state.notesMediaRecorder.onstop = async () => {
+                    const recordingDuration = (Date.now() - state.notesRecordingStartTime) / 1000;
+                    const blob = new Blob(state.notesAudioChunks, { type: 'audio/webm' });
+                    
+                    if (state.notesAudioBlob) {
+                        state.discardedNotesRecordings.push({
+                            blob: state.notesAudioBlob,
+                            duration: state.lastNotesRecordingDuration || 0,
+                            timestamp: new Date().toISOString()
+                        });
+                        console.log(`📼 Previous notes recording saved as discarded (${state.discardedNotesRecordings.length} total)`);
+                    }
+                    
+                    state.notesAudioBlob = blob;
+                    state.lastNotesRecordingDuration = recordingDuration;
+                    stream.getTracks().forEach(t => t.stop());
+                    showToast('success', `Notes recorded (${Math.round(recordingDuration)}s)`);
+                };
+                
+                state.notesMediaRecorder.start();
+                state.isRecordingNotes = true;
+                
+                const btn = document.getElementById('notes-record-btn');
+                btn.classList.remove('btn-record');
+                btn.classList.add('btn-stop');
+                btn.textContent = '🛑 TAP TO STOP';
+                
+            } catch (err) {
+                showToast('error', 'Mic access denied');
+            }
+        }
+        
+        function stopNotesRecording() {
+            if (state.notesMediaRecorder && state.isRecordingNotes) {
+                state.notesMediaRecorder.stop();
+                state.isRecordingNotes = false;
+                
+                const btn = document.getElementById('notes-record-btn');
+                btn.classList.remove('btn-stop');
+                btn.classList.add('btn-record');
+                btn.textContent = '🎤 TAP TO RECORD NOTES';
             }
         }
         
@@ -1637,6 +1800,9 @@
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             
+            // v2.9.9: Notes recording duration
+            const notesRecordingDuration = state.lastNotesRecordingDuration || 0;
+            
             const itemData = {
                 sku: state.currentSKU,
                 category: state.classification,
@@ -1647,6 +1813,9 @@
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
                 discardedRecordings: state.discardedRecordings,
+                // v2.9.9: Notes audio
+                notesAudioBlob: state.notesAudioBlob,
+                discardedNotesRecordings: state.discardedNotesRecordings,
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
@@ -1686,6 +1855,20 @@
                             actualDuration: recordingDuration,
                             rating: recordingRating
                         }
+                    },
+                    // v2.9.9: Notes audio metadata
+                    notesAudio: {
+                        hasNotes: !!state.notesAudioBlob,
+                        final: state.notesAudioBlob ? {
+                            duration: notesRecordingDuration,
+                            timestamp: new Date().toISOString()
+                        } : null,
+                        discarded: state.discardedNotesRecordings.map((d, i) => ({
+                            index: i + 1,
+                            duration: d.duration,
+                            timestamp: d.timestamp
+                        })),
+                        totalAttempts: state.notesAudioBlob ? state.discardedNotesRecordings.length + 1 : state.discardedNotesRecordings.length
                     },
                     timing: {
                         itemStartTime: state.timing.itemStartTime ? new Date(state.timing.itemStartTime).toISOString() : null,
@@ -1869,6 +2052,27 @@
                 await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
                 await dataWritable.close();
                 
+                // v2.9.9: Notes folder
+                const notesFolder = await skuFolder.getDirectoryHandle('notes', { create: true });
+                if (itemData.notesAudioBlob) {
+                    const notesHandle = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes.webm`, { create: true });
+                    const notesWritable = await notesHandle.createWritable();
+                    await notesWritable.write(itemData.notesAudioBlob);
+                    await notesWritable.close();
+                    
+                    if (itemData.discardedNotesRecordings && itemData.discardedNotesRecordings.length > 0) {
+                        for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) {
+                            const discarded = itemData.discardedNotesRecordings[i];
+                            const discardHandle = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
+                            const discardWritable = await discardHandle.createWritable();
+                            await discardWritable.write(discarded.blob);
+                            await discardWritable.close();
+                        }
+                    }
+                } else {
+                    await createNAFile(notesFolder, null, itemData.sku);
+                }
+                
                 return true;
             } catch (err) {
                 console.error('Local save error:', err);
@@ -1956,6 +2160,24 @@
             // Transcript
             if (itemData.rawTranscript) {
                 files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            }
+            
+            // v2.9.9: Notes audio
+            if (itemData.notesAudioBlob) {
+                files.push({ name: `notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
+            }
+            if (itemData.discardedNotesRecordings && itemData.discardedNotesRecordings.length > 0) {
+                for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) {
+                    const discarded = itemData.discardedNotesRecordings[i];
+                    files.push({
+                        name: `notes/${sku}_audio_notes_discard_${String(i + 1).padStart(2, '0')}.webm`,
+                        contentType: 'audio/webm',
+                        blob: discarded.blob
+                    });
+                }
+            }
+            if (!itemData.notesAudioBlob) {
+                files.push({ name: `notes/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
             }
             
             // JSON data
@@ -2070,6 +2292,14 @@
             };
             state.discardedRecordings = [];
             state.lastRecordingDuration = 0;
+            // v2.9.9: Reset notes recording state
+            state.notesAudioBlob = null;
+            state.notesAudioChunks = [];
+            state.isRecordingNotes = false;
+            state.notesMediaRecorder = null;
+            state.notesRecordingStartTime = null;
+            state.lastNotesRecordingDuration = 0;
+            state.discardedNotesRecordings = [];
             
             document.getElementById('sku-row').style.display = 'none';
             document.getElementById('sku-display').textContent = sku;
@@ -2125,6 +2355,14 @@
             };
             state.discardedRecordings = [];
             state.lastRecordingDuration = 0;
+            // v2.9.9: Reset notes recording state
+            state.notesAudioBlob = null;
+            state.notesAudioChunks = [];
+            state.isRecordingNotes = false;
+            state.notesMediaRecorder = null;
+            state.notesRecordingStartTime = null;
+            state.lastNotesRecordingDuration = 0;
+            state.discardedNotesRecordings = [];
             
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
@@ -2144,6 +2382,12 @@
             btn.classList.remove('btn-stop');
             btn.classList.add('btn-record');
             btn.textContent = '🎤 TAP TO RECORD';
+            
+            // v2.9.9: Reset notes button
+            const notesBtn = document.getElementById('notes-record-btn');
+            notesBtn.classList.remove('btn-stop');
+            notesBtn.classList.add('btn-record');
+            notesBtn.textContent = '🎤 TAP TO RECORD NOTES';
             
             updatePhotoGrid();
             updatePhotoCount();
@@ -2331,6 +2575,17 @@
             const photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
             state.photographerId = photographerId;
             localStorage.setItem('photographerId', photographerId);
+            
+            // v2.9.10: Save microphone selection
+            const micSel = document.getElementById('mic-device');
+            if (micSel) {
+                state.micDeviceId = micSel.value || null;
+                if (micSel.value) {
+                    localStorage.setItem('mic-device', micSel.value);
+                } else {
+                    localStorage.removeItem('mic-device');
+                }
+            }
             
             closeSettings();
             showToast('success', 'Settings saved');
