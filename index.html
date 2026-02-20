@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.12 - LAMBDA API KEY AUTH
+    VintageLister v2.9.13 - EBAY TAXONOMY LOOKUP
     
     CHANGELOG:
+    v2.9.13 (2026-02-20):
+    - IMPROVED: Classification display shows Type + Sleeve Length (e.g. "Hoodie · Sleeveless")
+    - IMPROVED: Photographer can visually confirm AI got garment type AND sleeve correct
+    - ADDED: isCampCollar stored from classify response
+    - ADDED: type, sleeveLength, isCampCollar included in jsonData output
+    - REQUIRES: Lambda v106.1 with eBay taxonomy lookup (fixes sleeveless hoodie bug)
+    
     v2.9.12 (2026-02-12):
     - SECURITY: Lambda requests now require API key (x-api-key header)
     - SECURITY: API key stored in localStorage only - NOT in source code
@@ -61,7 +68,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.12</title>
+    <title>VintageLister v2.9.13</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -117,7 +124,6 @@
             padding: 12px;
         }
         
-        /* Header */
         .header-bar {
             display: flex;
             align-items: center;
@@ -142,7 +148,6 @@
         .retry-badge { font-size: 9px; color: var(--accent-yellow); display: none; }
         .retry-badge.visible { display: block; }
         
-        /* Section Cards */
         .section-card {
             background: var(--bg-secondary);
             border-radius: var(--radius);
@@ -158,37 +163,21 @@
             margin-bottom: 10px;
         }
         
-        /* SKU Input - Fixed Layout */
-        .sku-row {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 8px;
-            flex-wrap: nowrap;
-        }
+        .sku-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: nowrap; }
         
         .sku-input {
-            flex: 1;
-            min-width: 0;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 14px;
-            font-weight: 600;
+            flex: 1; min-width: 0; padding: 10px 12px;
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            background: var(--bg-tertiary); color: var(--text-primary);
+            font-size: 14px; font-weight: 600;
         }
         
         .sku-input:focus { outline: none; border-color: var(--accent-blue); }
         
         .sku-btn {
-            padding: 10px 12px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.15s;
-            white-space: nowrap;
-            flex-shrink: 0;
+            padding: 10px 12px; border: none; border-radius: var(--radius);
+            font-size: 13px; cursor: pointer; transition: all 0.15s;
+            white-space: nowrap; flex-shrink: 0;
         }
         
         .sku-btn-scan { background: var(--accent-purple); color: white; }
@@ -196,59 +185,35 @@
         .sku-btn:hover { filter: brightness(1.1); }
         
         .sku-display {
-            display: none;
-            padding: 12px;
-            background: var(--accent-green);
-            border-radius: var(--radius);
-            font-size: 18px;
-            font-weight: 700;
-            text-align: center;
-            cursor: pointer;
+            display: none; padding: 12px; background: var(--accent-green);
+            border-radius: var(--radius); font-size: 18px; font-weight: 700;
+            text-align: center; cursor: pointer;
         }
         
         .sku-display.visible { display: block; }
         .sku-display:hover { background: #16a34a; }
         
-        /* Classification */
         .classification-box {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 12px;
+            background: var(--bg-tertiary); border: 1px solid var(--border-color);
+            border-radius: var(--radius); padding: 12px;
         }
         
         .classification-box.ready { border-color: var(--accent-green); }
         .classification-category { font-size: 18px; font-weight: 700; color: var(--accent-yellow); }
+        /* v2.9.13: Sub-line for type + sleeve detail */
+        .classification-detail { font-size: 12px; color: var(--accent-orange); margin-top: 2px; font-weight: 500; }
         .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .classification-template span { color: var(--accent-blue); font-weight: 600; }
         
-        /* Tag Data */
-        .tag-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 10px;
-        }
+        .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
         
-        .tag-item {
-            background: var(--bg-secondary);
-            padding: 6px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-        }
-        
+        .tag-item { background: var(--bg-secondary); padding: 6px 8px; border-radius: 6px; font-size: 11px; }
         .tag-label { color: var(--text-secondary); font-size: 9px; text-transform: uppercase; }
         .tag-value { font-weight: 600; margin-top: 2px; }
         
-        /* Folder Display */
         .folder-display {
-            padding: 8px 10px;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            font-size: 11px;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-            cursor: pointer;
+            padding: 8px 10px; background: var(--bg-tertiary); border-radius: 6px;
+            font-size: 11px; margin-bottom: 8px; color: var(--text-secondary); cursor: pointer;
         }
         
         .folder-display.set { color: var(--accent-green); }
@@ -262,75 +227,39 @@
             50% { background: rgba(239, 68, 68, 0.3); }
         }
         
-        /* Photo Grid */
         .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
         
         .photo-thumb {
-            position: relative;
-            aspect-ratio: 1;
-            border-radius: 6px;
-            overflow: hidden;
-            background: var(--bg-tertiary);
-            cursor: pointer;
+            position: relative; aspect-ratio: 1; border-radius: 6px;
+            overflow: hidden; background: var(--bg-tertiary); cursor: pointer;
         }
         
         .photo-thumb:hover { outline: 2px solid var(--accent-blue); }
-        
         .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
         
         .photo-thumb-label {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.8);
-            padding: 3px;
-            font-size: 8px;
-            text-align: center;
-            color: var(--accent-yellow);
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.8); padding: 3px;
+            font-size: 8px; text-align: center; color: var(--accent-yellow);
         }
         
         .photo-thumb-delete {
-            position: absolute;
-            top: 2px; right: 2px;
-            width: 18px; height: 18px;
-            border-radius: 50%;
-            border: none;
-            background: var(--accent-red);
-            color: white;
-            font-size: 10px;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
+            position: absolute; top: 2px; right: 2px;
+            width: 18px; height: 18px; border-radius: 50%; border: none;
+            background: var(--accent-red); color: white; font-size: 10px;
+            cursor: pointer; opacity: 0; transition: opacity 0.2s;
         }
         
         .photo-thumb:hover .photo-thumb-delete { opacity: 1; }
         
-        /* Camera Panel */
-        .camera-panel {
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            background: #000;
-        }
+        .camera-panel { display: flex; flex-direction: column; overflow: hidden; background: #000; }
         
-        .camera-tabs {
-            display: flex;
-            gap: 4px;
-            padding: 8px;
-            background: var(--bg-secondary);
-            flex-shrink: 0;
-        }
+        .camera-tabs { display: flex; gap: 4px; padding: 8px; background: var(--bg-secondary); flex-shrink: 0; }
         
         .camera-tab {
-            flex: 1;
-            padding: 12px 8px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: var(--bg-tertiary);
-            color: var(--text-secondary);
+            flex: 1; padding: 12px 8px; border: none; border-radius: var(--radius);
+            font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            background: var(--bg-tertiary); color: var(--text-secondary);
         }
         
         .camera-tab:hover { background: var(--bg-primary); color: var(--text-primary); }
@@ -339,143 +268,84 @@
         .camera-tab.weight.active { background: var(--accent-green); }
         .camera-tab.handheld.active { background: var(--accent-purple); }
         
-        /* Camera Info */
         .camera-info {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 6px 12px;
-            background: rgba(0,0,0,0.5);
-            font-size: 11px;
-            color: var(--text-secondary);
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 12px; background: rgba(0,0,0,0.5);
+            font-size: 11px; color: var(--text-secondary); flex-shrink: 0;
         }
         
         .camera-name { font-weight: 600; color: var(--text-primary); }
         .resolution-badge { background: var(--bg-secondary); padding: 3px 8px; border-radius: 4px; }
         .photo-count-badge { background: var(--accent-green); color: white; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
         
-        /* Video */
         .video-container {
-            flex: 1;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 0;
-            cursor: pointer;
+            flex: 1; position: relative; display: flex; align-items: center;
+            justify-content: center; min-height: 0; cursor: pointer;
         }
         
         .video-container video { width: 100%; height: 100%; object-fit: contain; }
         .video-placeholder { color: var(--text-secondary); text-align: center; padding: 40px; }
         
-        /* v2.9.7: Hint for double-click */
         .video-hint {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-            color: var(--text-secondary);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 4px 10px; border-radius: 4px;
+            font-size: 10px; color: var(--text-secondary); pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
         }
         
         .video-container:hover .video-hint { opacity: 1; }
         
         .capture-flash {
-            position: absolute;
-            inset: 0;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s;
+            position: absolute; inset: 0; background: white;
+            opacity: 0; pointer-events: none; transition: opacity 0.1s;
         }
         
         .capture-flash.active { opacity: 0.7; }
         
-        /* Capture Area - Complete Button */
         .capture-area {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding: 16px;
-            background: var(--bg-secondary);
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            gap: 20px; padding: 16px; background: var(--bg-secondary); flex-shrink: 0;
         }
         
         .capture-btn {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            border: 4px solid var(--text-primary);
-            background: transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
+            width: 70px; height: 70px; border-radius: 50%;
+            border: 4px solid var(--text-primary); background: transparent;
+            cursor: pointer; transition: all 0.2s; position: relative;
         }
         
         .capture-btn::after {
-            content: '';
-            position: absolute;
-            inset: 5px;
-            border-radius: 50%;
-            background: var(--text-primary);
-            transition: all 0.2s;
+            content: ''; position: absolute; inset: 5px; border-radius: 50%;
+            background: var(--text-primary); transition: all 0.2s;
         }
         
         .capture-btn:hover::after { background: var(--accent-blue); }
         .capture-btn:active { transform: scale(0.95); }
         
         .complete-btn-camera {
-            padding: 14px 24px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            background: var(--accent-green);
-            color: white;
-            transition: all 0.2s;
+            padding: 14px 24px; border: none; border-radius: var(--radius);
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            background: var(--accent-green); color: white; transition: all 0.2s;
         }
         
         .complete-btn-camera:hover { filter: brightness(1.1); }
         .complete-btn-camera:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* AI Overlay */
         .ai-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
+            position: absolute; inset: 0; background: rgba(15, 23, 42, 0.9);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 12px;
+            opacity: 0; visibility: hidden; transition: all 0.3s;
         }
         
         .ai-overlay.active { opacity: 1; visibility: visible; }
         .spinner { width: 36px; height: 36px; border: 3px solid var(--bg-tertiary); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Measurements */
         .measurement-list { display: flex; flex-direction: column; gap: 6px; }
         
         .measurement-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 10px;
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            font-size: 12px;
+            display: flex; align-items: center; padding: 8px 10px;
+            background: var(--bg-tertiary); border-radius: 6px; font-size: 12px;
         }
         
         .measurement-item.completed {
@@ -484,47 +354,28 @@
         }
         
         .measurement-num {
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: var(--bg-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 600;
-            margin-right: 8px;
-            flex-shrink: 0;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--bg-secondary); display: flex; align-items: center;
+            justify-content: center; font-size: 10px; font-weight: 600;
+            margin-right: 8px; flex-shrink: 0;
         }
         
         .measurement-name { flex: 1; }
         .measurement-value { font-weight: 600; color: var(--accent-green); }
         
-        /* Transcript Display */
         .transcript-box {
-            background: var(--bg-tertiary);
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            display: none;
+            background: var(--bg-tertiary); border-radius: 6px; padding: 10px;
+            margin-top: 10px; font-size: 11px; color: var(--text-secondary); display: none;
         }
         
         .transcript-box.visible { display: block; }
         .transcript-label { font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
         .transcript-text { font-style: italic; }
         
-        /* Buttons */
         .btn {
-            padding: 12px 16px;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: 100%;
-            margin-bottom: 8px;
+            padding: 12px 16px; border: none; border-radius: var(--radius);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; width: 100%; margin-bottom: 8px;
         }
         
         .btn-primary { background: var(--accent-green); color: white; }
@@ -539,49 +390,30 @@
             50% { opacity: 0.9; box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 
         }
         
-        /* Modal */
         .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
         }
         
         .modal-overlay.active { opacity: 1; visibility: visible; }
         
         .modal {
-            background: var(--bg-secondary);
-            border-radius: var(--radius);
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
+            background: var(--bg-secondary); border-radius: var(--radius);
+            width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
         }
         
         .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; border-bottom: 1px solid var(--border-color);
         }
         
         .modal-title { font-size: 16px; font-weight: 600; }
         
         .modal-close {
-            width: 30px; height: 30px;
-            border: none;
-            border-radius: 50%;
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 16px;
-            cursor: pointer;
+            width: 30px; height: 30px; border: none; border-radius: 50%;
+            background: var(--bg-tertiary); color: var(--text-primary);
+            font-size: 16px; cursor: pointer;
         }
         
         .modal-body { padding: 16px; }
@@ -589,81 +421,51 @@
         .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
         
         .form-select, .form-input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-size: 13px;
+            width: 100%; padding: 10px 12px;
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px;
         }
         
         .form-select:focus, .form-input:focus { outline: none; border-color: var(--accent-blue); }
         
-        /* Barcode Scanner */
         .barcode-container {
-            position: relative;
-            background: #000;
-            aspect-ratio: 4/3;
-            border-radius: var(--radius);
-            overflow: hidden;
+            position: relative; background: #000; aspect-ratio: 4/3;
+            border-radius: var(--radius); overflow: hidden;
         }
         
         .barcode-container video, .barcode-container canvas { width: 100%; height: 100%; object-fit: cover; }
         
         .barcode-target {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 200px; height: 80px;
-            border: 3px solid var(--accent-yellow);
-            border-radius: 8px;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 200px; height: 80px; border: 3px solid var(--accent-yellow); border-radius: 8px;
         }
         
         .barcode-status {
-            position: absolute;
-            bottom: 10px; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            text-align: center;
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 8px 16px; border-radius: 6px;
+            font-size: 12px; text-align: center;
         }
         
         .barcode-status.success { background: var(--accent-green); }
         .barcode-status.warning { background: var(--accent-yellow); color: black; }
         
-        /* v2.9.7: Confidence indicator for barcode scanner */
         .barcode-confidence {
-            position: absolute;
-            top: 10px; right: 10px;
-            background: rgba(0,0,0,0.8);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.8); padding: 6px 12px; border-radius: 6px; font-size: 11px;
         }
         
         .barcode-confidence.good { color: var(--accent-green); }
         .barcode-confidence.medium { color: var(--accent-yellow); }
         .barcode-confidence.poor { color: var(--accent-red); }
         
-        /* Toast */
         .toast-container {
-            position: fixed;
-            top: 20px; right: 20px;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            position: fixed; top: 20px; right: 20px; z-index: 2000;
+            display: flex; flex-direction: column; gap: 8px;
         }
         
         .toast {
-            padding: 10px 16px;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
+            padding: 10px 16px; border-radius: var(--radius);
+            font-size: 13px; font-weight: 500; animation: slideIn 0.3s ease;
         }
         
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -673,14 +475,9 @@
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
         
-        /* Weight Photo Status */
         .weight-photo-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px;
-            background: var(--bg-tertiary);
-            border-radius: var(--radius);
+            display: flex; align-items: center; gap: 10px; padding: 12px;
+            background: var(--bg-tertiary); border-radius: var(--radius);
             border: 1px dashed var(--border-color);
         }
         
@@ -692,58 +489,32 @@
         .weight-status-icon { font-size: 20px; }
         .weight-status-text { font-size: 13px; color: var(--text-secondary); }
         
-        /* v2.9.7: Preview Modal - Full screen photo/video preview */
         .preview-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 3000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-            cursor: zoom-out;
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 3000; opacity: 0; visibility: hidden; transition: all 0.3s; cursor: zoom-out;
         }
         
         .preview-modal.active { opacity: 1; visibility: visible; }
         
         .preview-modal img, .preview-modal canvas {
-            max-width: 95vw;
-            max-height: 95vh;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            max-width: 95vw; max-height: 95vh; object-fit: contain;
+            border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
         
         .preview-close {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            border: none;
-            border-radius: 50%;
-            background: var(--bg-secondary);
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.2s;
+            position: absolute; top: 20px; right: 20px;
+            width: 50px; height: 50px; border: none; border-radius: 50%;
+            background: var(--bg-secondary); color: white; font-size: 24px;
+            cursor: pointer; transition: all 0.2s;
         }
         
         .preview-close:hover { background: var(--accent-red); }
         
         .preview-info {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--text-secondary);
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px;
+            font-size: 14px; color: var(--text-secondary);
         }
     </style>
 </head>
@@ -771,13 +542,12 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.12</span>
+                    <span class="version-badge" id="version-badge">v2.9.13</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
             
             <div class="panel-scroll">
-                <!-- SKU - Fixed Layout -->
                 <div class="section-card">
                     <div class="section-title">🏷️ Item SKU</div>
                     <div class="sku-row" id="sku-row">
@@ -788,11 +558,12 @@
                     <div class="sku-display" id="sku-display" onclick="cancelItem()"></div>
                 </div>
                 
-                <!-- Classification -->
                 <div class="section-card">
                     <div class="section-title">🤖 AI Classification</div>
                     <div class="classification-box" id="classification-box">
                         <div class="classification-category" id="classification-category">Waiting...</div>
+                        <!-- v2.9.13: Type + sleeve detail line -->
+                        <div class="classification-detail" id="classification-detail"></div>
                         <div class="classification-template">Template: <span id="classification-template">-</span></div>
                     </div>
                     <div class="tag-grid" id="tag-grid" style="display: none;">
@@ -803,13 +574,11 @@
                     </div>
                 </div>
                 
-                <!-- Save Location -->
                 <div class="section-card">
                     <div class="section-title">💾 Save Location</div>
                     <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
                 </div>
                 
-                <!-- Weight Photo Status -->
                 <div class="section-card">
                     <div class="section-title">⚖️ Weight Photo</div>
                     <div class="weight-photo-status" id="weight-photo-status">
@@ -821,7 +590,6 @@
                     </div>
                 </div>
                 
-                <!-- Photos -->
                 <div class="section-card">
                     <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
                     <div class="photo-grid" id="photo-grid"></div>
@@ -881,7 +649,6 @@
                 
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
                 
-                <!-- v2.9.9: Notes Audio Recording -->
                 <div class="section-card">
                     <div class="section-title">🗒️ Audio Notes</div>
                     <button class="btn btn-record" id="notes-record-btn" onclick="toggleNotesRecording()">🎤 TAP TO RECORD NOTES</button>
@@ -945,7 +712,6 @@
                     <select class="form-select" id="camera-barcode"></select>
                 </div>
                 <hr style="border-color: var(--border-color); margin: 16px 0;">
-                <!-- v2.9.10: Microphone Selection -->
                 <div class="form-group">
                     <label class="form-label">🎤 Microphone (Measurements + Notes)</label>
                     <select class="form-select" id="mic-device"></select>
@@ -960,7 +726,6 @@
                     <label class="form-label">Lambda URL</label>
                     <input type="text" class="form-input" id="lambda-url" placeholder="https://...">
                 </div>
-                <!-- v2.9.12: API Key for Lambda authentication -->
                 <div class="form-group">
                     <label class="form-label">🔐 API Key (required)</label>
                     <input type="password" class="form-input" id="api-key" placeholder="Enter API key...">
@@ -973,7 +738,7 @@
         </div>
     </div>
     
-    <!-- v2.9.7: Preview Modal - Full size photo/video preview -->
+    <!-- Preview Modal -->
     <div class="preview-modal" id="preview-modal" onclick="closePreviewModal(event)">
         <button class="preview-close" onclick="closePreviewModal(event)">×</button>
         <canvas id="preview-canvas"></canvas>
@@ -986,64 +751,18 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.12 - LAMBDA API KEY AUTH
-        // 
-        // v2.9.12 SECURITY:
-        // - All Lambda requests include x-api-key header
-        // - API key stored in localStorage only, never in source code
-        // - App warns if API key not configured
-        //
-        // v2.9.11 FEATURES:
-        // - Cannot complete without measurement recording, notes recording, weight photo
-        // - Clear toast messages for missing items
-        //
-        // v2.9.10 FEATURES:
-        // - Microphone selection dropdown in Settings modal
-        // - Mic choice saved to localStorage (persists between sessions)
-        // - Both recorders (measurement + notes) use the selected mic
-        //
-        // v2.9.9 FEATURES:
-        // - Notes audio recorder for photographer verbal notes/insights
-        // - notes/ folder in local save and S3 upload
-        // - Mutual exclusion between measurement and notes recorders
-        // - Override protection (confirm dialog) on both recorders
-        //
-        // v2.9.8 SAFETY FEATURES:
-        // - Cannot start item without save folder selected
-        // - Cannot capture photos without save folder selected
-        // - Visual warning when folder not set
-        //
-        // v2.9.7 FIXES:
-        // - Barcode scanner checks confidence (>80% required)
-        // - Shows confidence % during scanning
-        // - Preview modal for video/photos (double-click)
-        //
-        // v2.9.6 FIXES:
-        // - AI trigger now fires when entering closeup from ANY mode
-        // - resizeImageForAI() has error handler
-        // - Weight photo status CSS class toggles properly
-        // - Object URL memory leak fixed
-        // - Handheld timing tracking added
-        //
-        // v2.9.5 ARCHITECTURE:
-        // 1. ASYNC AI PROCESSING - OCR, Image Processing, Photo Routing → n8n
-        // 2. WEIGHT CAMERA - Photo of scale display, n8n OCRs the value
-        // 3. S3 FOLDER STRUCTURE - main/, closeup/, weight/, handheld/, measurements/, notes/, data/
-        // 4. DETAILED KPI TIMING
+        // VINTAGELISTER v2.9.13 - EBAY TAXONOMY LOOKUP
         // =============================================================================
         
-        const VERSION = '2.9.12';
+        const VERSION = '2.9.13';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
-        
-        // v2.9.7: Barcode confidence threshold (0-1, 80% = 0.80)
         const BARCODE_MIN_CONFIDENCE = 0.80;
         
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
-            // v2.9.12: API key for Lambda authentication (stored in localStorage only)
             apiKey: localStorage.getItem('vl-api-key') || '',
             lambdaVersion: null,
             currentSKU: '',
@@ -1057,11 +776,14 @@
                 barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
             },
             availableCameras: [],
-            // v2.9.10: Microphone selection
             availableMics: [],
             micDeviceId: localStorage.getItem('mic-device') || null,
             photos: { main: [], closeup: [], weight: [], handheld: [] },
             classification: null,
+            // v2.9.13: Store detailed classification from Lambda v106.1
+            classificationType: null,
+            classificationSleeve: null,
+            classificationIsCampCollar: false,
             templateKey: null,
             template: null,
             tagData: null,
@@ -1076,18 +798,12 @@
             audioChunks: [],
             aiTriggered: false,
             timing: {
-                itemStartTime: null,
-                classificationTime: null,
-                mainPhotosStartTime: null,
-                mainPhotosEndTime: null,
-                closeupStartTime: null,
-                closeupEndTime: null,
-                weightStartTime: null,
-                weightEndTime: null,
-                handheldStartTime: null,
-                handheldEndTime: null,
-                measurementsStartTime: null,
-                measurementsEndTime: null,
+                itemStartTime: null, classificationTime: null,
+                mainPhotosStartTime: null, mainPhotosEndTime: null,
+                closeupStartTime: null, closeupEndTime: null,
+                weightStartTime: null, weightEndTime: null,
+                handheldStartTime: null, handheldEndTime: null,
+                measurementsStartTime: null, measurementsEndTime: null,
                 completeTime: null
             },
             completedItems: parseInt(localStorage.getItem('completedItems') || '0'),
@@ -1096,7 +812,6 @@
             discardedRecordings: [],
             recordingStartTime: null,
             photographerId: localStorage.getItem('photographerId') || 'photographer_1',
-            // v2.9.9: Notes audio recording state
             notesAudioBlob: null,
             notesAudioChunks: [],
             isRecordingNotes: false,
@@ -1112,11 +827,9 @@
         async function init() {
             console.log(`%c VintageLister v${VERSION} `, 'background: #3b82f6; color: white; font-size: 14px;');
             document.getElementById('lambda-url').value = state.lambdaUrl;
-            // v2.9.12: Load API key into settings field
             document.getElementById('api-key').value = state.apiKey;
             if (!state.apiKey) {
                 showToast('error', '🔐 API KEY REQUIRED - Open Settings to configure');
-                console.warn('⚠️ No API key configured. Open Settings and enter your API key.');
             }
             updateStats();
             updateRetryBadge();
@@ -1124,24 +837,13 @@
             await enumerateCameras();
             if (state.cameras.main.deviceId) await startCamera('main');
             
-            // SPACE key for pedal capture
             document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && !e.target.matches('input, textarea')) {
-                    e.preventDefault();
-                    capturePhoto();
-                }
-            });
-            
-            // ESC key to close preview modal
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Escape') {
-                    closePreviewModal();
-                }
+                if (e.code === 'Space' && !e.target.matches('input, textarea')) { e.preventDefault(); capturePhoto(); }
+                if (e.code === 'Escape') { closePreviewModal(); }
             });
             
             processRetryQueue();
-            
-            console.log('✅ Init complete - API key auth enabled, completion validation, notes recorder, mic selection');
+            console.log('✅ Init complete - v2.9.13 with eBay taxonomy lookup');
         }
         
         // =====================================================================
@@ -1151,10 +853,8 @@
             try {
                 const headers = { 'Content-Type': 'application/json' };
                 if (state.apiKey) headers['x-api-key'] = state.apiKey;
-                
                 const res = await fetch(state.lambdaUrl, {
-                    method: 'POST',
-                    headers,
+                    method: 'POST', headers,
                     body: JSON.stringify({ action: 'diagnostics' })
                 });
                 const data = await res.json();
@@ -1172,12 +872,9 @@
         
         async function callLambda(action, body = {}) {
             const headers = { 'Content-Type': 'application/json' };
-            // v2.9.12: Include API key if configured
             if (state.apiKey) headers['x-api-key'] = state.apiKey;
-            
             const res = await fetch(state.lambdaUrl, {
-                method: 'POST',
-                headers,
+                method: 'POST', headers,
                 body: JSON.stringify({ action, ...body })
             });
             return res.json();
@@ -1192,14 +889,9 @@
                 stream.getTracks().forEach(t => t.stop());
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 state.availableCameras = devices.filter(d => d.kind === 'videoinput');
-                // v2.9.10: Enumerate microphones
                 state.availableMics = devices.filter(d => d.kind === 'audioinput');
-                console.log(`📹 Found ${state.availableCameras.length} cameras`);
-                console.log(`🎤 Found ${state.availableMics.length} microphones`);
                 populateCameraSelects();
-            } catch (err) {
-                console.error('Device enum failed:', err);
-            }
+            } catch (err) { console.error('Device enum failed:', err); }
         }
         
         function populateCameraSelects() {
@@ -1215,13 +907,7 @@
                     sel.appendChild(opt);
                 });
             });
-            
-            const photographerInput = document.getElementById('photographer-id');
-            if (photographerInput) {
-                photographerInput.value = state.photographerId;
-            }
-            
-            // v2.9.10: Populate microphone dropdown
+            document.getElementById('photographer-id').value = state.photographerId;
             const micSel = document.getElementById('mic-device');
             if (micSel) {
                 micSel.innerHTML = '<option value="">Default microphone</option>';
@@ -1236,9 +922,7 @@
         }
         
         async function startCamera(mode) {
-            if (state.currentStream) {
-                state.currentStream.getTracks().forEach(t => t.stop());
-            }
+            if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
             const deviceId = state.cameras[mode].deviceId;
             if (!deviceId) {
                 document.getElementById('video-placeholder').style.display = 'block';
@@ -1258,74 +942,42 @@
                 document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
                 const cam = state.availableCameras.find(c => c.deviceId === deviceId);
                 document.getElementById('camera-name').textContent = cam?.label || 'Camera';
-                console.log(`📹 Started ${mode}: ${settings.width}×${settings.height}`);
-            } catch (err) {
-                console.error('Start camera failed:', err);
-            }
+            } catch (err) { console.error('Start camera failed:', err); }
         }
         
         function switchCameraMode(mode) {
             const prevMode = state.currentMode;
             const now = Date.now();
-            
             if (state.currentSKU) {
-                if (prevMode === 'main' && state.timing.mainPhotosStartTime) {
-                    state.timing.mainPhotosEndTime = now;
-                } else if (prevMode === 'closeup' && state.timing.closeupStartTime) {
-                    state.timing.closeupEndTime = now;
-                } else if (prevMode === 'weight' && state.timing.weightStartTime) {
-                    state.timing.weightEndTime = now;
-                } else if (prevMode === 'handheld' && state.timing.handheldStartTime) {
-                    state.timing.handheldEndTime = now;
-                }
+                if (prevMode === 'main' && state.timing.mainPhotosStartTime) state.timing.mainPhotosEndTime = now;
+                else if (prevMode === 'closeup' && state.timing.closeupStartTime) state.timing.closeupEndTime = now;
+                else if (prevMode === 'weight' && state.timing.weightStartTime) state.timing.weightEndTime = now;
+                else if (prevMode === 'handheld' && state.timing.handheldStartTime) state.timing.handheldEndTime = now;
             }
-            
             state.currentMode = mode;
             document.querySelectorAll('.camera-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
             startCamera(mode);
             updatePhotoCount();
-            
             if (state.currentSKU) {
-                if (mode === 'closeup' && !state.timing.closeupStartTime) {
-                    state.timing.closeupStartTime = now;
-                } else if (mode === 'weight' && !state.timing.weightStartTime) {
-                    state.timing.weightStartTime = now;
-                } else if (mode === 'handheld' && !state.timing.handheldStartTime) {
-                    state.timing.handheldStartTime = now;
-                }
+                if (mode === 'closeup' && !state.timing.closeupStartTime) state.timing.closeupStartTime = now;
+                else if (mode === 'weight' && !state.timing.weightStartTime) state.timing.weightStartTime = now;
+                else if (mode === 'handheld' && !state.timing.handheldStartTime) state.timing.handheldStartTime = now;
             }
-            
-            // v2.9.6: Trigger AI when entering closeup from ANY mode
-            if (mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) {
-                triggerAI();
-            }
+            if (mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) triggerAI();
         }
         
         // =====================================================================
         // PHOTO CAPTURE
         // =====================================================================
         function capturePhoto() {
-            // v2.9.8: SAFETY CHECK - Must have save folder selected
-            if (!state.saveDirectoryHandle) {
-                showToast('error', '⚠️ SELECT SAVE FOLDER FIRST');
-                highlightFolderSelector();
-                return;
-            }
-            
-            if (!state.currentStream) {
-                showToast('warning', 'No camera active');
-                return;
-            }
-            if (!state.currentSKU) {
-                showToast('warning', 'Start an item first');
-                return;
-            }
+            if (!state.saveDirectoryHandle) { showToast('error', '⚠️ SELECT SAVE FOLDER FIRST'); highlightFolderSelector(); return; }
+            if (!state.currentStream) { showToast('warning', 'No camera active'); return; }
+            if (!state.currentSKU) { showToast('warning', 'Start an item first'); return; }
             
             const video = document.getElementById('video-preview');
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0);
             
             const flash = document.getElementById('capture-flash');
@@ -1333,18 +985,11 @@
             setTimeout(() => flash.classList.remove('active'), 100);
             
             const currentMode = state.currentMode;
-            
             canvas.toBlob(async blob => {
-                const photo = { blob, mode: currentMode, timestamp: Date.now() };
-                state.photos[currentMode].push(photo);
-                updatePhotoGrid();
-                updatePhotoCount();
-                console.log(`📷 Captured ${currentMode} #${state.photos[currentMode].length}`);
+                state.photos[currentMode].push({ blob, mode: currentMode, timestamp: Date.now() });
+                updatePhotoGrid(); updatePhotoCount();
                 showToast('success', 'Photo captured');
-                
-                if (currentMode === 'weight') {
-                    updateWeightPhotoStatus();
-                }
+                if (currentMode === 'weight') updateWeightPhotoStatus();
             }, 'image/jpeg', 0.92);
         }
         
@@ -1371,12 +1016,8 @@
         
         function updatePhotoGrid() {
             const grid = document.getElementById('photo-grid');
-            // v2.9.6: Revoke old Object URLs to prevent memory leak
-            grid.querySelectorAll('img').forEach(img => {
-                if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
-            });
+            grid.querySelectorAll('img').forEach(img => { if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src); });
             const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
-            // v2.9.7: Added onclick to open preview modal
             grid.innerHTML = all.map((p, i) => `
                 <div class="photo-thumb" onclick="openPhotoPreview(${i})">
                     <img src="${URL.createObjectURL(p.blob)}">
@@ -1396,71 +1037,41 @@
                 }
                 count += state.photos[mode].length;
             }
-            updatePhotoGrid();
-            updatePhotoCount();
+            updatePhotoGrid(); updatePhotoCount();
         }
         
         // =====================================================================
-        // v2.9.7: PREVIEW MODAL - View video freeze frame or photos full size
+        // PREVIEW MODAL
         // =====================================================================
         function openVideoPreview() {
             if (!state.currentStream) return;
-            
             const video = document.getElementById('video-preview');
             const canvas = document.getElementById('preview-canvas');
-            const img = document.getElementById('preview-image');
-            const info = document.getElementById('preview-info');
-            
-            // Hide image, show canvas
-            img.style.display = 'none';
+            document.getElementById('preview-image').style.display = 'none';
             canvas.style.display = 'block';
-            
-            // Capture current frame to preview canvas
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            
-            // Show info
-            info.textContent = `${state.currentMode.toUpperCase()} camera • ${video.videoWidth}×${video.videoHeight} • Click anywhere to close`;
-            
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            document.getElementById('preview-info').textContent = `${state.currentMode.toUpperCase()} camera • ${video.videoWidth}×${video.videoHeight} • Click anywhere to close`;
             document.getElementById('preview-modal').classList.add('active');
         }
         
         function openPhotoPreview(idx) {
             const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
             if (idx < 0 || idx >= all.length) return;
-            
             const photo = all[idx];
-            const canvas = document.getElementById('preview-canvas');
+            document.getElementById('preview-canvas').style.display = 'none';
             const img = document.getElementById('preview-image');
-            const info = document.getElementById('preview-info');
-            
-            // Hide canvas, show image
-            canvas.style.display = 'none';
             img.style.display = 'block';
-            
-            // Set image source
             img.src = URL.createObjectURL(photo.blob);
-            
-            // Show info
-            const label = photo.label || photo.mode;
-            info.textContent = `${label.toUpperCase()} • Photo ${idx + 1} of ${all.length} • Click anywhere to close`;
-            
+            document.getElementById('preview-info').textContent = `${(photo.label || photo.mode).toUpperCase()} • Photo ${idx + 1} of ${all.length} • Click anywhere to close`;
             document.getElementById('preview-modal').classList.add('active');
         }
         
         function closePreviewModal(event) {
-            // If clicked on the close button or the modal background, close it
             if (!event || event.target.id === 'preview-modal' || event.target.classList.contains('preview-close')) {
                 document.getElementById('preview-modal').classList.remove('active');
-                
-                // Revoke the image URL if it was set
                 const img = document.getElementById('preview-image');
-                if (img.src.startsWith('blob:')) {
-                    URL.revokeObjectURL(img.src);
-                    img.src = '';
-                }
+                if (img.src.startsWith('blob:')) { URL.revokeObjectURL(img.src); img.src = ''; }
             }
         }
         
@@ -1473,7 +1084,6 @@
             document.getElementById('ai-overlay').classList.add('active');
             
             try {
-                console.log(`🤖 AI: ${state.photos.main.length} photos`);
                 const mainPhotos = await Promise.all(state.photos.main.slice(0, 4).map(p => resizeImageForAI(p.blob)));
                 let tagPhoto = null;
                 if (state.photos.closeup.length > 0) tagPhoto = await resizeImageForAI(state.photos.closeup[0].blob);
@@ -1481,23 +1091,24 @@
                 const result = await callLambda('classify', { mainPhotos, tagPhoto });
                 if (result.success) {
                     state.classification = result.category;
+                    // v2.9.13: Store detailed classification from Lambda v106.1
+                    state.classificationType = result.type || null;
+                    state.classificationSleeve = result.sleeveLength || null;
+                    state.classificationIsCampCollar = result.isCampCollar || false;
                     state.templateKey = result.templateKey;
                     state.template = result.template;
                     state.tagData = result.tagData;
-                    
                     state.timing.classificationTime = Date.now();
                     
                     if (result.photoLabels) {
-                        state.photos.main.forEach((p, i) => {
-                            if (result.photoLabels[i]) p.label = result.photoLabels[i];
-                        });
+                        state.photos.main.forEach((p, i) => { if (result.photoLabels[i]) p.label = result.photoLabels[i]; });
                     }
                     
                     updateClassificationDisplay();
                     updatePhotoGrid();
                     updateMeasurementList();
-                    console.log(`✅ Classified: ${result.category}`);
-                    showToast('success', `Classified: ${result.category}`);
+                    console.log(`✅ Classified: ${result.type} · ${result.sleeveLength} → ${result.templateKey}`);
+                    showToast('success', `Classified: ${result.type || result.category}`);
                 } else {
                     throw new Error(result.error || 'Classification failed');
                 }
@@ -1521,23 +1132,29 @@
                         if (w > h) { h = Math.round(h * AI_IMAGE_MAX_SIZE / w); w = AI_IMAGE_MAX_SIZE; }
                         else { w = Math.round(w * AI_IMAGE_MAX_SIZE / h); h = AI_IMAGE_MAX_SIZE; }
                     }
-                    canvas.width = w;
-                    canvas.height = h;
+                    canvas.width = w; canvas.height = h;
                     ctx.drawImage(img, 0, 0, w, h);
                     URL.revokeObjectURL(objectUrl);
                     resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
                 };
-                img.onerror = () => {
-                    URL.revokeObjectURL(objectUrl);
-                    reject(new Error('Failed to load image for resize'));
-                };
+                img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Failed to load image for resize')); };
                 img.src = objectUrl;
             });
         }
         
         function updateClassificationDisplay() {
             document.getElementById('classification-box').classList.add('ready');
-            document.getElementById('classification-category').textContent = state.classification || 'Unknown';
+            // v2.9.13: Show type as primary, category as context
+            const displayType = state.classificationType || state.classification || 'Unknown';
+            document.getElementById('classification-category').textContent = displayType;
+            
+            // v2.9.13: Show sleeve + category detail line
+            const parts = [];
+            if (state.classificationSleeve && state.classificationSleeve !== 'na') parts.push(state.classificationSleeve);
+            if (state.classification && state.classification !== displayType) parts.push(state.classification);
+            if (state.classificationIsCampCollar) parts.push('Camp Collar');
+            document.getElementById('classification-detail').textContent = parts.join(' · ');
+            
             document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
             if (state.tagData && !state.tagData.error) {
                 document.getElementById('tag-grid').style.display = 'grid';
@@ -1562,170 +1179,93 @@
                 </div>
             `).join('');
             document.getElementById('complete-btn-camera').disabled = false;
-            
-            if (!state.timing.measurementsStartTime) {
-                state.timing.measurementsStartTime = Date.now();
-            }
+            if (!state.timing.measurementsStartTime) state.timing.measurementsStartTime = Date.now();
         }
         
         // =====================================================================
         // VOICE RECORDING
         // =====================================================================
-        async function toggleRecording() {
-            if (state.isRecording) stopRecording();
-            else startRecording();
-        }
+        async function toggleRecording() { if (state.isRecording) stopRecording(); else startRecording(); }
         
         async function startRecording() {
-            // v2.9.9: Mutual exclusion - cannot record while notes is recording
-            if (state.isRecordingNotes) {
-                showToast('error', '⚠️ Stop notes recording first');
-                return;
-            }
-            
-            // v2.9.9: Override protection - warn before re-recording
-            if (state.audioBlob) {
-                if (!confirm('You already have a measurement recording. Re-recording will replace it. Continue?')) {
-                    return;
-                }
-            }
-            
+            if (state.isRecordingNotes) { showToast('error', '⚠️ Stop notes recording first'); return; }
+            if (state.audioBlob) { if (!confirm('You already have a measurement recording. Re-recording will replace it. Continue?')) return; }
             try {
-                // v2.9.10: Use selected microphone if set
-                const audioConstraints = state.micDeviceId 
-                    ? { deviceId: { exact: state.micDeviceId } } 
-                    : true;
+                const audioConstraints = state.micDeviceId ? { deviceId: { exact: state.micDeviceId } } : true;
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 state.mediaRecorder = new MediaRecorder(stream);
                 state.audioChunks = [];
                 state.recordingStartTime = Date.now();
-                
-                if (!state.timing.measurementsStartTime) {
-                    state.timing.measurementsStartTime = Date.now();
-                }
-                
+                if (!state.timing.measurementsStartTime) state.timing.measurementsStartTime = Date.now();
                 state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
                 state.mediaRecorder.onstop = async () => {
                     const recordingDuration = (Date.now() - state.recordingStartTime) / 1000;
                     const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
-                    
                     if (state.audioBlob) {
-                        state.discardedRecordings.push({
-                            blob: state.audioBlob,
-                            duration: state.lastRecordingDuration || 0,
-                            timestamp: new Date().toISOString()
-                        });
-                        console.log(`📼 Previous recording saved as discarded (${state.discardedRecordings.length} total)`);
+                        state.discardedRecordings.push({ blob: state.audioBlob, duration: state.lastRecordingDuration || 0, timestamp: new Date().toISOString() });
                     }
-                    
                     state.audioBlob = blob;
                     state.lastRecordingDuration = recordingDuration;
                     stream.getTracks().forEach(t => t.stop());
                     await transcribeAudio(blob);
                 };
-                
                 state.mediaRecorder.start();
                 state.isRecording = true;
-                
                 const btn = document.getElementById('record-btn');
-                btn.classList.remove('btn-record');
-                btn.classList.add('btn-stop');
+                btn.classList.remove('btn-record'); btn.classList.add('btn-stop');
                 btn.textContent = '🛑 TAP TO STOP';
-                
-            } catch (err) {
-                showToast('error', 'Mic access denied');
-            }
+            } catch (err) { showToast('error', 'Mic access denied'); }
         }
         
         function stopRecording() {
             if (state.mediaRecorder && state.isRecording) {
-                state.mediaRecorder.stop();
-                state.isRecording = false;
-                
+                state.mediaRecorder.stop(); state.isRecording = false;
                 state.timing.measurementsEndTime = Date.now();
-                
                 const btn = document.getElementById('record-btn');
-                btn.classList.remove('btn-stop');
-                btn.classList.add('btn-record');
+                btn.classList.remove('btn-stop'); btn.classList.add('btn-record');
                 btn.textContent = '🎤 TAP TO RECORD';
             }
         }
         
         // =====================================================================
-        // v2.9.9: NOTES AUDIO RECORDING
-        // Separate recorder for photographer verbal notes on item features,
-        // condition, insights, etc. Stored in notes/ folder.
+        // NOTES AUDIO RECORDING
         // =====================================================================
-        async function toggleNotesRecording() {
-            if (state.isRecordingNotes) stopNotesRecording();
-            else startNotesRecording();
-        }
+        async function toggleNotesRecording() { if (state.isRecordingNotes) stopNotesRecording(); else startNotesRecording(); }
         
         async function startNotesRecording() {
-            // v2.9.9: Mutual exclusion - cannot record while measurement is recording
-            if (state.isRecording) {
-                showToast('error', '⚠️ Stop measurement recording first');
-                return;
-            }
-            
-            // v2.9.9: Override protection - warn before re-recording
-            if (state.notesAudioBlob) {
-                if (!confirm('You already have a notes recording. Re-recording will replace it. Continue?')) {
-                    return;
-                }
-            }
-            
+            if (state.isRecording) { showToast('error', '⚠️ Stop measurement recording first'); return; }
+            if (state.notesAudioBlob) { if (!confirm('You already have a notes recording. Re-recording will replace it. Continue?')) return; }
             try {
-                // v2.9.10: Use selected microphone if set
-                const audioConstraints = state.micDeviceId 
-                    ? { deviceId: { exact: state.micDeviceId } } 
-                    : true;
+                const audioConstraints = state.micDeviceId ? { deviceId: { exact: state.micDeviceId } } : true;
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 state.notesMediaRecorder = new MediaRecorder(stream);
                 state.notesAudioChunks = [];
                 state.notesRecordingStartTime = Date.now();
-                
                 state.notesMediaRecorder.ondataavailable = e => state.notesAudioChunks.push(e.data);
                 state.notesMediaRecorder.onstop = async () => {
                     const recordingDuration = (Date.now() - state.notesRecordingStartTime) / 1000;
                     const blob = new Blob(state.notesAudioChunks, { type: 'audio/webm' });
-                    
                     if (state.notesAudioBlob) {
-                        state.discardedNotesRecordings.push({
-                            blob: state.notesAudioBlob,
-                            duration: state.lastNotesRecordingDuration || 0,
-                            timestamp: new Date().toISOString()
-                        });
-                        console.log(`📼 Previous notes recording saved as discarded (${state.discardedNotesRecordings.length} total)`);
+                        state.discardedNotesRecordings.push({ blob: state.notesAudioBlob, duration: state.lastNotesRecordingDuration || 0, timestamp: new Date().toISOString() });
                     }
-                    
                     state.notesAudioBlob = blob;
                     state.lastNotesRecordingDuration = recordingDuration;
                     stream.getTracks().forEach(t => t.stop());
                     showToast('success', `Notes recorded (${Math.round(recordingDuration)}s)`);
                 };
-                
                 state.notesMediaRecorder.start();
                 state.isRecordingNotes = true;
-                
                 const btn = document.getElementById('notes-record-btn');
-                btn.classList.remove('btn-record');
-                btn.classList.add('btn-stop');
+                btn.classList.remove('btn-record'); btn.classList.add('btn-stop');
                 btn.textContent = '🛑 TAP TO STOP';
-                
-            } catch (err) {
-                showToast('error', 'Mic access denied');
-            }
+            } catch (err) { showToast('error', 'Mic access denied'); }
         }
         
         function stopNotesRecording() {
             if (state.notesMediaRecorder && state.isRecordingNotes) {
-                state.notesMediaRecorder.stop();
-                state.isRecordingNotes = false;
-                
+                state.notesMediaRecorder.stop(); state.isRecordingNotes = false;
                 const btn = document.getElementById('notes-record-btn');
-                btn.classList.remove('btn-stop');
-                btn.classList.add('btn-record');
+                btn.classList.remove('btn-stop'); btn.classList.add('btn-record');
                 btn.textContent = '🎤 TAP TO RECORD NOTES';
             }
         }
@@ -1740,25 +1280,19 @@
                     const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
                     if (result.success && result.text) {
                         state.rawTranscript = result.text;
-                        console.log('📝 Transcribed:', result.text);
-                        
                         document.getElementById('transcript-text').textContent = result.text;
                         document.getElementById('transcript-box').classList.add('visible');
-                        
                         parseMeasurements(result.text);
                         showToast('success', 'Transcription done');
                     }
                 };
-            } catch (err) {
-                showToast('error', 'Transcription failed');
-            }
+            } catch (err) { showToast('error', 'Transcription failed'); }
         }
         
         function parseMeasurements(text) {
             const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
             const matches = [...text.matchAll(regex)];
             if (!state.template) return;
-            
             const extractedValues = matches.map(m => {
                 let val = parseFloat(m[1]);
                 const fullMatch = m[0].toLowerCase();
@@ -1767,7 +1301,6 @@
                 else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
                 return val;
             });
-            
             state.template.measurements.forEach((m, i) => {
                 const el = document.getElementById(`mv-${i}`);
                 const item = document.querySelector(`.measurement-item[data-idx="${i}"]`);
@@ -1782,24 +1315,12 @@
         // =====================================================================
         // FOLDER SELECTION
         // =====================================================================
-        // =====================================================================
-        // FOLDER SELECTION - v2.9.8: Required before capturing
-        // =====================================================================
         function highlightFolderSelector() {
             const display = document.getElementById('folder-display');
             display.classList.add('warning');
             display.textContent = '⚠️ CLICK TO SELECT FOLDER - REQUIRED';
-            
-            // Scroll the folder section into view
             display.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
-            // Remove warning class after animation completes
-            setTimeout(() => {
-                if (!state.saveDirectoryHandle) {
-                    display.classList.remove('warning');
-                    display.textContent = '📁 Click to choose folder';
-                }
-            }, 3000);
+            setTimeout(() => { if (!state.saveDirectoryHandle) { display.classList.remove('warning'); display.textContent = '📁 Click to choose folder'; } }, 3000);
         }
         
         async function chooseSaveFolder() {
@@ -1809,9 +1330,7 @@
                 display.textContent = `📂 ${state.saveDirectoryHandle.name}`;
                 display.classList.add('set');
                 showToast('success', `Folder: ${state.saveDirectoryHandle.name}`);
-            } catch (err) {
-                if (err.name !== 'AbortError') showToast('error', 'Folder access denied');
-            }
+            } catch (err) { if (err.name !== 'AbortError') showToast('error', 'Folder access denied'); }
         }
         
         // =====================================================================
@@ -1820,12 +1339,10 @@
         async function completeItem() {
             if (!state.currentSKU) return;
             
-            // v2.9.11: COMPLETION VALIDATION - Must have all required data
             const missing = [];
             if (!state.audioBlob) missing.push('📏 Measurement recording');
             if (!state.notesAudioBlob) missing.push('🗒️ Audio notes recording');
             if (state.photos.weight.length === 0) missing.push('⚖️ Weight photo');
-            
             if (missing.length > 0) {
                 missing.forEach(item => showToast('error', `Missing: ${item}`));
                 showToast('warning', `Complete these ${missing.length} item${missing.length > 1 ? 's' : ''} before finishing`);
@@ -1833,31 +1350,14 @@
             }
             
             state.timing.completeTime = Date.now();
-            
-            // Calculate durations
-            const totalDuration = state.timing.itemStartTime 
-                ? Math.round((state.timing.completeTime - state.timing.itemStartTime) / 1000) 
-                : 0;
-            const mainPhotosDuration = state.timing.mainPhotosEndTime && state.timing.mainPhotosStartTime 
-                ? Math.round((state.timing.mainPhotosEndTime - state.timing.mainPhotosStartTime) / 1000) 
-                : 0;
-            const closeupDuration = state.timing.closeupEndTime && state.timing.closeupStartTime 
-                ? Math.round((state.timing.closeupEndTime - state.timing.closeupStartTime) / 1000) 
-                : 0;
-            const weightDuration = state.timing.weightEndTime && state.timing.weightStartTime 
-                ? Math.round((state.timing.weightEndTime - state.timing.weightStartTime) / 1000) 
-                : 0;
-            const handheldDuration = state.timing.handheldEndTime && state.timing.handheldStartTime 
-                ? Math.round((state.timing.handheldEndTime - state.timing.handheldStartTime) / 1000) 
-                : 0;
-            const measurementsDuration = state.timing.measurementsEndTime && state.timing.measurementsStartTime 
-                ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) 
-                : 0;
-            
+            const totalDuration = state.timing.itemStartTime ? Math.round((state.timing.completeTime - state.timing.itemStartTime) / 1000) : 0;
+            const mainPhotosDuration = state.timing.mainPhotosEndTime && state.timing.mainPhotosStartTime ? Math.round((state.timing.mainPhotosEndTime - state.timing.mainPhotosStartTime) / 1000) : 0;
+            const closeupDuration = state.timing.closeupEndTime && state.timing.closeupStartTime ? Math.round((state.timing.closeupEndTime - state.timing.closeupStartTime) / 1000) : 0;
+            const weightDuration = state.timing.weightEndTime && state.timing.weightStartTime ? Math.round((state.timing.weightEndTime - state.timing.weightStartTime) / 1000) : 0;
+            const handheldDuration = state.timing.handheldEndTime && state.timing.handheldStartTime ? Math.round((state.timing.handheldEndTime - state.timing.handheldStartTime) / 1000) : 0;
+            const measurementsDuration = state.timing.measurementsEndTime && state.timing.measurementsStartTime ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) : 0;
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
-            
-            // v2.9.9: Notes recording duration
             const notesRecordingDuration = state.lastNotesRecordingDuration || 0;
             
             const itemData = {
@@ -1870,7 +1370,6 @@
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
                 discardedRecordings: state.discardedRecordings,
-                // v2.9.9: Notes audio
                 notesAudioBlob: state.notesAudioBlob,
                 discardedNotesRecordings: state.discardedNotesRecordings,
                 photos: {
@@ -1885,46 +1384,26 @@
                     version: VERSION,
                     processingStatus: 'pending',
                     category: state.classification,
+                    // v2.9.13: Include detailed classification
+                    type: state.classificationType,
+                    sleeveLength: state.classificationSleeve,
+                    isCampCollar: state.classificationIsCampCollar,
                     templateKey: state.templateKey,
                     template: state.template,
                     tagData: null,
                     measurements: {},
                     rawTranscript: state.rawTranscript,
-                    weight: {
-                        source: 'photo',
-                        photoCount: state.photos.weight.length,
-                        value: null
-                    },
+                    weight: { source: 'photo', photoCount: state.photos.weight.length, value: null },
                     audioRecordings: {
-                        final: {
-                            duration: recordingDuration,
-                            timestamp: new Date().toISOString()
-                        },
-                        discarded: state.discardedRecordings.map((d, i) => ({
-                            index: i + 1,
-                            duration: d.duration,
-                            timestamp: d.timestamp
-                        })),
+                        final: { duration: recordingDuration, timestamp: new Date().toISOString() },
+                        discarded: state.discardedRecordings.map((d, i) => ({ index: i + 1, duration: d.duration, timestamp: d.timestamp })),
                         totalAttempts: state.discardedRecordings.length + 1,
-                        kpiTargets: {
-                            targetDuration: 60,
-                            excellentDuration: 30,
-                            actualDuration: recordingDuration,
-                            rating: recordingRating
-                        }
+                        kpiTargets: { targetDuration: 60, excellentDuration: 30, actualDuration: recordingDuration, rating: recordingRating }
                     },
-                    // v2.9.9: Notes audio metadata
                     notesAudio: {
                         hasNotes: !!state.notesAudioBlob,
-                        final: state.notesAudioBlob ? {
-                            duration: notesRecordingDuration,
-                            timestamp: new Date().toISOString()
-                        } : null,
-                        discarded: state.discardedNotesRecordings.map((d, i) => ({
-                            index: i + 1,
-                            duration: d.duration,
-                            timestamp: d.timestamp
-                        })),
+                        final: state.notesAudioBlob ? { duration: notesRecordingDuration, timestamp: new Date().toISOString() } : null,
+                        discarded: state.discardedNotesRecordings.map((d, i) => ({ index: i + 1, duration: d.duration, timestamp: d.timestamp })),
                         totalAttempts: state.notesAudioBlob ? state.discardedNotesRecordings.length + 1 : state.discardedNotesRecordings.length
                     },
                     timing: {
@@ -1941,26 +1420,11 @@
                         measurementsStartTime: state.timing.measurementsStartTime ? new Date(state.timing.measurementsStartTime).toISOString() : null,
                         measurementsEndTime: state.timing.measurementsEndTime ? new Date(state.timing.measurementsEndTime).toISOString() : null,
                         completeTime: state.timing.completeTime ? new Date(state.timing.completeTime).toISOString() : null,
-                        durations: {
-                            mainPhotos: mainPhotosDuration,
-                            closeup: closeupDuration,
-                            weight: weightDuration,
-                            handheld: handheldDuration,
-                            measurements: measurementsDuration,
-                            total: totalDuration
-                        }
+                        durations: { mainPhotos: mainPhotosDuration, closeup: closeupDuration, weight: weightDuration, handheld: handheldDuration, measurements: measurementsDuration, total: totalDuration }
                     },
-                    photoCount: {
-                        main: state.photos.main.length,
-                        closeup: state.photos.closeup.length,
-                        weight: state.photos.weight.length,
-                        handheld: state.photos.handheld.length
-                    },
+                    photoCount: { main: state.photos.main.length, closeup: state.photos.closeup.length, weight: state.photos.weight.length, handheld: state.photos.handheld.length },
                     photographerId: state.photographerId,
-                    aiResults: null,
-                    qcFlags: null,
-                    eraEstimation: null,
-                    tagSizeAnalysis: null
+                    aiResults: null, qcFlags: null, eraEstimation: null, tagSizeAnalysis: null
                 }
             };
             
@@ -1969,11 +1433,8 @@
             localStorage.setItem('completedItems', state.completedItems);
             localStorage.setItem('totalTime', state.totalTime);
             updateStats();
-            
             showToast('success', `${state.currentSKU} submitted!`);
-            stopTimer();
-            resetItem();
-            
+            stopTimer(); resetItem();
             processItemInBackground(itemData);
         }
         
@@ -1982,31 +1443,13 @@
         // =====================================================================
         async function processItemInBackground(itemData, retryCount = 0) {
             const sku = itemData.sku;
-            console.log(`🔄 [${sku}] Starting save/upload...`);
-            
             try {
-                console.log(`💾 [${sku}] Step 1: Saving to local folder...`);
-                
-                if (state.saveDirectoryHandle) {
-                    await saveToLocalFolder(itemData);
-                    console.log(`✅ [${sku}] Saved to local folder`);
-                }
-                
-                console.log(`☁️ [${sku}] Step 2: Uploading to S3...`);
+                if (state.saveDirectoryHandle) { await saveToLocalFolder(itemData); }
                 await uploadToS3(itemData);
-                console.log(`✅ [${sku}] Uploaded to S3`);
-                
-                console.log(`📤 [${sku}] Step 3: Sending to n8n...`);
                 await callLambda('n8n', { formData: itemData.jsonData });
-                console.log(`✅ [${sku}] Sent to n8n`);
-                
-                console.log(`🎉 [${sku}] Background processing complete!`);
-                
             } catch (err) {
                 console.error(`❌ [${sku}] Background process failed:`, err);
-                
                 if (retryCount < MAX_RETRIES) {
-                    console.log(`↻ [${sku}] Retry ${retryCount + 1}/${MAX_RETRIES} in ${RETRY_DELAY/1000}s...`);
                     setTimeout(() => processItemInBackground(itemData, retryCount + 1), RETRY_DELAY);
                 } else {
                     showToast('warning', `⚠️ ${sku} upload incomplete - queued for retry`);
@@ -2018,136 +1461,77 @@
         async function saveToLocalFolder(itemData) {
             try {
                 const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
-                
-                // Main photos
                 const mainFolder = await skuFolder.getDirectoryHandle('main', { create: true });
                 if (itemData.photos.main.length > 0) {
                     for (let i = 0; i < itemData.photos.main.length; i++) {
-                        const photo = itemData.photos.main[i];
-                        const fileHandle = await mainFolder.getFileHandle(`${itemData.sku}_main_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
+                        const fh = await mainFolder.getFileHandle(`${itemData.sku}_main_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.photos.main[i].blob); await w.close();
                     }
-                } else {
-                    await createNAFile(mainFolder, null, itemData.sku);
-                }
+                } else { await createNAFile(mainFolder, null, itemData.sku); }
                 
-                // Closeup photos
                 const closeupFolder = await skuFolder.getDirectoryHandle('closeup', { create: true });
                 if (itemData.photos.closeup.length > 0) {
                     for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                        const photo = itemData.photos.closeup[i];
-                        const fileHandle = await closeupFolder.getFileHandle(`${itemData.sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
+                        const fh = await closeupFolder.getFileHandle(`${itemData.sku}_closeup_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.photos.closeup[i].blob); await w.close();
                     }
-                } else {
-                    await createNAFile(closeupFolder, null, itemData.sku);
-                }
+                } else { await createNAFile(closeupFolder, null, itemData.sku); }
                 
-                // Weight photos
                 const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
                 if (itemData.photos.weight.length > 0) {
                     for (let i = 0; i < itemData.photos.weight.length; i++) {
-                        const photo = itemData.photos.weight[i];
-                        const fileHandle = await weightFolder.getFileHandle(`${itemData.sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
+                        const fh = await weightFolder.getFileHandle(`${itemData.sku}_weight_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.photos.weight[i].blob); await w.close();
                     }
-                } else {
-                    await createNAFile(weightFolder, null, itemData.sku);
-                }
+                } else { await createNAFile(weightFolder, null, itemData.sku); }
                 
-                // Handheld photos
                 const handheldFolder = await skuFolder.getDirectoryHandle('handheld', { create: true });
                 if (itemData.photos.handheld.length > 0) {
                     for (let i = 0; i < itemData.photos.handheld.length; i++) {
-                        const photo = itemData.photos.handheld[i];
-                        const fileHandle = await handheldFolder.getFileHandle(`${itemData.sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(photo.blob);
-                        await writable.close();
+                        const fh = await handheldFolder.getFileHandle(`${itemData.sku}_handheld_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.photos.handheld[i].blob); await w.close();
                     }
-                } else {
-                    await createNAFile(handheldFolder, null, itemData.sku);
-                }
+                } else { await createNAFile(handheldFolder, null, itemData.sku); }
                 
-                // Measurements folder
                 const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
-                
                 if (itemData.audioBlob) {
-                    const audioHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
-                    const audioWritable = await audioHandle.createWritable();
-                    await audioWritable.write(itemData.audioBlob);
-                    await audioWritable.close();
+                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
+                    const w = await fh.createWritable(); await w.write(itemData.audioBlob); await w.close();
                 }
-                
-                if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
+                if (itemData.discardedRecordings?.length > 0) {
                     for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                        const discarded = itemData.discardedRecordings[i];
-                        const discardHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
-                        const discardWritable = await discardHandle.createWritable();
-                        await discardWritable.write(discarded.blob);
-                        await discardWritable.close();
+                        const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i+1).padStart(2,'0')}.webm`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.discardedRecordings[i].blob); await w.close();
                     }
                 }
-                
                 if (itemData.rawTranscript) {
-                    const transcriptHandle = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
-                    const transcriptWritable = await transcriptHandle.createWritable();
-                    await transcriptWritable.write(itemData.rawTranscript);
-                    await transcriptWritable.close();
+                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
+                    const w = await fh.createWritable(); await w.write(itemData.rawTranscript); await w.close();
                 }
                 
-                // Data folder with JSON
                 const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
-                const dataHandle = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
-                const dataWritable = await dataHandle.createWritable();
-                await dataWritable.write(JSON.stringify(itemData.jsonData, null, 2));
-                await dataWritable.close();
+                const dfh = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
+                const dw = await dfh.createWritable(); await dw.write(JSON.stringify(itemData.jsonData, null, 2)); await dw.close();
                 
-                // v2.9.9: Notes folder
                 const notesFolder = await skuFolder.getDirectoryHandle('notes', { create: true });
                 if (itemData.notesAudioBlob) {
-                    const notesHandle = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes.webm`, { create: true });
-                    const notesWritable = await notesHandle.createWritable();
-                    await notesWritable.write(itemData.notesAudioBlob);
-                    await notesWritable.close();
-                    
-                    if (itemData.discardedNotesRecordings && itemData.discardedNotesRecordings.length > 0) {
+                    const fh = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes.webm`, { create: true });
+                    const w = await fh.createWritable(); await w.write(itemData.notesAudioBlob); await w.close();
+                    if (itemData.discardedNotesRecordings?.length > 0) {
                         for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) {
-                            const discarded = itemData.discardedNotesRecordings[i];
-                            const discardHandle = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes_discard_${String(i + 1).padStart(2, '0')}.webm`, { create: true });
-                            const discardWritable = await discardHandle.createWritable();
-                            await discardWritable.write(discarded.blob);
-                            await discardWritable.close();
+                            const fh2 = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes_discard_${String(i+1).padStart(2,'0')}.webm`, { create: true });
+                            const w2 = await fh2.createWritable(); await w2.write(itemData.discardedNotesRecordings[i].blob); await w2.close();
                         }
                     }
-                } else {
-                    await createNAFile(notesFolder, null, itemData.sku);
-                }
+                } else { await createNAFile(notesFolder, null, itemData.sku); }
                 
                 return true;
-            } catch (err) {
-                console.error('Local save error:', err);
-                return false;
-            }
+            } catch (err) { console.error('Local save error:', err); return false; }
         }
         
-        async function createNAFile(parentFolderOrNull, folderName, sku) {
-            let folder;
-            if (folderName) {
-                folder = await parentFolderOrNull.getDirectoryHandle(folderName, { create: true });
-            } else {
-                folder = parentFolderOrNull;
-            }
-            const fileHandle = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(`No data for ${sku}`);
-            await writable.close();
+        async function createNAFile(folder, _, sku) {
+            const fh = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
+            const w = await fh.createWritable(); await w.write(`No data for ${sku}`); await w.close();
         }
         
         // =====================================================================
@@ -2157,152 +1541,58 @@
             const files = [];
             const sku = itemData.sku;
             
-            // Main photos
-            for (let i = 0; i < itemData.photos.main.length; i++) {
-                const p = itemData.photos.main[i];
-                const filename = `${sku}_main_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({ name: `main/${filename}`, contentType: 'image/jpeg', blob: p.blob });
-            }
-            if (itemData.photos.main.length === 0) {
-                files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No main photos for ${sku}`]) });
-            }
+            for (let i = 0; i < itemData.photos.main.length; i++) { files.push({ name: `main/${sku}_main_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.main[i].blob }); }
+            if (itemData.photos.main.length === 0) files.push({ name: `main/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No main photos for ${sku}`]) });
             
-            // Closeup photos
-            for (let i = 0; i < itemData.photos.closeup.length; i++) {
-                const p = itemData.photos.closeup[i];
-                const filename = `${sku}_closeup_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({ name: `closeup/${filename}`, contentType: 'image/jpeg', blob: p.blob });
-            }
-            if (itemData.photos.closeup.length === 0) {
-                files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
-            }
+            for (let i = 0; i < itemData.photos.closeup.length; i++) { files.push({ name: `closeup/${sku}_closeup_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.closeup[i].blob }); }
+            if (itemData.photos.closeup.length === 0) files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
             
-            // Weight photos
-            for (let i = 0; i < itemData.photos.weight.length; i++) {
-                const p = itemData.photos.weight[i];
-                const filename = `${sku}_weight_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({ name: `weight/${filename}`, contentType: 'image/jpeg', blob: p.blob });
-            }
-            if (itemData.photos.weight.length === 0) {
-                files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
-            }
+            for (let i = 0; i < itemData.photos.weight.length; i++) { files.push({ name: `weight/${sku}_weight_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.weight[i].blob }); }
+            if (itemData.photos.weight.length === 0) files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
             
-            // Handheld photos
-            for (let i = 0; i < itemData.photos.handheld.length; i++) {
-                const p = itemData.photos.handheld[i];
-                const filename = `${sku}_handheld_${String(i + 1).padStart(2, '0')}.jpg`;
-                files.push({ name: `handheld/${filename}`, contentType: 'image/jpeg', blob: p.blob });
-            }
-            if (itemData.photos.handheld.length === 0) {
-                files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
-            }
+            for (let i = 0; i < itemData.photos.handheld.length; i++) { files.push({ name: `handheld/${sku}_handheld_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.handheld[i].blob }); }
+            if (itemData.photos.handheld.length === 0) files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
             
-            // Audio
-            if (itemData.audioBlob) {
-                files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            if (itemData.audioBlob) files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            if (itemData.discardedRecordings?.length > 0) {
+                for (let i = 0; i < itemData.discardedRecordings.length; i++) { files.push({ name: `measurements/${sku}_audio_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedRecordings[i].blob }); }
             }
+            if (itemData.rawTranscript) files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
             
-            // Discarded recordings
-            if (itemData.discardedRecordings && itemData.discardedRecordings.length > 0) {
-                for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                    const discarded = itemData.discardedRecordings[i];
-                    files.push({
-                        name: `measurements/${sku}_audio_discard_${String(i + 1).padStart(2, '0')}.webm`,
-                        contentType: 'audio/webm',
-                        blob: discarded.blob
-                    });
-                }
+            if (itemData.notesAudioBlob) files.push({ name: `notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
+            if (itemData.discardedNotesRecordings?.length > 0) {
+                for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) { files.push({ name: `notes/${sku}_audio_notes_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedNotesRecordings[i].blob }); }
             }
+            if (!itemData.notesAudioBlob) files.push({ name: `notes/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
             
-            // Transcript
-            if (itemData.rawTranscript) {
-                files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
-            }
+            files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
             
-            // v2.9.9: Notes audio
-            if (itemData.notesAudioBlob) {
-                files.push({ name: `notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
-            }
-            if (itemData.discardedNotesRecordings && itemData.discardedNotesRecordings.length > 0) {
-                for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) {
-                    const discarded = itemData.discardedNotesRecordings[i];
-                    files.push({
-                        name: `notes/${sku}_audio_notes_discard_${String(i + 1).padStart(2, '0')}.webm`,
-                        contentType: 'audio/webm',
-                        blob: discarded.blob
-                    });
-                }
-            }
-            if (!itemData.notesAudioBlob) {
-                files.push({ name: `notes/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
-            }
-            
-            // JSON data
-            files.push({
-                name: `data/${sku}_data.json`,
-                contentType: 'application/json',
-                blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)])
-            });
-            
-            // Get presigned URLs
-            const presignResult = await callLambda('presign', {
-                sku: sku,
-                files: files.map(f => ({ name: f.name, contentType: f.contentType }))
-            });
-            
-            if (!presignResult.success) {
-                throw new Error('Failed to get presigned URLs');
-            }
-            
-            // Upload each file
+            const presignResult = await callLambda('presign', { sku, files: files.map(f => ({ name: f.name, contentType: f.contentType })) });
+            if (!presignResult.success) throw new Error('Failed to get presigned URLs');
             for (const file of files) {
                 const url = presignResult.urls[file.name];
-                if (!url) continue;
-                
-                await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': file.contentType },
-                    body: file.blob
-                });
+                if (url) await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.contentType }, body: file.blob });
             }
         }
         
         function addToRetryQueue(itemData) {
-            const queueItem = {
-                sku: itemData.sku,
-                jsonData: itemData.jsonData,
-                timestamp: Date.now()
-            };
-            state.retryQueue.push(queueItem);
+            state.retryQueue.push({ sku: itemData.sku, jsonData: itemData.jsonData, timestamp: Date.now() });
             localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
             updateRetryBadge();
         }
         
         function updateRetryBadge() {
             const badge = document.getElementById('retry-badge');
-            if (state.retryQueue.length > 0) {
-                badge.textContent = `⚠️ ${state.retryQueue.length} pending`;
-                badge.classList.add('visible');
-            } else {
-                badge.classList.remove('visible');
-            }
+            if (state.retryQueue.length > 0) { badge.textContent = `⚠️ ${state.retryQueue.length} pending`; badge.classList.add('visible'); }
+            else { badge.classList.remove('visible'); }
         }
         
         async function processRetryQueue() {
             if (state.retryQueue.length === 0) return;
-            
-            const toRetry = [...state.retryQueue];
-            state.retryQueue = [];
-            
+            const toRetry = [...state.retryQueue]; state.retryQueue = [];
             for (const item of toRetry) {
-                try {
-                    await callLambda('n8n', { formData: item.jsonData });
-                    console.log(`✅ Retry success: ${item.sku}`);
-                } catch (e) {
-                    state.retryQueue.push(item);
-                }
+                try { await callLambda('n8n', { formData: item.jsonData }); } catch (e) { state.retryQueue.push(item); }
             }
-            
             localStorage.setItem('retryQueue', JSON.stringify(state.retryQueue));
             updateRetryBadge();
         }
@@ -2313,176 +1603,92 @@
         function startNewItem() {
             const sku = document.getElementById('sku-input').value.trim().toUpperCase();
             if (!sku) { showToast('warning', 'Enter a SKU'); return; }
-            
-            // v2.9.8: SAFETY CHECK - Must have save folder selected before starting
-            if (!state.saveDirectoryHandle) {
-                showToast('error', '⚠️ SELECT SAVE FOLDER BEFORE STARTING');
-                highlightFolderSelector();
-                return;
-            }
+            if (!state.saveDirectoryHandle) { showToast('error', '⚠️ SELECT SAVE FOLDER BEFORE STARTING'); highlightFolderSelector(); return; }
             
             const now = Date.now();
             state.currentSKU = sku;
             state.photos = { main: [], closeup: [], weight: [], handheld: [] };
             state.classification = null;
-            state.templateKey = null;
-            state.template = null;
-            state.tagData = null;
-            state.measurements = {};
-            state.rawTranscript = '';
-            state.audioBlob = null;
+            state.classificationType = null;
+            state.classificationSleeve = null;
+            state.classificationIsCampCollar = false;
+            state.templateKey = null; state.template = null; state.tagData = null;
+            state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
-            state.timing = {
-                itemStartTime: now,
-                classificationTime: null,
-                mainPhotosStartTime: now,
-                mainPhotosEndTime: null,
-                closeupStartTime: null,
-                closeupEndTime: null,
-                weightStartTime: null,
-                weightEndTime: null,
-                handheldStartTime: null,
-                handheldEndTime: null,
-                measurementsStartTime: null,
-                measurementsEndTime: null,
-                completeTime: null
-            };
-            state.discardedRecordings = [];
-            state.lastRecordingDuration = 0;
-            // v2.9.9: Reset notes recording state
-            state.notesAudioBlob = null;
-            state.notesAudioChunks = [];
-            state.isRecordingNotes = false;
-            state.notesMediaRecorder = null;
-            state.notesRecordingStartTime = null;
-            state.lastNotesRecordingDuration = 0;
-            state.discardedNotesRecordings = [];
+            state.timing = { itemStartTime: now, classificationTime: null, mainPhotosStartTime: now, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, weightStartTime: null, weightEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
+            state.discardedRecordings = []; state.lastRecordingDuration = 0;
+            state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
+            state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
+            state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
             
             document.getElementById('sku-row').style.display = 'none';
             document.getElementById('sku-display').textContent = sku;
             document.getElementById('sku-display').classList.add('visible');
-            
             document.getElementById('classification-box').classList.remove('ready');
             document.getElementById('classification-category').textContent = 'Waiting...';
+            document.getElementById('classification-detail').textContent = '';
             document.getElementById('classification-template').textContent = '-';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
-            
-            updateWeightPhotoStatus();
-            updatePhotoGrid();
-            updatePhotoCount();
-            startTimer();
-            switchCameraMode('main');
+            updateWeightPhotoStatus(); updatePhotoGrid(); updatePhotoCount();
+            startTimer(); switchCameraMode('main');
             showToast('success', `Started: ${sku}`);
         }
         
-        function cancelItem() {
-            if (!confirm(`Cancel item ${state.currentSKU}?`)) return;
-            resetItem();
-            showToast('info', 'Item cancelled');
-        }
+        function cancelItem() { if (!confirm(`Cancel item ${state.currentSKU}?`)) return; resetItem(); showToast('info', 'Item cancelled'); }
         
         function resetItem() {
             state.currentSKU = '';
             state.photos = { main: [], closeup: [], weight: [], handheld: [] };
-            state.classification = null;
-            state.templateKey = null;
-            state.template = null;
-            state.tagData = null;
-            state.measurements = {};
-            state.rawTranscript = '';
-            state.audioBlob = null;
+            state.classification = null; state.classificationType = null;
+            state.classificationSleeve = null; state.classificationIsCampCollar = false;
+            state.templateKey = null; state.template = null; state.tagData = null;
+            state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
-            state.timing = {
-                itemStartTime: null,
-                classificationTime: null,
-                mainPhotosStartTime: null,
-                mainPhotosEndTime: null,
-                closeupStartTime: null,
-                closeupEndTime: null,
-                weightStartTime: null,
-                weightEndTime: null,
-                handheldStartTime: null,
-                handheldEndTime: null,
-                measurementsStartTime: null,
-                measurementsEndTime: null,
-                completeTime: null
-            };
-            state.discardedRecordings = [];
-            state.lastRecordingDuration = 0;
-            // v2.9.9: Reset notes recording state
-            state.notesAudioBlob = null;
-            state.notesAudioChunks = [];
-            state.isRecordingNotes = false;
-            state.notesMediaRecorder = null;
-            state.notesRecordingStartTime = null;
-            state.lastNotesRecordingDuration = 0;
-            state.discardedNotesRecordings = [];
+            state.timing = { itemStartTime: null, classificationTime: null, mainPhotosStartTime: null, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, weightStartTime: null, weightEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
+            state.discardedRecordings = []; state.lastRecordingDuration = 0;
+            state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
+            state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
+            state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
             
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
             document.getElementById('sku-display').classList.remove('visible');
-            
             document.getElementById('classification-box').classList.remove('ready');
             document.getElementById('classification-category').textContent = 'Waiting...';
+            document.getElementById('classification-detail').textContent = '';
             document.getElementById('classification-template').textContent = '-';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
-            
             updateWeightPhotoStatus();
             
             const btn = document.getElementById('record-btn');
-            btn.classList.remove('btn-stop');
-            btn.classList.add('btn-record');
-            btn.textContent = '🎤 TAP TO RECORD';
-            
-            // v2.9.9: Reset notes button
+            btn.classList.remove('btn-stop'); btn.classList.add('btn-record'); btn.textContent = '🎤 TAP TO RECORD';
             const notesBtn = document.getElementById('notes-record-btn');
-            notesBtn.classList.remove('btn-stop');
-            notesBtn.classList.add('btn-record');
-            notesBtn.textContent = '🎤 TAP TO RECORD NOTES';
+            notesBtn.classList.remove('btn-stop'); notesBtn.classList.add('btn-record'); notesBtn.textContent = '🎤 TAP TO RECORD NOTES';
             
-            updatePhotoGrid();
-            updatePhotoCount();
-            stopTimer();
+            updatePhotoGrid(); updatePhotoCount(); stopTimer();
             document.getElementById('timer').textContent = '0:00';
         }
         
-        function startTimer() {
-            stopTimer();
-            state.timerStart = Date.now();
-            state.timerInterval = setInterval(() => {
-                const s = Math.floor((Date.now() - state.timerStart) / 1000);
-                document.getElementById('timer').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-            }, 1000);
-        }
-        
-        function stopTimer() {
-            if (state.timerInterval) clearInterval(state.timerInterval);
-        }
-        
+        function startTimer() { stopTimer(); state.timerStart = Date.now(); state.timerInterval = setInterval(() => { const s = Math.floor((Date.now() - state.timerStart) / 1000); document.getElementById('timer').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }, 1000); }
+        function stopTimer() { if (state.timerInterval) clearInterval(state.timerInterval); }
         function updateStats() {
             document.getElementById('item-count').textContent = state.completedItems;
-            if (state.completedItems > 0) {
-                const avg = Math.round(state.totalTime / state.completedItems);
-                document.getElementById('avg-time').textContent = `${Math.floor(avg / 60)}:${String(avg % 60).padStart(2, '0')}`;
-            }
+            if (state.completedItems > 0) { const avg = Math.round(state.totalTime / state.completedItems); document.getElementById('avg-time').textContent = `${Math.floor(avg/60)}:${String(avg%60).padStart(2,'0')}`; }
         }
         
         // =====================================================================
-        // v2.9.7: BARCODE SCANNER WITH CONFIDENCE CHECK
-        // Only accepts scans with >80% confidence to prevent false positives
+        // BARCODE SCANNER
         // =====================================================================
         let barcodeDetected = false;
-        let lastConfidence = 0;
         
         function openBarcodeScanner() {
             barcodeDetected = false;
-            lastConfidence = 0;
             document.getElementById('barcode-modal').classList.add('active');
             document.getElementById('barcode-status').textContent = 'Starting...';
             document.getElementById('barcode-status').classList.remove('success', 'warning');
@@ -2490,125 +1696,52 @@
             document.getElementById('barcode-confidence').className = 'barcode-confidence';
             
             const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
-            
             Quagga.init({
-                inputStream: {
-                    type: 'LiveStream',
-                    target: document.getElementById('barcode-container'),
-                    constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' },
-                    willReadFrequently: true
-                },
+                inputStream: { type: 'LiveStream', target: document.getElementById('barcode-container'), constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' }, willReadFrequently: true },
                 decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
-                locate: true,
-                frequency: 10
+                locate: true, frequency: 10
             }, err => {
-                if (err) {
-                    document.getElementById('barcode-status').textContent = 'Scanner error';
-                    console.error('Quagga init error:', err);
-                    return;
-                }
+                if (err) { document.getElementById('barcode-status').textContent = 'Scanner error'; return; }
                 document.getElementById('barcode-status').textContent = 'Point at barcode...';
                 Quagga.start();
-                
-                // v2.9.7: Process results to show confidence even when not accepting
-                Quagga.onProcessed(result => {
-                    if (result && result.codeResult) {
-                        const confidence = calculateBarcodeConfidence(result);
-                        updateConfidenceDisplay(confidence, result.codeResult.code);
-                    }
-                });
-                
+                Quagga.onProcessed(result => { if (result?.codeResult) { const c = calculateBarcodeConfidence(result); updateConfidenceDisplay(c); } });
                 Quagga.onDetected(result => {
                     if (barcodeDetected) return;
-                    
-                    // v2.9.7: Calculate confidence from error data
                     const confidence = calculateBarcodeConfidence(result);
                     const code = result.codeResult.code;
-                    
-                    console.log(`📊 Barcode candidate: ${code} (confidence: ${(confidence * 100).toFixed(1)}%)`);
-                    
-                    // Only accept if confidence is above threshold
                     if (confidence >= BARCODE_MIN_CONFIDENCE) {
-                        barcodeDetected = true;
-                        Quagga.stop();
-                        
+                        barcodeDetected = true; Quagga.stop();
                         document.getElementById('barcode-status').textContent = `✅ ${code}`;
                         document.getElementById('barcode-status').classList.add('success');
                         document.getElementById('sku-input').value = code;
-                        
-                        setTimeout(() => { 
-                            closeBarcodeScanner(); 
-                            showToast('success', `Scanned: ${code} (${(confidence * 100).toFixed(0)}% confidence)`); 
-                        }, 500);
+                        setTimeout(() => { closeBarcodeScanner(); showToast('success', `Scanned: ${code}`); }, 500);
                     } else {
-                        // Show warning for low confidence scans
-                        document.getElementById('barcode-status').textContent = `⚠️ Low confidence - hold steady`;
+                        document.getElementById('barcode-status').textContent = '⚠️ Low confidence - hold steady';
                         document.getElementById('barcode-status').classList.add('warning');
-                        document.getElementById('barcode-status').classList.remove('success');
-                        
-                        // Clear warning after a moment
-                        setTimeout(() => {
-                            if (!barcodeDetected) {
-                                document.getElementById('barcode-status').textContent = 'Point at barcode...';
-                                document.getElementById('barcode-status').classList.remove('warning');
-                            }
-                        }, 1500);
+                        setTimeout(() => { if (!barcodeDetected) { document.getElementById('barcode-status').textContent = 'Point at barcode...'; document.getElementById('barcode-status').classList.remove('warning'); } }, 1500);
                     }
                 });
             });
         }
         
-        // v2.9.7: Calculate confidence from QuaggaJS error data
         function calculateBarcodeConfidence(result) {
-            if (!result || !result.codeResult || !result.codeResult.decodedCodes) {
-                return 0;
-            }
-            
-            const decodedCodes = result.codeResult.decodedCodes;
-            let totalError = 0;
-            let errorCount = 0;
-            
-            for (const decoded of decodedCodes) {
-                if (decoded.error !== undefined && decoded.error !== null) {
-                    totalError += decoded.error;
-                    errorCount++;
-                }
-            }
-            
-            if (errorCount === 0) return 0.5; // Unknown confidence
-            
-            // Average error, lower is better
-            // Error typically ranges from 0 to ~0.5
-            // Convert to confidence (1 - error)
-            const avgError = totalError / errorCount;
-            const confidence = Math.max(0, Math.min(1, 1 - (avgError * 2)));
-            
-            return confidence;
+            if (!result?.codeResult?.decodedCodes) return 0;
+            let totalError = 0, errorCount = 0;
+            for (const d of result.codeResult.decodedCodes) { if (d.error != null) { totalError += d.error; errorCount++; } }
+            if (errorCount === 0) return 0.5;
+            return Math.max(0, Math.min(1, 1 - ((totalError / errorCount) * 2)));
         }
         
-        // v2.9.7: Update confidence display in real-time
-        function updateConfidenceDisplay(confidence, code) {
+        function updateConfidenceDisplay(confidence) {
             const el = document.getElementById('barcode-confidence');
-            const pct = (confidence * 100).toFixed(0);
-            el.textContent = `${pct}%`;
-            
+            el.textContent = `${(confidence * 100).toFixed(0)}%`;
             el.classList.remove('good', 'medium', 'poor');
-            if (confidence >= 0.80) {
-                el.classList.add('good');
-            } else if (confidence >= 0.60) {
-                el.classList.add('medium');
-            } else {
-                el.classList.add('poor');
-            }
+            el.classList.add(confidence >= 0.80 ? 'good' : confidence >= 0.60 ? 'medium' : 'poor');
         }
         
         function closeBarcodeScanner() {
             barcodeDetected = false;
-            try { 
-                Quagga.stop(); 
-                Quagga.offDetected(); 
-                Quagga.offProcessed();
-            } catch {}
+            try { Quagga.stop(); Quagga.offDetected(); Quagga.offProcessed(); } catch {}
             document.getElementById('barcode-modal').classList.remove('active');
         }
         
@@ -2621,43 +1754,20 @@
         function saveSettings() {
             ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
                 const sel = document.getElementById(`camera-${mode}`);
-                if (sel) {
-                    state.cameras[mode].deviceId = sel.value;
-                    localStorage.setItem(`camera-${mode}`, sel.value);
-                }
+                if (sel) { state.cameras[mode].deviceId = sel.value; localStorage.setItem(`camera-${mode}`, sel.value); }
             });
             const url = document.getElementById('lambda-url').value.trim();
             if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
-            
-            // v2.9.12: Save API key
             const apiKey = document.getElementById('api-key').value.trim();
             state.apiKey = apiKey;
-            if (apiKey) {
-                localStorage.setItem('vl-api-key', apiKey);
-            } else {
-                localStorage.removeItem('vl-api-key');
-                showToast('warning', '⚠️ No API key set - Lambda requests will fail');
-            }
-            
-            const photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
-            state.photographerId = photographerId;
-            localStorage.setItem('photographerId', photographerId);
-            
-            // v2.9.10: Save microphone selection
+            if (apiKey) localStorage.setItem('vl-api-key', apiKey);
+            else { localStorage.removeItem('vl-api-key'); showToast('warning', '⚠️ No API key set'); }
+            state.photographerId = document.getElementById('photographer-id').value.trim() || 'photographer_1';
+            localStorage.setItem('photographerId', state.photographerId);
             const micSel = document.getElementById('mic-device');
-            if (micSel) {
-                state.micDeviceId = micSel.value || null;
-                if (micSel.value) {
-                    localStorage.setItem('mic-device', micSel.value);
-                } else {
-                    localStorage.removeItem('mic-device');
-                }
-            }
-            
-            closeSettings();
-            showToast('success', 'Settings saved');
-            startCamera(state.currentMode);
-            checkLambda();
+            if (micSel) { state.micDeviceId = micSel.value || null; if (micSel.value) localStorage.setItem('mic-device', micSel.value); else localStorage.removeItem('mic-device'); }
+            closeSettings(); showToast('success', 'Settings saved');
+            startCamera(state.currentMode); checkLambda();
         }
         
         // =====================================================================
@@ -2666,8 +1776,7 @@
         function showToast(type, msg) {
             const c = document.getElementById('toast-container');
             const t = document.createElement('div');
-            t.className = `toast ${type}`;
-            t.textContent = msg;
+            t.className = `toast ${type}`; t.textContent = msg;
             c.appendChild(t);
             setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
         }
