@@ -1,8 +1,16 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.13 - EBAY TAXONOMY LOOKUP
+    VintageLister v2.9.14 - RECORDING BUTTON VISIBILITY FIX
     
     CHANGELOG:
+    v2.9.14 (2026-02-24):
+    - UX FIX: Recording buttons now have HIGH CONTRAST between idle and active states
+    - IDLE STATE: Calm slate/gray button blends with panel - clearly "not recording"
+    - RECORDING STATE: Bright red with animated glow border - impossible to miss
+    - CHANGED: Button text shows "🔴 RECORDING · TAP TO STOP" when active
+    - CHANGED: Glow animation pulses every 1.2s so photographer sees movement in peripheral vision
+    - FIX: Photographers were confused about recording state due to similar red colors
+    
     v2.9.13 (2026-02-20):
     - IMPROVED: Classification display shows Type + Sleeve Length (e.g. "Hoodie · Sleeveless")
     - IMPROVED: Photographer can visually confirm AI got garment type AND sleeve correct
@@ -68,7 +76,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.13</title>
+    <title>VintageLister v2.9.14</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -200,7 +208,6 @@
         
         .classification-box.ready { border-color: var(--accent-green); }
         .classification-category { font-size: 18px; font-weight: 700; color: var(--accent-yellow); }
-        /* v2.9.13: Sub-line for type + sleeve detail */
         .classification-detail { font-size: 12px; color: var(--accent-orange); margin-top: 2px; font-weight: 500; }
         .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .classification-template span { color: var(--accent-blue); font-weight: 600; }
@@ -380,14 +387,37 @@
         
         .btn-primary { background: var(--accent-green); color: white; }
         .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
-        .btn-record { background: var(--accent-red); color: white; }
-        .btn-stop { background: #dc2626; color: white; animation: pulse-stop 1s infinite; }
+        /* v2.9.14: Recording buttons - HIGH CONTRAST idle vs active */
+        .btn-record { 
+            background: var(--bg-tertiary); 
+            color: var(--text-primary); 
+            border: 2px solid var(--border-color); 
+        }
+        .btn-record:hover { 
+            background: rgba(239, 68, 68, 0.2); 
+            border-color: var(--accent-red); 
+            color: white; 
+        }
+        .btn-stop { 
+            background: var(--accent-red); 
+            color: white; 
+            border: 2px solid #ff6666;
+            animation: pulse-stop-glow 1.2s ease-in-out infinite; 
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); 
+        }
         .btn:hover { filter: brightness(1.1); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        @keyframes pulse-stop { 
-            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 
-            50% { opacity: 0.9; box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); } 
+        /* v2.9.14: Stronger glow pulse - visible in peripheral vision */
+        @keyframes pulse-stop-glow { 
+            0%, 100% { 
+                box-shadow: 0 0 8px rgba(239, 68, 68, 0.4), 0 0 20px rgba(239, 68, 68, 0.15); 
+                background: #dc2626; 
+            } 
+            50% { 
+                box-shadow: 0 0 20px rgba(239, 68, 68, 0.7), 0 0 40px rgba(239, 68, 68, 0.25); 
+                background: #ef4444; 
+            } 
         }
         
         .modal-overlay {
@@ -542,7 +572,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.13</span>
+                    <span class="version-badge" id="version-badge">v2.9.14</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -562,7 +592,6 @@
                     <div class="section-title">🤖 AI Classification</div>
                     <div class="classification-box" id="classification-box">
                         <div class="classification-category" id="classification-category">Waiting...</div>
-                        <!-- v2.9.13: Type + sleeve detail line -->
                         <div class="classification-detail" id="classification-detail"></div>
                         <div class="classification-template">Template: <span id="classification-template">-</span></div>
                     </div>
@@ -751,10 +780,10 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.13 - EBAY TAXONOMY LOOKUP
+        // VINTAGELISTER v2.9.14 - RECORDING BUTTON VISIBILITY FIX
         // =============================================================================
         
-        const VERSION = '2.9.13';
+        const VERSION = '2.9.14';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -780,7 +809,6 @@
             micDeviceId: localStorage.getItem('mic-device') || null,
             photos: { main: [], closeup: [], weight: [], handheld: [] },
             classification: null,
-            // v2.9.13: Store detailed classification from Lambda v106.1
             classificationType: null,
             classificationSleeve: null,
             classificationIsCampCollar: false,
@@ -843,7 +871,7 @@
             });
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.13 with eBay taxonomy lookup');
+            console.log('✅ Init complete - v2.9.14 recording button visibility fix');
         }
         
         // =====================================================================
@@ -1091,7 +1119,6 @@
                 const result = await callLambda('classify', { mainPhotos, tagPhoto });
                 if (result.success) {
                     state.classification = result.category;
-                    // v2.9.13: Store detailed classification from Lambda v106.1
                     state.classificationType = result.type || null;
                     state.classificationSleeve = result.sleeveLength || null;
                     state.classificationIsCampCollar = result.isCampCollar || false;
@@ -1144,11 +1171,9 @@
         
         function updateClassificationDisplay() {
             document.getElementById('classification-box').classList.add('ready');
-            // v2.9.13: Show type as primary, category as context
             const displayType = state.classificationType || state.classification || 'Unknown';
             document.getElementById('classification-category').textContent = displayType;
             
-            // v2.9.13: Show sleeve + category detail line
             const parts = [];
             if (state.classificationSleeve && state.classificationSleeve !== 'na') parts.push(state.classificationSleeve);
             if (state.classification && state.classification !== displayType) parts.push(state.classification);
@@ -1183,7 +1208,7 @@
         }
         
         // =====================================================================
-        // VOICE RECORDING
+        // VOICE RECORDING - v2.9.14: High-contrast button states
         // =====================================================================
         async function toggleRecording() { if (state.isRecording) stopRecording(); else startRecording(); }
         
@@ -1213,7 +1238,7 @@
                 state.isRecording = true;
                 const btn = document.getElementById('record-btn');
                 btn.classList.remove('btn-record'); btn.classList.add('btn-stop');
-                btn.textContent = '🛑 TAP TO STOP';
+                btn.textContent = '🔴 RECORDING · TAP TO STOP';
             } catch (err) { showToast('error', 'Mic access denied'); }
         }
         
@@ -1228,7 +1253,7 @@
         }
         
         // =====================================================================
-        // NOTES AUDIO RECORDING
+        // NOTES AUDIO RECORDING - v2.9.14: High-contrast button states
         // =====================================================================
         async function toggleNotesRecording() { if (state.isRecordingNotes) stopNotesRecording(); else startNotesRecording(); }
         
@@ -1257,7 +1282,7 @@
                 state.isRecordingNotes = true;
                 const btn = document.getElementById('notes-record-btn');
                 btn.classList.remove('btn-record'); btn.classList.add('btn-stop');
-                btn.textContent = '🛑 TAP TO STOP';
+                btn.textContent = '🔴 RECORDING · TAP TO STOP';
             } catch (err) { showToast('error', 'Mic access denied'); }
         }
         
@@ -1384,7 +1409,6 @@
                     version: VERSION,
                     processingStatus: 'pending',
                     category: state.classification,
-                    // v2.9.13: Include detailed classification
                     type: state.classificationType,
                     sleeveLength: state.classificationSleeve,
                     isCampCollar: state.classificationIsCampCollar,
