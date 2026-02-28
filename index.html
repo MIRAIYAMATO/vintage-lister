@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.14 - RECORDING BUTTON VISIBILITY FIX
+    VintageLister v2.9.15 - PER-STATION CAMERA TUNE CONTROLS
     
     CHANGELOG:
+    v2.9.15 (2026-02-27):
+    - MAJOR: Per-station camera image adjustments (replaces LogiTune dependency)
+    - ADDED: 🎨 TUNE button on camera info bar opens Camera Tune modal
+    - ADDED: Focus (auto toggle + manual slider)
+    - ADDED: Exposure (auto toggle + exposure compensation + gain sliders)
+    - ADDED: White Balance (auto toggle + color temperature slider)
+    - ADDED: Brightness, Contrast, Saturation, Sharpness sliders
+    - ADDED: Settings saved per-station in localStorage (camera-tune-{mode})
+    - ADDED: Settings auto-applied on camera switch - no more LogiTune conflicts
+    - ADDED: Reset to Defaults button per station
+    - ADDED: Live preview - adjustments visible immediately on video feed
+    - REQUIRES: Logitech BRIO cameras (tested) - controls adapt to camera capabilities
+    - FIXES: LogiTune changing all cameras when adjusting one station
+
     v2.9.14 (2026-02-24):
     - UX FIX: Recording buttons now have HIGH CONTRAST between idle and active states
     - IDLE STATE: Calm slate/gray button blends with panel - clearly "not recording"
@@ -76,7 +90,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.14</title>
+    <title>VintageLister v2.9.15</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -546,6 +560,94 @@
             background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 8px;
             font-size: 14px; color: var(--text-secondary);
         }
+        
+        /* v2.9.15: Camera Tune Controls */
+        .tune-btn {
+            padding: 4px 10px; border: 1px solid var(--border-color); border-radius: 4px;
+            background: var(--bg-tertiary); color: var(--accent-yellow); font-size: 11px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .tune-btn:hover { background: var(--accent-yellow); color: black; }
+        
+        .tune-modal .modal { max-width: 540px; }
+        
+        .tune-station-tabs {
+            display: flex; gap: 4px; padding: 0 16px 12px; border-bottom: 1px solid var(--border-color);
+        }
+        .tune-station-tab {
+            flex: 1; padding: 8px 4px; border: none; border-radius: 6px;
+            font-size: 11px; font-weight: 600; cursor: pointer;
+            background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.2s;
+        }
+        .tune-station-tab:hover { color: var(--text-primary); }
+        .tune-station-tab.active { color: white; }
+        .tune-station-tab.active[data-tmode="main"] { background: var(--accent-blue); }
+        .tune-station-tab.active[data-tmode="closeup"] { background: var(--accent-orange); }
+        .tune-station-tab.active[data-tmode="weight"] { background: var(--accent-green); }
+        .tune-station-tab.active[data-tmode="handheld"] { background: var(--accent-purple); }
+        
+        .tune-group {
+            padding: 14px 0; border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+        }
+        .tune-group:last-child { border-bottom: none; }
+        
+        .tune-group-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .tune-group-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        
+        .tune-toggle {
+            position: relative; width: 40px; height: 22px; border-radius: 11px;
+            background: var(--bg-tertiary); border: 1px solid var(--border-color);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .tune-toggle.on { background: var(--accent-blue); border-color: var(--accent-blue); }
+        .tune-toggle::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: var(--text-secondary); transition: all 0.2s;
+        }
+        .tune-toggle.on::after { left: 20px; background: white; }
+        
+        .tune-slider-row {
+            display: flex; align-items: center; gap: 10px; margin-top: 8px;
+        }
+        .tune-slider-label {
+            font-size: 10px; font-weight: 600; color: var(--text-secondary);
+            text-transform: uppercase; min-width: 85px;
+        }
+        .tune-slider {
+            flex: 1; -webkit-appearance: none; appearance: none;
+            height: 6px; border-radius: 3px; background: var(--bg-tertiary);
+            outline: none; cursor: pointer;
+        }
+        .tune-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--text-primary); border: 2px solid var(--bg-secondary);
+            cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        .tune-slider:disabled { opacity: 0.3; cursor: not-allowed; }
+        .tune-slider-value {
+            font-size: 12px; font-weight: 600; color: var(--text-primary);
+            min-width: 55px; text-align: right; font-family: 'Courier New', monospace;
+        }
+        
+        .tune-slider.temp-slider { background: linear-gradient(to right, #6eb5ff, #fff5e0, #ffb347); }
+        .tune-slider.sat-slider { background: linear-gradient(to right, #666, #ff8c00); }
+        .tune-slider.sharp-slider { background: linear-gradient(to right, #666, #a855f7); }
+        
+        .tune-unavailable {
+            font-size: 11px; color: var(--text-secondary); font-style: italic;
+            text-align: center; padding: 20px;
+        }
+        
+        .tune-actions {
+            display: flex; gap: 8px; padding-top: 12px;
+            border-top: 1px solid var(--border-color); margin-top: 4px;
+        }
+        .tune-actions .btn { flex: 1; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -572,7 +674,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.14</span>
+                    <span class="version-badge" id="version-badge">v2.9.15</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -639,6 +741,7 @@
             
             <div class="camera-info">
                 <span class="camera-name" id="camera-name">No camera</span>
+                <button class="tune-btn" onclick="openCameraTune()">🎨 TUNE</button>
                 <span class="resolution-badge" id="resolution-badge">-</span>
                 <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
             </div>
@@ -775,15 +878,34 @@
         <div class="preview-info" id="preview-info"></div>
     </div>
     
+    <!-- Camera Tune Modal -->
+    <div class="modal-overlay tune-modal" id="tune-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">🎨 Camera Tune — <span id="tune-mode-label">MAIN</span></div>
+                <button class="modal-close" onclick="closeCameraTune()">×</button>
+            </div>
+            <div class="tune-station-tabs">
+                <button class="tune-station-tab active" data-tmode="main" onclick="switchTuneStation('main')">📷 MAIN</button>
+                <button class="tune-station-tab" data-tmode="closeup" onclick="switchTuneStation('closeup')">🔍 CLOSEUP</button>
+                <button class="tune-station-tab" data-tmode="weight" onclick="switchTuneStation('weight')">⚖️ WEIGHT</button>
+                <button class="tune-station-tab" data-tmode="handheld" onclick="switchTuneStation('handheld')">📱 HANDHELD</button>
+            </div>
+            <div class="modal-body" id="tune-body">
+                <div class="tune-unavailable">Select a camera in Settings first</div>
+            </div>
+        </div>
+    </div>
+    
     <canvas id="capture-canvas" style="display: none;"></canvas>
     <canvas id="resize-canvas" style="display: none;"></canvas>
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.14 - RECORDING BUTTON VISIBILITY FIX
+        // VINTAGELISTER v2.9.15 - PER-STATION CAMERA TUNE CONTROLS
         // =============================================================================
         
-        const VERSION = '2.9.14';
+        const VERSION = '2.9.15';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -871,7 +993,7 @@
             });
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.14 recording button visibility fix');
+            console.log('✅ Init complete - v2.9.15 per-station camera tune controls');
         }
         
         // =====================================================================
@@ -970,6 +1092,9 @@
                 document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
                 const cam = state.availableCameras.find(c => c.deviceId === deviceId);
                 document.getElementById('camera-name').textContent = cam?.label || 'Camera';
+                
+                // v2.9.15: Apply saved per-station camera tune settings
+                await applySavedTuneSettings(mode);
             } catch (err) { console.error('Start camera failed:', err); }
         }
         
@@ -1792,6 +1917,265 @@
             if (micSel) { state.micDeviceId = micSel.value || null; if (micSel.value) localStorage.setItem('mic-device', micSel.value); else localStorage.removeItem('mic-device'); }
             closeSettings(); showToast('success', 'Settings saved');
             startCamera(state.currentMode); checkLambda();
+        }
+        
+        // =====================================================================
+        // CAMERA TUNE - v2.9.15: Per-station image adjustments
+        // =====================================================================
+        
+        // All tunable properties and their display config
+        const TUNE_CONTROLS = [
+            { group: 'Focus', autoKey: 'focusMode', autoLabel: 'Auto Focus', sliders: [
+                { key: 'focusDistance', label: 'Focus', unit: '', cssClass: '' }
+            ]},
+            { group: 'Exposure', autoKey: 'exposureMode', autoLabel: 'Auto Exposure', sliders: [
+                { key: 'exposureCompensation', label: 'Exposure', unit: '', cssClass: '' },
+                { key: 'exposureTime', label: 'Gain', unit: '', cssClass: '' }
+            ]},
+            { group: 'White Balance', autoKey: 'whiteBalanceMode', autoLabel: 'Auto White Balance', sliders: [
+                { key: 'colorTemperature', label: 'Temperature', unit: ' K', cssClass: 'temp-slider' }
+            ]},
+            { group: 'Image', autoKey: null, autoLabel: null, sliders: [
+                { key: 'brightness', label: 'Brightness', unit: '', cssClass: '' },
+                { key: 'contrast', label: 'Contrast', unit: '', cssClass: '' },
+                { key: 'saturation', label: 'Saturation', unit: '', cssClass: 'sat-slider' },
+                { key: 'sharpness', label: 'Sharpness', unit: '', cssClass: 'sharp-slider' }
+            ]}
+        ];
+        
+        let tuneModalMode = 'main'; // which station the tune modal is editing
+        let tuneCapabilities = null; // current track capabilities
+        
+        function getTuneStorageKey(mode) { return `camera-tune-${mode}`; }
+        
+        function loadTuneSettings(mode) {
+            try { return JSON.parse(localStorage.getItem(getTuneStorageKey(mode))) || {}; } 
+            catch { return {}; }
+        }
+        
+        function saveTuneSettings(mode, settings) {
+            localStorage.setItem(getTuneStorageKey(mode), JSON.stringify(settings));
+        }
+        
+        async function applySavedTuneSettings(mode) {
+            if (!state.currentStream) return;
+            const track = state.currentStream.getVideoTracks()[0];
+            if (!track) return;
+            
+            const saved = loadTuneSettings(mode);
+            if (Object.keys(saved).length === 0) {
+                console.log(`📷 [${mode}] No saved tune settings`);
+                return;
+            }
+            
+            try {
+                const caps = track.getCapabilities();
+                const constraints = {};
+                
+                // Apply auto mode toggles
+                for (const autoKey of ['focusMode', 'exposureMode', 'whiteBalanceMode']) {
+                    if (saved[autoKey] && caps[autoKey]) {
+                        constraints[autoKey] = saved[autoKey];
+                    }
+                }
+                
+                // Apply slider values
+                for (const group of TUNE_CONTROLS) {
+                    for (const slider of group.sliders) {
+                        if (saved[slider.key] !== undefined && caps[slider.key]) {
+                            const cap = caps[slider.key];
+                            const val = saved[slider.key];
+                            if (typeof cap === 'object' && cap.min !== undefined) {
+                                constraints[slider.key] = Math.max(cap.min, Math.min(cap.max, val));
+                            }
+                        }
+                    }
+                }
+                
+                if (Object.keys(constraints).length > 0) {
+                    await track.applyConstraints({ advanced: [constraints] });
+                    console.log(`🎨 [${mode}] Applied saved tune:`, constraints);
+                }
+            } catch (err) {
+                console.warn(`⚠️ [${mode}] Failed to apply tune settings:`, err);
+            }
+        }
+        
+        function openCameraTune() {
+            tuneModalMode = state.currentMode;
+            document.getElementById('tune-modal').classList.add('active');
+            updateTuneStationTabs();
+            buildTuneUI(tuneModalMode);
+        }
+        
+        function closeCameraTune() {
+            document.getElementById('tune-modal').classList.remove('active');
+        }
+        
+        function switchTuneStation(mode) {
+            tuneModalMode = mode;
+            updateTuneStationTabs();
+            
+            // If this station has a different camera, we need to switch to it to tune it
+            if (mode !== state.currentMode) {
+                switchCameraMode(mode);
+            }
+            buildTuneUI(mode);
+        }
+        
+        function updateTuneStationTabs() {
+            document.querySelectorAll('.tune-station-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tmode === tuneModalMode);
+            });
+            const labels = { main: 'MAIN', closeup: 'CLOSEUP', weight: 'WEIGHT', handheld: 'HANDHELD' };
+            document.getElementById('tune-mode-label').textContent = labels[tuneModalMode] || tuneModalMode;
+        }
+        
+        function buildTuneUI(mode) {
+            const body = document.getElementById('tune-body');
+            
+            if (!state.currentStream) {
+                body.innerHTML = '<div class="tune-unavailable">No camera active. Select a camera in Settings first.</div>';
+                return;
+            }
+            
+            const track = state.currentStream.getVideoTracks()[0];
+            if (!track) {
+                body.innerHTML = '<div class="tune-unavailable">No video track available.</div>';
+                return;
+            }
+            
+            let caps;
+            try { caps = track.getCapabilities(); } catch(e) { caps = {}; }
+            tuneCapabilities = caps;
+            
+            const currentSettings = track.getSettings();
+            const saved = loadTuneSettings(mode);
+            let html = '';
+            let hasAnyControl = false;
+            
+            for (const group of TUNE_CONTROLS) {
+                let groupHtml = '';
+                let groupHasContent = false;
+                
+                // Auto toggle
+                if (group.autoKey && caps[group.autoKey]) {
+                    groupHasContent = true;
+                    const modes = caps[group.autoKey];
+                    const hasManual = Array.isArray(modes) && modes.includes('manual');
+                    const hasContinuous = Array.isArray(modes) && modes.includes('continuous');
+                    if (hasManual && hasContinuous) {
+                        const isAuto = saved[group.autoKey] ? saved[group.autoKey] === 'continuous' : currentSettings[group.autoKey] === 'continuous';
+                        groupHtml += `<div class="tune-group-header">
+                            <span class="tune-group-title">${group.autoLabel}</span>
+                            <div class="tune-toggle ${isAuto ? 'on' : ''}" id="tune-auto-${group.autoKey}" 
+                                onclick="toggleTuneAuto('${group.autoKey}', '${mode}')"></div>
+                        </div>`;
+                    }
+                }
+                
+                // Sliders
+                for (const slider of group.sliders) {
+                    const cap = caps[slider.key];
+                    if (cap && typeof cap === 'object' && cap.min !== undefined) {
+                        groupHasContent = true;
+                        const min = cap.min;
+                        const max = cap.max;
+                        const step = cap.step || 1;
+                        const current = saved[slider.key] !== undefined ? saved[slider.key] : (currentSettings[slider.key] ?? Math.round((min + max) / 2));
+                        const isDisabled = group.autoKey && (saved[group.autoKey] === 'continuous' || (!saved[group.autoKey] && currentSettings[group.autoKey] === 'continuous'));
+                        
+                        groupHtml += `<div class="tune-slider-row">
+                            <span class="tune-slider-label">${slider.label}</span>
+                            <input type="range" class="tune-slider ${slider.cssClass}" id="tune-${slider.key}"
+                                min="${min}" max="${max}" step="${step}" value="${current}"
+                                ${isDisabled ? 'disabled' : ''}
+                                oninput="onTuneSlider('${slider.key}', this.value, '${mode}', '${slider.unit}')">
+                            <span class="tune-slider-value" id="tune-val-${slider.key}">${Math.round(current)}${slider.unit}</span>
+                        </div>`;
+                    }
+                }
+                
+                if (groupHasContent) {
+                    hasAnyControl = true;
+                    const title = group.autoKey ? '' : `<div class="tune-group-header"><span class="tune-group-title">${group.group}</span></div>`;
+                    html += `<div class="tune-group">${title}${groupHtml}</div>`;
+                }
+            }
+            
+            if (!hasAnyControl) {
+                body.innerHTML = '<div class="tune-unavailable">This camera does not expose tunable controls via the browser.<br><br>Logitech BRIO cameras should work in Chrome. Try restarting the browser.</div>';
+                return;
+            }
+            
+            html += `<div class="tune-actions">
+                <button class="btn btn-secondary" onclick="resetTuneDefaults('${mode}')">Reset to Defaults</button>
+                <button class="btn btn-primary" onclick="closeCameraTune()">Done</button>
+            </div>`;
+            
+            body.innerHTML = html;
+        }
+        
+        async function toggleTuneAuto(autoKey, mode) {
+            const toggle = document.getElementById(`tune-auto-${autoKey}`);
+            const isCurrentlyOn = toggle.classList.contains('on');
+            const newMode = isCurrentlyOn ? 'manual' : 'continuous';
+            toggle.classList.toggle('on');
+            
+            // Save
+            const settings = loadTuneSettings(mode);
+            settings[autoKey] = newMode;
+            saveTuneSettings(mode, settings);
+            
+            // Apply to camera
+            if (state.currentStream) {
+                const track = state.currentStream.getVideoTracks()[0];
+                try {
+                    await track.applyConstraints({ advanced: [{ [autoKey]: newMode }] });
+                    console.log(`🎨 [${mode}] ${autoKey} = ${newMode}`);
+                } catch (err) { console.warn(`Failed to set ${autoKey}:`, err); }
+            }
+            
+            // Enable/disable associated sliders
+            const group = TUNE_CONTROLS.find(g => g.autoKey === autoKey);
+            if (group) {
+                for (const slider of group.sliders) {
+                    const sliderEl = document.getElementById(`tune-${slider.key}`);
+                    if (sliderEl) sliderEl.disabled = (newMode === 'continuous');
+                }
+            }
+        }
+        
+        async function onTuneSlider(key, value, mode, unit) {
+            value = parseFloat(value);
+            document.getElementById(`tune-val-${key}`).textContent = Math.round(value) + unit;
+            
+            // Save
+            const settings = loadTuneSettings(mode);
+            settings[key] = value;
+            saveTuneSettings(mode, settings);
+            
+            // Apply to camera immediately
+            if (state.currentStream) {
+                const track = state.currentStream.getVideoTracks()[0];
+                try {
+                    await track.applyConstraints({ advanced: [{ [key]: value }] });
+                } catch (err) { console.warn(`Failed to set ${key}:`, err); }
+            }
+        }
+        
+        async function resetTuneDefaults(mode) {
+            if (!confirm(`Reset all camera settings for ${mode.toUpperCase()} to defaults?`)) return;
+            
+            localStorage.removeItem(getTuneStorageKey(mode));
+            
+            // Re-start camera to get factory defaults
+            if (state.currentMode === mode && state.currentStream) {
+                await startCamera(mode);
+            }
+            
+            buildTuneUI(mode);
+            showToast('info', `${mode.toUpperCase()} camera reset to defaults`);
         }
         
         // =====================================================================
