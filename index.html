@@ -1,8 +1,18 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.15 - PER-STATION CAMERA TUNE CONTROLS
+    VintageLister v2.9.16 - CAMERA STABILITY INDICATOR
     
     CHANGELOG:
+    v2.9.16 (2026-02-28):
+    - ADDED: Camera stability indicator on video feed
+    - ADDED: Polls camera settings (focus, exposure, white balance) every 300ms
+    - ADDED: "ADJUSTING" state with animated yellow spinner when camera values changing
+    - ADDED: "STABLE" state with green checkmark when camera has locked for 1.5s
+    - ADDED: Shows which system is still adjusting (Focus / Exposure / WB)
+    - ADDED: Indicator only shows for auto modes - manual modes always show stable
+    - ADDED: Stability badge in camera info bar for quick glance
+    - UX: Photographer can wait for green ✓ before capturing to ensure sharpness
+
     v2.9.15 (2026-02-27):
     - MAJOR: Per-station camera image adjustments (replaces LogiTune dependency)
     - ADDED: 🎨 TUNE button on camera info bar opens Camera Tune modal
@@ -90,7 +100,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.15</title>
+    <title>VintageLister v2.9.16</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -648,6 +658,53 @@
             border-top: 1px solid var(--border-color); margin-top: 4px;
         }
         .tune-actions .btn { flex: 1; margin-bottom: 0; }
+        
+        /* v2.9.16: Camera Stability Indicator */
+        .stability-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+            transition: all 0.3s;
+        }
+        .stability-badge.stable {
+            background: rgba(34, 197, 94, 0.25); color: var(--accent-green);
+        }
+        .stability-badge.adjusting {
+            background: rgba(234, 179, 8, 0.25); color: var(--accent-yellow);
+        }
+        .stability-badge.no-cam {
+            background: transparent; color: var(--text-secondary);
+        }
+        .stability-badge .stab-spinner {
+            width: 10px; height: 10px; border: 2px solid rgba(234, 179, 8, 0.3);
+            border-top-color: var(--accent-yellow); border-radius: 50%;
+            animation: spin 0.8s linear infinite; flex-shrink: 0;
+        }
+        
+        .stability-overlay {
+            position: absolute; top: 12px; left: 12px;
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 6px;
+            font-size: 12px; font-weight: 600;
+            pointer-events: none; transition: all 0.4s; z-index: 10;
+            opacity: 0; visibility: hidden;
+        }
+        .stability-overlay.visible { opacity: 1; visibility: visible; }
+        .stability-overlay.stable {
+            background: rgba(34, 197, 94, 0.2); color: var(--accent-green);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+        .stability-overlay.adjusting {
+            background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow);
+            border: 1px solid rgba(234, 179, 8, 0.4);
+        }
+        .stability-overlay .stab-spinner {
+            width: 14px; height: 14px; border: 2px solid rgba(234, 179, 8, 0.3);
+            border-top-color: var(--accent-yellow); border-radius: 50%;
+            animation: spin 0.8s linear infinite; flex-shrink: 0;
+        }
+        .stability-detail {
+            font-size: 10px; font-weight: 400; opacity: 0.8; margin-left: 2px;
+        }
     </style>
 </head>
 <body>
@@ -674,7 +731,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.15</span>
+                    <span class="version-badge" id="version-badge">v2.9.16</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -742,6 +799,7 @@
             <div class="camera-info">
                 <span class="camera-name" id="camera-name">No camera</span>
                 <button class="tune-btn" onclick="openCameraTune()">🎨 TUNE</button>
+                <span class="stability-badge no-cam" id="stability-badge">—</span>
                 <span class="resolution-badge" id="resolution-badge">-</span>
                 <span class="photo-count-badge"><span id="mode-photo-count">0</span> photos</span>
             </div>
@@ -749,6 +807,7 @@
             <div class="video-container" ondblclick="openVideoPreview()">
                 <video id="video-preview" autoplay playsinline muted></video>
                 <div class="video-placeholder" id="video-placeholder">📷 Select a camera in Settings</div>
+                <div class="stability-overlay" id="stability-overlay"></div>
                 <div class="capture-flash" id="capture-flash"></div>
                 <div class="ai-overlay" id="ai-overlay">
                     <div class="spinner"></div>
@@ -902,10 +961,10 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.15 - PER-STATION CAMERA TUNE CONTROLS
+        // VINTAGELISTER v2.9.16 - CAMERA STABILITY INDICATOR
         // =============================================================================
         
-        const VERSION = '2.9.15';
+        const VERSION = '2.9.16';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -993,7 +1052,7 @@
             });
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.15 per-station camera tune controls');
+            console.log('✅ Init complete - v2.9.16 camera stability indicator');
         }
         
         // =====================================================================
@@ -1072,6 +1131,7 @@
         }
         
         async function startCamera(mode) {
+            stopStabilityPolling(); // v2.9.16: Stop polling before switching
             if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
             const deviceId = state.cameras[mode].deviceId;
             if (!deviceId) {
@@ -1094,7 +1154,13 @@
                 document.getElementById('camera-name').textContent = cam?.label || 'Camera';
                 
                 // v2.9.15: Apply saved per-station camera tune settings
+                // Delay needed: BRIO resets to factory defaults on new stream.
+                // Camera hardware needs time to initialize before accepting constraints.
+                await new Promise(r => setTimeout(r, 500));
                 await applySavedTuneSettings(mode);
+                
+                // v2.9.16: Start stability polling after tune settings applied
+                startStabilityPolling();
             } catch (err) { console.error('Start camera failed:', err); }
         }
         
@@ -1924,13 +1990,15 @@
         // =====================================================================
         
         // All tunable properties and their display config
+        // NOTE: Chrome requires auto mode changes to complete BEFORE setting manual values.
+        // See applySavedTuneSettings() for two-step apply logic.
         const TUNE_CONTROLS = [
             { group: 'Focus', autoKey: 'focusMode', autoLabel: 'Auto Focus', sliders: [
                 { key: 'focusDistance', label: 'Focus', unit: '', cssClass: '' }
             ]},
             { group: 'Exposure', autoKey: 'exposureMode', autoLabel: 'Auto Exposure', sliders: [
                 { key: 'exposureCompensation', label: 'Exposure', unit: '', cssClass: '' },
-                { key: 'exposureTime', label: 'Gain', unit: '', cssClass: '' }
+                { key: 'exposureTime', label: 'Exposure Time', unit: '', cssClass: '' }
             ]},
             { group: 'White Balance', autoKey: 'whiteBalanceMode', autoLabel: 'Auto White Balance', sliders: [
                 { key: 'colorTemperature', label: 'Temperature', unit: ' K', cssClass: 'temp-slider' }
@@ -1970,32 +2038,66 @@
             
             try {
                 const caps = track.getCapabilities();
-                const constraints = {};
                 
-                // Apply auto mode toggles
-                for (const autoKey of ['focusMode', 'exposureMode', 'whiteBalanceMode']) {
+                // =====================================================
+                // STEP 1: Apply auto/manual MODE toggles FIRST
+                // Chrome requires mode switches to complete before it
+                // will accept manual values. If you send them together,
+                // the manual values get silently dropped.
+                // =====================================================
+                const modeConstraints = {};
+                const AUTO_KEYS = ['focusMode', 'exposureMode', 'whiteBalanceMode'];
+                for (const autoKey of AUTO_KEYS) {
                     if (saved[autoKey] && caps[autoKey]) {
-                        constraints[autoKey] = saved[autoKey];
+                        modeConstraints[autoKey] = saved[autoKey];
                     }
                 }
                 
-                // Apply slider values
+                if (Object.keys(modeConstraints).length > 0) {
+                    await track.applyConstraints({ advanced: [modeConstraints] });
+                    console.log(`🎨 [${mode}] Step 1 - modes:`, modeConstraints);
+                    // Give camera hardware time to switch modes
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                
+                // =====================================================
+                // STEP 2: Now apply manual slider values
+                // These only stick if the mode is already 'manual'
+                // =====================================================
+                const valueConstraints = {};
                 for (const group of TUNE_CONTROLS) {
                     for (const slider of group.sliders) {
                         if (saved[slider.key] !== undefined && caps[slider.key]) {
                             const cap = caps[slider.key];
                             const val = saved[slider.key];
                             if (typeof cap === 'object' && cap.min !== undefined) {
-                                constraints[slider.key] = Math.max(cap.min, Math.min(cap.max, val));
+                                // Only apply manual values if the mode for this group is manual
+                                const isManual = !group.autoKey || saved[group.autoKey] === 'manual';
+                                if (isManual) {
+                                    valueConstraints[slider.key] = Math.max(cap.min, Math.min(cap.max, val));
+                                }
                             }
                         }
                     }
                 }
                 
-                if (Object.keys(constraints).length > 0) {
-                    await track.applyConstraints({ advanced: [constraints] });
-                    console.log(`🎨 [${mode}] Applied saved tune:`, constraints);
+                // Image controls (brightness, contrast, saturation, sharpness) 
+                // have no auto mode - always apply
+                if (Object.keys(valueConstraints).length > 0) {
+                    await track.applyConstraints({ advanced: [valueConstraints] });
+                    console.log(`🎨 [${mode}] Step 2 - values:`, valueConstraints);
                 }
+                
+                // Verify settings actually applied
+                const verify = track.getSettings();
+                console.log(`🎨 [${mode}] Verified settings:`, {
+                    exposureMode: verify.exposureMode,
+                    whiteBalanceMode: verify.whiteBalanceMode,
+                    focusMode: verify.focusMode,
+                    brightness: verify.brightness,
+                    exposureCompensation: verify.exposureCompensation
+                });
+                
             } catch (err) {
                 console.warn(`⚠️ [${mode}] Failed to apply tune settings:`, err);
             }
@@ -2049,6 +2151,8 @@
             try { caps = track.getCapabilities(); } catch(e) { caps = {}; }
             tuneCapabilities = caps;
             
+            // Read ACTUAL current settings from camera (not just saved)
+            // This shows the real state - if a setting didn't stick, user sees it
             const currentSettings = track.getSettings();
             const saved = loadTuneSettings(mode);
             let html = '';
@@ -2065,7 +2169,8 @@
                     const hasManual = Array.isArray(modes) && modes.includes('manual');
                     const hasContinuous = Array.isArray(modes) && modes.includes('continuous');
                     if (hasManual && hasContinuous) {
-                        const isAuto = saved[group.autoKey] ? saved[group.autoKey] === 'continuous' : currentSettings[group.autoKey] === 'continuous';
+                        // Use actual camera state, falling back to saved
+                        const isAuto = currentSettings[group.autoKey] === 'continuous';
                         groupHtml += `<div class="tune-group-header">
                             <span class="tune-group-title">${group.autoLabel}</span>
                             <div class="tune-toggle ${isAuto ? 'on' : ''}" id="tune-auto-${group.autoKey}" 
@@ -2082,8 +2187,9 @@
                         const min = cap.min;
                         const max = cap.max;
                         const step = cap.step || 1;
-                        const current = saved[slider.key] !== undefined ? saved[slider.key] : (currentSettings[slider.key] ?? Math.round((min + max) / 2));
-                        const isDisabled = group.autoKey && (saved[group.autoKey] === 'continuous' || (!saved[group.autoKey] && currentSettings[group.autoKey] === 'continuous'));
+                        // Use actual camera value first, then saved, then midpoint
+                        const current = currentSettings[slider.key] ?? saved[slider.key] ?? Math.round((min + max) / 2);
+                        const isDisabled = group.autoKey && currentSettings[group.autoKey] === 'continuous';
                         
                         groupHtml += `<div class="tune-slider-row">
                             <span class="tune-slider-label">${slider.label}</span>
@@ -2122,17 +2228,39 @@
             const newMode = isCurrentlyOn ? 'manual' : 'continuous';
             toggle.classList.toggle('on');
             
-            // Save
+            // Save mode
             const settings = loadTuneSettings(mode);
             settings[autoKey] = newMode;
             saveTuneSettings(mode, settings);
             
-            // Apply to camera
+            // Apply mode change to camera
             if (state.currentStream) {
                 const track = state.currentStream.getVideoTracks()[0];
                 try {
+                    // Step 1: Switch mode
                     await track.applyConstraints({ advanced: [{ [autoKey]: newMode }] });
                     console.log(`🎨 [${mode}] ${autoKey} = ${newMode}`);
+                    
+                    // Step 2: If switching to manual, re-apply saved slider values
+                    // Chrome drops manual values if applied same time as mode switch
+                    if (newMode === 'manual') {
+                        await new Promise(r => setTimeout(r, 200));
+                        const group = TUNE_CONTROLS.find(g => g.autoKey === autoKey);
+                        if (group) {
+                            const caps = track.getCapabilities();
+                            const manualValues = {};
+                            for (const slider of group.sliders) {
+                                if (settings[slider.key] !== undefined && caps[slider.key]) {
+                                    const cap = caps[slider.key];
+                                    manualValues[slider.key] = Math.max(cap.min, Math.min(cap.max, settings[slider.key]));
+                                }
+                            }
+                            if (Object.keys(manualValues).length > 0) {
+                                await track.applyConstraints({ advanced: [manualValues] });
+                                console.log(`🎨 [${mode}] Re-applied manual values:`, manualValues);
+                            }
+                        }
+                    }
                 } catch (err) { console.warn(`Failed to set ${autoKey}:`, err); }
             }
             
@@ -2176,6 +2304,141 @@
             
             buildTuneUI(mode);
             showToast('info', `${mode.toUpperCase()} camera reset to defaults`);
+        }
+        
+        // =====================================================================
+        // CAMERA STABILITY INDICATOR - v2.9.16
+        // Polls camera settings to detect when auto focus/exposure/WB have locked
+        // =====================================================================
+        
+        const STABILITY_POLL_MS = 300;        // How often to check camera settings
+        const STABILITY_LOCK_MS = 1500;       // How long values must be stable to show ✓
+        const STABILITY_TRACKED_KEYS = ['focusDistance', 'exposureCompensation', 'exposureTime', 'colorTemperature'];
+        
+        let stabilityInterval = null;
+        let stabilityLastValues = {};
+        let stabilityLastChangeTime = 0;
+        let stabilityIsStable = false;
+        
+        function startStabilityPolling() {
+            stopStabilityPolling();
+            stabilityLastValues = {};
+            stabilityLastChangeTime = Date.now();
+            stabilityIsStable = false;
+            updateStabilityUI(false, []);
+            
+            stabilityInterval = setInterval(() => pollStability(), STABILITY_POLL_MS);
+        }
+        
+        function stopStabilityPolling() {
+            if (stabilityInterval) {
+                clearInterval(stabilityInterval);
+                stabilityInterval = null;
+            }
+            updateStabilityUI(null, []); // null = no camera
+        }
+        
+        function pollStability() {
+            if (!state.currentStream) { stopStabilityPolling(); return; }
+            const track = state.currentStream.getVideoTracks()[0];
+            if (!track || track.readyState !== 'live') { stopStabilityPolling(); return; }
+            
+            let caps, settings;
+            try {
+                caps = track.getCapabilities();
+                settings = track.getSettings();
+            } catch { return; }
+            
+            const now = Date.now();
+            const changing = []; // which auto systems are still adjusting
+            
+            // Only track keys that exist AND are in auto mode
+            for (const key of STABILITY_TRACKED_KEYS) {
+                if (settings[key] === undefined) continue;
+                
+                // Determine if this key's group is in auto mode
+                let isAuto = false;
+                if ((key === 'focusDistance') && settings.focusMode === 'continuous') isAuto = true;
+                if ((key === 'exposureCompensation' || key === 'exposureTime') && settings.exposureMode === 'continuous') isAuto = true;
+                if ((key === 'colorTemperature') && settings.whiteBalanceMode === 'continuous') isAuto = true;
+                
+                if (!isAuto) continue; // Manual modes are always "stable"
+                
+                const prev = stabilityLastValues[key];
+                const curr = settings[key];
+                
+                // Check if value changed (with small tolerance for float jitter)
+                if (prev !== undefined && Math.abs(curr - prev) > 0.5) {
+                    stabilityLastChangeTime = now;
+                    
+                    // Tag which system is adjusting
+                    if (key === 'focusDistance') changing.push('Focus');
+                    else if (key === 'exposureCompensation' || key === 'exposureTime') changing.push('Exposure');
+                    else if (key === 'colorTemperature') changing.push('WB');
+                }
+                
+                stabilityLastValues[key] = curr;
+            }
+            
+            // Check if ANY auto mode is enabled at all
+            const hasAnyAuto = (settings.focusMode === 'continuous') || 
+                               (settings.exposureMode === 'continuous') || 
+                               (settings.whiteBalanceMode === 'continuous');
+            
+            if (!hasAnyAuto) {
+                // All manual = always stable
+                if (!stabilityIsStable) {
+                    stabilityIsStable = true;
+                    updateStabilityUI(true, []);
+                }
+                return;
+            }
+            
+            const elapsed = now - stabilityLastChangeTime;
+            const nowStable = elapsed >= STABILITY_LOCK_MS;
+            
+            if (nowStable !== stabilityIsStable) {
+                stabilityIsStable = nowStable;
+                updateStabilityUI(nowStable, changing);
+            } else if (!nowStable) {
+                // Update the "adjusting" detail text while still changing
+                updateStabilityUI(false, changing);
+            }
+        }
+        
+        function updateStabilityUI(isStable, changingSystems) {
+            const badge = document.getElementById('stability-badge');
+            const overlay = document.getElementById('stability-overlay');
+            
+            if (isStable === null) {
+                // No camera
+                badge.className = 'stability-badge no-cam';
+                badge.innerHTML = '—';
+                overlay.classList.remove('visible');
+                return;
+            }
+            
+            // De-duplicate system names
+            const systems = [...new Set(changingSystems)];
+            
+            if (isStable) {
+                badge.className = 'stability-badge stable';
+                badge.innerHTML = '✓ STABLE';
+                overlay.className = 'stability-overlay stable visible';
+                overlay.innerHTML = '✓ Stable';
+                // Auto-hide stable overlay after 3s (it's less important once stable)
+                clearTimeout(overlay._hideTimer);
+                overlay._hideTimer = setTimeout(() => {
+                    if (stabilityIsStable) overlay.classList.remove('visible');
+                }, 3000);
+            } else {
+                badge.className = 'stability-badge adjusting';
+                badge.innerHTML = '<span class="stab-spinner"></span> ADJ';
+                overlay.className = 'stability-overlay adjusting visible';
+                const detail = systems.length > 0 ? `<span class="stability-detail">${systems.join(' · ')}</span>` : '';
+                overlay.innerHTML = `<span class="stab-spinner"></span> Adjusting ${detail}`;
+                clearTimeout(overlay._hideTimer);
+            }
         }
         
         // =====================================================================
