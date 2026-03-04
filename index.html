@@ -1,8 +1,25 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.16 - CAMERA STABILITY INDICATOR
+    VintageLister v2.9.17 - DATA INTEGRITY + LABEL-AWARE PARSING
     
     CHANGELOG:
+    v2.9.17 (2026-03-04):
+    - CRITICAL FIX: measurements now written to jsonData (was hardcoded {})
+    - CRITICAL FIX: tagData (brand/size/materials/country) now written to jsonData (was hardcoded null)
+    - MAJOR: parseMeasurements() rewritten with LABEL-AWARE parsing
+    - OLD: Positional mapping — any stray number (tag size, SKU, weight) shifted ALL values
+    - NEW: Alias-based matching — finds measurement labels in transcript, extracts nearby values
+    - NEW: Longest-match-first prevents "sleeve opening" stealing from "pit to sleeve opening"
+    - NEW: Last-value-wins handles mid-recording corrections ("wait, no, 23 inches")
+    - NEW: Values outside 0.25"–100" filtered (SKU numbers, tag codes ignored)
+    - NEW: 30+ aliases per measurement field cover Whisper transcription variants
+    - ADDED: hasRaglan captured from classify response and saved to jsonData
+    - ADDED: photoLabels (AI-assigned front/back/side) saved to jsonData
+    - ADDED: hasRaglan shown in classification display when detected
+    - FIX: tagData was displayed on screen but permanently lost on item complete
+    - FIX: v106 extraction path was dead for ALL SKUs (Reconciler never received data)
+    - REQUIRES: Reconciler v1.3.1 to read v106 measurements from data.json
+
     v2.9.16 (2026-02-28):
     - ADDED: Camera stability indicator on video feed
     - ADDED: Polls camera settings (focus, exposure, white balance) every 300ms
@@ -100,7 +117,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.16</title>
+    <title>VintageLister v2.9.17</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -731,7 +748,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.16</span>
+                    <span class="version-badge" id="version-badge">v2.9.17</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -961,10 +978,10 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.16 - CAMERA STABILITY INDICATOR
+        // VINTAGELISTER v2.9.17 - DATA INTEGRITY + LABEL-AWARE PARSING
         // =============================================================================
         
-        const VERSION = '2.9.16';
+        const VERSION = '2.9.17';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -993,6 +1010,7 @@
             classificationType: null,
             classificationSleeve: null,
             classificationIsCampCollar: false,
+            classificationHasRaglan: false,
             templateKey: null,
             template: null,
             tagData: null,
@@ -1052,7 +1070,7 @@
             });
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.16 camera stability indicator');
+            console.log('✅ Init complete - v2.9.17 data integrity + label-aware parsing');
         }
         
         // =====================================================================
@@ -1313,6 +1331,7 @@
                     state.classificationType = result.type || null;
                     state.classificationSleeve = result.sleeveLength || null;
                     state.classificationIsCampCollar = result.isCampCollar || false;
+                    state.classificationHasRaglan = result.hasRaglan || false;
                     state.templateKey = result.templateKey;
                     state.template = result.template;
                     state.tagData = result.tagData;
@@ -1369,6 +1388,7 @@
             if (state.classificationSleeve && state.classificationSleeve !== 'na') parts.push(state.classificationSleeve);
             if (state.classification && state.classification !== displayType) parts.push(state.classification);
             if (state.classificationIsCampCollar) parts.push('Camp Collar');
+            if (state.classificationHasRaglan) parts.push('Raglan');
             document.getElementById('classification-detail').textContent = parts.join(' · ');
             
             document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
@@ -1506,24 +1526,119 @@
         }
         
         function parseMeasurements(text) {
-            const regex = /(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?(?:\s*inches?|\s*in|\s*")?/gi;
-            const matches = [...text.matchAll(regex)];
             if (!state.template) return;
-            const extractedValues = matches.map(m => {
-                let val = parseFloat(m[1]);
-                const fullMatch = m[0].toLowerCase();
-                if (fullMatch.includes('half')) val += 0.5;
-                else if (fullMatch.includes('quarter') && !fullMatch.includes('three')) val += 0.25;
-                else if (fullMatch.includes('three') && fullMatch.includes('quarter')) val += 0.75;
-                return val;
-            });
+            
+            // =========================================================
+            // v2.9.17: LABEL-AWARE PARSING
+            // Replaces positional mapping which broke when transcript
+            // contained non-measurement numbers (tag sizes, SKU, weight).
+            // Now matches measurement LABELS in transcript, then extracts
+            // the number that follows each label.
+            // =========================================================
+            
+            const MEASUREMENT_ALIASES = {
+                'Center Neck to Shoulder': ['center neck to shoulder', 'center of neck to shoulder', 'centre neck to shoulder', 'neck to shoulder'],
+                'Shoulder to Sleeve Opening': ['shoulder to sleeve opening', 'shoulder to sleeve hem', 'shoulder to sleeve'],
+                'Pit to Sleeve Opening': ['pit to sleeve opening', 'armpit to sleeve opening', 'pit to sleeve', 'armpit to sleeve'],
+                'Sleeve Opening': ['sleeve opening', 'sleeve hem'],
+                'Shoulder to Shoulder': ['shoulder to shoulder', 'across the shoulders'],
+                'Pit to Pit': ['pit to pit', 'chest width', 'chest'],
+                'Waist': ['waist'],
+                'Bottom Hem': ['bottom hem', 'bottom opening', 'hem width'],
+                'Length': ['length', 'body length', 'total length'],
+                'Shoulder to Cuff': ['shoulder to cuff'],
+                'Pit to Cuff': ['pit to cuff', 'armpit to cuff'],
+                'Bicep': ['bicep', 'biceps', 'upper arm'],
+                'Elbow': ['elbow'],
+                'Cuff Opening': ['cuff opening', 'cuff hem'],
+                'Center Neck to Cuff': ['center neck to cuff', 'center of neck to cuff', 'centre neck to cuff', 'neck to cuff'],
+                'Neck Circumference': ['neck circumference', 'collar circumference', 'neck circ', 'collar'],
+                'Strap Width': ['strap width', 'strap'],
+                'Hip': ['hip', 'hips'],
+                'Thigh': ['thigh'],
+                'Knee': ['knee'],
+                'Leg Opening': ['leg opening', 'leg hem', 'ankle opening'],
+                'Leg Opening Relaxed': ['leg opening relaxed', 'relaxed leg opening', 'ankle relaxed', 'ankle opening relaxed'],
+                'Leg Opening Stretched': ['leg opening stretched', 'stretched leg opening', 'ankle stretched', 'ankle opening stretched'],
+                'Front Rise': ['front rise', 'rise'],
+                'Inseam': ['inseam', 'in seam', 'inside seam'],
+                'Outseam': ['outseam', 'out seam', 'outside seam'],
+                'Waist Relaxed': ['waist relaxed', 'relaxed waist', 'waist unstretched', 'waist flat', 'waist un-stretched'],
+                'Waist Stretched': ['waist stretched', 'stretched waist', 'waist extended'],
+            };
+            
+            const lower = text.toLowerCase();
+            
+            // Build alias→field map for ONLY fields in current template
+            const aliasEntries = [];
+            for (const field of state.template.measurements) {
+                const aliases = MEASUREMENT_ALIASES[field] || [field.toLowerCase()];
+                for (const alias of aliases) {
+                    aliasEntries.push({ alias, field, len: alias.length });
+                }
+            }
+            // Sort longest-first: "pit to sleeve opening" matched before "sleeve opening"
+            aliasEntries.sort((a, b) => b.len - a.len);
+            
+            // Scan for (label, value) pairs
+            const consumed = [];  // [{start, end}] text ranges matched by longer aliases
+            const found = [];     // [{pos, field, val}]
+            
+            for (const { alias, field } of aliasEntries) {
+                let searchFrom = 0;
+                while (true) {
+                    const idx = lower.indexOf(alias, searchFrom);
+                    if (idx === -1) break;
+                    
+                    // Skip if this position is inside a range already consumed by a longer alias
+                    const isConsumed = consumed.some(c => idx >= c.start && idx < c.end);
+                    if (isConsumed) { searchFrom = idx + 1; continue; }
+                    
+                    // Look for a number within ~60 chars after the alias
+                    const windowStart = idx + alias.length;
+                    const windowEnd = Math.min(text.length, windowStart + 60);
+                    const window = text.substring(windowStart, windowEnd);
+                    
+                    // Match: "is 22", "22 inches", "is 22 and a half", "measures 22", etc.
+                    // Allow up to 15 non-digit chars between label and number (for "is", commas, etc.)
+                    const numMatch = window.match(
+                        /^[^0-9]{0,15}?(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?/i
+                    );
+                    
+                    if (numMatch) {
+                        let val = parseFloat(numMatch[1]);
+                        const full = numMatch[0].toLowerCase();
+                        if (full.includes('half')) val += 0.5;
+                        else if (full.includes('quarter') && !full.includes('three')) val += 0.25;
+                        else if (full.includes('three') && full.includes('quarter')) val += 0.75;
+                        
+                        // Sanity: only accept measurement-range values (filters SKU, tag codes, etc.)
+                        if (val >= 0.25 && val <= 100) {
+                            found.push({ pos: idx, field, val });
+                            consumed.push({ start: idx, end: idx + alias.length });
+                        }
+                    }
+                    
+                    searchFrom = idx + alias.length;
+                }
+            }
+            
+            // Sort by position (left-to-right). Last value per field wins (handles corrections:
+            // "pit to pit is 22, no, pit to pit is 23" → takes 23)
+            found.sort((a, b) => a.pos - b.pos);
+            const results = {};
+            for (const { field, val } of found) {
+                results[field] = val;
+            }
+            
+            // Update state and UI
+            state.measurements = results;
             state.template.measurements.forEach((m, i) => {
                 const el = document.getElementById(`mv-${i}`);
                 const item = document.querySelector(`.measurement-item[data-idx="${i}"]`);
-                if (extractedValues[i] !== undefined) {
-                    el.textContent = extractedValues[i] + '"';
+                if (results[m] !== undefined) {
+                    el.textContent = results[m] + '"';
                     item?.classList.add('completed');
-                    state.measurements[m] = extractedValues[i];
                 }
             });
         }
@@ -1581,7 +1696,7 @@
                 category: state.classification,
                 templateKey: state.templateKey,
                 template: state.template,
-                tagData: null,
+                tagData: state.tagData,
                 measurements: state.measurements,
                 rawTranscript: state.rawTranscript,
                 audioBlob: state.audioBlob,
@@ -1603,12 +1718,14 @@
                     type: state.classificationType,
                     sleeveLength: state.classificationSleeve,
                     isCampCollar: state.classificationIsCampCollar,
+                    hasRaglan: state.classificationHasRaglan,
                     templateKey: state.templateKey,
                     template: state.template,
-                    tagData: null,
-                    measurements: {},
+                    tagData: state.tagData,
+                    measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
                     weight: { source: 'photo', photoCount: state.photos.weight.length, value: null },
+                    photoLabels: state.photos.main.map(p => p.label || null),
                     audioRecordings: {
                         final: { duration: recordingDuration, timestamp: new Date().toISOString() },
                         discarded: state.discardedRecordings.map((d, i) => ({ index: i + 1, duration: d.duration, timestamp: d.timestamp })),
@@ -1827,6 +1944,7 @@
             state.classificationType = null;
             state.classificationSleeve = null;
             state.classificationIsCampCollar = false;
+            state.classificationHasRaglan = false;
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
@@ -1859,6 +1977,7 @@
             state.photos = { main: [], closeup: [], weight: [], handheld: [] };
             state.classification = null; state.classificationType = null;
             state.classificationSleeve = null; state.classificationIsCampCollar = false;
+            state.classificationHasRaglan = false;
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
