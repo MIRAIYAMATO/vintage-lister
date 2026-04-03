@@ -1,8 +1,17 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.17 - DATA INTEGRITY + LABEL-AWARE PARSING
+    VintageLister v2.9.18 - RAGLAN SHORT-SLEEVE SUPPORT
     
     CHANGELOG:
+    v2.9.18 (2026-04-02):
+    - ADDED: "Center Neck to Sleeve Opening" measurement field with 11 aliases in
+      parseMeasurements() MEASUREMENT_ALIASES for raglan short-sleeve garments
+      (mesh jerseys, raglan baseball tees). Covers variations: center neck to
+      sleeve opening, neck to sleeve, neck to sleeve hem, neck to end of sleeve,
+      raglan to sleeve, etc. Previously silently dropped. SKU 90059.
+    - EXPANDED: "Center Neck to Cuff" aliases — added neck to end of cuff,
+      neck to cuff opening, raglan to cuff (3 new variations).
+
     v2.9.17 (2026-03-04):
     - CRITICAL FIX: measurements now written to jsonData (was hardcoded {})
     - CRITICAL FIX: tagData (brand/size/materials/country) now written to jsonData (was hardcoded null)
@@ -117,7 +126,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.17</title>
+    <title>VintageLister v2.9.18</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -748,7 +757,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.17</span>
+                    <span class="version-badge" id="version-badge">v2.9.18</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -981,7 +990,7 @@
         // VINTAGELISTER v2.9.17 - DATA INTEGRITY + LABEL-AWARE PARSING
         // =============================================================================
         
-        const VERSION = '2.9.17';
+        const VERSION = '2.9.18';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1070,7 +1079,7 @@
             });
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.17 data integrity + label-aware parsing');
+            console.log('✅ Init complete - v2.9.18 raglan short-sleeve support');
         }
         
         // =====================================================================
@@ -1537,6 +1546,7 @@
             // =========================================================
             
             const MEASUREMENT_ALIASES = {
+                'Center Neck to Sleeve Opening': ['center neck to sleeve opening', 'centre neck to sleeve opening', 'center of neck to sleeve opening', 'neck to sleeve opening', 'center neck to sleeve hem', 'neck to sleeve hem', 'center neck to sleeve', 'neck to sleeve', 'neck to end of sleeve', 'raglan to sleeve opening', 'raglan to sleeve'],
                 'Center Neck to Shoulder': ['center neck to shoulder', 'center of neck to shoulder', 'centre neck to shoulder', 'neck to shoulder'],
                 'Shoulder to Sleeve Opening': ['shoulder to sleeve opening', 'shoulder to sleeve hem', 'shoulder to sleeve'],
                 'Pit to Sleeve Opening': ['pit to sleeve opening', 'armpit to sleeve opening', 'pit to sleeve', 'armpit to sleeve'],
@@ -1551,7 +1561,7 @@
                 'Bicep': ['bicep', 'biceps', 'upper arm'],
                 'Elbow': ['elbow'],
                 'Cuff Opening': ['cuff opening', 'cuff hem'],
-                'Center Neck to Cuff': ['center neck to cuff', 'center of neck to cuff', 'centre neck to cuff', 'neck to cuff'],
+                'Center Neck to Cuff': ['center neck to cuff', 'center of neck to cuff', 'centre neck to cuff', 'neck to cuff', 'neck to end of cuff', 'neck to cuff opening', 'raglan to cuff'],
                 'Neck Circumference': ['neck circumference', 'collar circumference', 'neck circ', 'collar'],
                 'Strap Width': ['strap width', 'strap'],
                 'Hip': ['hip', 'hips'],
