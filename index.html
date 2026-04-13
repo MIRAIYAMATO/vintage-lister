@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.19 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
+    VintageLister v2.9.20 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
     
     CHANGELOG:
+    v2.9.20 (2026-04-13):
+    - FIX: Scale stability indicator was stuck on "Stabilizing..." spinner when
+      scale was stable at 0.0 oz (empty scale, nothing on it). The logic combined
+      the stability check (HID byte 1 = 2) with the weight threshold check
+      (>= 0.5 oz) into one condition, so a stable-at-zero scale looked identical
+      to a scale detecting motion. Now shows three distinct states:
+        ✓ STABLE — Place item on scale (green, stable at zero, lock disabled)
+        ✓ STABLE (green, item on scale, lock enabled)
+        Stabilizing... (yellow spinner, scale detecting motion, lock disabled)
+    - Found during initial deployment testing of v2.9.19.
+
     v2.9.19 (2026-04-13):
     - MAJOR: Weight capture completely restructured from photo-based OCR to
       direct USB scale reading via WebHID API.
@@ -89,7 +100,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.19</title>
+    <title>VintageLister v2.9.20</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -775,7 +786,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.19</span>
+                    <span class="version-badge" id="version-badge">v2.9.20</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -1052,11 +1063,11 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.19 - WEIGHT SYSTEM RESTRUCTURE
+        // VINTAGELISTER v2.9.20 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
         // USB Scale Direct Read via WebHID + Weight Photo Code Removed
         // =============================================================================
         
-        const VERSION = '2.9.19';
+        const VERSION = '2.9.20';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1180,7 +1191,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.19 USB scale direct read');
+            console.log('✅ Init complete - v2.9.20 USB scale direct read + stability fix');
         }
         
         // =====================================================================
@@ -1386,10 +1397,17 @@
                     stabilityEl.className = 'scale-stability fault';
                     stabilityEl.innerHTML = '⚠️ Scale fault';
                     lockBtn.disabled = true;
-                } else if (state.scaleStable && reading >= SCALE_MIN_LOCK_OZ) {
+                } else if (state.scaleStable) {
+                    // Scale is stable — show green checkmark regardless of weight
                     stabilityEl.className = 'scale-stability stable';
-                    stabilityEl.innerHTML = '✓ STABLE';
-                    lockBtn.disabled = false;
+                    if (reading >= SCALE_MIN_LOCK_OZ) {
+                        stabilityEl.innerHTML = '✓ STABLE';
+                        lockBtn.disabled = false;
+                    } else {
+                        // Stable at zero/low — scale is fine, just needs item placed
+                        stabilityEl.innerHTML = '✓ STABLE — Place item on scale';
+                        lockBtn.disabled = true;
+                    }
                 } else {
                     stabilityEl.className = 'scale-stability motion';
                     stabilityEl.innerHTML = '<span class="stab-spinner"></span> Stabilizing...';
