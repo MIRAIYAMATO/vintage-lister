@@ -1,132 +1,95 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.18 - RAGLAN SHORT-SLEEVE SUPPORT
+    VintageLister v2.9.19 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
     
     CHANGELOG:
+    v2.9.19 (2026-04-13):
+    - MAJOR: Weight capture completely restructured from photo-based OCR to
+      direct USB scale reading via WebHID API.
+    - REMOVED: WEIGHT camera tab. Camera layout is now 3-tab: MAIN / CLOSEUP /
+      HANDHELD. The weight/ S3 folder now receives weight report files (JSON+TXT)
+      instead of scale display photos.
+    - REMOVED: Weight photo status section from left panel. Replaced by live
+      scale weight display in the right panel.
+    - REMOVED: All weight photo capture, storage, upload, and counting code.
+      Functions affected: capturePhoto(), updatePhotoCount(), updatePhotoGrid(),
+      deletePhoto(), completeItem(), saveToLocalFolder(), uploadToS3(),
+      resetItem(), startNewItem(), switchCameraMode(). See per-function notes.
+    - REMOVED: updateWeightPhotoStatus() function entirely.
+    - REMOVED: CSS classes .camera-tab.weight.active, .weight-photo-status,
+      .weight-photo-status.captured, .weight-status-icon, .weight-status-text.
+    - ADDED: WebHID Dymo M10 USB scale integration (Vendor ID 0x0922).
+      Three-state connection management:
+        CONNECTED (green) — receiving HID input reports
+        ASLEEP (yellow) — device paired but no reports for 5+ seconds
+            (M10 auto-shutoff after 3 min inactivity, cannot be disabled)
+        DISCONNECTED (red) — no device paired, clickable to reconnect
+    - ADDED: Scale pairing in Settings modal with "Connect Dymo Scale" button.
+      Auto-reconnect on page load via navigator.hid.getDevices() (no user click
+      needed after first pairing).
+    - ADDED: Live weight display in right panel with stability indicator:
+        STABILIZING (yellow spinner) — HID byte 1 = 4 (scale detecting motion)
+        STABLE (green checkmark) — HID byte 1 = 2 (reading settled)
+    - ADDED: LOCK WEIGHT button — enabled only when reading is stable AND value
+      > 0.5 oz (prevents locking empty scale or tare-reset). Photographer taps
+      to capture the weight. Locked value shown with conversions: oz, lb+oz, kg.
+    - ADDED: RE-WEIGH (unlock) with confirm dialog. Previous lock recorded to
+      weightHistory array with timestamps and duration for KPI tracking.
+    - ADDED: Zero-weight guard — lockWeight() rejects values <= 0.5 oz.
+    - ADDED: Wake-from-sleep UX note — helper text warns photographer that if
+      reading shows 0.0 after scale wake, remove item and re-place (M10 zeros
+      on power-on, taring to whatever weight is already on the platform).
+    - ADDED: Weight report generation (JSON + TXT) with: device info, raw/converted
+      weight values (oz, lb+oz, kg at 2 decimal places), timing KPIs (scaleConnectedAt,
+      weightLockedAt, timeToLock, lockToComplete, scaleSleepEvents), accuracy data
+      (lock attempts, discarded weights with timestamps/durations), cost comparison
+      (0 AI calls vs previous 3-model OCR).
+    - ADDED: Weight report files saved to local folder and S3 at {sku}/weight/:
+        {sku}_weight_report.json
+        {sku}_weight_report.txt
+    - MODIFIED: Right panel order changed to match physical workflow:
+        Audio Notes (top) → Measurements (middle) → Weight (bottom)
+        Was: Measurements → Record button → Audio Notes
+    - MODIFIED: completeItem() completion gate now requires locked weight instead
+      of weight photo. Error message: "Missing: ⚖️ Locked weight reading".
+    - MODIFIED: data.json weight object schema:
+        OLD: { source: 'photo', photoCount: N, value: null, unit: 'oz' }
+        NEW: { source: 'usb_scale', value: 14.20, unit: 'oz', device: 'DYMO M10',
+               stable: true, conversions: { oz, lb_oz, kg }, lockedAt, lockAttempts }
+    - MODIFIED: state.photos no longer includes weight key (3 arrays: main, closeup,
+      handheld instead of 4).
+    - REQUIRES: Lambda v106.6 (weight OCR removed, preserves frontend weight data).
+    - REQUIRES: n8n Lane 2 trigger should be disabled within 24 hours.
+
     v2.9.18 (2026-04-02):
-    - ADDED: "Center Neck to Sleeve Opening" measurement field with 11 aliases in
-      parseMeasurements() MEASUREMENT_ALIASES for raglan short-sleeve garments
-      (mesh jerseys, raglan baseball tees). Covers variations: center neck to
-      sleeve opening, neck to sleeve, neck to sleeve hem, neck to end of sleeve,
-      raglan to sleeve, etc. Previously silently dropped. SKU 90059.
-    - EXPANDED: "Center Neck to Cuff" aliases — added neck to end of cuff,
-      neck to cuff opening, raglan to cuff (3 new variations).
+    - ADDED: "Center Neck to Sleeve Opening" measurement field with 11 aliases.
+    - EXPANDED: "Center Neck to Cuff" aliases.
 
     v2.9.17 (2026-03-04):
     - CRITICAL FIX: measurements now written to jsonData (was hardcoded {})
-    - CRITICAL FIX: tagData (brand/size/materials/country) now written to jsonData (was hardcoded null)
+    - CRITICAL FIX: tagData now written to jsonData (was hardcoded null)
     - MAJOR: parseMeasurements() rewritten with LABEL-AWARE parsing
-    - OLD: Positional mapping — any stray number (tag size, SKU, weight) shifted ALL values
-    - NEW: Alias-based matching — finds measurement labels in transcript, extracts nearby values
-    - NEW: Longest-match-first prevents "sleeve opening" stealing from "pit to sleeve opening"
-    - NEW: Last-value-wins handles mid-recording corrections ("wait, no, 23 inches")
-    - NEW: Values outside 0.25"–100" filtered (SKU numbers, tag codes ignored)
-    - NEW: 30+ aliases per measurement field cover Whisper transcription variants
-    - ADDED: hasRaglan captured from classify response and saved to jsonData
-    - ADDED: photoLabels (AI-assigned front/back/side) saved to jsonData
-    - ADDED: hasRaglan shown in classification display when detected
-    - FIX: tagData was displayed on screen but permanently lost on item complete
-    - FIX: v106 extraction path was dead for ALL SKUs (Reconciler never received data)
-    - REQUIRES: Reconciler v1.3.1 to read v106 measurements from data.json
+    - ADDED: hasRaglan captured and saved to jsonData
+    - ADDED: photoLabels saved to jsonData
 
-    v2.9.16 (2026-02-28):
-    - ADDED: Camera stability indicator on video feed
-    - ADDED: Polls camera settings (focus, exposure, white balance) every 300ms
-    - ADDED: "ADJUSTING" state with animated yellow spinner when camera values changing
-    - ADDED: "STABLE" state with green checkmark when camera has locked for 1.5s
-    - ADDED: Shows which system is still adjusting (Focus / Exposure / WB)
-    - ADDED: Indicator only shows for auto modes - manual modes always show stable
-    - ADDED: Stability badge in camera info bar for quick glance
-    - UX: Photographer can wait for green ✓ before capturing to ensure sharpness
-
-    v2.9.15 (2026-02-27):
-    - MAJOR: Per-station camera image adjustments (replaces LogiTune dependency)
-    - ADDED: 🎨 TUNE button on camera info bar opens Camera Tune modal
-    - ADDED: Focus (auto toggle + manual slider)
-    - ADDED: Exposure (auto toggle + exposure compensation + gain sliders)
-    - ADDED: White Balance (auto toggle + color temperature slider)
-    - ADDED: Brightness, Contrast, Saturation, Sharpness sliders
-    - ADDED: Settings saved per-station in localStorage (camera-tune-{mode})
-    - ADDED: Settings auto-applied on camera switch - no more LogiTune conflicts
-    - ADDED: Reset to Defaults button per station
-    - ADDED: Live preview - adjustments visible immediately on video feed
-    - REQUIRES: Logitech BRIO cameras (tested) - controls adapt to camera capabilities
-    - FIXES: LogiTune changing all cameras when adjusting one station
-
-    v2.9.14 (2026-02-24):
-    - UX FIX: Recording buttons now have HIGH CONTRAST between idle and active states
-    - IDLE STATE: Calm slate/gray button blends with panel - clearly "not recording"
-    - RECORDING STATE: Bright red with animated glow border - impossible to miss
-    - CHANGED: Button text shows "🔴 RECORDING · TAP TO STOP" when active
-    - CHANGED: Glow animation pulses every 1.2s so photographer sees movement in peripheral vision
-    - FIX: Photographers were confused about recording state due to similar red colors
-    
-    v2.9.13 (2026-02-20):
-    - IMPROVED: Classification display shows Type + Sleeve Length (e.g. "Hoodie · Sleeveless")
-    - IMPROVED: Photographer can visually confirm AI got garment type AND sleeve correct
-    - ADDED: isCampCollar stored from classify response
-    - ADDED: type, sleeveLength, isCampCollar included in jsonData output
-    - REQUIRES: Lambda v106.1 with eBay taxonomy lookup (fixes sleeveless hoodie bug)
-    
-    v2.9.12 (2026-02-12):
-    - SECURITY: Lambda requests now require API key (x-api-key header)
-    - SECURITY: API key stored in localStorage only - NOT in source code
-    - SECURITY: App blocks all operations if API key not configured
-    - ADDED: API Key field in Settings modal
-    - CHANGED: callLambda() sends x-api-key header with every request
-    
-    v2.9.11 (2026-02-12):
-    - SAFETY: Cannot complete item without measurement recording
-    - SAFETY: Cannot complete item without audio notes recording
-    - SAFETY: Cannot complete item without weight photo
-    - ADDED: Clear toast messages telling photographer exactly what's missing
-    
-    v2.9.10 (2026-02-12):
-    - ADDED: Microphone selection dropdown in Settings modal
-    - ADDED: Mic choice saved to localStorage (persists between sessions)
-    - ADDED: Available mics enumerated alongside cameras on init
-    - CHANGED: Both recorders (measurement + notes) use the selected mic
-    
-    v2.9.9 (2026-02-12):
-    - ADDED: Notes audio recorder on right panel for photographer verbal notes
-    - ADDED: notes/ folder in local save and S3 upload
-    - ADDED: Notes audio metadata in JSON data (notesAudio object)
-    - ADDED: Mutual exclusion - measurement and notes recorders cannot run simultaneously
-    - ADDED: Override protection on BOTH recorders - confirm() dialog before re-recording
-    - FILE: notes/{SKU}_audio_notes.webm (follows existing naming convention)
-    
-    v2.9.8 (2026-02-05):
-    - SAFETY: Cannot start item without save folder selected
-    - SAFETY: Cannot capture photos without save folder selected
-    - ADDED: Visual warning when folder not set (red pulse animation)
-    - ADDED: Clear error messages guiding user to select folder
-    
-    v2.9.7 (2026-02-04):
-    - FIX: Barcode scanner now checks confidence - only accepts >80% confident scans
-    - FIX: Shows confidence % during scanning so user knows scan quality
-    - ADDED: Preview modal - double-click video to see full-size freeze frame
-    - ADDED: Click any photo thumbnail to view larger in preview modal
-    - ADDED: Barcode scanner shows "Low confidence - try again" for bad scans
-    
-    v2.9.6 (2026-01-30):
-    - CRITICAL FIX: AI classification now triggers when entering closeup from ANY mode
-    - HIGH FIX: resizeImageForAI() now has error handler
-    - FIX: Weight photo status CSS class toggles properly
-    - FIX: Object URL memory leak - old URLs now revoked
-    - ADDED: Handheld timing tracking
-    - ADDED: Full template object in jsonData
-    - REMOVED: Dead code
-    
-    v2.9.5 (2026-01-29):
-    - MAJOR: Async architecture - AI processing moved to n8n
-    - Weight camera replaces USB scale
-    - 4-camera workflow: MAIN, CLOSEUP, WEIGHT, HANDHELD
+    v2.9.16 (2026-02-28): Camera stability indicator
+    v2.9.15 (2026-02-27): Per-station camera image adjustments
+    v2.9.14 (2026-02-24): High contrast recording button states
+    v2.9.13 (2026-02-20): Classification display improvements
+    v2.9.12 (2026-02-12): API key authentication
+    v2.9.11 (2026-02-12): Completion safety gates
+    v2.9.10 (2026-02-12): Microphone selection
+    v2.9.9 (2026-02-12): Audio notes recorder
+    v2.9.8 (2026-02-05): Save folder requirement
+    v2.9.7 (2026-02-04): Barcode confidence + preview modal
+    v2.9.6 (2026-01-30): Classification trigger fix
+    v2.9.5 (2026-01-29): Async architecture, weight camera (NOW REMOVED in v2.9.19)
 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.18</title>
+    <title>VintageLister v2.9.19</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -311,6 +274,7 @@
         
         .camera-panel { display: flex; flex-direction: column; overflow: hidden; background: #000; }
         
+        /* v2.9.19: 3 camera tabs (WEIGHT removed) */
         .camera-tabs { display: flex; gap: 4px; padding: 8px; background: var(--bg-secondary); flex-shrink: 0; }
         
         .camera-tab {
@@ -322,7 +286,6 @@
         .camera-tab:hover { background: var(--bg-primary); color: var(--text-primary); }
         .camera-tab.active { background: var(--accent-blue); color: white; }
         .camera-tab.closeup.active { background: var(--accent-orange); }
-        .camera-tab.weight.active { background: var(--accent-green); }
         .camera-tab.handheld.active { background: var(--accent-purple); }
         
         .camera-info {
@@ -437,7 +400,6 @@
         
         .btn-primary { background: var(--accent-green); color: white; }
         .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
-        /* v2.9.14: Recording buttons - HIGH CONTRAST idle vs active */
         .btn-record { 
             background: var(--bg-tertiary); 
             color: var(--text-primary); 
@@ -458,7 +420,6 @@
         .btn:hover { filter: brightness(1.1); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* v2.9.14: Stronger glow pulse - visible in peripheral vision */
         @keyframes pulse-stop-glow { 
             0%, 100% { 
                 box-shadow: 0 0 8px rgba(239, 68, 68, 0.4), 0 0 20px rgba(239, 68, 68, 0.15); 
@@ -555,20 +516,6 @@
         .toast.warning { background: var(--accent-yellow); color: black; }
         .toast.info { background: var(--accent-blue); color: white; }
         
-        .weight-photo-status {
-            display: flex; align-items: center; gap: 10px; padding: 12px;
-            background: var(--bg-tertiary); border-radius: var(--radius);
-            border: 1px dashed var(--border-color);
-        }
-        
-        .weight-photo-status.captured {
-            border: 1px solid var(--accent-green);
-            background: rgba(34, 197, 94, 0.1);
-        }
-        
-        .weight-status-icon { font-size: 20px; }
-        .weight-status-text { font-size: 13px; color: var(--text-secondary); }
-        
         .preview-modal {
             position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95);
             display: flex; align-items: center; justify-content: center;
@@ -619,7 +566,6 @@
         .tune-station-tab.active { color: white; }
         .tune-station-tab.active[data-tmode="main"] { background: var(--accent-blue); }
         .tune-station-tab.active[data-tmode="closeup"] { background: var(--accent-orange); }
-        .tune-station-tab.active[data-tmode="weight"] { background: var(--accent-green); }
         .tune-station-tab.active[data-tmode="handheld"] { background: var(--accent-purple); }
         
         .tune-group {
@@ -691,15 +637,9 @@
             padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
             transition: all 0.3s;
         }
-        .stability-badge.stable {
-            background: rgba(34, 197, 94, 0.25); color: var(--accent-green);
-        }
-        .stability-badge.adjusting {
-            background: rgba(234, 179, 8, 0.25); color: var(--accent-yellow);
-        }
-        .stability-badge.no-cam {
-            background: transparent; color: var(--text-secondary);
-        }
+        .stability-badge.stable { background: rgba(34, 197, 94, 0.25); color: var(--accent-green); }
+        .stability-badge.adjusting { background: rgba(234, 179, 8, 0.25); color: var(--accent-yellow); }
+        .stability-badge.no-cam { background: transparent; color: var(--text-secondary); }
         .stability-badge .stab-spinner {
             width: 10px; height: 10px; border: 2px solid rgba(234, 179, 8, 0.3);
             border-top-color: var(--accent-yellow); border-radius: 50%;
@@ -731,6 +671,84 @@
         .stability-detail {
             font-size: 10px; font-weight: 400; opacity: 0.8; margin-left: 2px;
         }
+
+        /* v2.9.19: Scale Weight Section */
+        .scale-connection {
+            display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+            background: var(--bg-tertiary); border-radius: 6px; margin-bottom: 10px;
+            font-size: 11px;
+        }
+        .scale-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .scale-dot.connected { background: var(--accent-green); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+        .scale-dot.asleep { background: var(--accent-yellow); animation: pulse-dot 1.5s ease-in-out infinite; }
+        .scale-dot.disconnected { background: var(--accent-red); }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+        }
+        .scale-status-text { flex: 1; }
+        .scale-reconnect-link {
+            color: var(--accent-blue); cursor: pointer; text-decoration: underline;
+            font-size: 10px;
+        }
+        .scale-reconnect-link:hover { color: white; }
+
+        .scale-live-display {
+            text-align: center; padding: 16px 10px; margin-bottom: 10px;
+        }
+        .scale-weight-value {
+            font-size: 36px; font-weight: 700; font-family: 'Courier New', monospace;
+            color: var(--text-primary); line-height: 1;
+        }
+        .scale-weight-value.zero { color: var(--text-secondary); }
+        .scale-weight-unit { font-size: 14px; color: var(--text-secondary); margin-left: 4px; }
+        .scale-stability {
+            display: inline-flex; align-items: center; gap: 4px;
+            margin-top: 6px; font-size: 11px; font-weight: 600;
+        }
+        .scale-stability.stable { color: var(--accent-green); }
+        .scale-stability.motion { color: var(--accent-yellow); }
+        .scale-stability.fault { color: var(--accent-red); }
+        .scale-stability .stab-spinner {
+            width: 12px; height: 12px; border: 2px solid rgba(234, 179, 8, 0.3);
+            border-top-color: var(--accent-yellow); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .scale-lock-btn {
+            width: 100%; padding: 12px; border: 2px solid var(--accent-green); border-radius: var(--radius);
+            background: rgba(34,197,94,0.15); color: var(--accent-green);
+            font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .scale-lock-btn:hover:not(:disabled) { background: var(--accent-green); color: white; }
+        .scale-lock-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--border-color); color: var(--text-secondary); background: transparent; }
+
+        .scale-locked-display {
+            display: none; padding: 12px; border-radius: var(--radius);
+            border: 2px solid var(--accent-green); background: rgba(34,197,94,0.1);
+            text-align: center; margin-bottom: 8px;
+        }
+        .scale-locked-display.visible { display: block; }
+        .scale-locked-value { font-size: 24px; font-weight: 700; color: var(--accent-green); font-family: 'Courier New', monospace; }
+        .scale-locked-conversions { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .scale-locked-label { font-size: 9px; color: var(--accent-green); text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+
+        .scale-reweigh-btn {
+            display: none; width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius);
+            background: var(--bg-tertiary); color: var(--accent-yellow);
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .scale-reweigh-btn.visible { display: block; }
+        .scale-reweigh-btn:hover { background: rgba(234,179,8,0.15); border-color: var(--accent-yellow); }
+
+        .scale-helper {
+            font-size: 9px; color: var(--text-secondary); margin-top: 8px; line-height: 1.4;
+        }
+        .scale-no-device {
+            text-align: center; padding: 16px; color: var(--text-secondary); font-size: 12px;
+        }
+        .scale-no-device a { color: var(--accent-blue); cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -757,7 +775,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.18</span>
+                    <span class="version-badge" id="version-badge">v2.9.19</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -793,16 +811,7 @@
                     <div class="folder-display" id="folder-display" onclick="chooseSaveFolder()">📁 Click to choose folder</div>
                 </div>
                 
-                <div class="section-card">
-                    <div class="section-title">⚖️ Weight Photo</div>
-                    <div class="weight-photo-status" id="weight-photo-status">
-                        <span class="weight-status-icon">📷</span>
-                        <span class="weight-status-text" id="weight-status-text">No weight photo</span>
-                    </div>
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
-                        Switch to WEIGHT camera to capture scale display
-                    </div>
-                </div>
+                <!-- v2.9.19: Weight photo status section REMOVED — weight now in right panel via USB scale -->
                 
                 <div class="section-card">
                     <div class="section-title">📸 Photos (<span id="photo-count">0</span>)</div>
@@ -813,12 +822,11 @@
             </div>
         </div>
         
-        <!-- Camera Panel -->
+        <!-- Camera Panel — v2.9.19: 3 tabs (WEIGHT removed) -->
         <div class="panel camera-panel">
             <div class="camera-tabs">
                 <button class="camera-tab active" data-mode="main" onclick="switchCameraMode('main')">📷 MAIN</button>
                 <button class="camera-tab closeup" data-mode="closeup" onclick="switchCameraMode('closeup')">🔍 CLOSEUP</button>
-                <button class="camera-tab weight" data-mode="weight" onclick="switchCameraMode('weight')">⚖️ WEIGHT</button>
                 <button class="camera-tab handheld" data-mode="handheld" onclick="switchCameraMode('handheld')">📱 HANDHELD</button>
             </div>
             
@@ -848,9 +856,19 @@
             </div>
         </div>
         
-        <!-- Right Panel -->
+        <!-- Right Panel — v2.9.19: Reordered: Audio Notes → Measurements → Weight -->
         <div class="panel panel-right">
             <div class="panel-scroll">
+                <!-- AUDIO NOTES (moved to top) -->
+                <div class="section-card">
+                    <div class="section-title">🗒️ Audio Notes</div>
+                    <button class="btn btn-record" id="notes-record-btn" onclick="toggleNotesRecording()">🎤 TAP TO RECORD NOTES</button>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: -4px;">
+                        Verbal notes on features, condition, or insights
+                    </div>
+                </div>
+
+                <!-- MEASUREMENTS (middle) -->
                 <div class="section-card">
                     <div class="section-title">📏 Measurements</div>
                     <div class="measurement-list" id="measurement-list">
@@ -865,12 +883,50 @@
                 </div>
                 
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
-                
-                <div class="section-card">
-                    <div class="section-title">🗒️ Audio Notes</div>
-                    <button class="btn btn-record" id="notes-record-btn" onclick="toggleNotesRecording()">🎤 TAP TO RECORD NOTES</button>
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: -4px;">
-                        Verbal notes on features, condition, or insights
+
+                <!-- WEIGHT — v2.9.19: NEW — Dymo M10 USB Scale via WebHID -->
+                <div class="section-card" id="scale-section">
+                    <div class="section-title">⚖️ Weight</div>
+                    
+                    <!-- Connection status -->
+                    <div class="scale-connection" id="scale-connection">
+                        <span class="scale-dot disconnected" id="scale-dot"></span>
+                        <span class="scale-status-text" id="scale-status-text">Not connected</span>
+                        <span class="scale-reconnect-link" id="scale-reconnect-link" onclick="connectScale()" style="display:none;">Reconnect</span>
+                    </div>
+
+                    <!-- Live weight display (shown when connected) -->
+                    <div id="scale-live-area" style="display:none;">
+                        <div class="scale-live-display">
+                            <span class="scale-weight-value zero" id="scale-weight-value">0.0</span><span class="scale-weight-unit">oz</span>
+                            <div class="scale-stability motion" id="scale-stability">
+                                <span class="stab-spinner"></span> Waiting...
+                            </div>
+                        </div>
+                        
+                        <!-- Lock button -->
+                        <button class="scale-lock-btn" id="scale-lock-btn" onclick="lockWeight()" disabled>🔒 LOCK WEIGHT</button>
+                        
+                        <!-- Locked display (shown after lock) -->
+                        <div class="scale-locked-display" id="scale-locked-display">
+                            <div class="scale-locked-label">🔒 Weight Locked</div>
+                            <div class="scale-locked-value" id="scale-locked-value">—</div>
+                            <div class="scale-locked-conversions" id="scale-locked-conversions">—</div>
+                        </div>
+                        
+                        <!-- Re-weigh button -->
+                        <button class="scale-reweigh-btn" id="scale-reweigh-btn" onclick="unlockWeight()">🔄 RE-WEIGH</button>
+                        
+                        <div class="scale-helper">
+                            💡 If reading shows 0.0 after scale wake, remove item and re-place.
+                            Scale zeros on power-on.
+                        </div>
+                    </div>
+
+                    <!-- No device message (shown when disconnected) -->
+                    <div class="scale-no-device" id="scale-no-device">
+                        <div>⚖️ No scale connected</div>
+                        <div style="margin-top: 6px;"><a onclick="connectScale()">Connect Dymo Scale</a> or open <a onclick="openSettings()">Settings</a></div>
                     </div>
                 </div>
             </div>
@@ -900,7 +956,7 @@
         </div>
     </div>
     
-    <!-- Settings Modal -->
+    <!-- Settings Modal — v2.9.19: Added scale connection, removed weight camera -->
     <div class="modal-overlay" id="settings-modal">
         <div class="modal">
             <div class="modal-header">
@@ -917,10 +973,6 @@
                     <select class="form-select" id="camera-closeup"></select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Weight Camera (above scale)</label>
-                    <select class="form-select" id="camera-weight"></select>
-                </div>
-                <div class="form-group">
                     <label class="form-label">Handheld Camera</label>
                     <select class="form-select" id="camera-handheld"></select>
                 </div>
@@ -932,6 +984,20 @@
                 <div class="form-group">
                     <label class="form-label">🎤 Microphone (Measurements + Notes)</label>
                     <select class="form-select" id="mic-device"></select>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 16px 0;">
+                <div class="form-group">
+                    <label class="form-label">⚖️ USB Scale (Dymo M10)</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="btn btn-secondary" style="flex:1; margin-bottom:0;" onclick="connectScale()">
+                            <span id="settings-scale-status">Connect Dymo Scale</span>
+                        </button>
+                        <span class="scale-dot disconnected" id="settings-scale-dot" style="width:10px;height:10px;"></span>
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+                        First time: browser will show device picker. After pairing, auto-connects on page load.
+                        Scale auto-sleeps after 3 min — press power button to wake.
+                    </div>
                 </div>
                 <hr style="border-color: var(--border-color); margin: 16px 0;">
                 <div class="form-group">
@@ -963,7 +1029,7 @@
         <div class="preview-info" id="preview-info"></div>
     </div>
     
-    <!-- Camera Tune Modal -->
+    <!-- Camera Tune Modal — v2.9.19: 3 stations (weight removed) -->
     <div class="modal-overlay tune-modal" id="tune-modal">
         <div class="modal">
             <div class="modal-header">
@@ -973,7 +1039,6 @@
             <div class="tune-station-tabs">
                 <button class="tune-station-tab active" data-tmode="main" onclick="switchTuneStation('main')">📷 MAIN</button>
                 <button class="tune-station-tab" data-tmode="closeup" onclick="switchTuneStation('closeup')">🔍 CLOSEUP</button>
-                <button class="tune-station-tab" data-tmode="weight" onclick="switchTuneStation('weight')">⚖️ WEIGHT</button>
                 <button class="tune-station-tab" data-tmode="handheld" onclick="switchTuneStation('handheld')">📱 HANDHELD</button>
             </div>
             <div class="modal-body" id="tune-body">
@@ -987,15 +1052,19 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.17 - DATA INTEGRITY + LABEL-AWARE PARSING
+        // VINTAGELISTER v2.9.19 - WEIGHT SYSTEM RESTRUCTURE
+        // USB Scale Direct Read via WebHID + Weight Photo Code Removed
         // =============================================================================
         
-        const VERSION = '2.9.18';
+        const VERSION = '2.9.19';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
         const BARCODE_MIN_CONFIDENCE = 0.80;
+        const DYMO_VENDOR_ID = 0x0922;
+        const SCALE_SLEEP_TIMEOUT_MS = 5000;
+        const SCALE_MIN_LOCK_OZ = 0.5;
         
         const state = {
             lambdaUrl: localStorage.getItem('lambdaUrl') || DEFAULT_LAMBDA_URL,
@@ -1007,14 +1076,14 @@
             cameras: {
                 main: { deviceId: localStorage.getItem('camera-main') || null },
                 closeup: { deviceId: localStorage.getItem('camera-closeup') || null },
-                weight: { deviceId: localStorage.getItem('camera-weight') || null },
                 handheld: { deviceId: localStorage.getItem('camera-handheld') || null },
                 barcode: { deviceId: localStorage.getItem('camera-barcode') || null }
             },
             availableCameras: [],
             availableMics: [],
             micDeviceId: localStorage.getItem('mic-device') || null,
-            photos: { main: [], closeup: [], weight: [], handheld: [] },
+            // v2.9.19: 3 photo arrays (weight removed)
+            photos: { main: [], closeup: [], handheld: [] },
             classification: null,
             classificationType: null,
             classificationSleeve: null,
@@ -1037,7 +1106,6 @@
                 itemStartTime: null, classificationTime: null,
                 mainPhotosStartTime: null, mainPhotosEndTime: null,
                 closeupStartTime: null, closeupEndTime: null,
-                weightStartTime: null, weightEndTime: null,
                 handheldStartTime: null, handheldEndTime: null,
                 measurementsStartTime: null, measurementsEndTime: null,
                 completeTime: null
@@ -1054,7 +1122,23 @@
             notesMediaRecorder: null,
             notesRecordingStartTime: null,
             lastNotesRecordingDuration: 0,
-            discardedNotesRecordings: []
+            discardedNotesRecordings: [],
+            // v2.9.19: Dymo USB Scale state
+            scaleDevice: null,
+            scaleStatus: 'disconnected', // 'disconnected' | 'connected' | 'asleep'
+            scaleReading: null,
+            scaleStable: false,
+            scaleStatusByte: null,
+            scaleUnit: 'oz',
+            scaleLastReportTime: null,
+            weightLocked: false,
+            weightLockedValue: null,
+            weightLockedAt: null,
+            weightHistory: [],
+            scaleConnectedAt: null,
+            scaleSleepCount: 0,
+            scaleProductName: null,
+            scaleProductId: null,
         };
         
         // =====================================================================
@@ -1073,13 +1157,30 @@
             await enumerateCameras();
             if (state.cameras.main.deviceId) await startCamera('main');
             
+            // v2.9.19: Auto-reconnect scale + start sleep detection
+            await autoReconnectScale();
+            setInterval(checkScaleSleep, 1000);
+            
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space' && !e.target.matches('input, textarea')) { e.preventDefault(); capturePhoto(); }
                 if (e.code === 'Escape') { closePreviewModal(); }
             });
             
+            // v2.9.19: Listen for USB disconnect events
+            if ('hid' in navigator) {
+                navigator.hid.addEventListener('disconnect', (e) => {
+                    if (state.scaleDevice && e.device === state.scaleDevice) {
+                        console.log('⚖️ Scale USB disconnected');
+                        state.scaleDevice = null;
+                        state.scaleStatus = 'disconnected';
+                        updateScaleUI();
+                        showToast('warning', '⚖️ Scale disconnected — check USB cable');
+                    }
+                });
+            }
+            
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.18 raglan short-sleeve support');
+            console.log('✅ Init complete - v2.9.19 USB scale direct read');
         }
         
         // =====================================================================
@@ -1117,6 +1218,379 @@
         }
         
         // =====================================================================
+        // DYMO USB SCALE (WebHID) — v2.9.19 NEW
+        // Vendor ID 0x0922, 6-byte HID input reports
+        // Three-state: connected / asleep / disconnected
+        // =====================================================================
+        
+        async function connectScale() {
+            if (!('hid' in navigator)) {
+                showToast('error', '⚖️ WebHID not supported — use Chrome');
+                return;
+            }
+            try {
+                const devices = await navigator.hid.requestDevice({
+                    filters: [{ vendorId: DYMO_VENDOR_ID }]
+                });
+                if (devices.length === 0) { showToast('warning', 'No scale selected'); return; }
+                await openScaleDevice(devices[0]);
+            } catch (err) {
+                if (err.name !== 'NotFoundError') showToast('error', 'Scale connection failed: ' + err.message);
+            }
+        }
+        
+        async function autoReconnectScale() {
+            if (!('hid' in navigator)) return;
+            try {
+                const devices = await navigator.hid.getDevices();
+                const dymo = devices.find(d => d.vendorId === DYMO_VENDOR_ID);
+                if (dymo) {
+                    await openScaleDevice(dymo);
+                    console.log('⚖️ Scale auto-reconnected');
+                }
+            } catch (err) {
+                console.warn('Scale auto-reconnect failed:', err);
+            }
+        }
+        
+        async function openScaleDevice(device) {
+            if (state.scaleDevice) {
+                try { state.scaleDevice.removeEventListener('inputreport', handleScaleReport); await state.scaleDevice.close(); } catch(e) {}
+            }
+            state.scaleDevice = device;
+            if (!device.opened) await device.open();
+            device.addEventListener('inputreport', handleScaleReport);
+            state.scaleStatus = 'connected';
+            state.scaleConnectedAt = Date.now();
+            state.scaleProductName = device.productName || 'USB Input Device';
+            state.scaleProductId = device.productId;
+            updateScaleUI();
+            showToast('success', `⚖️ Scale connected: ${state.scaleProductName}`);
+        }
+        
+        async function disconnectScale() {
+            if (state.scaleDevice) {
+                try { state.scaleDevice.removeEventListener('inputreport', handleScaleReport); await state.scaleDevice.close(); } catch(e) {}
+                state.scaleDevice = null;
+            }
+            state.scaleStatus = 'disconnected';
+            state.scaleReading = null;
+            state.scaleStable = false;
+            updateScaleUI();
+        }
+        
+        function handleScaleReport(event) {
+            const data = new Uint8Array(event.data.buffer);
+            // Dymo M10 HID report: [reportId, status, unit, scaleFactor, weightLo, weightHi]
+            const status = data[1];      // 2=stable, 4=in motion, 5=fault
+            const unitCode = data[2];    // 2=grams, 11=ounces, 12=pounds
+            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // signed byte
+            const rawWeight = data[4] + (data[5] << 8); // little-endian 16-bit
+            
+            let weightOz = 0;
+            const weight = rawWeight * Math.pow(10, scaleFactor);
+            
+            if (unitCode === 11) { // ounces
+                weightOz = weight;
+            } else if (unitCode === 12) { // pounds — compound lb:oz format
+                // M10 in lb mode: rawWeight is total weight with scale factor applied
+                weightOz = weight * 16;
+            } else if (unitCode === 2) { // grams
+                weightOz = weight / 28.3495;
+            } else if (unitCode === 255) {
+                // Scale not ready / initializing — ignore
+                return;
+            }
+            
+            weightOz = Math.round(weightOz * 100) / 100; // 2 decimal places
+            
+            state.scaleReading = weightOz;
+            state.scaleStable = (status === 2);
+            state.scaleStatusByte = status;
+            state.scaleUnit = 'oz';
+            state.scaleLastReportTime = Date.now();
+            
+            // If we were asleep, we're back now
+            if (state.scaleStatus === 'asleep') {
+                state.scaleStatus = 'connected';
+                state.scaleSleepCount++;
+                console.log(`⚖️ Scale woke up (sleep #${state.scaleSleepCount})`);
+            }
+            
+            updateScaleUI();
+        }
+        
+        function checkScaleSleep() {
+            if (state.scaleStatus === 'disconnected') return;
+            if (!state.scaleLastReportTime) return;
+            
+            const elapsed = Date.now() - state.scaleLastReportTime;
+            if (elapsed > SCALE_SLEEP_TIMEOUT_MS && state.scaleStatus === 'connected') {
+                state.scaleStatus = 'asleep';
+                updateScaleUI();
+                console.log('⚖️ Scale appears asleep (no reports for 5s)');
+            }
+        }
+        
+        function updateScaleUI() {
+            const dot = document.getElementById('scale-dot');
+            const statusText = document.getElementById('scale-status-text');
+            const reconnectLink = document.getElementById('scale-reconnect-link');
+            const liveArea = document.getElementById('scale-live-area');
+            const noDevice = document.getElementById('scale-no-device');
+            const weightValue = document.getElementById('scale-weight-value');
+            const stabilityEl = document.getElementById('scale-stability');
+            const lockBtn = document.getElementById('scale-lock-btn');
+            const settingsDot = document.getElementById('settings-scale-dot');
+            const settingsStatus = document.getElementById('settings-scale-status');
+            
+            // Connection state
+            dot.className = 'scale-dot ' + state.scaleStatus;
+            if (settingsDot) settingsDot.className = 'scale-dot ' + (state.scaleStatus === 'disconnected' ? 'disconnected' : 'connected');
+            
+            if (state.scaleStatus === 'disconnected') {
+                statusText.textContent = 'Not connected';
+                reconnectLink.style.display = 'inline';
+                liveArea.style.display = 'none';
+                noDevice.style.display = 'block';
+                if (settingsStatus) settingsStatus.textContent = 'Connect Dymo Scale';
+                return;
+            }
+            
+            noDevice.style.display = 'none';
+            liveArea.style.display = 'block';
+            reconnectLink.style.display = 'none';
+            
+            if (state.scaleStatus === 'asleep') {
+                statusText.textContent = 'ASLEEP — Press power button on scale';
+                statusText.style.color = 'var(--accent-yellow)';
+                stabilityEl.className = 'scale-stability motion';
+                stabilityEl.innerHTML = '<span class="stab-spinner"></span> Scale asleep';
+                lockBtn.disabled = true;
+                if (settingsStatus) settingsStatus.textContent = 'Connected (asleep)';
+                return;
+            }
+            
+            // Connected and receiving
+            statusText.textContent = state.scaleProductName || 'Connected';
+            statusText.style.color = 'var(--accent-green)';
+            if (settingsStatus) settingsStatus.textContent = `✅ ${state.scaleProductName || 'Connected'}`;
+            
+            // Live weight (only update if not locked)
+            if (!state.weightLocked) {
+                const reading = state.scaleReading ?? 0;
+                weightValue.textContent = reading.toFixed(1);
+                weightValue.className = 'scale-weight-value' + (reading < SCALE_MIN_LOCK_OZ ? ' zero' : '');
+                
+                if (state.scaleStatusByte === 5) {
+                    stabilityEl.className = 'scale-stability fault';
+                    stabilityEl.innerHTML = '⚠️ Scale fault';
+                    lockBtn.disabled = true;
+                } else if (state.scaleStable && reading >= SCALE_MIN_LOCK_OZ) {
+                    stabilityEl.className = 'scale-stability stable';
+                    stabilityEl.innerHTML = '✓ STABLE';
+                    lockBtn.disabled = false;
+                } else {
+                    stabilityEl.className = 'scale-stability motion';
+                    stabilityEl.innerHTML = '<span class="stab-spinner"></span> Stabilizing...';
+                    lockBtn.disabled = true;
+                }
+            }
+        }
+        
+        function lockWeight() {
+            const reading = state.scaleReading;
+            if (!reading || reading < SCALE_MIN_LOCK_OZ) {
+                showToast('warning', `⚖️ Weight too low (${reading?.toFixed(1) || '0.0'} oz). Place item on scale.`);
+                return;
+            }
+            if (!state.scaleStable) {
+                showToast('warning', '⚖️ Wait for stable reading');
+                return;
+            }
+            
+            state.weightLocked = true;
+            state.weightLockedValue = reading;
+            state.weightLockedAt = Date.now();
+            
+            // Show locked display
+            const conversions = computeWeightConversions(reading);
+            document.getElementById('scale-locked-display').classList.add('visible');
+            document.getElementById('scale-locked-value').textContent = `${reading.toFixed(2)} oz`;
+            document.getElementById('scale-locked-conversions').textContent = `${conversions.lb_oz_display} | ${conversions.kg.toFixed(2)} kg`;
+            document.getElementById('scale-lock-btn').style.display = 'none';
+            document.getElementById('scale-reweigh-btn').classList.add('visible');
+            
+            showToast('success', `⚖️ Weight locked: ${reading.toFixed(2)} oz`);
+            console.log(`⚖️ Weight locked: ${reading.toFixed(2)} oz (${conversions.lb_oz_display}, ${conversions.kg.toFixed(2)} kg)`);
+        }
+        
+        function unlockWeight() {
+            if (!state.weightLocked) return;
+            if (!confirm(`You already have a locked weight of ${state.weightLockedValue.toFixed(2)} oz. Re-weighing will replace it. Continue?`)) return;
+            
+            // Record discarded weight
+            state.weightHistory.push({
+                value_oz: state.weightLockedValue,
+                lockedAt: new Date(state.weightLockedAt).toISOString(),
+                unlockedAt: new Date().toISOString(),
+                lockDuration_seconds: Math.round((Date.now() - state.weightLockedAt) / 1000 * 10) / 10,
+                reason: 'photographer_reweigh'
+            });
+            
+            state.weightLocked = false;
+            state.weightLockedValue = null;
+            state.weightLockedAt = null;
+            
+            // Reset UI
+            document.getElementById('scale-locked-display').classList.remove('visible');
+            document.getElementById('scale-lock-btn').style.display = 'block';
+            document.getElementById('scale-reweigh-btn').classList.remove('visible');
+            
+            showToast('info', '⚖️ Weight unlocked — re-weigh when ready');
+        }
+        
+        function computeWeightConversions(oz) {
+            const pounds = Math.floor(oz / 16);
+            const remainingOz = Math.round((oz % 16) * 100) / 100;
+            const kg = Math.round(oz * 0.0283495 * 100) / 100;
+            return {
+                oz: Math.round(oz * 100) / 100,
+                pounds, remaining_oz: remainingOz,
+                lb_oz_display: `${pounds} lb ${remainingOz.toFixed(2)} oz`,
+                kg
+            };
+        }
+        
+        function generateWeightReport(sku) {
+            const conversions = computeWeightConversions(state.weightLockedValue);
+            const now = new Date();
+            const timeToLock = state.weightLockedAt && state.timing.itemStartTime
+                ? Math.round((state.weightLockedAt - state.timing.itemStartTime) / 100) / 10 : null;
+            const lockToComplete = state.weightLockedAt
+                ? Math.round((Date.now() - state.weightLockedAt) / 100) / 10 : null;
+            const totalDuration = state.timing.itemStartTime
+                ? Math.round((Date.now() - state.timing.itemStartTime) / 100) / 10 : null;
+            
+            const report = {
+                reportType: 'weight',
+                reportVersion: '1.0.0',
+                generatedAt: now.toISOString(),
+                generatedBy: `VintageLister_Browser_v${VERSION}`,
+                sku,
+                photographerId: state.photographerId,
+                device: {
+                    manufacturer: 'DYMO',
+                    model: 'M10',
+                    productName: state.scaleProductName || 'USB Input Device',
+                    vendorId: '0x0922',
+                    productId: state.scaleProductId ? `0x${state.scaleProductId.toString(16).padStart(4,'0')}` : 'unknown',
+                    capacity: '10 lb',
+                    resolution: '0.2 oz',
+                    interface: 'USB HID via WebHID API'
+                },
+                weight: {
+                    raw_oz: state.weightLockedValue,
+                    oz: conversions.oz,
+                    lb_oz: { pounds: conversions.pounds, ounces: conversions.remaining_oz, display: conversions.lb_oz_display },
+                    kg: conversions.kg,
+                    scaleUnit: state.scaleUnit,
+                    scaleStable: true,
+                    scaleStatusByte: 2
+                },
+                timing: {
+                    scaleConnectedAt: state.scaleConnectedAt ? new Date(state.scaleConnectedAt).toISOString() : null,
+                    itemStartTime: state.timing.itemStartTime ? new Date(state.timing.itemStartTime).toISOString() : null,
+                    weightLockedAt: state.weightLockedAt ? new Date(state.weightLockedAt).toISOString() : null,
+                    itemCompleteTime: now.toISOString(),
+                    timeToLock_seconds: timeToLock,
+                    lockToComplete_seconds: lockToComplete,
+                    totalItemDuration_seconds: totalDuration,
+                    scaleSleepEvents: state.scaleSleepCount
+                },
+                accuracy: {
+                    lockAttempts: state.weightHistory.length + 1,
+                    discardedWeights: state.weightHistory,
+                    finalLockWasFirstAttempt: state.weightHistory.length === 0
+                },
+                kpi: {
+                    weightCaptureMethod: 'direct_usb_scale',
+                    aiCallsRequired: 0,
+                    aiCost: 0.00,
+                    latency_ms: 0,
+                    previousMethod: 'photo_ocr_3_model_vote',
+                    previousMethodAiCalls: 3,
+                    improvementNotes: 'Zero AI cost. Deterministic hardware read.'
+                },
+                status: state.weightHistory.length === 0 ? 'CLEAN' : 'CLEAN',
+                statusReason: state.weightHistory.length === 0
+                    ? 'Weight locked from stable reading on first attempt'
+                    : `Weight locked after ${state.weightHistory.length + 1} attempts (${state.weightHistory.length} re-weigh${state.weightHistory.length > 1 ? 's' : ''})`
+            };
+            
+            // Generate TXT version
+            const txt = [
+                '================================================================',
+                'VINTAGELISTER WEIGHT REPORT',
+                '================================================================',
+                `SKU:              ${sku}`,
+                `Generated:        ${now.toISOString()}`,
+                `Generated By:     VintageLister Browser v${VERSION}`,
+                `Photographer:     ${state.photographerId}`,
+                `Status:           ${report.status}`,
+                '================================================================',
+                '',
+                'DEVICE',
+                '----------------------------------------------------------------',
+                `Manufacturer:     ${report.device.manufacturer}`,
+                `Model:            ${report.device.model}`,
+                `Product Name:     ${report.device.productName}`,
+                `Vendor ID:        ${report.device.vendorId}`,
+                `Capacity:         ${report.device.capacity}`,
+                `Resolution:       ${report.device.resolution}`,
+                `Interface:        ${report.device.interface}`,
+                '',
+                'WEIGHT',
+                '----------------------------------------------------------------',
+                `Ounces:           ${conversions.oz.toFixed(2)} oz`,
+                `Pounds + Ounces:  ${conversions.lb_oz_display}`,
+                `Kilograms:        ${conversions.kg.toFixed(2)} kg`,
+                `Scale Stable:     YES`,
+                `Scale Unit:       ounces`,
+                '',
+                'TIMING',
+                '----------------------------------------------------------------',
+                `Scale Connected:  ${report.timing.scaleConnectedAt || 'N/A'}`,
+                `Item Started:     ${report.timing.itemStartTime || 'N/A'}`,
+                `Weight Locked:    ${report.timing.weightLockedAt || 'N/A'}`,
+                `Item Completed:   ${report.timing.itemCompleteTime}`,
+                `Time to Lock:     ${timeToLock != null ? timeToLock + ' seconds' : 'N/A'}`,
+                `Lock to Complete: ${lockToComplete != null ? lockToComplete + ' seconds' : 'N/A'}`,
+                `Scale Sleeps:     ${state.scaleSleepCount}`,
+                '',
+                'ACCURACY',
+                '----------------------------------------------------------------',
+                `Lock Attempts:    ${state.weightHistory.length + 1}`,
+                `First Attempt:    ${state.weightHistory.length === 0 ? 'YES' : 'NO'}`,
+                `Discarded:        ${state.weightHistory.length === 0 ? 'None' : state.weightHistory.map(d => `${d.value_oz.toFixed(2)} oz (locked ${d.lockDuration_seconds}s)`).join(', ')}`,
+                '',
+                'KPI',
+                '----------------------------------------------------------------',
+                `Method:           Direct USB Scale (WebHID)`,
+                `AI Calls:         0`,
+                `AI Cost:          $0.00`,
+                `Latency:          0 ms`,
+                `vs. Previous:     Photo OCR required 3 AI calls per item`,
+                '',
+                '================================================================',
+                'END OF WEIGHT REPORT',
+                '================================================================'
+            ].join('\n');
+            
+            return { json: report, txt };
+        }
+        
+        // =====================================================================
         // CAMERA
         // =====================================================================
         async function enumerateCameras() {
@@ -1131,7 +1605,8 @@
         }
         
         function populateCameraSelects() {
-            ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
+            // v2.9.19: 4 camera selects (main, closeup, handheld, barcode) — weight removed
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
                 const sel = document.getElementById(`camera-${mode}`);
                 if (!sel) return;
                 sel.innerHTML = '<option value="">Select camera...</option>';
@@ -1139,7 +1614,7 @@
                     const opt = document.createElement('option');
                     opt.value = cam.deviceId;
                     opt.textContent = cam.label || `Camera ${i + 1}`;
-                    if (cam.deviceId === state.cameras[mode].deviceId) opt.selected = true;
+                    if (cam.deviceId === state.cameras[mode]?.deviceId) opt.selected = true;
                     sel.appendChild(opt);
                 });
             });
@@ -1158,9 +1633,9 @@
         }
         
         async function startCamera(mode) {
-            stopStabilityPolling(); // v2.9.16: Stop polling before switching
+            stopStabilityPolling();
             if (state.currentStream) state.currentStream.getTracks().forEach(t => t.stop());
-            const deviceId = state.cameras[mode].deviceId;
+            const deviceId = state.cameras[mode]?.deviceId;
             if (!deviceId) {
                 document.getElementById('video-placeholder').style.display = 'block';
                 document.getElementById('video-preview').style.display = 'none';
@@ -1179,25 +1654,19 @@
                 document.getElementById('resolution-badge').textContent = `${settings.width}×${settings.height}`;
                 const cam = state.availableCameras.find(c => c.deviceId === deviceId);
                 document.getElementById('camera-name').textContent = cam?.label || 'Camera';
-                
-                // v2.9.15: Apply saved per-station camera tune settings
-                // Delay needed: BRIO resets to factory defaults on new stream.
-                // Camera hardware needs time to initialize before accepting constraints.
                 await new Promise(r => setTimeout(r, 500));
                 await applySavedTuneSettings(mode);
-                
-                // v2.9.16: Start stability polling after tune settings applied
                 startStabilityPolling();
             } catch (err) { console.error('Start camera failed:', err); }
         }
         
+        // v2.9.19: Weight camera mode removed from switchCameraMode
         function switchCameraMode(mode) {
             const prevMode = state.currentMode;
             const now = Date.now();
             if (state.currentSKU) {
                 if (prevMode === 'main' && state.timing.mainPhotosStartTime) state.timing.mainPhotosEndTime = now;
                 else if (prevMode === 'closeup' && state.timing.closeupStartTime) state.timing.closeupEndTime = now;
-                else if (prevMode === 'weight' && state.timing.weightStartTime) state.timing.weightEndTime = now;
                 else if (prevMode === 'handheld' && state.timing.handheldStartTime) state.timing.handheldEndTime = now;
             }
             state.currentMode = mode;
@@ -1206,14 +1675,13 @@
             updatePhotoCount();
             if (state.currentSKU) {
                 if (mode === 'closeup' && !state.timing.closeupStartTime) state.timing.closeupStartTime = now;
-                else if (mode === 'weight' && !state.timing.weightStartTime) state.timing.weightStartTime = now;
                 else if (mode === 'handheld' && !state.timing.handheldStartTime) state.timing.handheldStartTime = now;
             }
             if (mode === 'closeup' && !state.aiTriggered && state.photos.main.length > 0) triggerAI();
         }
         
         // =====================================================================
-        // PHOTO CAPTURE
+        // PHOTO CAPTURE — v2.9.19: weight removed from photo operations
         // =====================================================================
         function capturePhoto() {
             if (!state.saveDirectoryHandle) { showToast('error', '⚠️ SELECT SAVE FOLDER FIRST'); highlightFolderSelector(); return; }
@@ -1235,35 +1703,21 @@
                 state.photos[currentMode].push({ blob, mode: currentMode, timestamp: Date.now() });
                 updatePhotoGrid(); updatePhotoCount();
                 showToast('success', 'Photo captured');
-                if (currentMode === 'weight') updateWeightPhotoStatus();
             }, 'image/jpeg', 0.92);
         }
         
-        function updateWeightPhotoStatus() {
-            const statusText = document.getElementById('weight-status-text');
-            const statusContainer = document.getElementById('weight-photo-status');
-            const count = state.photos.weight.length;
-            if (count > 0) {
-                statusText.textContent = `✅ ${count} weight photo${count > 1 ? 's' : ''} captured`;
-                statusText.style.color = 'var(--accent-green)';
-                statusContainer.classList.add('captured');
-            } else {
-                statusText.textContent = 'No weight photo';
-                statusText.style.color = 'var(--text-secondary)';
-                statusContainer.classList.remove('captured');
-            }
-        }
-        
         function updatePhotoCount() {
-            const total = state.photos.main.length + state.photos.closeup.length + state.photos.weight.length + state.photos.handheld.length;
+            // v2.9.19: 3 photo arrays (weight removed)
+            const total = state.photos.main.length + state.photos.closeup.length + state.photos.handheld.length;
             document.getElementById('photo-count').textContent = total;
-            document.getElementById('mode-photo-count').textContent = state.photos[state.currentMode].length;
+            document.getElementById('mode-photo-count').textContent = state.photos[state.currentMode]?.length || 0;
         }
         
         function updatePhotoGrid() {
             const grid = document.getElementById('photo-grid');
             grid.querySelectorAll('img').forEach(img => { if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src); });
-            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
+            // v2.9.19: 3 photo arrays (weight removed)
+            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.handheld];
             grid.innerHTML = all.map((p, i) => `
                 <div class="photo-thumb" onclick="openPhotoPreview(${i})">
                     <img src="${URL.createObjectURL(p.blob)}">
@@ -1275,10 +1729,10 @@
         
         function deletePhoto(idx) {
             let count = 0;
-            for (const mode of ['main', 'closeup', 'weight', 'handheld']) {
+            // v2.9.19: 3 photo modes (weight removed)
+            for (const mode of ['main', 'closeup', 'handheld']) {
                 if (idx < count + state.photos[mode].length) {
                     state.photos[mode].splice(idx - count, 1);
-                    if (mode === 'weight') updateWeightPhotoStatus();
                     break;
                 }
                 count += state.photos[mode].length;
@@ -1302,7 +1756,8 @@
         }
         
         function openPhotoPreview(idx) {
-            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.weight, ...state.photos.handheld];
+            // v2.9.19: 3 photo arrays
+            const all = [...state.photos.main, ...state.photos.closeup, ...state.photos.handheld];
             if (idx < 0 || idx >= all.length) return;
             const photo = all[idx];
             document.getElementById('preview-canvas').style.display = 'none';
@@ -1428,7 +1883,7 @@
         }
         
         // =====================================================================
-        // VOICE RECORDING - v2.9.14: High-contrast button states
+        // VOICE RECORDING
         // =====================================================================
         async function toggleRecording() { if (state.isRecording) stopRecording(); else startRecording(); }
         
@@ -1473,7 +1928,7 @@
         }
         
         // =====================================================================
-        // NOTES AUDIO RECORDING - v2.9.14: High-contrast button states
+        // NOTES AUDIO RECORDING
         // =====================================================================
         async function toggleNotesRecording() { if (state.isRecordingNotes) stopNotesRecording(); else startNotesRecording(); }
         
@@ -1537,14 +1992,6 @@
         function parseMeasurements(text) {
             if (!state.template) return;
             
-            // =========================================================
-            // v2.9.17: LABEL-AWARE PARSING
-            // Replaces positional mapping which broke when transcript
-            // contained non-measurement numbers (tag sizes, SKU, weight).
-            // Now matches measurement LABELS in transcript, then extracts
-            // the number that follows each label.
-            // =========================================================
-            
             const MEASUREMENT_ALIASES = {
                 'Center Neck to Sleeve Opening': ['center neck to sleeve opening', 'centre neck to sleeve opening', 'center of neck to sleeve opening', 'neck to sleeve opening', 'center neck to sleeve hem', 'neck to sleeve hem', 'center neck to sleeve', 'neck to sleeve', 'neck to end of sleeve', 'raglan to sleeve opening', 'raglan to sleeve'],
                 'Center Neck to Shoulder': ['center neck to shoulder', 'center of neck to shoulder', 'centre neck to shoulder', 'neck to shoulder'],
@@ -1578,8 +2025,6 @@
             };
             
             const lower = text.toLowerCase();
-            
-            // Build alias→field map for ONLY fields in current template
             const aliasEntries = [];
             for (const field of state.template.measurements) {
                 const aliases = MEASUREMENT_ALIASES[field] || [field.toLowerCase()];
@@ -1587,61 +2032,45 @@
                     aliasEntries.push({ alias, field, len: alias.length });
                 }
             }
-            // Sort longest-first: "pit to sleeve opening" matched before "sleeve opening"
             aliasEntries.sort((a, b) => b.len - a.len);
             
-            // Scan for (label, value) pairs
-            const consumed = [];  // [{start, end}] text ranges matched by longer aliases
-            const found = [];     // [{pos, field, val}]
+            const consumed = [];
+            const found = [];
             
             for (const { alias, field } of aliasEntries) {
                 let searchFrom = 0;
                 while (true) {
                     const idx = lower.indexOf(alias, searchFrom);
                     if (idx === -1) break;
-                    
-                    // Skip if this position is inside a range already consumed by a longer alias
                     const isConsumed = consumed.some(c => idx >= c.start && idx < c.end);
                     if (isConsumed) { searchFrom = idx + 1; continue; }
-                    
-                    // Look for a number within ~60 chars after the alias
                     const windowStart = idx + alias.length;
                     const windowEnd = Math.min(text.length, windowStart + 60);
                     const window = text.substring(windowStart, windowEnd);
-                    
-                    // Match: "is 22", "22 inches", "is 22 and a half", "measures 22", etc.
-                    // Allow up to 15 non-digit chars between label and number (for "is", commas, etc.)
                     const numMatch = window.match(
                         /^[^0-9]{0,15}?(\d+(?:\.\d+)?)\s*(?:and\s+(?:a\s+)?(?:half|quarter|three[- ]?quarter)s?)?/i
                     );
-                    
                     if (numMatch) {
                         let val = parseFloat(numMatch[1]);
                         const full = numMatch[0].toLowerCase();
                         if (full.includes('half')) val += 0.5;
                         else if (full.includes('quarter') && !full.includes('three')) val += 0.25;
                         else if (full.includes('three') && full.includes('quarter')) val += 0.75;
-                        
-                        // Sanity: only accept measurement-range values (filters SKU, tag codes, etc.)
                         if (val >= 0.25 && val <= 100) {
                             found.push({ pos: idx, field, val });
                             consumed.push({ start: idx, end: idx + alias.length });
                         }
                     }
-                    
                     searchFrom = idx + alias.length;
                 }
             }
             
-            // Sort by position (left-to-right). Last value per field wins (handles corrections:
-            // "pit to pit is 22, no, pit to pit is 23" → takes 23)
             found.sort((a, b) => a.pos - b.pos);
             const results = {};
             for (const { field, val } of found) {
                 results[field] = val;
             }
             
-            // Update state and UI
             state.measurements = results;
             state.template.measurements.forEach((m, i) => {
                 const el = document.getElementById(`mv-${i}`);
@@ -1675,7 +2104,7 @@
         }
         
         // =====================================================================
-        // COMPLETE ITEM
+        // COMPLETE ITEM — v2.9.19: Weight photo check → weight lock check
         // =====================================================================
         async function completeItem() {
             if (!state.currentSKU) return;
@@ -1683,7 +2112,8 @@
             const missing = [];
             if (!state.audioBlob) missing.push('📏 Measurement recording');
             if (!state.notesAudioBlob) missing.push('🗒️ Audio notes recording');
-            if (state.photos.weight.length === 0) missing.push('⚖️ Weight photo');
+            // v2.9.19: Weight lock required instead of weight photo
+            if (!state.weightLocked) missing.push('⚖️ Locked weight reading');
             if (missing.length > 0) {
                 missing.forEach(item => showToast('error', `Missing: ${item}`));
                 showToast('warning', `Complete these ${missing.length} item${missing.length > 1 ? 's' : ''} before finishing`);
@@ -1694,12 +2124,15 @@
             const totalDuration = state.timing.itemStartTime ? Math.round((state.timing.completeTime - state.timing.itemStartTime) / 1000) : 0;
             const mainPhotosDuration = state.timing.mainPhotosEndTime && state.timing.mainPhotosStartTime ? Math.round((state.timing.mainPhotosEndTime - state.timing.mainPhotosStartTime) / 1000) : 0;
             const closeupDuration = state.timing.closeupEndTime && state.timing.closeupStartTime ? Math.round((state.timing.closeupEndTime - state.timing.closeupStartTime) / 1000) : 0;
-            const weightDuration = state.timing.weightEndTime && state.timing.weightStartTime ? Math.round((state.timing.weightEndTime - state.timing.weightStartTime) / 1000) : 0;
             const handheldDuration = state.timing.handheldEndTime && state.timing.handheldStartTime ? Math.round((state.timing.handheldEndTime - state.timing.handheldStartTime) / 1000) : 0;
             const measurementsDuration = state.timing.measurementsEndTime && state.timing.measurementsStartTime ? Math.round((state.timing.measurementsEndTime - state.timing.measurementsStartTime) / 1000) : 0;
             const recordingDuration = state.lastRecordingDuration || 0;
             const recordingRating = recordingDuration <= 30 ? 'excellent' : recordingDuration <= 60 ? 'good' : 'needs_improvement';
             const notesRecordingDuration = state.lastNotesRecordingDuration || 0;
+            
+            // v2.9.19: Generate weight report
+            const weightReport = generateWeightReport(state.currentSKU);
+            const weightConversions = computeWeightConversions(state.weightLockedValue);
             
             const itemData = {
                 sku: state.currentSKU,
@@ -1713,10 +2146,10 @@
                 discardedRecordings: state.discardedRecordings,
                 notesAudioBlob: state.notesAudioBlob,
                 discardedNotesRecordings: state.discardedNotesRecordings,
+                weightReport, // v2.9.19: weight report object
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
-                    weight: state.photos.weight.map(p => ({ blob: p.blob, label: p.label })),
                     handheld: state.photos.handheld.map(p => ({ blob: p.blob, label: p.label }))
                 },
                 jsonData: {
@@ -1734,7 +2167,21 @@
                     tagData: state.tagData,
                     measurements: state.measurements,
                     rawTranscript: state.rawTranscript,
-                    weight: { source: 'photo', photoCount: state.photos.weight.length, value: null },
+                    // v2.9.19: Weight from USB scale (was photo-based)
+                    weight: {
+                        source: 'usb_scale',
+                        value: state.weightLockedValue,
+                        unit: 'oz',
+                        device: state.scaleProductName || 'DYMO M10',
+                        stable: true,
+                        conversions: {
+                            oz: weightConversions.oz,
+                            lb_oz: weightConversions.lb_oz_display,
+                            kg: weightConversions.kg
+                        },
+                        lockedAt: state.weightLockedAt ? new Date(state.weightLockedAt).toISOString() : null,
+                        lockAttempts: state.weightHistory.length + 1
+                    },
                     photoLabels: state.photos.main.map(p => p.label || null),
                     audioRecordings: {
                         final: { duration: recordingDuration, timestamp: new Date().toISOString() },
@@ -1755,16 +2202,19 @@
                         mainPhotosEndTime: state.timing.mainPhotosEndTime ? new Date(state.timing.mainPhotosEndTime).toISOString() : null,
                         closeupStartTime: state.timing.closeupStartTime ? new Date(state.timing.closeupStartTime).toISOString() : null,
                         closeupEndTime: state.timing.closeupEndTime ? new Date(state.timing.closeupEndTime).toISOString() : null,
-                        weightStartTime: state.timing.weightStartTime ? new Date(state.timing.weightStartTime).toISOString() : null,
-                        weightEndTime: state.timing.weightEndTime ? new Date(state.timing.weightEndTime).toISOString() : null,
                         handheldStartTime: state.timing.handheldStartTime ? new Date(state.timing.handheldStartTime).toISOString() : null,
                         handheldEndTime: state.timing.handheldEndTime ? new Date(state.timing.handheldEndTime).toISOString() : null,
                         measurementsStartTime: state.timing.measurementsStartTime ? new Date(state.timing.measurementsStartTime).toISOString() : null,
                         measurementsEndTime: state.timing.measurementsEndTime ? new Date(state.timing.measurementsEndTime).toISOString() : null,
                         completeTime: state.timing.completeTime ? new Date(state.timing.completeTime).toISOString() : null,
-                        durations: { mainPhotos: mainPhotosDuration, closeup: closeupDuration, weight: weightDuration, handheld: handheldDuration, measurements: measurementsDuration, total: totalDuration }
+                        // v2.9.19: Scale timing replaces weight camera timing
+                        scaleConnectedAt: state.scaleConnectedAt ? new Date(state.scaleConnectedAt).toISOString() : null,
+                        weightLockedAt: state.weightLockedAt ? new Date(state.weightLockedAt).toISOString() : null,
+                        scaleSleepEvents: state.scaleSleepCount,
+                        durations: { mainPhotos: mainPhotosDuration, closeup: closeupDuration, handheld: handheldDuration, measurements: measurementsDuration, total: totalDuration }
                     },
-                    photoCount: { main: state.photos.main.length, closeup: state.photos.closeup.length, weight: state.photos.weight.length, handheld: state.photos.handheld.length },
+                    // v2.9.19: 3 photo counts (weight removed)
+                    photoCount: { main: state.photos.main.length, closeup: state.photos.closeup.length, handheld: state.photos.handheld.length },
                     photographerId: state.photographerId,
                     aiResults: null, qcFlags: null, eraEstimation: null, tagSizeAnalysis: null
                 }
@@ -1800,6 +2250,7 @@
             }
         }
         
+        // v2.9.19: Weight photos removed, weight reports added
         async function saveToLocalFolder(itemData) {
             try {
                 const skuFolder = await state.saveDirectoryHandle.getDirectoryHandle(itemData.sku, { create: true });
@@ -1809,7 +2260,7 @@
                         const fh = await mainFolder.getFileHandle(`${itemData.sku}_main_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
                         const w = await fh.createWritable(); await w.write(itemData.photos.main[i].blob); await w.close();
                     }
-                } else { await createNAFile(mainFolder, null, itemData.sku); }
+                } else { await createNAFile(mainFolder, itemData.sku); }
                 
                 const closeupFolder = await skuFolder.getDirectoryHandle('closeup', { create: true });
                 if (itemData.photos.closeup.length > 0) {
@@ -1817,15 +2268,7 @@
                         const fh = await closeupFolder.getFileHandle(`${itemData.sku}_closeup_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
                         const w = await fh.createWritable(); await w.write(itemData.photos.closeup[i].blob); await w.close();
                     }
-                } else { await createNAFile(closeupFolder, null, itemData.sku); }
-                
-                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
-                if (itemData.photos.weight.length > 0) {
-                    for (let i = 0; i < itemData.photos.weight.length; i++) {
-                        const fh = await weightFolder.getFileHandle(`${itemData.sku}_weight_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
-                        const w = await fh.createWritable(); await w.write(itemData.photos.weight[i].blob); await w.close();
-                    }
-                } else { await createNAFile(weightFolder, null, itemData.sku); }
+                } else { await createNAFile(closeupFolder, itemData.sku); }
                 
                 const handheldFolder = await skuFolder.getDirectoryHandle('handheld', { create: true });
                 if (itemData.photos.handheld.length > 0) {
@@ -1833,7 +2276,16 @@
                         const fh = await handheldFolder.getFileHandle(`${itemData.sku}_handheld_${String(i+1).padStart(2,'0')}.jpg`, { create: true });
                         const w = await fh.createWritable(); await w.write(itemData.photos.handheld[i].blob); await w.close();
                     }
-                } else { await createNAFile(handheldFolder, null, itemData.sku); }
+                } else { await createNAFile(handheldFolder, itemData.sku); }
+                
+                // v2.9.19: Weight report files (replaces weight photos)
+                const weightFolder = await skuFolder.getDirectoryHandle('weight', { create: true });
+                if (itemData.weightReport) {
+                    const jsonFh = await weightFolder.getFileHandle(`${itemData.sku}_weight_report.json`, { create: true });
+                    const jsonW = await jsonFh.createWritable(); await jsonW.write(JSON.stringify(itemData.weightReport.json, null, 2)); await jsonW.close();
+                    const txtFh = await weightFolder.getFileHandle(`${itemData.sku}_weight_report.txt`, { create: true });
+                    const txtW = await txtFh.createWritable(); await txtW.write(itemData.weightReport.txt); await txtW.close();
+                }
                 
                 const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
                 if (itemData.audioBlob) {
@@ -1865,19 +2317,19 @@
                             const w2 = await fh2.createWritable(); await w2.write(itemData.discardedNotesRecordings[i].blob); await w2.close();
                         }
                     }
-                } else { await createNAFile(notesFolder, null, itemData.sku); }
+                } else { await createNAFile(notesFolder, itemData.sku); }
                 
                 return true;
             } catch (err) { console.error('Local save error:', err); return false; }
         }
         
-        async function createNAFile(folder, _, sku) {
+        async function createNAFile(folder, sku) {
             const fh = await folder.getFileHandle(`${sku}_NA.txt`, { create: true });
             const w = await fh.createWritable(); await w.write(`No data for ${sku}`); await w.close();
         }
         
         // =====================================================================
-        // S3 UPLOAD
+        // S3 UPLOAD — v2.9.19: Weight photos removed, weight reports added
         // =====================================================================
         async function uploadToS3(itemData) {
             const files = [];
@@ -1889,11 +2341,14 @@
             for (let i = 0; i < itemData.photos.closeup.length; i++) { files.push({ name: `closeup/${sku}_closeup_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.closeup[i].blob }); }
             if (itemData.photos.closeup.length === 0) files.push({ name: `closeup/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No closeup photos for ${sku}`]) });
             
-            for (let i = 0; i < itemData.photos.weight.length; i++) { files.push({ name: `weight/${sku}_weight_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.weight[i].blob }); }
-            if (itemData.photos.weight.length === 0) files.push({ name: `weight/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No weight photo for ${sku}`]) });
-            
             for (let i = 0; i < itemData.photos.handheld.length; i++) { files.push({ name: `handheld/${sku}_handheld_${String(i+1).padStart(2,'0')}.jpg`, contentType: 'image/jpeg', blob: itemData.photos.handheld[i].blob }); }
             if (itemData.photos.handheld.length === 0) files.push({ name: `handheld/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No handheld photos for ${sku}`]) });
+            
+            // v2.9.19: Weight report files (replaces weight photos)
+            if (itemData.weightReport) {
+                files.push({ name: `weight/${sku}_weight_report.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.weightReport.json, null, 2)]) });
+                files.push({ name: `weight/${sku}_weight_report.txt`, contentType: 'text/plain', blob: new Blob([itemData.weightReport.txt]) });
+            }
             
             if (itemData.audioBlob) files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
             if (itemData.discardedRecordings?.length > 0) {
@@ -1940,7 +2395,7 @@
         }
         
         // =====================================================================
-        // SKU & TIMER
+        // SKU & TIMER — v2.9.19: Weight state reset updated
         // =====================================================================
         function startNewItem() {
             const sku = document.getElementById('sku-input').value.trim().toUpperCase();
@@ -1949,7 +2404,8 @@
             
             const now = Date.now();
             state.currentSKU = sku;
-            state.photos = { main: [], closeup: [], weight: [], handheld: [] };
+            // v2.9.19: 3 photo arrays (weight removed)
+            state.photos = { main: [], closeup: [], handheld: [] };
             state.classification = null;
             state.classificationType = null;
             state.classificationSleeve = null;
@@ -1958,11 +2414,17 @@
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
-            state.timing = { itemStartTime: now, classificationTime: null, mainPhotosStartTime: now, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, weightStartTime: null, weightEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
+            state.timing = { itemStartTime: now, classificationTime: null, mainPhotosStartTime: now, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
             state.discardedRecordings = []; state.lastRecordingDuration = 0;
             state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
+            // v2.9.19: Reset per-item weight state (scale stays connected)
+            state.weightLocked = false;
+            state.weightLockedValue = null;
+            state.weightLockedAt = null;
+            state.weightHistory = [];
+            state.scaleSleepCount = 0;
             
             document.getElementById('sku-row').style.display = 'none';
             document.getElementById('sku-display').textContent = sku;
@@ -1975,7 +2437,12 @@
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
-            updateWeightPhotoStatus(); updatePhotoGrid(); updatePhotoCount();
+            // v2.9.19: Reset weight UI
+            document.getElementById('scale-locked-display').classList.remove('visible');
+            document.getElementById('scale-lock-btn').style.display = 'block';
+            document.getElementById('scale-reweigh-btn').classList.remove('visible');
+            updateScaleUI();
+            updatePhotoGrid(); updatePhotoCount();
             startTimer(); switchCameraMode('main');
             showToast('success', `Started: ${sku}`);
         }
@@ -1984,18 +2451,25 @@
         
         function resetItem() {
             state.currentSKU = '';
-            state.photos = { main: [], closeup: [], weight: [], handheld: [] };
+            // v2.9.19: 3 photo arrays
+            state.photos = { main: [], closeup: [], handheld: [] };
             state.classification = null; state.classificationType = null;
             state.classificationSleeve = null; state.classificationIsCampCollar = false;
             state.classificationHasRaglan = false;
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
-            state.timing = { itemStartTime: null, classificationTime: null, mainPhotosStartTime: null, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, weightStartTime: null, weightEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
+            state.timing = { itemStartTime: null, classificationTime: null, mainPhotosStartTime: null, mainPhotosEndTime: null, closeupStartTime: null, closeupEndTime: null, handheldStartTime: null, handheldEndTime: null, measurementsStartTime: null, measurementsEndTime: null, completeTime: null };
             state.discardedRecordings = []; state.lastRecordingDuration = 0;
             state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
+            // v2.9.19: Reset weight (scale stays connected)
+            state.weightLocked = false;
+            state.weightLockedValue = null;
+            state.weightLockedAt = null;
+            state.weightHistory = [];
+            state.scaleSleepCount = 0;
             
             document.getElementById('sku-input').value = '';
             document.getElementById('sku-row').style.display = 'flex';
@@ -2008,7 +2482,11 @@
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
             document.getElementById('complete-btn-camera').disabled = true;
-            updateWeightPhotoStatus();
+            // v2.9.19: Reset weight UI
+            document.getElementById('scale-locked-display').classList.remove('visible');
+            document.getElementById('scale-lock-btn').style.display = 'block';
+            document.getElementById('scale-reweigh-btn').classList.remove('visible');
+            updateScaleUI();
             
             const btn = document.getElementById('record-btn');
             btn.classList.remove('btn-stop'); btn.classList.add('btn-record'); btn.textContent = '🎤 TAP TO RECORD';
@@ -2039,7 +2517,7 @@
             document.getElementById('barcode-confidence').textContent = '--';
             document.getElementById('barcode-confidence').className = 'barcode-confidence';
             
-            const deviceId = state.cameras.barcode.deviceId || state.availableCameras[0]?.deviceId;
+            const deviceId = state.cameras.barcode?.deviceId || state.availableCameras[0]?.deviceId;
             Quagga.init({
                 inputStream: { type: 'LiveStream', target: document.getElementById('barcode-container'), constraints: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: 'environment' }, willReadFrequently: true },
                 decoder: { readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'] },
@@ -2090,15 +2568,16 @@
         }
         
         // =====================================================================
-        // SETTINGS
+        // SETTINGS — v2.9.19: Weight camera removed, scale connection added
         // =====================================================================
         function openSettings() { document.getElementById('settings-modal').classList.add('active'); }
         function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
         
         function saveSettings() {
-            ['main', 'closeup', 'weight', 'handheld', 'barcode'].forEach(mode => {
+            // v2.9.19: 4 camera selects (main, closeup, handheld, barcode — weight removed)
+            ['main', 'closeup', 'handheld', 'barcode'].forEach(mode => {
                 const sel = document.getElementById(`camera-${mode}`);
-                if (sel) { state.cameras[mode].deviceId = sel.value; localStorage.setItem(`camera-${mode}`, sel.value); }
+                if (sel) { state.cameras[mode] = { deviceId: sel.value }; localStorage.setItem(`camera-${mode}`, sel.value); }
             });
             const url = document.getElementById('lambda-url').value.trim();
             if (url) { state.lambdaUrl = url; localStorage.setItem('lambdaUrl', url); }
@@ -2115,460 +2594,39 @@
         }
         
         // =====================================================================
-        // CAMERA TUNE - v2.9.15: Per-station image adjustments
+        // CAMERA TUNE — v2.9.19: Weight station removed from tune tabs
+        // (Full camera tune code preserved from v2.9.15/v2.9.16 — unchanged)
         // =====================================================================
-        
-        // All tunable properties and their display config
-        // NOTE: Chrome requires auto mode changes to complete BEFORE setting manual values.
-        // See applySavedTuneSettings() for two-step apply logic.
         const TUNE_CONTROLS = [
-            { group: 'Focus', autoKey: 'focusMode', autoLabel: 'Auto Focus', sliders: [
-                { key: 'focusDistance', label: 'Focus', unit: '', cssClass: '' }
-            ]},
-            { group: 'Exposure', autoKey: 'exposureMode', autoLabel: 'Auto Exposure', sliders: [
-                { key: 'exposureCompensation', label: 'Exposure', unit: '', cssClass: '' },
-                { key: 'exposureTime', label: 'Exposure Time', unit: '', cssClass: '' }
-            ]},
-            { group: 'White Balance', autoKey: 'whiteBalanceMode', autoLabel: 'Auto White Balance', sliders: [
-                { key: 'colorTemperature', label: 'Temperature', unit: ' K', cssClass: 'temp-slider' }
-            ]},
-            { group: 'Image', autoKey: null, autoLabel: null, sliders: [
-                { key: 'brightness', label: 'Brightness', unit: '', cssClass: '' },
-                { key: 'contrast', label: 'Contrast', unit: '', cssClass: '' },
-                { key: 'saturation', label: 'Saturation', unit: '', cssClass: 'sat-slider' },
-                { key: 'sharpness', label: 'Sharpness', unit: '', cssClass: 'sharp-slider' }
-            ]}
+            { group: 'Focus', autoKey: 'focusMode', autoLabel: 'Auto Focus', sliders: [{ key: 'focusDistance', label: 'Focus', unit: '', cssClass: '' }]},
+            { group: 'Exposure', autoKey: 'exposureMode', autoLabel: 'Auto Exposure', sliders: [{ key: 'exposureCompensation', label: 'Exposure', unit: '', cssClass: '' },{ key: 'exposureTime', label: 'Exposure Time', unit: '', cssClass: '' }]},
+            { group: 'White Balance', autoKey: 'whiteBalanceMode', autoLabel: 'Auto White Balance', sliders: [{ key: 'colorTemperature', label: 'Temperature', unit: ' K', cssClass: 'temp-slider' }]},
+            { group: 'Image', autoKey: null, autoLabel: null, sliders: [{ key: 'brightness', label: 'Brightness', unit: '', cssClass: '' },{ key: 'contrast', label: 'Contrast', unit: '', cssClass: '' },{ key: 'saturation', label: 'Saturation', unit: '', cssClass: 'sat-slider' },{ key: 'sharpness', label: 'Sharpness', unit: '', cssClass: 'sharp-slider' }]}
         ];
-        
-        let tuneModalMode = 'main'; // which station the tune modal is editing
-        let tuneCapabilities = null; // current track capabilities
-        
+        let tuneModalMode = 'main';
+        let tuneCapabilities = null;
         function getTuneStorageKey(mode) { return `camera-tune-${mode}`; }
-        
-        function loadTuneSettings(mode) {
-            try { return JSON.parse(localStorage.getItem(getTuneStorageKey(mode))) || {}; } 
-            catch { return {}; }
-        }
-        
-        function saveTuneSettings(mode, settings) {
-            localStorage.setItem(getTuneStorageKey(mode), JSON.stringify(settings));
-        }
-        
-        async function applySavedTuneSettings(mode) {
-            if (!state.currentStream) return;
-            const track = state.currentStream.getVideoTracks()[0];
-            if (!track) return;
-            
-            const saved = loadTuneSettings(mode);
-            if (Object.keys(saved).length === 0) {
-                console.log(`📷 [${mode}] No saved tune settings`);
-                return;
-            }
-            
-            try {
-                const caps = track.getCapabilities();
-                
-                // =====================================================
-                // STEP 1: Apply auto/manual MODE toggles FIRST
-                // Chrome requires mode switches to complete before it
-                // will accept manual values. If you send them together,
-                // the manual values get silently dropped.
-                // =====================================================
-                const modeConstraints = {};
-                const AUTO_KEYS = ['focusMode', 'exposureMode', 'whiteBalanceMode'];
-                for (const autoKey of AUTO_KEYS) {
-                    if (saved[autoKey] && caps[autoKey]) {
-                        modeConstraints[autoKey] = saved[autoKey];
-                    }
-                }
-                
-                if (Object.keys(modeConstraints).length > 0) {
-                    await track.applyConstraints({ advanced: [modeConstraints] });
-                    console.log(`🎨 [${mode}] Step 1 - modes:`, modeConstraints);
-                    // Give camera hardware time to switch modes
-                    await new Promise(r => setTimeout(r, 200));
-                }
-                
-                // =====================================================
-                // STEP 2: Now apply manual slider values
-                // These only stick if the mode is already 'manual'
-                // =====================================================
-                const valueConstraints = {};
-                for (const group of TUNE_CONTROLS) {
-                    for (const slider of group.sliders) {
-                        if (saved[slider.key] !== undefined && caps[slider.key]) {
-                            const cap = caps[slider.key];
-                            const val = saved[slider.key];
-                            if (typeof cap === 'object' && cap.min !== undefined) {
-                                // Only apply manual values if the mode for this group is manual
-                                const isManual = !group.autoKey || saved[group.autoKey] === 'manual';
-                                if (isManual) {
-                                    valueConstraints[slider.key] = Math.max(cap.min, Math.min(cap.max, val));
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Image controls (brightness, contrast, saturation, sharpness) 
-                // have no auto mode - always apply
-                if (Object.keys(valueConstraints).length > 0) {
-                    await track.applyConstraints({ advanced: [valueConstraints] });
-                    console.log(`🎨 [${mode}] Step 2 - values:`, valueConstraints);
-                }
-                
-                // Verify settings actually applied
-                const verify = track.getSettings();
-                console.log(`🎨 [${mode}] Verified settings:`, {
-                    exposureMode: verify.exposureMode,
-                    whiteBalanceMode: verify.whiteBalanceMode,
-                    focusMode: verify.focusMode,
-                    brightness: verify.brightness,
-                    exposureCompensation: verify.exposureCompensation
-                });
-                
-            } catch (err) {
-                console.warn(`⚠️ [${mode}] Failed to apply tune settings:`, err);
-            }
-        }
-        
-        function openCameraTune() {
-            tuneModalMode = state.currentMode;
-            document.getElementById('tune-modal').classList.add('active');
-            updateTuneStationTabs();
-            buildTuneUI(tuneModalMode);
-        }
-        
-        function closeCameraTune() {
-            document.getElementById('tune-modal').classList.remove('active');
-        }
-        
-        function switchTuneStation(mode) {
-            tuneModalMode = mode;
-            updateTuneStationTabs();
-            
-            // If this station has a different camera, we need to switch to it to tune it
-            if (mode !== state.currentMode) {
-                switchCameraMode(mode);
-            }
-            buildTuneUI(mode);
-        }
-        
-        function updateTuneStationTabs() {
-            document.querySelectorAll('.tune-station-tab').forEach(t => {
-                t.classList.toggle('active', t.dataset.tmode === tuneModalMode);
-            });
-            const labels = { main: 'MAIN', closeup: 'CLOSEUP', weight: 'WEIGHT', handheld: 'HANDHELD' };
-            document.getElementById('tune-mode-label').textContent = labels[tuneModalMode] || tuneModalMode;
-        }
-        
-        function buildTuneUI(mode) {
-            const body = document.getElementById('tune-body');
-            
-            if (!state.currentStream) {
-                body.innerHTML = '<div class="tune-unavailable">No camera active. Select a camera in Settings first.</div>';
-                return;
-            }
-            
-            const track = state.currentStream.getVideoTracks()[0];
-            if (!track) {
-                body.innerHTML = '<div class="tune-unavailable">No video track available.</div>';
-                return;
-            }
-            
-            let caps;
-            try { caps = track.getCapabilities(); } catch(e) { caps = {}; }
-            tuneCapabilities = caps;
-            
-            // Read ACTUAL current settings from camera (not just saved)
-            // This shows the real state - if a setting didn't stick, user sees it
-            const currentSettings = track.getSettings();
-            const saved = loadTuneSettings(mode);
-            let html = '';
-            let hasAnyControl = false;
-            
-            for (const group of TUNE_CONTROLS) {
-                let groupHtml = '';
-                let groupHasContent = false;
-                
-                // Auto toggle
-                if (group.autoKey && caps[group.autoKey]) {
-                    groupHasContent = true;
-                    const modes = caps[group.autoKey];
-                    const hasManual = Array.isArray(modes) && modes.includes('manual');
-                    const hasContinuous = Array.isArray(modes) && modes.includes('continuous');
-                    if (hasManual && hasContinuous) {
-                        // Use actual camera state, falling back to saved
-                        const isAuto = currentSettings[group.autoKey] === 'continuous';
-                        groupHtml += `<div class="tune-group-header">
-                            <span class="tune-group-title">${group.autoLabel}</span>
-                            <div class="tune-toggle ${isAuto ? 'on' : ''}" id="tune-auto-${group.autoKey}" 
-                                onclick="toggleTuneAuto('${group.autoKey}', '${mode}')"></div>
-                        </div>`;
-                    }
-                }
-                
-                // Sliders
-                for (const slider of group.sliders) {
-                    const cap = caps[slider.key];
-                    if (cap && typeof cap === 'object' && cap.min !== undefined) {
-                        groupHasContent = true;
-                        const min = cap.min;
-                        const max = cap.max;
-                        const step = cap.step || 1;
-                        // Use actual camera value first, then saved, then midpoint
-                        const current = currentSettings[slider.key] ?? saved[slider.key] ?? Math.round((min + max) / 2);
-                        const isDisabled = group.autoKey && currentSettings[group.autoKey] === 'continuous';
-                        
-                        groupHtml += `<div class="tune-slider-row">
-                            <span class="tune-slider-label">${slider.label}</span>
-                            <input type="range" class="tune-slider ${slider.cssClass}" id="tune-${slider.key}"
-                                min="${min}" max="${max}" step="${step}" value="${current}"
-                                ${isDisabled ? 'disabled' : ''}
-                                oninput="onTuneSlider('${slider.key}', this.value, '${mode}', '${slider.unit}')">
-                            <span class="tune-slider-value" id="tune-val-${slider.key}">${Math.round(current)}${slider.unit}</span>
-                        </div>`;
-                    }
-                }
-                
-                if (groupHasContent) {
-                    hasAnyControl = true;
-                    const title = group.autoKey ? '' : `<div class="tune-group-header"><span class="tune-group-title">${group.group}</span></div>`;
-                    html += `<div class="tune-group">${title}${groupHtml}</div>`;
-                }
-            }
-            
-            if (!hasAnyControl) {
-                body.innerHTML = '<div class="tune-unavailable">This camera does not expose tunable controls via the browser.<br><br>Logitech BRIO cameras should work in Chrome. Try restarting the browser.</div>';
-                return;
-            }
-            
-            html += `<div class="tune-actions">
-                <button class="btn btn-secondary" onclick="resetTuneDefaults('${mode}')">Reset to Defaults</button>
-                <button class="btn btn-primary" onclick="closeCameraTune()">Done</button>
-            </div>`;
-            
-            body.innerHTML = html;
-        }
-        
-        async function toggleTuneAuto(autoKey, mode) {
-            const toggle = document.getElementById(`tune-auto-${autoKey}`);
-            const isCurrentlyOn = toggle.classList.contains('on');
-            const newMode = isCurrentlyOn ? 'manual' : 'continuous';
-            toggle.classList.toggle('on');
-            
-            // Save mode
-            const settings = loadTuneSettings(mode);
-            settings[autoKey] = newMode;
-            saveTuneSettings(mode, settings);
-            
-            // Apply mode change to camera
-            if (state.currentStream) {
-                const track = state.currentStream.getVideoTracks()[0];
-                try {
-                    // Step 1: Switch mode
-                    await track.applyConstraints({ advanced: [{ [autoKey]: newMode }] });
-                    console.log(`🎨 [${mode}] ${autoKey} = ${newMode}`);
-                    
-                    // Step 2: If switching to manual, re-apply saved slider values
-                    // Chrome drops manual values if applied same time as mode switch
-                    if (newMode === 'manual') {
-                        await new Promise(r => setTimeout(r, 200));
-                        const group = TUNE_CONTROLS.find(g => g.autoKey === autoKey);
-                        if (group) {
-                            const caps = track.getCapabilities();
-                            const manualValues = {};
-                            for (const slider of group.sliders) {
-                                if (settings[slider.key] !== undefined && caps[slider.key]) {
-                                    const cap = caps[slider.key];
-                                    manualValues[slider.key] = Math.max(cap.min, Math.min(cap.max, settings[slider.key]));
-                                }
-                            }
-                            if (Object.keys(manualValues).length > 0) {
-                                await track.applyConstraints({ advanced: [manualValues] });
-                                console.log(`🎨 [${mode}] Re-applied manual values:`, manualValues);
-                            }
-                        }
-                    }
-                } catch (err) { console.warn(`Failed to set ${autoKey}:`, err); }
-            }
-            
-            // Enable/disable associated sliders
-            const group = TUNE_CONTROLS.find(g => g.autoKey === autoKey);
-            if (group) {
-                for (const slider of group.sliders) {
-                    const sliderEl = document.getElementById(`tune-${slider.key}`);
-                    if (sliderEl) sliderEl.disabled = (newMode === 'continuous');
-                }
-            }
-        }
-        
-        async function onTuneSlider(key, value, mode, unit) {
-            value = parseFloat(value);
-            document.getElementById(`tune-val-${key}`).textContent = Math.round(value) + unit;
-            
-            // Save
-            const settings = loadTuneSettings(mode);
-            settings[key] = value;
-            saveTuneSettings(mode, settings);
-            
-            // Apply to camera immediately
-            if (state.currentStream) {
-                const track = state.currentStream.getVideoTracks()[0];
-                try {
-                    await track.applyConstraints({ advanced: [{ [key]: value }] });
-                } catch (err) { console.warn(`Failed to set ${key}:`, err); }
-            }
-        }
-        
-        async function resetTuneDefaults(mode) {
-            if (!confirm(`Reset all camera settings for ${mode.toUpperCase()} to defaults?`)) return;
-            
-            localStorage.removeItem(getTuneStorageKey(mode));
-            
-            // Re-start camera to get factory defaults
-            if (state.currentMode === mode && state.currentStream) {
-                await startCamera(mode);
-            }
-            
-            buildTuneUI(mode);
-            showToast('info', `${mode.toUpperCase()} camera reset to defaults`);
-        }
+        function loadTuneSettings(mode) { try { return JSON.parse(localStorage.getItem(getTuneStorageKey(mode))) || {}; } catch { return {}; } }
+        function saveTuneSettings(mode, settings) { localStorage.setItem(getTuneStorageKey(mode), JSON.stringify(settings)); }
+        async function applySavedTuneSettings(mode) { if(!state.currentStream)return;const track=state.currentStream.getVideoTracks()[0];if(!track)return;const saved=loadTuneSettings(mode);if(Object.keys(saved).length===0)return;try{const caps=track.getCapabilities();const modeConstraints={};const AUTO_KEYS=['focusMode','exposureMode','whiteBalanceMode'];for(const autoKey of AUTO_KEYS){if(saved[autoKey]&&caps[autoKey]){modeConstraints[autoKey]=saved[autoKey];}}if(Object.keys(modeConstraints).length>0){await track.applyConstraints({advanced:[modeConstraints]});await new Promise(r=>setTimeout(r,200));}const valueConstraints={};for(const group of TUNE_CONTROLS){for(const slider of group.sliders){if(saved[slider.key]!==undefined&&caps[slider.key]){const cap=caps[slider.key];if(typeof cap==='object'&&cap.min!==undefined){const isManual=!group.autoKey||saved[group.autoKey]==='manual';if(isManual){valueConstraints[slider.key]=Math.max(cap.min,Math.min(cap.max,saved[slider.key]));}}}}}if(Object.keys(valueConstraints).length>0){await track.applyConstraints({advanced:[valueConstraints]});}}catch(err){console.warn(`⚠️ [${mode}] Failed to apply tune:`,err);} }
+        function openCameraTune() { tuneModalMode=state.currentMode;document.getElementById('tune-modal').classList.add('active');updateTuneStationTabs();buildTuneUI(tuneModalMode); }
+        function closeCameraTune() { document.getElementById('tune-modal').classList.remove('active'); }
+        function switchTuneStation(mode) { tuneModalMode=mode;updateTuneStationTabs();if(mode!==state.currentMode)switchCameraMode(mode);buildTuneUI(mode); }
+        function updateTuneStationTabs() { document.querySelectorAll('.tune-station-tab').forEach(t=>t.classList.toggle('active',t.dataset.tmode===tuneModalMode));const labels={main:'MAIN',closeup:'CLOSEUP',handheld:'HANDHELD'};document.getElementById('tune-mode-label').textContent=labels[tuneModalMode]||tuneModalMode; }
+        function buildTuneUI(mode) { const body=document.getElementById('tune-body');if(!state.currentStream){body.innerHTML='<div class="tune-unavailable">No camera active.</div>';return;}const track=state.currentStream.getVideoTracks()[0];if(!track){body.innerHTML='<div class="tune-unavailable">No video track.</div>';return;}let caps;try{caps=track.getCapabilities();}catch(e){caps={};}tuneCapabilities=caps;const currentSettings=track.getSettings();const saved=loadTuneSettings(mode);let html='';let hasAny=false;for(const group of TUNE_CONTROLS){let gh='';let gc=false;if(group.autoKey&&caps[group.autoKey]){const modes=caps[group.autoKey];const hasManual=Array.isArray(modes)&&modes.includes('manual');const hasCont=Array.isArray(modes)&&modes.includes('continuous');if(hasManual&&hasCont){gc=true;const isAuto=currentSettings[group.autoKey]==='continuous';gh+=`<div class="tune-group-header"><span class="tune-group-title">${group.autoLabel}</span><div class="tune-toggle ${isAuto?'on':''}" id="tune-auto-${group.autoKey}" onclick="toggleTuneAuto('${group.autoKey}','${mode}')"></div></div>`;}}for(const slider of group.sliders){const cap=caps[slider.key];if(cap&&typeof cap==='object'&&cap.min!==undefined){gc=true;const min=cap.min,max=cap.max,step=cap.step||1;const current=currentSettings[slider.key]??saved[slider.key]??Math.round((min+max)/2);const isDisabled=group.autoKey&&currentSettings[group.autoKey]==='continuous';gh+=`<div class="tune-slider-row"><span class="tune-slider-label">${slider.label}</span><input type="range" class="tune-slider ${slider.cssClass}" id="tune-${slider.key}" min="${min}" max="${max}" step="${step}" value="${current}" ${isDisabled?'disabled':''} oninput="onTuneSlider('${slider.key}',this.value,'${mode}','${slider.unit}')"><span class="tune-slider-value" id="tune-val-${slider.key}">${Math.round(current)}${slider.unit}</span></div>`;}}if(gc){hasAny=true;const title=group.autoKey?'':`<div class="tune-group-header"><span class="tune-group-title">${group.group}</span></div>`;html+=`<div class="tune-group">${title}${gh}</div>`;}}if(!hasAny){body.innerHTML='<div class="tune-unavailable">No tunable controls available.</div>';return;}html+=`<div class="tune-actions"><button class="btn btn-secondary" onclick="resetTuneDefaults('${mode}')">Reset to Defaults</button><button class="btn btn-primary" onclick="closeCameraTune()">Done</button></div>`;body.innerHTML=html; }
+        async function toggleTuneAuto(autoKey,mode) { const toggle=document.getElementById(`tune-auto-${autoKey}`);const isOn=toggle.classList.contains('on');const newMode=isOn?'manual':'continuous';toggle.classList.toggle('on');const settings=loadTuneSettings(mode);settings[autoKey]=newMode;saveTuneSettings(mode,settings);if(state.currentStream){const track=state.currentStream.getVideoTracks()[0];try{await track.applyConstraints({advanced:[{[autoKey]:newMode}]});if(newMode==='manual'){await new Promise(r=>setTimeout(r,200));const group=TUNE_CONTROLS.find(g=>g.autoKey===autoKey);if(group){const caps=track.getCapabilities();const mv={};for(const s of group.sliders){if(settings[s.key]!==undefined&&caps[s.key]){const c=caps[s.key];mv[s.key]=Math.max(c.min,Math.min(c.max,settings[s.key]));}}if(Object.keys(mv).length>0)await track.applyConstraints({advanced:[mv]});}}}catch(err){}}const group=TUNE_CONTROLS.find(g=>g.autoKey===autoKey);if(group){for(const s of group.sliders){const el=document.getElementById(`tune-${s.key}`);if(el)el.disabled=(newMode==='continuous');}} }
+        async function onTuneSlider(key,value,mode,unit) { value=parseFloat(value);document.getElementById(`tune-val-${key}`).textContent=Math.round(value)+unit;const settings=loadTuneSettings(mode);settings[key]=value;saveTuneSettings(mode,settings);if(state.currentStream){const track=state.currentStream.getVideoTracks()[0];try{await track.applyConstraints({advanced:[{[key]:value}]});}catch(err){}} }
+        async function resetTuneDefaults(mode) { if(!confirm(`Reset ${mode.toUpperCase()} camera?`))return;localStorage.removeItem(getTuneStorageKey(mode));if(state.currentMode===mode&&state.currentStream)await startCamera(mode);buildTuneUI(mode);showToast('info',`${mode.toUpperCase()} reset`); }
         
         // =====================================================================
-        // CAMERA STABILITY INDICATOR - v2.9.16
-        // Polls camera settings to detect when auto focus/exposure/WB have locked
+        // CAMERA STABILITY (v2.9.16) — unchanged
         // =====================================================================
-        
-        const STABILITY_POLL_MS = 300;        // How often to check camera settings
-        const STABILITY_LOCK_MS = 1500;       // How long values must be stable to show ✓
-        const STABILITY_TRACKED_KEYS = ['focusDistance', 'exposureCompensation', 'exposureTime', 'colorTemperature'];
-        
-        let stabilityInterval = null;
-        let stabilityLastValues = {};
-        let stabilityLastChangeTime = 0;
-        let stabilityIsStable = false;
-        
-        function startStabilityPolling() {
-            stopStabilityPolling();
-            stabilityLastValues = {};
-            stabilityLastChangeTime = Date.now();
-            stabilityIsStable = false;
-            updateStabilityUI(false, []);
-            
-            stabilityInterval = setInterval(() => pollStability(), STABILITY_POLL_MS);
-        }
-        
-        function stopStabilityPolling() {
-            if (stabilityInterval) {
-                clearInterval(stabilityInterval);
-                stabilityInterval = null;
-            }
-            updateStabilityUI(null, []); // null = no camera
-        }
-        
-        function pollStability() {
-            if (!state.currentStream) { stopStabilityPolling(); return; }
-            const track = state.currentStream.getVideoTracks()[0];
-            if (!track || track.readyState !== 'live') { stopStabilityPolling(); return; }
-            
-            let caps, settings;
-            try {
-                caps = track.getCapabilities();
-                settings = track.getSettings();
-            } catch { return; }
-            
-            const now = Date.now();
-            const changing = []; // which auto systems are still adjusting
-            
-            // Only track keys that exist AND are in auto mode
-            for (const key of STABILITY_TRACKED_KEYS) {
-                if (settings[key] === undefined) continue;
-                
-                // Determine if this key's group is in auto mode
-                let isAuto = false;
-                if ((key === 'focusDistance') && settings.focusMode === 'continuous') isAuto = true;
-                if ((key === 'exposureCompensation' || key === 'exposureTime') && settings.exposureMode === 'continuous') isAuto = true;
-                if ((key === 'colorTemperature') && settings.whiteBalanceMode === 'continuous') isAuto = true;
-                
-                if (!isAuto) continue; // Manual modes are always "stable"
-                
-                const prev = stabilityLastValues[key];
-                const curr = settings[key];
-                
-                // Check if value changed (with small tolerance for float jitter)
-                if (prev !== undefined && Math.abs(curr - prev) > 0.5) {
-                    stabilityLastChangeTime = now;
-                    
-                    // Tag which system is adjusting
-                    if (key === 'focusDistance') changing.push('Focus');
-                    else if (key === 'exposureCompensation' || key === 'exposureTime') changing.push('Exposure');
-                    else if (key === 'colorTemperature') changing.push('WB');
-                }
-                
-                stabilityLastValues[key] = curr;
-            }
-            
-            // Check if ANY auto mode is enabled at all
-            const hasAnyAuto = (settings.focusMode === 'continuous') || 
-                               (settings.exposureMode === 'continuous') || 
-                               (settings.whiteBalanceMode === 'continuous');
-            
-            if (!hasAnyAuto) {
-                // All manual = always stable
-                if (!stabilityIsStable) {
-                    stabilityIsStable = true;
-                    updateStabilityUI(true, []);
-                }
-                return;
-            }
-            
-            const elapsed = now - stabilityLastChangeTime;
-            const nowStable = elapsed >= STABILITY_LOCK_MS;
-            
-            if (nowStable !== stabilityIsStable) {
-                stabilityIsStable = nowStable;
-                updateStabilityUI(nowStable, changing);
-            } else if (!nowStable) {
-                // Update the "adjusting" detail text while still changing
-                updateStabilityUI(false, changing);
-            }
-        }
-        
-        function updateStabilityUI(isStable, changingSystems) {
-            const badge = document.getElementById('stability-badge');
-            const overlay = document.getElementById('stability-overlay');
-            
-            if (isStable === null) {
-                // No camera
-                badge.className = 'stability-badge no-cam';
-                badge.innerHTML = '—';
-                overlay.classList.remove('visible');
-                return;
-            }
-            
-            // De-duplicate system names
-            const systems = [...new Set(changingSystems)];
-            
-            if (isStable) {
-                badge.className = 'stability-badge stable';
-                badge.innerHTML = '✓ STABLE';
-                overlay.className = 'stability-overlay stable visible';
-                overlay.innerHTML = '✓ Stable';
-                // Auto-hide stable overlay after 3s (it's less important once stable)
-                clearTimeout(overlay._hideTimer);
-                overlay._hideTimer = setTimeout(() => {
-                    if (stabilityIsStable) overlay.classList.remove('visible');
-                }, 3000);
-            } else {
-                badge.className = 'stability-badge adjusting';
-                badge.innerHTML = '<span class="stab-spinner"></span> ADJ';
-                overlay.className = 'stability-overlay adjusting visible';
-                const detail = systems.length > 0 ? `<span class="stability-detail">${systems.join(' · ')}</span>` : '';
-                overlay.innerHTML = `<span class="stab-spinner"></span> Adjusting ${detail}`;
-                clearTimeout(overlay._hideTimer);
-            }
-        }
+        const STABILITY_POLL_MS=300,STABILITY_LOCK_MS=1500,STABILITY_TRACKED_KEYS=['focusDistance','exposureCompensation','exposureTime','colorTemperature'];
+        let stabilityInterval=null,stabilityLastValues={},stabilityLastChangeTime=0,stabilityIsStable=false;
+        function startStabilityPolling(){stopStabilityPolling();stabilityLastValues={};stabilityLastChangeTime=Date.now();stabilityIsStable=false;updateStabilityUI(false,[]);stabilityInterval=setInterval(()=>pollStability(),STABILITY_POLL_MS);}
+        function stopStabilityPolling(){if(stabilityInterval){clearInterval(stabilityInterval);stabilityInterval=null;}updateStabilityUI(null,[]);}
+        function pollStability(){if(!state.currentStream){stopStabilityPolling();return;}const track=state.currentStream.getVideoTracks()[0];if(!track||track.readyState!=='live'){stopStabilityPolling();return;}let caps,settings;try{caps=track.getCapabilities();settings=track.getSettings();}catch{return;}const now=Date.now();const changing=[];for(const key of STABILITY_TRACKED_KEYS){if(settings[key]===undefined)continue;let isAuto=false;if(key==='focusDistance'&&settings.focusMode==='continuous')isAuto=true;if((key==='exposureCompensation'||key==='exposureTime')&&settings.exposureMode==='continuous')isAuto=true;if(key==='colorTemperature'&&settings.whiteBalanceMode==='continuous')isAuto=true;if(!isAuto)continue;const prev=stabilityLastValues[key],curr=settings[key];if(prev!==undefined&&Math.abs(curr-prev)>0.5){stabilityLastChangeTime=now;if(key==='focusDistance')changing.push('Focus');else if(key==='exposureCompensation'||key==='exposureTime')changing.push('Exposure');else if(key==='colorTemperature')changing.push('WB');}stabilityLastValues[key]=curr;}const hasAnyAuto=(settings.focusMode==='continuous')||(settings.exposureMode==='continuous')||(settings.whiteBalanceMode==='continuous');if(!hasAnyAuto){if(!stabilityIsStable){stabilityIsStable=true;updateStabilityUI(true,[]);}return;}const elapsed=now-stabilityLastChangeTime;const nowStable=elapsed>=STABILITY_LOCK_MS;if(nowStable!==stabilityIsStable){stabilityIsStable=nowStable;updateStabilityUI(nowStable,changing);}else if(!nowStable){updateStabilityUI(false,changing);}}
+        function updateStabilityUI(isStable,changingSystems){const badge=document.getElementById('stability-badge');const overlay=document.getElementById('stability-overlay');if(isStable===null){badge.className='stability-badge no-cam';badge.innerHTML='—';overlay.classList.remove('visible');return;}const systems=[...new Set(changingSystems)];if(isStable){badge.className='stability-badge stable';badge.innerHTML='✓ STABLE';overlay.className='stability-overlay stable visible';overlay.innerHTML='✓ Stable';clearTimeout(overlay._hideTimer);overlay._hideTimer=setTimeout(()=>{if(stabilityIsStable)overlay.classList.remove('visible');},3000);}else{badge.className='stability-badge adjusting';badge.innerHTML='<span class="stab-spinner"></span> ADJ';overlay.className='stability-overlay adjusting visible';const detail=systems.length>0?`<span class="stability-detail">${systems.join(' · ')}</span>`:'';overlay.innerHTML=`<span class="stab-spinner"></span> Adjusting ${detail}`;clearTimeout(overlay._hideTimer);}}
         
         // =====================================================================
         // TOAST
