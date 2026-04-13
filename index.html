@@ -1,8 +1,26 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.21 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
+    VintageLister v2.9.22 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
     
     CHANGELOG:
+    v2.9.22 (2026-04-13):
+    - FIX: Scale stability detection only recognized status=2 (stable at zero)
+      as "stable". The USB HID Point of Sale spec defines TWO stable states:
+        Status 2 = Stable at center of zero (empty scale)
+        Status 4 = Weight stable (item on scale, reading settled)
+      Code only checked status===2, so items NEVER showed stable — status=4
+      was treated as "not stable" producing a permanent spinner even though
+      the scale had a locked, settled reading. Fix: stable = (status===2 || status===4).
+    - FIX: Fault detection now handles all HID status codes correctly:
+        Status 1 = Fault → "Scale fault"
+        Status 5 = Under zero → "Under zero — tare reset needed"
+        Status 6 = Over weight limit → "Over 10 lb limit"
+      Previously only checked status===5 which was "under zero", not "fault".
+    - UPDATED: HID status byte documentation in handleScaleReport to list all
+      6 defined status codes from USB HID Usage Tables (Point of Sale).
+    - Found during deployment testing — weight displayed correctly (4.8 oz)
+      but stability indicator was stuck on "Stabilizing..." with item on scale.
+
     v2.9.21 (2026-04-13):
     - FIX: HID report byte parsing was off by 1. WebHID's event.data DataView
       EXCLUDES the report ID byte (it's in event.reportId instead), but the code
@@ -116,7 +134,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.21</title>
+    <title>VintageLister v2.9.22</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -802,7 +820,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.21</span>
+                    <span class="version-badge" id="version-badge">v2.9.22</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -1079,11 +1097,11 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.21 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
+        // VINTAGELISTER v2.9.22 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
         // USB Scale Direct Read via WebHID + Weight Photo Code Removed
         // =============================================================================
         
-        const VERSION = '2.9.21';
+        const VERSION = '2.9.22';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1207,7 +1225,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.21 USB scale + HID byte fix');
+            console.log('✅ Init complete - v2.9.22 USB scale + HID stable fix');
         }
         
         // =====================================================================
@@ -1309,7 +1327,7 @@
         function handleScaleReport(event) {
             // WebHID event.data is a DataView EXCLUDING the report ID (report ID is in event.reportId)
             // Dymo M10 report data: [status, unit, scaleFactor, weightLo, weightHi]
-            //   Byte 0: Status (2=stable, 4=in motion, 5=fault)
+            //   Byte 0: Status (1=fault, 2=stable@zero, 3=in motion, 4=weight stable, 5=under zero, 6=over limit)
             //   Byte 1: Unit (2=grams, 11=ounces, 12=pounds, 255=not ready)
             //   Byte 2: Scale factor (signed: -1 means divide by 10)
             //   Byte 3-4: Weight (little-endian 16-bit: byte3 + byte4*256)
@@ -1348,7 +1366,7 @@
             weightOz = Math.round(weightOz * 100) / 100; // 2 decimal places
             
             state.scaleReading = weightOz;
-            state.scaleStable = (status === 2);
+            state.scaleStable = (status === 2 || status === 4); // 2=stable at zero, 4=weight stable
             state.scaleStatusByte = status;
             state.scaleUnit = 'oz';
             state.scaleLastReportTime = Date.now();
@@ -1425,9 +1443,12 @@
                 weightValue.textContent = reading.toFixed(1);
                 weightValue.className = 'scale-weight-value' + (reading < SCALE_MIN_LOCK_OZ ? ' zero' : '');
                 
-                if (state.scaleStatusByte === 5) {
+                if (state.scaleStatusByte === 1 || state.scaleStatusByte === 5 || state.scaleStatusByte === 6) {
+                    // 1=fault, 5=under zero, 6=over weight limit
                     stabilityEl.className = 'scale-stability fault';
-                    stabilityEl.innerHTML = '⚠️ Scale fault';
+                    const faultMsg = state.scaleStatusByte === 5 ? 'Under zero — tare reset needed' :
+                                     state.scaleStatusByte === 6 ? 'Over 10 lb limit' : 'Scale fault';
+                    stabilityEl.innerHTML = `⚠️ ${faultMsg}`;
                     lockBtn.disabled = true;
                 } else if (state.scaleStable) {
                     // Scale is stable — show green checkmark regardless of weight
