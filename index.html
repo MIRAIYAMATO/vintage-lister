@@ -1,8 +1,24 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.20 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
+    VintageLister v2.9.21 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
     
     CHANGELOG:
+    v2.9.21 (2026-04-13):
+    - FIX: HID report byte parsing was off by 1. WebHID's event.data DataView
+      EXCLUDES the report ID byte (it's in event.reportId instead), but the code
+      used Uint8Array indices starting at [1] as if the report ID was in the data.
+      This caused: status read from unit byte, unit read from scale factor byte,
+      weight read from wrong bytes — producing 0.0 oz for all readings regardless
+      of actual weight on scale.
+    - FIX: Replaced `new Uint8Array(event.data.buffer)` with direct DataView
+      access via `event.data.getUint8()`, `getInt8()`, `getUint16()`. This avoids
+      ArrayBuffer offset issues and correctly handles the signed scale factor byte.
+    - ADDED: Debug logging for first 5 HID reports — logs raw bytes, parsed values,
+      and report ID to browser console. Enables rapid diagnosis of byte-level issues
+      without modifying code. Auto-stops after 5 reports to prevent console flood.
+    - Found during deployment testing — scale showed connected + green dot but
+      weight stayed 0.0 oz with item on scale.
+
     v2.9.20 (2026-04-13):
     - FIX: Scale stability indicator was stuck on "Stabilizing..." spinner when
       scale was stable at 0.0 oz (empty scale, nothing on it). The logic combined
@@ -100,7 +116,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.20</title>
+    <title>VintageLister v2.9.21</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -786,7 +802,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.20</span>
+                    <span class="version-badge" id="version-badge">v2.9.21</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -1063,11 +1079,11 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.20 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
+        // VINTAGELISTER v2.9.21 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
         // USB Scale Direct Read via WebHID + Weight Photo Code Removed
         // =============================================================================
         
-        const VERSION = '2.9.20';
+        const VERSION = '2.9.21';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1191,7 +1207,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.20 USB scale direct read + stability fix');
+            console.log('✅ Init complete - v2.9.21 USB scale + HID byte fix');
         }
         
         // =====================================================================
@@ -1291,25 +1307,41 @@
         }
         
         function handleScaleReport(event) {
-            const data = new Uint8Array(event.data.buffer);
-            // Dymo M10 HID report: [reportId, status, unit, scaleFactor, weightLo, weightHi]
-            const status = data[1];      // 2=stable, 4=in motion, 5=fault
-            const unitCode = data[2];    // 2=grams, 11=ounces, 12=pounds
-            const scaleFactor = data[3] > 127 ? data[3] - 256 : data[3]; // signed byte
-            const rawWeight = data[4] + (data[5] << 8); // little-endian 16-bit
+            // WebHID event.data is a DataView EXCLUDING the report ID (report ID is in event.reportId)
+            // Dymo M10 report data: [status, unit, scaleFactor, weightLo, weightHi]
+            //   Byte 0: Status (2=stable, 4=in motion, 5=fault)
+            //   Byte 1: Unit (2=grams, 11=ounces, 12=pounds, 255=not ready)
+            //   Byte 2: Scale factor (signed: -1 means divide by 10)
+            //   Byte 3-4: Weight (little-endian 16-bit: byte3 + byte4*256)
+            const d = event.data;
+            const status = d.getUint8(0);
+            const unitCode = d.getUint8(1);
+            const scaleFactor = d.getInt8(2); // signed byte natively
+            const rawWeight = d.getUint16(3, true); // little-endian
+            
+            // Debug: log first few reports so we can verify bytes are correct
+            if (!handleScaleReport._logCount) handleScaleReport._logCount = 0;
+            if (handleScaleReport._logCount < 5) {
+                const bytes = [];
+                for (let i = 0; i < d.byteLength; i++) bytes.push(d.getUint8(i));
+                console.log(`⚖️ HID report [${bytes.join(',')}] → status=${status} unit=${unitCode} sf=${scaleFactor} raw=${rawWeight} reportId=${event.reportId}`);
+                handleScaleReport._logCount++;
+            }
+            
+            if (unitCode === 255) return; // Scale not ready / initializing
             
             let weightOz = 0;
             const weight = rawWeight * Math.pow(10, scaleFactor);
             
             if (unitCode === 11) { // ounces
                 weightOz = weight;
-            } else if (unitCode === 12) { // pounds — compound lb:oz format
-                // M10 in lb mode: rawWeight is total weight with scale factor applied
+            } else if (unitCode === 12) { // pounds
                 weightOz = weight * 16;
             } else if (unitCode === 2) { // grams
                 weightOz = weight / 28.3495;
-            } else if (unitCode === 255) {
-                // Scale not ready / initializing — ignore
+            } else {
+                // Unknown unit — log and skip
+                console.warn(`⚖️ Unknown unit code: ${unitCode}`);
                 return;
             }
             
