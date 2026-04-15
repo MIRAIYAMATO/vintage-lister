@@ -1,8 +1,44 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.24 - MEASUREMENT FILE NAMING + WHISPER REPORT
+    VintageLister v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION
     
     CHANGELOG:
+    v2.9.25 (2026-04-15):
+    - CRITICAL FIX: Raglan detection was structurally broken for short-sleeve
+      and sleeveless raglan garments. RAGLAN_OVERRIDES in the Lambda only mapped
+      long-sleeve templates to raglan variants, so hasRaglan=true was silently
+      ignored when Gemini classified the sleeve as "short" or "sleeveless".
+      This caused photographers to get Shoulder to Shoulder in their measurement
+      list for raglan garments — a measurement that doesn't exist on raglans.
+    - ADDED: Local RAGLAN_TEMPLATES object containing all 7 raglan template
+      variants (3 existing + 4 new). Enables client-side template correction
+      without a Lambda round-trip.
+    - ADDED: RAGLAN_CORRECTION_MAP mapping every non-raglan template key to its
+      raglan equivalent. Covers long-sleeve, short-sleeve, and sleeveless for
+      tops, button-up, and outerwear categories.
+    - ADDED: Measurement transcript raglan auto-detection in parseMeasurements().
+      After Whisper transcript is parsed, scans for raglan-specific measurement
+      terms ("center neck to cuff", "raglan to sleeve", "arm opening" on sleeveless).
+      Also detects the word "raglan" anywhere in the transcript. If raglan terms
+      are found but current template is non-raglan, auto-switches template and
+      re-parses measurements. Zero clicks — happens automatically.
+    - ADDED: Manual raglan toggle button in AI Classification display. Photographer
+      can tap to force raglan on/off if Gemini missed it and they haven't recorded
+      measurements yet. Toggle updates template and measurement list instantly.
+    - ADDED: Visual feedback when auto-correction fires — toast notification and
+      template display updates to show "(Auto-corrected: Raglan)" with highlight.
+    - ADDED: Arm Opening measurement alias for raglan sleeveless detection.
+    - ADDED: state.raglanManualOverride and state.templateAutoCorrection fields
+      for tracking correction source (gemini | manual | transcript_auto).
+    - MODIFIED: completeItem() jsonData includes templateCorrection object
+      documenting original vs corrected template and correction source.
+    - MODIFIED: startNewItem() and resetItem() clear new raglan state fields.
+    - REQUIRES: Lambda v106.8 with expanded RAGLAN_OVERRIDES and 4 new raglan
+      templates (tops-raglan-short-sleeve, tops-raglan-sleeveless,
+      button-up-raglan-short-sleeve, outerwear-raglan-short-sleeve).
+    - COMPATIBLE WITH: Lambda v106.7 (Gemini still returns hasRaglan; new local
+      templates handle the gap until Lambda is updated).
+
     v2.9.24 (2026-04-15):
     - RENAMED: Measurement audio S3 upload filenames for pipeline naming consistency.
       All measurement files now carry the measurement_ prefix so they are searchable
@@ -184,7 +220,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.24</title>
+    <title>VintageLister v2.9.25</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -319,6 +355,12 @@
         .classification-detail { font-size: 12px; color: var(--accent-orange); margin-top: 2px; font-weight: 500; }
         .classification-template { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .classification-template span { color: var(--accent-blue); font-weight: 600; }
+        .classification-template.corrected span { color: #f59e0b; }
+        .raglan-toggle { display: inline-block; margin-left: 8px; padding: 2px 8px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--text-secondary); background: transparent; transition: all 0.2s; vertical-align: middle; }
+        .raglan-toggle:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .raglan-toggle.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+        .correction-badge { display: inline-block; font-size: 9px; color: #f59e0b; font-weight: 600; margin-left: 6px; animation: correctionPulse 0.5s ease-out; }
+        @keyframes correctionPulse { 0% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
         
         .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
         
@@ -870,7 +912,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.24</span>
+                    <span class="version-badge" id="version-badge">v2.9.25</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -891,7 +933,8 @@
                     <div class="classification-box" id="classification-box">
                         <div class="classification-category" id="classification-category">Waiting...</div>
                         <div class="classification-detail" id="classification-detail"></div>
-                        <div class="classification-template">Template: <span id="classification-template">-</span></div>
+                        <div class="classification-template">Template: <span id="classification-template">-</span><span id="correction-badge"></span></div>
+                        <div style="margin-top: 4px;"><button class="raglan-toggle" id="raglan-toggle" onclick="toggleRaglanManual()" title="Toggle raglan seam detection">RAGLAN</button></div>
                     </div>
                     <div class="tag-grid" id="tag-grid" style="display: none;">
                         <div class="tag-item"><div class="tag-label">Brand</div><div class="tag-value" id="tag-brand">-</div></div>
@@ -1147,13 +1190,38 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.24 - MEASUREMENT FILE NAMING + WHISPER REPORT
+        // VINTAGELISTER v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION
         // Measurement files: measurement_ prefix + Whisper report generation
         // =============================================================================
         
-        const VERSION = '2.9.24';
+        const VERSION = '2.9.25';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
+
+        // v2.9.25: Local raglan templates for client-side correction without Lambda round-trip
+        const RAGLAN_TEMPLATES = {
+            'tops-raglan':                  { name:'Tops - Raglan Long Sleeve',      category:'tops',      measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:9 },
+            'tops-raglan-short-sleeve':     { name:'Tops - Raglan Short Sleeve',     category:'tops',      measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:7 },
+            'tops-raglan-sleeveless':       { name:'Tops - Raglan Sleeveless',       category:'tops',      measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:5 },
+            'button-up-raglan':             { name:'Button-Up - Raglan Long Sleeve', category:'button-up', measurements:['Neck Circumference','Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:10 },
+            'button-up-raglan-short-sleeve':{ name:'Button-Up - Raglan Short Sleeve',category:'button-up', measurements:['Neck Circumference','Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:8 },
+            'outerwear-raglan':             { name:'Outerwear - Raglan Long Sleeve', category:'outerwear', measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:9 },
+            'outerwear-raglan-short-sleeve':{ name:'Outerwear - Raglan Short Sleeve',category:'outerwear', measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:7 },
+        };
+
+        // v2.9.25: Maps non-raglan template keys → raglan equivalents
+        const RAGLAN_CORRECTION_MAP = {
+            'tops-long-sleeve':        'tops-raglan',
+            'tops-short-sleeve':       'tops-raglan-short-sleeve',
+            'tops-sleeveless':         'tops-raglan-sleeveless',
+            'button-up-long-sleeve':   'button-up-raglan',
+            'button-up-short-sleeve':  'button-up-raglan-short-sleeve',
+            'outerwear-long-sleeve':   'outerwear-raglan',
+            'outerwear-short-sleeve':  'outerwear-raglan-short-sleeve',
+        };
+
+        // v2.9.25: Reverse map — raglan keys back to non-raglan equivalents
+        const RAGLAN_REVERSE_MAP = Object.fromEntries(Object.entries(RAGLAN_CORRECTION_MAP).map(([k,v]) => [v,k]));
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
         const BARCODE_MIN_CONFIDENCE = 0.80;
@@ -1184,6 +1252,8 @@
             classificationSleeve: null,
             classificationIsCampCollar: false,
             classificationHasRaglan: false,
+            raglanManualOverride: null,   // v2.9.25: null=no override, true=forced raglan, false=forced non-raglan
+            templateAutoCorrection: null, // v2.9.25: { source, originalKey, correctedKey, reason }
             templateKey: null,
             template: null,
             tagData: null,
@@ -1277,7 +1347,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.24 measurement file naming + whisper report');
+            console.log('✅ Init complete - v2.9.25 raglan auto-detection + template correction');
         }
         
         // =====================================================================
@@ -1979,6 +2049,20 @@
             document.getElementById('classification-detail').textContent = parts.join(' · ');
             
             document.getElementById('classification-template').textContent = `${state.template?.name || '-'} (${state.template?.count || 0})`;
+            // v2.9.25: Update raglan toggle state
+            const raglanBtn = document.getElementById('raglan-toggle');
+            const isRaglan = state.classificationHasRaglan || state.raglanManualOverride === true;
+            raglanBtn.classList.toggle('active', isRaglan);
+            // v2.9.25: Show correction badge if template was auto-corrected
+            const badge = document.getElementById('correction-badge');
+            const templateEl = document.querySelector('.classification-template');
+            if (state.templateAutoCorrection) {
+                badge.textContent = `⚡ ${state.templateAutoCorrection.source === 'transcript_auto' ? 'Auto-corrected' : 'Manual'}: Raglan`;
+                templateEl.classList.add('corrected');
+            } else {
+                badge.textContent = '';
+                templateEl.classList.remove('corrected');
+            }
             if (state.tagData && !state.tagData.error) {
                 document.getElementById('tag-grid').style.display = 'grid';
                 document.getElementById('tag-brand').textContent = state.tagData.brand || '-';
@@ -2003,6 +2087,89 @@
             `).join('');
             document.getElementById('complete-btn-camera').disabled = false;
             if (!state.timing.measurementsStartTime) state.timing.measurementsStartTime = Date.now();
+        }
+        
+        // =====================================================================
+        // v2.9.25: RAGLAN CORRECTION SYSTEM
+        // Two correction paths: manual toggle (1 tap) + transcript auto-detect
+        // =====================================================================
+        function toggleRaglanManual() {
+            if (!state.template || !state.templateKey) { showToast('warning', 'Classify item first'); return; }
+            const currentlyRaglan = state.templateKey.includes('raglan');
+            if (currentlyRaglan) {
+                // Turn OFF raglan — revert to non-raglan template
+                const nonRaglanKey = RAGLAN_REVERSE_MAP[state.templateKey];
+                if (!nonRaglanKey) { showToast('error', 'Cannot revert — no non-raglan equivalent'); return; }
+                state.classificationHasRaglan = false;
+                state.raglanManualOverride = false;
+                // Restore original template if we saved it, otherwise use the key
+                const savedOriginal = state.templateAutoCorrection?.originalTemplate;
+                state.templateAutoCorrection = null;
+                state.templateKey = nonRaglanKey;
+                state.template = savedOriginal || RAGLAN_TEMPLATES[nonRaglanKey] || { name: nonRaglanKey, measurements: [], count: 0 };
+                showToast('info', 'Raglan OFF — reverted template');
+            } else {
+                // Turn ON raglan — switch to raglan template
+                const raglanKey = RAGLAN_CORRECTION_MAP[state.templateKey];
+                if (!raglanKey) { showToast('warning', 'No raglan variant for this template'); return; }
+                const raglanTemplate = RAGLAN_TEMPLATES[raglanKey];
+                if (!raglanTemplate) { showToast('error', 'Raglan template not found'); return; }
+                state.classificationHasRaglan = true;
+                state.raglanManualOverride = true;
+                // Save original template so we can revert cleanly
+                state.templateAutoCorrection = { source: 'manual', originalKey: state.templateKey, originalTemplate: state.template, correctedKey: raglanKey, reason: 'Photographer toggled raglan' };
+                state.templateKey = raglanKey;
+                state.template = raglanTemplate;
+                showToast('success', `Raglan ON → ${raglanTemplate.name} (${raglanTemplate.count})`);
+            }
+            // Re-parse measurements if transcript exists (values may map to different fields)
+            if (state.rawTranscript) parseMeasurements(state.rawTranscript, true); // skip auto-correct on manual toggle
+            updateClassificationDisplay();
+            updateMeasurementList();
+        }
+
+        function checkTranscriptForRaglan(text) {
+            const lower = text.toLowerCase();
+            // Direct raglan mentions
+            if (/\braglan\b/.test(lower)) return { detected: true, reason: 'Photographer said "raglan"' };
+            if (/\bno shoulder seam/.test(lower)) return { detected: true, reason: 'Photographer said "no shoulder seam"' };
+            if (/\bdiagonal seam/.test(lower)) return { detected: true, reason: 'Photographer said "diagonal seam"' };
+            // Raglan-specific measurement terms (only meaningful if current template is NOT raglan)
+            const raglanLongTerms = ['center neck to cuff', 'neck to cuff', 'raglan to cuff'];
+            const raglanShortTerms = ['center neck to sleeve opening', 'neck to sleeve opening', 'raglan to sleeve opening', 'raglan to sleeve'];
+            const raglanSleevelessTerms = ['arm opening'];
+            const hasLong = raglanLongTerms.some(t => lower.includes(t));
+            const hasShort = raglanShortTerms.some(t => lower.includes(t));
+            const hasSleeveless = raglanSleevelessTerms.some(t => lower.includes(t));
+            if (hasLong) return { detected: true, reason: 'Transcript contains raglan long-sleeve measurement terms' };
+            if (hasShort) return { detected: true, reason: 'Transcript contains raglan short-sleeve measurement terms' };
+            if (hasSleeveless) return { detected: true, reason: 'Transcript contains raglan sleeveless measurement terms' };
+            return { detected: false };
+        }
+
+        function autoCorrectForRaglan(transcript) {
+            if (!state.template || !state.templateKey) return false;
+            // Don't auto-correct if already raglan or if photographer manually set it
+            if (state.templateKey.includes('raglan')) return false;
+            if (state.raglanManualOverride === false) return false; // Photographer explicitly turned raglan OFF
+            const check = checkTranscriptForRaglan(transcript);
+            if (!check.detected) return false;
+            const raglanKey = RAGLAN_CORRECTION_MAP[state.templateKey];
+            if (!raglanKey) return false;
+            const raglanTemplate = RAGLAN_TEMPLATES[raglanKey];
+            if (!raglanTemplate) return false;
+            // Apply correction
+            const originalKey = state.templateKey;
+            const originalTemplate = state.template;
+            state.classificationHasRaglan = true;
+            state.templateAutoCorrection = { source: 'transcript_auto', originalKey, originalTemplate, correctedKey: raglanKey, reason: check.reason };
+            state.templateKey = raglanKey;
+            state.template = raglanTemplate;
+            console.log(`⚡ [RAGLAN AUTO-CORRECT] ${originalKey} → ${raglanKey} | Reason: ${check.reason}`);
+            updateClassificationDisplay();
+            updateMeasurementList();
+            showToast('success', `⚡ Raglan detected — template corrected to ${raglanTemplate.name}`);
+            return true;
         }
         
         // =====================================================================
@@ -2225,7 +2392,7 @@
             return { json: report, txt };
         }
         
-        function parseMeasurements(text) {
+        function parseMeasurements(text, skipAutoCorrect) {
             if (!state.template) return;
             
             const MEASUREMENT_ALIASES = {
@@ -2247,6 +2414,7 @@
                 'Center Neck to Cuff': ['center neck to cuff', 'center of neck to cuff', 'centre neck to cuff', 'neck to cuff', 'neck to end of cuff', 'neck to cuff opening', 'raglan to cuff'],
                 'Neck Circumference': ['neck circumference', 'collar circumference', 'neck circ', 'collar'],
                 'Strap Width': ['strap width', 'strap'],
+                'Arm Opening': ['arm opening', 'armhole', 'arm hole'],
                 'Hip': ['hip', 'hips'],
                 'Thigh': ['thigh'],
                 'Knee': ['knee'],
@@ -2316,6 +2484,13 @@
                     item?.classList.add('completed');
                 }
             });
+            
+            // v2.9.25: After initial parse, check transcript for raglan signals.
+            // If raglan detected and template is non-raglan, auto-correct and re-parse.
+            // skipAutoCorrect prevents infinite recursion on the re-parse.
+            if (!skipAutoCorrect && autoCorrectForRaglan(text)) {
+                parseMeasurements(text, true); // Re-parse with corrected raglan template
+            }
         }
         
         // =====================================================================
@@ -2399,6 +2574,8 @@
                     sleeveLength: state.classificationSleeve,
                     isCampCollar: state.classificationIsCampCollar,
                     hasRaglan: state.classificationHasRaglan,
+                    raglanManualOverride: state.raglanManualOverride, // v2.9.25
+                    templateCorrection: state.templateAutoCorrection, // v2.9.25
                     templateKey: state.templateKey,
                     template: state.template,
                     tagData: state.tagData,
@@ -2662,6 +2839,8 @@
             state.classificationSleeve = null;
             state.classificationIsCampCollar = false;
             state.classificationHasRaglan = false;
+            state.raglanManualOverride = null; // v2.9.25
+            state.templateAutoCorrection = null; // v2.9.25
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
@@ -2685,6 +2864,9 @@
             document.getElementById('classification-category').textContent = 'Waiting...';
             document.getElementById('classification-detail').textContent = '';
             document.getElementById('classification-template').textContent = '-';
+            document.getElementById('correction-badge').textContent = ''; // v2.9.25
+            document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
+            document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
@@ -2708,6 +2890,8 @@
             state.classification = null; state.classificationType = null;
             state.classificationSleeve = null; state.classificationIsCampCollar = false;
             state.classificationHasRaglan = false;
+            state.raglanManualOverride = null; // v2.9.25
+            state.templateAutoCorrection = null; // v2.9.25
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
@@ -2731,6 +2915,9 @@
             document.getElementById('classification-category').textContent = 'Waiting...';
             document.getElementById('classification-detail').textContent = '';
             document.getElementById('classification-template').textContent = '-';
+            document.getElementById('correction-badge').textContent = ''; // v2.9.25
+            document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
+            document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
