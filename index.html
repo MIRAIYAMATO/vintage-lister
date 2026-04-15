@@ -1,8 +1,35 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.23 - AUDIO NOTES FOLDER RENAME
+    VintageLister v2.9.24 - MEASUREMENT FILE NAMING + WHISPER REPORT
     
     CHANGELOG:
+    v2.9.24 (2026-04-15):
+    - RENAMED: Measurement audio S3 upload filenames for pipeline naming consistency.
+      All measurement files now carry the measurement_ prefix so they are searchable
+      and traceable from source through pipeline output. Matches audio_notes_ prefix
+      convention established in v2.9.23.
+    - RENAMED: S3 paths in uploadToS3():
+        measurements/{sku}_audio_final.webm → measurements/{sku}_measurement_audio_final.webm
+        measurements/{sku}_audio_discard_XX.webm → measurements/{sku}_measurement_audio_discard_XX.webm
+        measurements/{sku}_transcript_raw.txt → measurements/{sku}_measurement_transcript_raw.txt
+    - RENAMED: Local save filenames in saveToLocalFolder() — same three renames
+      within the measurements/ folder.
+    - ADDED: Whisper transcription report (JSON + TXT) generated in transcribeAudio()
+      after Whisper returns. Saved to measurements/ folder as:
+        {sku}_measurement_whisper_COMPLETE.json
+        {sku}_measurement_whisper_COMPLETE.txt
+      Report includes: pipeline name/version, Whisper model/provider, transcript text
+      with word/char count, audio format/size/duration, recording attempt count,
+      timing (Whisper latency), cost ($0.006), KPI targets.
+    - ADDED: state.whisperReport — stores generated report for inclusion in
+      completeItem() data and file saves.
+    - ADDED: generateWhisperReport() function — produces JSON + TXT forensic report
+      matching VintageLister pipeline documentation standard.
+    - MODIFIED: completeItem() — includes whisperReport in itemData.
+    - MODIFIED: startNewItem() and resetItem() — reset whisperReport state.
+    - REQUIRES: Lambda TranscriptCouncil v2.3.0 (reads measurement_audio_final.webm)
+    - REQUIRES: Lambda MeasurementCouncil v1.5.0 (reads originalTranscript)
+
     v2.9.23 (2026-04-14):
     - RENAMED: Audio notes S3 upload folder from notes/ to audio_notes/ for pipeline
       naming consistency. Matches source folders: main/, closeup/, handheld/, weight/,
@@ -157,7 +184,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.23</title>
+    <title>VintageLister v2.9.24</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -843,7 +870,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.23</span>
+                    <span class="version-badge" id="version-badge">v2.9.24</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -1120,11 +1147,11 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.23 - AUDIO NOTES FOLDER RENAME
-        // Audio Notes S3 folder: notes/ → audio_notes/ for pipeline naming consistency
+        // VINTAGELISTER v2.9.24 - MEASUREMENT FILE NAMING + WHISPER REPORT
+        // Measurement files: measurement_ prefix + Whisper report generation
         // =============================================================================
         
-        const VERSION = '2.9.23';
+        const VERSION = '2.9.24';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1191,6 +1218,8 @@
             notesRecordingStartTime: null,
             lastNotesRecordingDuration: 0,
             discardedNotesRecordings: [],
+            // v2.9.24: Whisper transcription report
+            whisperReport: null,
             // v2.9.19: Dymo USB Scale state
             scaleDevice: null,
             scaleStatus: 'disconnected', // 'disconnected' | 'connected' | 'asleep'
@@ -1248,7 +1277,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.23 audio_notes folder rename');
+            console.log('✅ Init complete - v2.9.24 measurement file naming + whisper report');
         }
         
         // =====================================================================
@@ -2067,20 +2096,133 @@
         async function transcribeAudio(blob) {
             try {
                 showToast('info', 'Transcribing...');
+                const whisperStartTime = Date.now();
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
                 reader.onloadend = async () => {
                     const base64 = reader.result.split(',')[1];
                     const result = await callLambda('whisper', { audio: base64, filename: 'audio.webm' });
                     if (result.success && result.text) {
+                        const whisperLatencyMs = Date.now() - whisperStartTime;
                         state.rawTranscript = result.text;
                         document.getElementById('transcript-text').textContent = result.text;
                         document.getElementById('transcript-box').classList.add('visible');
                         parseMeasurements(result.text);
+
+                        // v2.9.24: Generate Whisper forensic report
+                        state.whisperReport = generateWhisperReport(
+                            state.currentSKU, result.text, blob.size,
+                            state.lastRecordingDuration || 0,
+                            whisperLatencyMs,
+                            state.discardedRecordings.length + 1
+                        );
+
                         showToast('success', 'Transcription done');
                     }
                 };
             } catch (err) { showToast('error', 'Transcription failed'); }
+        }
+
+        // v2.9.24: Whisper transcription forensic report generator
+        function generateWhisperReport(sku, transcript, audioSizeBytes, recordingDurationSec, whisperLatencyMs, totalAttempts) {
+            const now = new Date();
+            const rating = recordingDurationSec <= 30 ? 'excellent' : recordingDurationSec <= 60 ? 'good' : 'needs_improvement';
+            const wordCount = transcript.split(/\s+/).filter(w => w).length;
+            const charCount = transcript.length;
+
+            const report = {
+                reportType: 'measurement_whisper',
+                reportVersion: '1.0.0',
+                pipeline: 'VintageLister_Browser_Whisper',
+                generatedAt: now.toISOString(),
+                generatedBy: `VintageLister_Browser_v${VERSION}`,
+                sku,
+                photographerId: state.photographerId,
+                status: 'COMPLETE',
+                whisper: { model: 'whisper-1', provider: 'OpenAI', language: 'en', responseFormat: 'text' },
+                transcript: { text: transcript, characterCount: charCount, wordCount: wordCount },
+                audio: { format: 'audio/webm', sizeBytes: audioSizeBytes, sizeKB: Math.round(audioSizeBytes / 1024 * 10) / 10, durationSeconds: Math.round(recordingDurationSec * 10) / 10 },
+                recording: { totalAttempts, discardedCount: totalAttempts - 1, finalAttempt: totalAttempts },
+                timing: { whisperLatencyMs: Math.round(whisperLatencyMs), recordingDurationSeconds: Math.round(recordingDurationSec * 10) / 10 },
+                cost: { whisperTranscription: 0.006, total: 0.006, note: 'Whisper API ~$0.006/minute for audio under 60s' },
+                kpi: { recordingTarget: 60, recordingExcellent: 30, actualDuration: Math.round(recordingDurationSec * 10) / 10, rating },
+            };
+
+            const txt = [
+                '='.repeat(78),
+                'VINTAGELISTER MEASUREMENT WHISPER REPORT',
+                '='.repeat(78),
+                `SKU:              ${sku}`,
+                `Generated:        ${now.toISOString()}`,
+                `Generated By:     VintageLister Browser v${VERSION}`,
+                `Photographer:     ${state.photographerId}`,
+                'Status:           COMPLETE',
+                '='.repeat(78),
+                '',
+                'METHODOLOGY',
+                '-'.repeat(78),
+                '  This report documents the initial Whisper transcription of the measurement',
+                '  audio recording. This is the FIRST step in the measurement pipeline — the',
+                '  raw transcript feeds into the Transcript Council (which re-transcribes the',
+                '  audio with 3 additional services and votes on values) and the v106 browser-',
+                '  side extraction (which runs parseMeasurements() on this text during the',
+                '  photographer session).',
+                '',
+                '  WHERE THIS FITS IN THE PIPELINE:',
+                '    1. >>> WHISPER TRANSCRIPTION (this report) — raw audio to text',
+                '    2. Transcript Council — 4-source transcription vote (golden transcript)',
+                '    3. Scientist + Council + v106 — three extraction paths',
+                '    4. Reconciler — cross-checks the three paths',
+                '    5. Resolver — applies human overrides',
+                '    6. Compositor — stamps values onto silhouette image',
+                '',
+                `  COST: $0.006 per transcription (Whisper API).`,
+                '',
+                'WHISPER',
+                '-'.repeat(40),
+                '  Model:              whisper-1',
+                '  Provider:           OpenAI',
+                '  Language:           en',
+                '  Response Format:    text',
+                `  Latency:            ${Math.round(whisperLatencyMs)} ms`,
+                '',
+                'TRANSCRIPT',
+                '-'.repeat(78),
+                `  ${transcript}`,
+                '',
+                `  Characters:         ${charCount}`,
+                `  Words:              ${wordCount}`,
+                '',
+                'AUDIO',
+                '-'.repeat(40),
+                '  Format:             audio/webm',
+                `  Size:               ${audioSizeBytes} bytes (${(audioSizeBytes / 1024).toFixed(1)} KB)`,
+                `  Duration:           ${Math.round(recordingDurationSec * 10) / 10} seconds`,
+                '',
+                'RECORDING',
+                '-'.repeat(40),
+                `  Total Attempts:     ${totalAttempts}`,
+                `  Discarded:          ${totalAttempts - 1}`,
+                `  Final Attempt:      ${totalAttempts}`,
+                '',
+                'KPI',
+                '-'.repeat(40),
+                '  Target Duration:    60 seconds',
+                '  Excellent:          <=30 seconds',
+                `  Actual Duration:    ${Math.round(recordingDurationSec * 10) / 10} seconds`,
+                `  Rating:             ${rating.toUpperCase()}`,
+                '',
+                'COST',
+                '-'.repeat(40),
+                '  Whisper API:        $0.0060',
+                '  TOTAL:              $0.0060',
+                '',
+                '='.repeat(78),
+                '  END OF REPORT — COMPLETE',
+                '='.repeat(78),
+            ].join('\n');
+
+            return { json: report, txt };
         }
         
         function parseMeasurements(text) {
@@ -2241,6 +2383,7 @@
                 notesAudioBlob: state.notesAudioBlob,
                 discardedNotesRecordings: state.discardedNotesRecordings,
                 weightReport, // v2.9.19: weight report object
+                whisperReport: state.whisperReport, // v2.9.24: Whisper forensic report
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
@@ -2383,18 +2526,25 @@
                 
                 const measurementsFolder = await skuFolder.getDirectoryHandle('measurements', { create: true });
                 if (itemData.audioBlob) {
-                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_final.webm`, { create: true });
+                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_audio_final.webm`, { create: true });
                     const w = await fh.createWritable(); await w.write(itemData.audioBlob); await w.close();
                 }
                 if (itemData.discardedRecordings?.length > 0) {
                     for (let i = 0; i < itemData.discardedRecordings.length; i++) {
-                        const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_audio_discard_${String(i+1).padStart(2,'0')}.webm`, { create: true });
+                        const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_audio_discard_${String(i+1).padStart(2,'0')}.webm`, { create: true });
                         const w = await fh.createWritable(); await w.write(itemData.discardedRecordings[i].blob); await w.close();
                     }
                 }
                 if (itemData.rawTranscript) {
-                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_transcript_raw.txt`, { create: true });
+                    const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_transcript_raw.txt`, { create: true });
                     const w = await fh.createWritable(); await w.write(itemData.rawTranscript); await w.close();
+                }
+                // v2.9.24: Whisper report files
+                if (itemData.whisperReport) {
+                    const wJsonFh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_whisper_COMPLETE.json`, { create: true });
+                    const wJsonW = await wJsonFh.createWritable(); await wJsonW.write(JSON.stringify(itemData.whisperReport.json, null, 2)); await wJsonW.close();
+                    const wTxtFh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_whisper_COMPLETE.txt`, { create: true });
+                    const wTxtW = await wTxtFh.createWritable(); await wTxtW.write(itemData.whisperReport.txt); await wTxtW.close();
                 }
                 
                 const dataFolder = await skuFolder.getDirectoryHandle('data', { create: true });
@@ -2445,11 +2595,16 @@
                 files.push({ name: `weight/${sku}_weight_report.txt`, contentType: 'text/plain', blob: new Blob([itemData.weightReport.txt]) });
             }
             
-            if (itemData.audioBlob) files.push({ name: `measurements/${sku}_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
+            if (itemData.audioBlob) files.push({ name: `measurements/${sku}_measurement_audio_final.webm`, contentType: 'audio/webm', blob: itemData.audioBlob });
             if (itemData.discardedRecordings?.length > 0) {
-                for (let i = 0; i < itemData.discardedRecordings.length; i++) { files.push({ name: `measurements/${sku}_audio_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedRecordings[i].blob }); }
+                for (let i = 0; i < itemData.discardedRecordings.length; i++) { files.push({ name: `measurements/${sku}_measurement_audio_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedRecordings[i].blob }); }
             }
-            if (itemData.rawTranscript) files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            if (itemData.rawTranscript) files.push({ name: `measurements/${sku}_measurement_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            // v2.9.24: Whisper report files
+            if (itemData.whisperReport) {
+                files.push({ name: `measurements/${sku}_measurement_whisper_COMPLETE.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.whisperReport.json, null, 2)]) });
+                files.push({ name: `measurements/${sku}_measurement_whisper_COMPLETE.txt`, contentType: 'text/plain', blob: new Blob([itemData.whisperReport.txt]) });
+            }
             
             // v2.9.23: notes/ → audio_notes/ S3 path rename
             if (itemData.notesAudioBlob) files.push({ name: `audio_notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
@@ -2515,6 +2670,7 @@
             state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
+            state.whisperReport = null; // v2.9.24
             // v2.9.19: Reset per-item weight state (scale stays connected)
             state.weightLocked = false;
             state.weightLockedValue = null;
@@ -2560,6 +2716,7 @@
             state.notesAudioBlob = null; state.notesAudioChunks = []; state.isRecordingNotes = false;
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
+            state.whisperReport = null; // v2.9.24
             // v2.9.19: Reset weight (scale stays connected)
             state.weightLocked = false;
             state.weightLockedValue = null;
