@@ -1,8 +1,31 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.22 - WEIGHT SYSTEM RESTRUCTURE: USB SCALE DIRECT READ
+    VintageLister v2.9.23 - AUDIO NOTES FOLDER RENAME
     
     CHANGELOG:
+    v2.9.23 (2026-04-14):
+    - RENAMED: Audio notes S3 upload folder from notes/ to audio_notes/ for pipeline
+      naming consistency. Matches source folders: main/, closeup/, handheld/, weight/,
+      measurements/. Matches pipeline output folders: data/photo/, data/measurements/,
+      data/weight/, data/audio_notes/.
+    - RENAMED: Local save folder from notes/ to audio_notes/ via getDirectoryHandle().
+    - RENAMED: NA placeholder from {sku}_NA.txt to {sku}_audio_notes_NA.txt to match
+      the audio_notes_ prefix convention used by all pipeline output files.
+    - MODIFIED: saveToLocalFolder() — getDirectoryHandle('notes') changed to
+      getDirectoryHandle('audio_notes'). File names within the folder unchanged.
+    - MODIFIED: uploadToS3() — three S3 path changes:
+        notes/${sku}_audio_notes.webm → audio_notes/${sku}_audio_notes.webm
+        notes/${sku}_audio_notes_discard_XX.webm → audio_notes/${sku}_audio_notes_discard_XX.webm
+        notes/${sku}_NA.txt → audio_notes/${sku}_audio_notes_NA.txt
+    - UNCHANGED: state.notesAudioBlob, state.notesAudioChunks, state.isRecordingNotes,
+      state.notesMediaRecorder, state.discardedNotesRecordings — all internal state
+      variable names unchanged. Only S3 paths and local folder name affected.
+    - UNCHANGED: jsonData.notesAudio object — stores metadata only (duration, timestamps,
+      attempts), no S3 paths. No change needed.
+    - UNCHANGED: All measurement audio paths — measurements/ folder is a separate pipeline.
+    - REQUIRES: Lambda AudioNotes_Transcribe v1.2.2 (reads from audio_notes/)
+    - REQUIRES: Lambda AudioNotes_Scientist v1.2.0 (reads from data/audio_notes/)
+
     v2.9.22 (2026-04-13):
     - FIX: Scale stability detection only recognized status=2 (stable at zero)
       as "stable". The USB HID Point of Sale spec defines TWO stable states:
@@ -134,7 +157,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.22</title>
+    <title>VintageLister v2.9.23</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -820,7 +843,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.22</span>
+                    <span class="version-badge" id="version-badge">v2.9.23</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -1097,11 +1120,11 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.22 - WEIGHT SYSTEM RESTRUCTURE + STABILITY FIX
-        // USB Scale Direct Read via WebHID + Weight Photo Code Removed
+        // VINTAGELISTER v2.9.23 - AUDIO NOTES FOLDER RENAME
+        // Audio Notes S3 folder: notes/ → audio_notes/ for pipeline naming consistency
         // =============================================================================
         
-        const VERSION = '2.9.22';
+        const VERSION = '2.9.23';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
         const MAX_RETRIES = 3;
@@ -1225,7 +1248,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.22 USB scale + HID stable fix');
+            console.log('✅ Init complete - v2.9.23 audio_notes folder rename');
         }
         
         // =====================================================================
@@ -2378,7 +2401,8 @@
                 const dfh = await dataFolder.getFileHandle(`${itemData.sku}_data.json`, { create: true });
                 const dw = await dfh.createWritable(); await dw.write(JSON.stringify(itemData.jsonData, null, 2)); await dw.close();
                 
-                const notesFolder = await skuFolder.getDirectoryHandle('notes', { create: true });
+                // v2.9.23: notes/ → audio_notes/ folder rename
+                const notesFolder = await skuFolder.getDirectoryHandle('audio_notes', { create: true });
                 if (itemData.notesAudioBlob) {
                     const fh = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes.webm`, { create: true });
                     const w = await fh.createWritable(); await w.write(itemData.notesAudioBlob); await w.close();
@@ -2427,11 +2451,12 @@
             }
             if (itemData.rawTranscript) files.push({ name: `measurements/${sku}_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
             
-            if (itemData.notesAudioBlob) files.push({ name: `notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
+            // v2.9.23: notes/ → audio_notes/ S3 path rename
+            if (itemData.notesAudioBlob) files.push({ name: `audio_notes/${sku}_audio_notes.webm`, contentType: 'audio/webm', blob: itemData.notesAudioBlob });
             if (itemData.discardedNotesRecordings?.length > 0) {
-                for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) { files.push({ name: `notes/${sku}_audio_notes_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedNotesRecordings[i].blob }); }
+                for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) { files.push({ name: `audio_notes/${sku}_audio_notes_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedNotesRecordings[i].blob }); }
             }
-            if (!itemData.notesAudioBlob) files.push({ name: `notes/${sku}_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
+            if (!itemData.notesAudioBlob) files.push({ name: `audio_notes/${sku}_audio_notes_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
             
             files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
             
