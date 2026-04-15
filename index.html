@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION
+    VintageLister v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION + ADDENDUM RECORDING
     
     CHANGELOG:
     v2.9.25 (2026-04-15):
@@ -8,36 +8,35 @@
       and sleeveless raglan garments. RAGLAN_OVERRIDES in the Lambda only mapped
       long-sleeve templates to raglan variants, so hasRaglan=true was silently
       ignored when Gemini classified the sleeve as "short" or "sleeveless".
-      This caused photographers to get Shoulder to Shoulder in their measurement
-      list for raglan garments — a measurement that doesn't exist on raglans.
-    - ADDED: Local RAGLAN_TEMPLATES object containing all 7 raglan template
-      variants (3 existing + 4 new). Enables client-side template correction
-      without a Lambda round-trip.
-    - ADDED: RAGLAN_CORRECTION_MAP mapping every non-raglan template key to its
-      raglan equivalent. Covers long-sleeve, short-sleeve, and sleeveless for
-      tops, button-up, and outerwear categories.
+    - ADDED: Local RAGLAN_TEMPLATES, RAGLAN_CORRECTION_MAP, RAGLAN_REVERSE_MAP.
     - ADDED: Measurement transcript raglan auto-detection in parseMeasurements().
-      After Whisper transcript is parsed, scans for raglan-specific measurement
-      terms ("center neck to cuff", "raglan to sleeve", "arm opening" on sleeveless).
-      Also detects the word "raglan" anywhere in the transcript. If raglan terms
-      are found but current template is non-raglan, auto-switches template and
-      re-parses measurements. Zero clicks — happens automatically.
-    - ADDED: Manual raglan toggle button in AI Classification display. Photographer
-      can tap to force raglan on/off if Gemini missed it and they haven't recorded
-      measurements yet. Toggle updates template and measurement list instantly.
-    - ADDED: Visual feedback when auto-correction fires — toast notification and
-      template display updates to show "(Auto-corrected: Raglan)" with highlight.
-    - ADDED: Arm Opening measurement alias for raglan sleeveless detection.
-    - ADDED: state.raglanManualOverride and state.templateAutoCorrection fields
-      for tracking correction source (gemini | manual | transcript_auto).
-    - MODIFIED: completeItem() jsonData includes templateCorrection object
-      documenting original vs corrected template and correction source.
-    - MODIFIED: startNewItem() and resetItem() clear new raglan state fields.
+    - ADDED: Manual raglan toggle button in AI Classification display.
+    - ADDED: TAP-TO-EDIT on measurement values. Photographer taps any measurement
+      row (filled or empty) to open inline number input. Type value, press Enter
+      or tap checkmark. Value fills in green with "manual" source indicator.
+      Manually entered values flagged as source:"manual_entry" for pipeline
+      provenance — downstream Measurement Reconciler knows it bypassed Whisper.
+    - ADDED: Measurement addendum recording. ➕ ADD button appears after initial
+      measurement recording is done. Photographer taps ADD, records just the
+      missing measurements, Whisper transcribes the addendum, frontend
+      concatenates both transcripts and re-runs parseMeasurements(). Addendum
+      audio saved as separate file: {sku}_measurement_audio_addendum_XX.webm.
+      Pipeline gets both files with full provenance.
+    - ADDED: Audio notes addendum recording. ➕ ADD button appears after initial
+      notes recording. Records supplementary observations without replacing the
+      original. Saved as: {sku}_audio_notes_addendum_XX.webm. Multiple addendums
+      supported (addendum_01, _02, etc.).
+    - ADDED: state.manualMeasurements, state.measurementAddendums,
+      state.notesAddendums, state.combinedTranscript for tracking all sources.
+    - MODIFIED: updateMeasurementList() — rows now clickable with cursor pointer.
+    - MODIFIED: parseMeasurements() — preserves manual entries across re-parses.
+    - MODIFIED: completeItem() — includes addendum blobs, manual entries, and
+      combined transcript in saved data.
+    - MODIFIED: saveToLocalFolder() — saves addendum audio files to measurements/
+      and audio_notes/ folders.
+    - MODIFIED: uploadToS3() — uploads addendum audio files alongside originals.
     - REQUIRES: Lambda v106.8 with expanded RAGLAN_OVERRIDES and 4 new raglan
-      templates (tops-raglan-short-sleeve, tops-raglan-sleeveless,
-      button-up-raglan-short-sleeve, outerwear-raglan-short-sleeve).
-    - COMPATIBLE WITH: Lambda v106.7 (Gemini still returns hasRaglan; new local
-      templates handle the gap until Lambda is updated).
+      templates.
 
     v2.9.24 (2026-04-15):
     - RENAMED: Measurement audio S3 upload filenames for pipeline naming consistency.
@@ -361,6 +360,19 @@
         .raglan-toggle.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
         .correction-badge { display: inline-block; font-size: 9px; color: #f59e0b; font-weight: 600; margin-left: 6px; animation: correctionPulse 0.5s ease-out; }
         @keyframes correctionPulse { 0% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+        .measurement-item { cursor: pointer; }
+        .measurement-item:hover { background: rgba(255,255,255,0.03); }
+        .measurement-inline-edit { display: inline-flex; align-items: center; gap: 4px; }
+        .measurement-inline-input { width: 52px; padding: 2px 4px; font-size: 12px; border: 1px solid var(--accent-blue); border-radius: 3px; background: var(--bg-card); color: var(--text-primary); text-align: center; outline: none; }
+        .measurement-inline-input:focus { border-color: var(--accent-green, #22c55e); box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
+        .measurement-inline-confirm { background: none; border: none; color: var(--accent-green, #22c55e); cursor: pointer; font-size: 14px; padding: 0 2px; }
+        .measurement-inline-cancel { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 12px; padding: 0 2px; }
+        .measurement-value.manual { color: #22c55e; font-style: italic; }
+        .btn-addendum { display: none; font-size: 11px; padding: 4px 10px; margin-top: 4px; background: transparent; border: 1px dashed var(--border); color: var(--text-secondary); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .btn-addendum:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .btn-addendum.visible { display: inline-block; }
+        .btn-addendum.recording { background: #dc2626; border-color: #dc2626; color: #fff; border-style: solid; }
+        .addendum-count { font-size: 9px; color: var(--accent-blue); margin-left: 6px; }
         
         .tag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
         
@@ -1001,6 +1013,7 @@
                 <div class="section-card">
                     <div class="section-title">🗒️ Audio Notes</div>
                     <button class="btn btn-record" id="notes-record-btn" onclick="toggleNotesRecording()">🎤 TAP TO RECORD NOTES</button>
+                    <button class="btn-addendum" id="notes-addendum-btn" onclick="toggleNotesAddendum()">➕ ADD MORE NOTES</button><span class="addendum-count" id="notes-addendum-count"></span>
                     <div style="font-size: 10px; color: var(--text-secondary); margin-top: -4px;">
                         Verbal notes on features, condition, or insights
                     </div>
@@ -1021,6 +1034,7 @@
                 </div>
                 
                 <button class="btn btn-record" id="record-btn" onclick="toggleRecording()">🎤 TAP TO RECORD</button>
+                <button class="btn-addendum" id="measurement-addendum-btn" onclick="toggleMeasurementAddendum()">➕ ADD MISSING MEASUREMENTS</button><span class="addendum-count" id="measurement-addendum-count"></span>
 
                 <!-- WEIGHT — v2.9.19: NEW — Dymo M10 USB Scale via WebHID -->
                 <div class="section-card" id="scale-section">
@@ -1290,6 +1304,19 @@
             discardedNotesRecordings: [],
             // v2.9.24: Whisper transcription report
             whisperReport: null,
+            // v2.9.25: Addendum recording + tap-to-edit
+            manualMeasurements: {},  // { fieldName: { value, timestamp } }
+            measurementAddendums: [], // [{ blob, duration, transcript, timestamp }]
+            isRecordingMeasurementAddendum: false,
+            measurementAddendumRecorder: null,
+            measurementAddendumChunks: [],
+            measurementAddendumStartTime: null,
+            notesAddendums: [], // [{ blob, duration, timestamp }]
+            isRecordingNotesAddendum: false,
+            notesAddendumRecorder: null,
+            notesAddendumChunks: [],
+            notesAddendumStartTime: null,
+            combinedTranscript: '', // all transcripts merged
             // v2.9.19: Dymo USB Scale state
             scaleDevice: null,
             scaleStatus: 'disconnected', // 'disconnected' | 'connected' | 'asleep'
@@ -1347,7 +1374,7 @@
             }
             
             processRetryQueue();
-            console.log('✅ Init complete - v2.9.25 raglan auto-detection + template correction');
+            console.log('✅ Init complete - v2.9.25 raglan auto-detection + addendum recording + tap-to-edit');
         }
         
         // =====================================================================
@@ -2078,13 +2105,18 @@
                 list.innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
                 return;
             }
-            list.innerHTML = state.template.measurements.map((m, i) => `
-                <div class="measurement-item" data-idx="${i}">
+            list.innerHTML = state.template.measurements.map((m, i) => {
+                const manual = state.manualMeasurements[m];
+                const parsed = state.measurements[m];
+                const val = manual ? manual.value : parsed;
+                const isManual = !!manual;
+                const isFilled = val !== undefined;
+                return `<div class="measurement-item${isFilled ? ' completed' : ''}" data-idx="${i}" onclick="onMeasurementValueClick(${i})">
                     <span class="measurement-num">${i + 1}</span>
                     <span class="measurement-name">${m}</span>
-                    <span class="measurement-value" id="mv-${i}">-</span>
-                </div>
-            `).join('');
+                    <span class="measurement-value${isManual ? ' manual' : ''}" id="mv-${i}">${isFilled ? val + '"' : '-'}</span>
+                </div>`;
+            }).join('');
             document.getElementById('complete-btn-camera').disabled = false;
             if (!state.timing.measurementsStartTime) state.timing.measurementsStartTime = Date.now();
         }
@@ -2173,6 +2205,166 @@
         }
         
         // =====================================================================
+        // v2.9.25: TAP-TO-EDIT MEASUREMENTS
+        // =====================================================================
+        function onMeasurementValueClick(idx) {
+            if (!state.template?.measurements) return;
+            const field = state.template.measurements[idx];
+            const row = document.querySelector(`.measurement-item[data-idx="${idx}"]`);
+            const valueEl = document.getElementById(`mv-${idx}`);
+            if (!row || !valueEl) return;
+            // Don't open if already editing
+            if (row.querySelector('.measurement-inline-edit')) return;
+            const currentVal = state.manualMeasurements[field]?.value ?? state.measurements[field] ?? '';
+            valueEl.innerHTML = `<span class="measurement-inline-edit">
+                <input class="measurement-inline-input" id="manual-input-${idx}" type="number" step="0.25" min="0" max="100" value="${currentVal}" inputmode="decimal" placeholder="0.0">
+                <button class="measurement-inline-confirm" onclick="event.stopPropagation(); submitManualMeasurement(${idx})">✓</button>
+                <button class="measurement-inline-cancel" onclick="event.stopPropagation(); cancelManualMeasurement(${idx})">✕</button>
+            </span>`;
+            const input = document.getElementById(`manual-input-${idx}`);
+            input.focus(); input.select();
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); submitManualMeasurement(idx); }
+                if (e.key === 'Escape') { e.preventDefault(); cancelManualMeasurement(idx); }
+            });
+            row.onclick = null; // Prevent re-trigger while editing
+        }
+
+        function submitManualMeasurement(idx) {
+            const field = state.template.measurements[idx];
+            const input = document.getElementById(`manual-input-${idx}`);
+            if (!input) return;
+            const val = parseFloat(input.value);
+            if (isNaN(val) || val < 0.25 || val > 100) { showToast('warning', 'Enter a value between 0.25 and 100'); return; }
+            state.manualMeasurements[field] = { value: val, timestamp: new Date().toISOString() };
+            updateMeasurementList(); // Re-render with green manual value
+            showToast('success', `${field}: ${val}" (manual)`);
+        }
+
+        function cancelManualMeasurement(idx) {
+            updateMeasurementList(); // Re-render to restore original display
+        }
+
+        // =====================================================================
+        // v2.9.25: MEASUREMENT ADDENDUM RECORDING
+        // =====================================================================
+        function toggleMeasurementAddendum() {
+            if (state.isRecordingMeasurementAddendum) stopMeasurementAddendum();
+            else startMeasurementAddendum();
+        }
+
+        async function startMeasurementAddendum() {
+            if (state.isRecording || state.isRecordingNotes || state.isRecordingNotesAddendum) {
+                showToast('error', '⚠️ Stop other recording first'); return;
+            }
+            try {
+                const audioConstraints = state.micDeviceId ? { deviceId: { exact: state.micDeviceId } } : true;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                state.measurementAddendumRecorder = new MediaRecorder(stream);
+                state.measurementAddendumChunks = [];
+                state.measurementAddendumStartTime = Date.now();
+                state.measurementAddendumRecorder.ondataavailable = e => state.measurementAddendumChunks.push(e.data);
+                state.measurementAddendumRecorder.onstop = async () => {
+                    const duration = (Date.now() - state.measurementAddendumStartTime) / 1000;
+                    const blob = new Blob(state.measurementAddendumChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(t => t.stop());
+                    // Transcribe the addendum
+                    showToast('info', 'Transcribing addendum...');
+                    try {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        reader.onloadend = async () => {
+                            const base64 = reader.result.split(',')[1];
+                            const result = await callLambda('whisper', { audio: base64, filename: 'addendum.webm' });
+                            const transcript = (result.success && result.text) ? result.text : '';
+                            state.measurementAddendums.push({ blob, duration, transcript, timestamp: new Date().toISOString() });
+                            // Combine all transcripts and re-parse
+                            const allTranscripts = [state.rawTranscript, ...state.measurementAddendums.map(a => a.transcript)].filter(Boolean).join(' ');
+                            state.combinedTranscript = allTranscripts;
+                            parseMeasurements(allTranscripts, true); // skip auto-correct, preserve manuals
+                            updateMeasurementAddendumUI();
+                            showToast('success', `Addendum ${state.measurementAddendums.length} added (${Math.round(duration)}s)`);
+                        };
+                    } catch (err) {
+                        state.measurementAddendums.push({ blob, duration, transcript: '', timestamp: new Date().toISOString() });
+                        showToast('error', 'Addendum saved but transcription failed');
+                        updateMeasurementAddendumUI();
+                    }
+                };
+                state.measurementAddendumRecorder.start();
+                state.isRecordingMeasurementAddendum = true;
+                const btn = document.getElementById('measurement-addendum-btn');
+                btn.classList.add('recording');
+                btn.textContent = '🔴 RECORDING — TAP TO STOP';
+            } catch (err) { showToast('error', 'Mic access denied'); }
+        }
+
+        function stopMeasurementAddendum() {
+            if (state.measurementAddendumRecorder && state.isRecordingMeasurementAddendum) {
+                state.measurementAddendumRecorder.stop();
+                state.isRecordingMeasurementAddendum = false;
+                const btn = document.getElementById('measurement-addendum-btn');
+                btn.classList.remove('recording');
+                btn.textContent = '➕ ADD MISSING MEASUREMENTS';
+            }
+        }
+
+        function updateMeasurementAddendumUI() {
+            const count = state.measurementAddendums.length;
+            document.getElementById('measurement-addendum-count').textContent = count > 0 ? `(${count} addendum${count > 1 ? 's' : ''})` : '';
+        }
+
+        // =====================================================================
+        // v2.9.25: AUDIO NOTES ADDENDUM RECORDING
+        // =====================================================================
+        function toggleNotesAddendum() {
+            if (state.isRecordingNotesAddendum) stopNotesAddendum();
+            else startNotesAddendum();
+        }
+
+        async function startNotesAddendum() {
+            if (state.isRecording || state.isRecordingNotes || state.isRecordingMeasurementAddendum) {
+                showToast('error', '⚠️ Stop other recording first'); return;
+            }
+            try {
+                const audioConstraints = state.micDeviceId ? { deviceId: { exact: state.micDeviceId } } : true;
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                state.notesAddendumRecorder = new MediaRecorder(stream);
+                state.notesAddendumChunks = [];
+                state.notesAddendumStartTime = Date.now();
+                state.notesAddendumRecorder.ondataavailable = e => state.notesAddendumChunks.push(e.data);
+                state.notesAddendumRecorder.onstop = async () => {
+                    const duration = (Date.now() - state.notesAddendumStartTime) / 1000;
+                    const blob = new Blob(state.notesAddendumChunks, { type: 'audio/webm' });
+                    stream.getTracks().forEach(t => t.stop());
+                    state.notesAddendums.push({ blob, duration, timestamp: new Date().toISOString() });
+                    updateNotesAddendumUI();
+                    showToast('success', `Notes addendum ${state.notesAddendums.length} added (${Math.round(duration)}s)`);
+                };
+                state.notesAddendumRecorder.start();
+                state.isRecordingNotesAddendum = true;
+                const btn = document.getElementById('notes-addendum-btn');
+                btn.classList.add('recording');
+                btn.textContent = '🔴 RECORDING — TAP TO STOP';
+            } catch (err) { showToast('error', 'Mic access denied'); }
+        }
+
+        function stopNotesAddendum() {
+            if (state.notesAddendumRecorder && state.isRecordingNotesAddendum) {
+                state.notesAddendumRecorder.stop();
+                state.isRecordingNotesAddendum = false;
+                const btn = document.getElementById('notes-addendum-btn');
+                btn.classList.remove('recording');
+                btn.textContent = '➕ ADD MORE NOTES';
+            }
+        }
+
+        function updateNotesAddendumUI() {
+            const count = state.notesAddendums.length;
+            document.getElementById('notes-addendum-count').textContent = count > 0 ? `(${count} addendum${count > 1 ? 's' : ''})` : '';
+        }
+
+        // =====================================================================
         // VOICE RECORDING
         // =====================================================================
         async function toggleRecording() { if (state.isRecording) stopRecording(); else startRecording(); }
@@ -2257,6 +2449,8 @@
                 const btn = document.getElementById('notes-record-btn');
                 btn.classList.remove('btn-stop'); btn.classList.add('btn-record');
                 btn.textContent = '🎤 TAP TO RECORD NOTES';
+                // v2.9.25: Show addendum button now that primary recording exists
+                document.getElementById('notes-addendum-btn').classList.add('visible');
             }
         }
         
@@ -2285,6 +2479,8 @@
                         );
 
                         showToast('success', 'Transcription done');
+                        // v2.9.25: Show addendum button now that primary recording + transcript exists
+                        document.getElementById('measurement-addendum-btn').classList.add('visible');
                     }
                 };
             } catch (err) { showToast('error', 'Transcription failed'); }
@@ -2476,20 +2672,13 @@
             }
             
             state.measurements = results;
-            state.template.measurements.forEach((m, i) => {
-                const el = document.getElementById(`mv-${i}`);
-                const item = document.querySelector(`.measurement-item[data-idx="${i}"]`);
-                if (results[m] !== undefined) {
-                    el.textContent = results[m] + '"';
-                    item?.classList.add('completed');
-                }
-            });
+            // v2.9.25: Use updateMeasurementList() for consistent rendering
+            // that shows both parsed values and manual entries
+            updateMeasurementList();
             
             // v2.9.25: After initial parse, check transcript for raglan signals.
-            // If raglan detected and template is non-raglan, auto-correct and re-parse.
-            // skipAutoCorrect prevents infinite recursion on the re-parse.
             if (!skipAutoCorrect && autoCorrectForRaglan(text)) {
-                parseMeasurements(text, true); // Re-parse with corrected raglan template
+                parseMeasurements(text, true);
             }
         }
         
@@ -2559,6 +2748,8 @@
                 discardedNotesRecordings: state.discardedNotesRecordings,
                 weightReport, // v2.9.19: weight report object
                 whisperReport: state.whisperReport, // v2.9.24: Whisper forensic report
+                measurementAddendums: state.measurementAddendums, // v2.9.25
+                notesAddendums: state.notesAddendums, // v2.9.25
                 photos: {
                     main: state.photos.main.map(p => ({ blob: p.blob, label: p.label })),
                     closeup: state.photos.closeup.map(p => ({ blob: p.blob, label: p.label })),
@@ -2579,8 +2770,12 @@
                     templateKey: state.templateKey,
                     template: state.template,
                     tagData: state.tagData,
-                    measurements: state.measurements,
+                    measurements: { ...state.measurements, ...Object.fromEntries(Object.entries(state.manualMeasurements).map(([k,v]) => [k, v.value])) }, // v2.9.25: merged parsed + manual
+                    manualMeasurements: Object.keys(state.manualMeasurements).length > 0 ? state.manualMeasurements : null, // v2.9.25
                     rawTranscript: state.rawTranscript,
+                    combinedTranscript: state.combinedTranscript || state.rawTranscript, // v2.9.25
+                    measurementAddendumCount: state.measurementAddendums.length, // v2.9.25
+                    notesAddendumCount: state.notesAddendums.length, // v2.9.25
                     // v2.9.19: Weight from USB scale (was photo-based)
                     weight: {
                         source: 'usb_scale',
@@ -2716,6 +2911,13 @@
                     const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_transcript_raw.txt`, { create: true });
                     const w = await fh.createWritable(); await w.write(itemData.rawTranscript); await w.close();
                 }
+                // v2.9.25: Measurement addendum audio files
+                if (itemData.measurementAddendums?.length > 0) {
+                    for (let i = 0; i < itemData.measurementAddendums.length; i++) {
+                        const fh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_audio_addendum_${String(i+1).padStart(2,'0')}.webm`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.measurementAddendums[i].blob); await w.close();
+                    }
+                }
                 // v2.9.24: Whisper report files
                 if (itemData.whisperReport) {
                     const wJsonFh = await measurementsFolder.getFileHandle(`${itemData.sku}_measurement_whisper_COMPLETE.json`, { create: true });
@@ -2740,6 +2942,13 @@
                         }
                     }
                 } else { await createNAFile(notesFolder, itemData.sku); }
+                // v2.9.25: Notes addendum audio files
+                if (itemData.notesAddendums?.length > 0) {
+                    for (let i = 0; i < itemData.notesAddendums.length; i++) {
+                        const fh = await notesFolder.getFileHandle(`${itemData.sku}_audio_notes_addendum_${String(i+1).padStart(2,'0')}.webm`, { create: true });
+                        const w = await fh.createWritable(); await w.write(itemData.notesAddendums[i].blob); await w.close();
+                    }
+                }
                 
                 return true;
             } catch (err) { console.error('Local save error:', err); return false; }
@@ -2777,6 +2986,10 @@
                 for (let i = 0; i < itemData.discardedRecordings.length; i++) { files.push({ name: `measurements/${sku}_measurement_audio_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedRecordings[i].blob }); }
             }
             if (itemData.rawTranscript) files.push({ name: `measurements/${sku}_measurement_transcript_raw.txt`, contentType: 'text/plain', blob: new Blob([itemData.rawTranscript]) });
+            // v2.9.25: Measurement addendum audio files
+            if (itemData.measurementAddendums?.length > 0) {
+                for (let i = 0; i < itemData.measurementAddendums.length; i++) { files.push({ name: `measurements/${sku}_measurement_audio_addendum_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.measurementAddendums[i].blob }); }
+            }
             // v2.9.24: Whisper report files
             if (itemData.whisperReport) {
                 files.push({ name: `measurements/${sku}_measurement_whisper_COMPLETE.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.whisperReport.json, null, 2)]) });
@@ -2789,6 +3002,10 @@
                 for (let i = 0; i < itemData.discardedNotesRecordings.length; i++) { files.push({ name: `audio_notes/${sku}_audio_notes_discard_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.discardedNotesRecordings[i].blob }); }
             }
             if (!itemData.notesAudioBlob) files.push({ name: `audio_notes/${sku}_audio_notes_NA.txt`, contentType: 'text/plain', blob: new Blob([`No notes audio for ${sku}`]) });
+            // v2.9.25: Notes addendum audio files
+            if (itemData.notesAddendums?.length > 0) {
+                for (let i = 0; i < itemData.notesAddendums.length; i++) { files.push({ name: `audio_notes/${sku}_audio_notes_addendum_${String(i+1).padStart(2,'0')}.webm`, contentType: 'audio/webm', blob: itemData.notesAddendums[i].blob }); }
+            }
             
             files.push({ name: `data/${sku}_data.json`, contentType: 'application/json', blob: new Blob([JSON.stringify(itemData.jsonData, null, 2)]) });
             
@@ -2850,6 +3067,13 @@
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
             state.whisperReport = null; // v2.9.24
+            // v2.9.25: Reset addendum + manual measurement state
+            state.manualMeasurements = {};
+            state.measurementAddendums = []; state.isRecordingMeasurementAddendum = false;
+            state.measurementAddendumRecorder = null; state.measurementAddendumChunks = [];
+            state.notesAddendums = []; state.isRecordingNotesAddendum = false;
+            state.notesAddendumRecorder = null; state.notesAddendumChunks = [];
+            state.combinedTranscript = '';
             // v2.9.19: Reset per-item weight state (scale stays connected)
             state.weightLocked = false;
             state.weightLockedValue = null;
@@ -2867,6 +3091,13 @@
             document.getElementById('correction-badge').textContent = ''; // v2.9.25
             document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
             document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
+            // v2.9.25: Hide addendum buttons + reset counts
+            document.getElementById('measurement-addendum-btn').classList.remove('visible', 'recording');
+            document.getElementById('measurement-addendum-btn').textContent = '➕ ADD MISSING MEASUREMENTS';
+            document.getElementById('measurement-addendum-count').textContent = '';
+            document.getElementById('notes-addendum-btn').classList.remove('visible', 'recording');
+            document.getElementById('notes-addendum-btn').textContent = '➕ ADD MORE NOTES';
+            document.getElementById('notes-addendum-count').textContent = '';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
@@ -2901,6 +3132,13 @@
             state.notesMediaRecorder = null; state.notesRecordingStartTime = null;
             state.lastNotesRecordingDuration = 0; state.discardedNotesRecordings = [];
             state.whisperReport = null; // v2.9.24
+            // v2.9.25: Reset addendum + manual measurement state
+            state.manualMeasurements = {};
+            state.measurementAddendums = []; state.isRecordingMeasurementAddendum = false;
+            state.measurementAddendumRecorder = null; state.measurementAddendumChunks = [];
+            state.notesAddendums = []; state.isRecordingNotesAddendum = false;
+            state.notesAddendumRecorder = null; state.notesAddendumChunks = [];
+            state.combinedTranscript = '';
             // v2.9.19: Reset weight (scale stays connected)
             state.weightLocked = false;
             state.weightLockedValue = null;
@@ -2918,6 +3156,13 @@
             document.getElementById('correction-badge').textContent = ''; // v2.9.25
             document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
             document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
+            // v2.9.25: Hide addendum buttons + reset counts
+            document.getElementById('measurement-addendum-btn').classList.remove('visible', 'recording');
+            document.getElementById('measurement-addendum-btn').textContent = '➕ ADD MISSING MEASUREMENTS';
+            document.getElementById('measurement-addendum-count').textContent = '';
+            document.getElementById('notes-addendum-btn').classList.remove('visible', 'recording');
+            document.getElementById('notes-addendum-btn').textContent = '➕ ADD MORE NOTES';
+            document.getElementById('notes-addendum-count').textContent = '';
             document.getElementById('tag-grid').style.display = 'none';
             document.getElementById('measurement-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 12px; text-align: center;">Classify first</div>';
             document.getElementById('transcript-box').classList.remove('visible');
