@@ -1,8 +1,79 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION + ADDENDUM RECORDING
+    VintageLister v2.9.26 - TRANSCRIPT-AS-AUTHORITY + ELASTIC TOGGLES + MISSING DETECTION
     
     CHANGELOG:
+    v2.9.26 (2026-04-17):
+    - MAJOR: Photographer's audio is now PRIMARY AUTHORITY for template
+      selection. The field names the photographer speaks literally tell the
+      system which template is correct. When the AI's initial template
+      disagrees with the spoken fields by >=2 points on the scoring function,
+      the template auto-swaps to the transcript-derived best match.
+      WHY: SKUs 90189 (acid-wash jeans classified as elastic-waist-elastic-
+      ankle) and 90193 (crewneck sweatshirt classified as raglan) both failed
+      because the pipeline deferred to wrong AI classifications instead of
+      letting the photographer's own vocabulary correct them.
+    - ADDED: ELASTIC WAIST and ELASTIC ANKLE toggle buttons, mirroring the
+      v2.9.25 raglan toggle pattern exactly. Buttons appear only for
+      category='bottoms'; raglan button hides on bottoms. Each toggle
+      client-side swaps the template via ELASTIC_WAIST_CORRECTION_MAP /
+      ELASTIC_ANKLE_CORRECTION_MAP without a Lambda round-trip. Elastic
+      state is derived from the template key string (templateKey starts
+      with 'elastic-waist', templateKey includes 'elastic-ankle') rather
+      than a separate AI flag, consistent with the existing raglan pattern.
+    - ADDED: ALL_TEMPLATES_V26 constant — full 24-template catalog with
+      field lists. Used for transcript-based template scoring across ALL
+      templates, not just the 7 raglan variants.
+    - ADDED: parseFieldsFromText(text, templateFields) — pure helper function
+      extracted from parseMeasurements(). Takes a transcript and a list of
+      field names, returns {field: value} dict. No side effects, no state
+      mutation. Enables safe universal-template scanning without the
+      recursion-risk of temporarily mutating state.template.
+    - ADDED: scoreTemplatesFromTranscript(spokenFields) — scores every one of
+      24 templates by (matches - extras*2 - missing*0.5). Top scorer is the
+      transcript-derived best-fit template.
+    - ADDED: autoCorrectTemplateFromTranscript(transcript) — GENERALIZES
+      v2.9.25's autoCorrectForRaglan(). Works for ALL template axes (raglan,
+      elastic waist, elastic ankle, category mismatch). Only swaps when top
+      transcript score beats current by >=2 points AND no manual override.
+      Replaces autoCorrectForRaglan() which was raglan-only.
+    - ADDED: detectMissingMeasurements() — after every parse, compares the
+      current template's expected fields to what was actually spoken. If
+      the photographer short-measured, a yellow warning banner surfaces the
+      missing field names. Flags the item so downstream Template Reconciler
+      v1.3.1 sets status=NEEDS_HUMAN rather than silently accepting partial
+      data.
+    - ADDED: state.elasticWaistManualOverride, state.elasticAnkleManualOverride
+      (null = no override, true/false = explicit photographer choice).
+    - ADDED: state.transcriptDerivedTemplate, state.transcriptTemplateScore —
+      live tracking of what the transcript thinks the template should be.
+    - ADDED: state.missingMeasurementFields — fields the current template
+      expects that haven't been spoken yet.
+    - ADDED: state._originalAIFlags — caches the Gemini vision flags as
+      returned by the classify Lambda, so data.json.constructionFlags can
+      report the AI's original guess separately from the photographer's
+      override and the final value (provenance tracking).
+    - ADDED: constructionFlags block in data.json completeItem output:
+        {raglan: {aiGuess, photographerOverride, final, source},
+         elasticWaist: {...}, elasticAnkle: {...}}
+      Downstream Lambdas read this to tell which authority made each call.
+    - MODIFIED: parseMeasurements() — now calls parseFieldsFromText() as
+      its inner parse, then runs autoCorrectTemplateFromTranscript() +
+      detectMissingMeasurements() at the end. No recursive state mutation.
+    - MODIFIED: updateClassificationDisplay() — shows/hides the three
+      toggle buttons based on category (raglan on tops/button-up/outerwear,
+      elastic on bottoms).
+    - MODIFIED: startNewItem(), resetItem() — reset the new state fields
+      and hide the missing-measurements banner.
+    - REMOVED: checkTranscriptForRaglan() and autoCorrectForRaglan() — the
+      generalized scoring approach replaces them. The 7 raglan-specific
+      terms (raglan, no shoulder seam, diagonal seam, center neck to cuff,
+      etc.) are still detected, just now through universal field scoring.
+    - REQUIRES: Lambda VintageLister_TranscriptCouncil v2.4.1+ and
+      VintageLister_TemplateReconciler v1.3.1+ for downstream use of the
+      new constructionFlags provenance block and transcript-derived
+      template fields.
+
     v2.9.25 (2026-04-15):
     - CRITICAL FIX: Raglan detection was structurally broken for short-sleeve
       and sleeveless raglan garments. RAGLAN_OVERRIDES in the Lambda only mapped
@@ -219,7 +290,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintageLister v2.9.25</title>
+    <title>VintageLister v2.9.26</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -358,6 +429,22 @@
         .raglan-toggle { display: inline-block; margin-left: 8px; padding: 2px 8px; font-size: 10px; font-weight: 600; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); color: var(--text-secondary); background: transparent; transition: all 0.2s; vertical-align: middle; }
         .raglan-toggle:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
         .raglan-toggle.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+        /* v2.9.26: container for raglan + elastic-waist + elastic-ankle toggles */
+        .construction-toggles { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        /* v2.9.26: missing-measurement warning banner */
+        .missing-warning {
+            display: none;
+            background: rgba(234, 179, 8, 0.15);
+            border: 1px solid var(--accent-yellow);
+            color: var(--accent-yellow);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+        }
+        .missing-warning.visible { display: block; }
         .correction-badge { display: inline-block; font-size: 9px; color: #f59e0b; font-weight: 600; margin-left: 6px; animation: correctionPulse 0.5s ease-out; }
         @keyframes correctionPulse { 0% { opacity: 0; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
         .measurement-item { cursor: pointer; }
@@ -924,7 +1011,7 @@
                     </div>
                 </div>
                 <div class="version-info">
-                    <span class="version-badge" id="version-badge">v2.9.25</span>
+                    <span class="version-badge" id="version-badge">v2.9.26</span>
                     <span class="retry-badge" id="retry-badge">⚠️ 0 pending</span>
                 </div>
             </div>
@@ -946,7 +1033,14 @@
                         <div class="classification-category" id="classification-category">Waiting...</div>
                         <div class="classification-detail" id="classification-detail"></div>
                         <div class="classification-template">Template: <span id="classification-template">-</span><span id="correction-badge"></span></div>
-                        <div style="margin-top: 4px;"><button class="raglan-toggle" id="raglan-toggle" onclick="toggleRaglanManual()" title="Toggle raglan seam detection">RAGLAN</button></div>
+                        <!-- v2.9.26: Unified construction toggles — raglan (tops) OR elastic waist+ankle (bottoms) -->
+                        <div class="construction-toggles">
+                            <button class="raglan-toggle" id="raglan-toggle" onclick="toggleRaglanManual()" title="Toggle raglan seam detection">RAGLAN</button>
+                            <button class="raglan-toggle" id="elastic-waist-toggle" onclick="toggleElasticWaistManual()" title="Toggle elastic waistband" style="display:none;">ELASTIC WAIST</button>
+                            <button class="raglan-toggle" id="elastic-ankle-toggle" onclick="toggleElasticAnkleManual()" title="Toggle elastic ankle cuffs" style="display:none;">ELASTIC ANKLE</button>
+                        </div>
+                        <!-- v2.9.26: missing-measurement warning banner -->
+                        <div class="missing-warning" id="missing-warning"></div>
                     </div>
                     <div class="tag-grid" id="tag-grid" style="display: none;">
                         <div class="tag-item"><div class="tag-label">Brand</div><div class="tag-value" id="tag-brand">-</div></div>
@@ -1204,11 +1298,12 @@
     
     <script>
         // =============================================================================
-        // VINTAGELISTER v2.9.25 - RAGLAN AUTO-DETECTION + TEMPLATE CORRECTION
-        // Measurement files: measurement_ prefix + Whisper report generation
+        // VINTAGELISTER v2.9.26 - TRANSCRIPT-AS-AUTHORITY + ELASTIC TOGGLES + MISSING DETECTION
+        // Photographer's voice is primary authority; AI is enhancement only.
+        // See HTML comment at top of file for full changelog.
         // =============================================================================
         
-        const VERSION = '2.9.25';
+        const VERSION = '2.9.26';
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
 
@@ -1236,6 +1331,57 @@
 
         // v2.9.25: Reverse map — raglan keys back to non-raglan equivalents
         const RAGLAN_REVERSE_MAP = Object.fromEntries(Object.entries(RAGLAN_CORRECTION_MAP).map(([k,v]) => [v,k]));
+
+        // =====================================================================
+        // v2.9.26: Full 24-template catalog for transcript-based template scoring.
+        // Must stay in sync with MEASUREMENT_TEMPLATES in Lambda v106.8+ and
+        // with ALL_TEMPLATES in TranscriptCouncil v2.4.1+.
+        // =====================================================================
+        const ALL_TEMPLATES_V26 = {
+            'tops-long-sleeve':               { name:'Tops - Long Sleeve',                category:'tops',      measurements:['Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan':                    { name:'Tops - Raglan Long Sleeve',         category:'tops',      measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan-short-sleeve':       { name:'Tops - Raglan Short Sleeve',        category:'tops',      measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan-sleeveless':         { name:'Tops - Raglan Sleeveless',          category:'tops',      measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-short-sleeve':              { name:'Tops - Short Sleeve',               category:'tops',      measurements:['Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-sleeveless':                { name:'Tops - Sleeveless',                 category:'tops',      measurements:['Shoulder to Shoulder','Strap Width','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-long-sleeve':          { name:'Button-Up - Long Sleeve',           category:'button-up', measurements:['Neck Circumference','Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-raglan':               { name:'Button-Up - Raglan Long Sleeve',    category:'button-up', measurements:['Neck Circumference','Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-raglan-short-sleeve':  { name:'Button-Up - Raglan Short Sleeve',   category:'button-up', measurements:['Neck Circumference','Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-short-sleeve':         { name:'Button-Up - Short Sleeve',          category:'button-up', measurements:['Neck Circumference','Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-camp-collar':          { name:'Button-Up - Camp Collar',           category:'button-up', measurements:['Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-camp-collar-long-sleeve':{name:'Button-Up - Camp Collar Long Sleeve',category:'button-up',measurements:['Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-sleeveless':           { name:'Button-Up - Sleeveless',            category:'button-up', measurements:['Neck Circumference','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-long-sleeve':          { name:'Outerwear - Long Sleeve',           category:'outerwear', measurements:['Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-raglan':               { name:'Outerwear - Raglan Long Sleeve',    category:'outerwear', measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-raglan-short-sleeve':  { name:'Outerwear - Raglan Short Sleeve',   category:'outerwear', measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-short-sleeve':         { name:'Outerwear - Short Sleeve',          category:'outerwear', measurements:['Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-sleeveless':           { name:'Outerwear - Sleeveless',            category:'outerwear', measurements:['Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'pants':                          { name:'Pants',                             category:'bottoms',   measurements:['Waist','Hip','Thigh','Knee','Leg Opening','Front Rise','Inseam','Outseam'] },
+            'pants-elastic-ankle':            { name:'Pants - Elastic Ankle',             category:'bottoms',   measurements:['Waist','Hip','Thigh','Knee','Leg Opening Relaxed','Leg Opening Stretched','Front Rise','Inseam','Outseam'] },
+            'shorts':                         { name:'Shorts',                            category:'bottoms',   measurements:['Waist','Hip','Thigh','Leg Opening','Front Rise','Inseam','Outseam'] },
+            'elastic-waist-pants':            { name:'Elastic Waist Pants',               category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Knee','Leg Opening','Front Rise','Inseam','Outseam'] },
+            'elastic-waist-shorts':           { name:'Elastic Waist Shorts',              category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Leg Opening','Front Rise','Inseam','Outseam'] },
+            'elastic-waist-elastic-ankle':    { name:'Elastic Waist + Elastic Ankle',     category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Knee','Leg Opening Relaxed','Leg Opening Stretched','Front Rise','Inseam','Outseam'] },
+        };
+        // Attach count derived from measurements length (single source of truth)
+        for (const key of Object.keys(ALL_TEMPLATES_V26)) {
+            ALL_TEMPLATES_V26[key].count = ALL_TEMPLATES_V26[key].measurements.length;
+        }
+
+        // v2.9.26: Elastic waist correction map — non-elastic key → elastic-waist equivalent
+        const ELASTIC_WAIST_CORRECTION_MAP = {
+            'pants':              'elastic-waist-pants',
+            'shorts':             'elastic-waist-shorts',
+            'pants-elastic-ankle':'elastic-waist-elastic-ankle',
+        };
+        const ELASTIC_WAIST_REVERSE_MAP = Object.fromEntries(Object.entries(ELASTIC_WAIST_CORRECTION_MAP).map(([k,v]) => [v,k]));
+
+        // v2.9.26: Elastic ankle correction map — non-elastic-ankle key → elastic-ankle equivalent
+        const ELASTIC_ANKLE_CORRECTION_MAP = {
+            'pants':              'pants-elastic-ankle',
+            'elastic-waist-pants':'elastic-waist-elastic-ankle',
+        };
+        const ELASTIC_ANKLE_REVERSE_MAP = Object.fromEntries(Object.entries(ELASTIC_ANKLE_CORRECTION_MAP).map(([k,v]) => [v,k]));
         const MAX_RETRIES = 3;
         const RETRY_DELAY = 5000;
         const BARCODE_MIN_CONFIDENCE = 0.80;
@@ -1268,6 +1414,14 @@
             classificationHasRaglan: false,
             raglanManualOverride: null,   // v2.9.25: null=no override, true=forced raglan, false=forced non-raglan
             templateAutoCorrection: null, // v2.9.25: { source, originalKey, correctedKey, reason }
+            // v2.9.26: Elastic toggle state (mirrors raglanManualOverride pattern)
+            elasticWaistManualOverride: null,  // null=no override, true=forced elastic, false=forced non-elastic
+            elasticAnkleManualOverride: null,  // null=no override, true=forced elastic, false=forced non-elastic
+            // v2.9.26: Live transcript-derived template tracking
+            transcriptDerivedTemplate: null,   // string — what the audio says the template should be
+            transcriptTemplateScore: 0,        // score from scoreTemplatesFromTranscript for top pick
+            missingMeasurementFields: [],      // fields the current template expects but photographer hasn't spoken
+            _originalAIFlags: null,            // cached Gemini flags at classification time (for provenance)
             templateKey: null,
             template: null,
             tagData: null,
@@ -2020,6 +2174,15 @@
                     state.template = result.template;
                     state.tagData = result.tagData;
                     state.timing.classificationTime = Date.now();
+                    // v2.9.26: cache original AI flags for provenance tracking.
+                    // The Lambda classify response only returns hasRaglan; elastic state
+                    // is encoded in the template key string (elastic-waist-*, *-elastic-ankle).
+                    state._originalAIFlags = {
+                        hasRaglan: result.hasRaglan || false,
+                        hasElasticWaist: typeof result.templateKey === 'string' && result.templateKey.startsWith('elastic-waist'),
+                        hasElasticAnkle: typeof result.templateKey === 'string' && result.templateKey.includes('elastic-ankle'),
+                        originalTemplateKey: result.templateKey
+                    };
                     
                     if (result.photoLabels) {
                         state.photos.main.forEach((p, i) => { if (result.photoLabels[i]) p.label = result.photoLabels[i]; });
@@ -2080,6 +2243,25 @@
             const raglanBtn = document.getElementById('raglan-toggle');
             const isRaglan = state.classificationHasRaglan || state.raglanManualOverride === true;
             raglanBtn.classList.toggle('active', isRaglan);
+            // v2.9.26: Show/hide toggles by category. Bottoms get elastic toggles,
+            // everything else gets raglan. Status (active/inactive) derives from
+            // template key string, not a separate AI flag.
+            const isBottoms = state.classification === 'bottoms';
+            raglanBtn.style.display = isBottoms ? 'none' : 'inline-block';
+            const elasticWaistBtn = document.getElementById('elastic-waist-toggle');
+            const elasticAnkleBtn = document.getElementById('elastic-ankle-toggle');
+            if (elasticWaistBtn) {
+                elasticWaistBtn.style.display = isBottoms ? 'inline-block' : 'none';
+                const tk = state.templateKey || '';
+                const isEW = tk.startsWith('elastic-waist') || state.elasticWaistManualOverride === true;
+                elasticWaistBtn.classList.toggle('active', isEW);
+            }
+            if (elasticAnkleBtn) {
+                elasticAnkleBtn.style.display = isBottoms ? 'inline-block' : 'none';
+                const tk = state.templateKey || '';
+                const isEA = tk.includes('elastic-ankle') || state.elasticAnkleManualOverride === true;
+                elasticAnkleBtn.classList.toggle('active', isEA);
+            }
             // v2.9.25: Show correction badge if template was auto-corrected
             const badge = document.getElementById('correction-badge');
             const templateEl = document.querySelector('.classification-template');
@@ -2160,48 +2342,191 @@
             updateMeasurementList();
         }
 
-        function checkTranscriptForRaglan(text) {
-            const lower = text.toLowerCase();
-            // Direct raglan mentions
-            if (/\braglan\b/.test(lower)) return { detected: true, reason: 'Photographer said "raglan"' };
-            if (/\bno shoulder seam/.test(lower)) return { detected: true, reason: 'Photographer said "no shoulder seam"' };
-            if (/\bdiagonal seam/.test(lower)) return { detected: true, reason: 'Photographer said "diagonal seam"' };
-            // Raglan-specific measurement terms (only meaningful if current template is NOT raglan)
-            const raglanLongTerms = ['center neck to cuff', 'neck to cuff', 'raglan to cuff'];
-            const raglanShortTerms = ['center neck to sleeve opening', 'neck to sleeve opening', 'raglan to sleeve opening', 'raglan to sleeve'];
-            const raglanSleevelessTerms = ['arm opening'];
-            const hasLong = raglanLongTerms.some(t => lower.includes(t));
-            const hasShort = raglanShortTerms.some(t => lower.includes(t));
-            const hasSleeveless = raglanSleevelessTerms.some(t => lower.includes(t));
-            if (hasLong) return { detected: true, reason: 'Transcript contains raglan long-sleeve measurement terms' };
-            if (hasShort) return { detected: true, reason: 'Transcript contains raglan short-sleeve measurement terms' };
-            if (hasSleeveless) return { detected: true, reason: 'Transcript contains raglan sleeveless measurement terms' };
-            return { detected: false };
-        }
-
-        function autoCorrectForRaglan(transcript) {
-            if (!state.template || !state.templateKey) return false;
-            // Don't auto-correct if already raglan or if photographer manually set it
-            if (state.templateKey.includes('raglan')) return false;
-            if (state.raglanManualOverride === false) return false; // Photographer explicitly turned raglan OFF
-            const check = checkTranscriptForRaglan(transcript);
-            if (!check.detected) return false;
-            const raglanKey = RAGLAN_CORRECTION_MAP[state.templateKey];
-            if (!raglanKey) return false;
-            const raglanTemplate = RAGLAN_TEMPLATES[raglanKey];
-            if (!raglanTemplate) return false;
-            // Apply correction
-            const originalKey = state.templateKey;
-            const originalTemplate = state.template;
-            state.classificationHasRaglan = true;
-            state.templateAutoCorrection = { source: 'transcript_auto', originalKey, originalTemplate, correctedKey: raglanKey, reason: check.reason };
-            state.templateKey = raglanKey;
-            state.template = raglanTemplate;
-            console.log(`⚡ [RAGLAN AUTO-CORRECT] ${originalKey} → ${raglanKey} | Reason: ${check.reason}`);
+        // =====================================================================
+        // v2.9.26: ELASTIC WAIST + ELASTIC ANKLE TOGGLES
+        // Mirror toggleRaglanManual pattern exactly. Client-side template swap,
+        // no Lambda round-trip. Elastic state derived from template key string.
+        // =====================================================================
+        function toggleElasticWaistManual() {
+            if (!state.template || !state.templateKey) { showToast('warning', 'Classify item first'); return; }
+            const currentlyElastic = state.templateKey.startsWith('elastic-waist');
+            if (currentlyElastic) {
+                // Turn OFF — revert to non-elastic-waist equivalent
+                const nonElasticKey = ELASTIC_WAIST_REVERSE_MAP[state.templateKey];
+                if (!nonElasticKey) { showToast('error', 'Cannot revert — no non-elastic-waist equivalent'); return; }
+                state.elasticWaistManualOverride = false;
+                state.templateKey = nonElasticKey;
+                state.template = ALL_TEMPLATES_V26[nonElasticKey] || { name: nonElasticKey, measurements: [], count: 0 };
+                showToast('info', `Elastic Waist OFF → ${state.template.name}`);
+            } else {
+                // Turn ON — switch to elastic-waist equivalent
+                const elasticKey = ELASTIC_WAIST_CORRECTION_MAP[state.templateKey];
+                if (!elasticKey) { showToast('warning', 'No elastic-waist variant for this template'); return; }
+                const elasticTemplate = ALL_TEMPLATES_V26[elasticKey];
+                if (!elasticTemplate) { showToast('error', 'Elastic-waist template not found'); return; }
+                state.elasticWaistManualOverride = true;
+                state.templateKey = elasticKey;
+                state.template = elasticTemplate;
+                showToast('success', `Elastic Waist ON → ${elasticTemplate.name} (${elasticTemplate.count})`);
+            }
+            if (state.rawTranscript) parseMeasurements(state.rawTranscript, true); // skip auto-correct on manual toggle
             updateClassificationDisplay();
             updateMeasurementList();
-            showToast('success', `⚡ Raglan detected — template corrected to ${raglanTemplate.name}`);
+        }
+
+        function toggleElasticAnkleManual() {
+            if (!state.template || !state.templateKey) { showToast('warning', 'Classify item first'); return; }
+            const currentlyElastic = state.templateKey.includes('elastic-ankle');
+            if (currentlyElastic) {
+                const nonElasticKey = ELASTIC_ANKLE_REVERSE_MAP[state.templateKey];
+                if (!nonElasticKey) { showToast('error', 'Cannot revert — no non-elastic-ankle equivalent'); return; }
+                state.elasticAnkleManualOverride = false;
+                state.templateKey = nonElasticKey;
+                state.template = ALL_TEMPLATES_V26[nonElasticKey] || { name: nonElasticKey, measurements: [], count: 0 };
+                showToast('info', `Elastic Ankle OFF → ${state.template.name}`);
+            } else {
+                const elasticKey = ELASTIC_ANKLE_CORRECTION_MAP[state.templateKey];
+                if (!elasticKey) { showToast('warning', 'No elastic-ankle variant for this template'); return; }
+                const elasticTemplate = ALL_TEMPLATES_V26[elasticKey];
+                if (!elasticTemplate) { showToast('error', 'Elastic-ankle template not found'); return; }
+                state.elasticAnkleManualOverride = true;
+                state.templateKey = elasticKey;
+                state.template = elasticTemplate;
+                showToast('success', `Elastic Ankle ON → ${elasticTemplate.name} (${elasticTemplate.count})`);
+            }
+            if (state.rawTranscript) parseMeasurements(state.rawTranscript, true);
+            updateClassificationDisplay();
+            updateMeasurementList();
+        }
+
+        // =====================================================================
+        // v2.9.26: TRANSCRIPT-AS-AUTHORITY TEMPLATE SCORING
+        // Generalizes v2.9.25's autoCorrectForRaglan to cover ALL template axes
+        // (raglan, elastic waist, elastic ankle, category mismatch) via a single
+        // scoring function that ranks all 24 templates by field-name match.
+        //
+        // Scoring: score = matches - (extras * 2) - (missing * 0.5)
+        //   matches = fields spoken AND in template
+        //   extras  = fields spoken NOT in template  (heavy penalty — photographer
+        //             measured something this template can't represent)
+        //   missing = fields in template NOT spoken  (light penalty — photographer
+        //             may have forgotten to say one)
+        // =====================================================================
+        function scoreTemplatesFromTranscript(spokenFields) {
+            const spokenSet = new Set(spokenFields);
+            const scores = [];
+            for (const [templateKey, tpl] of Object.entries(ALL_TEMPLATES_V26)) {
+                const expected = tpl.measurements;
+                const expectedSet = new Set(expected);
+                let matches = 0, extras = 0, missing = 0;
+                for (const f of spokenSet) {
+                    if (expectedSet.has(f)) matches++;
+                    else extras++;
+                }
+                for (const f of expectedSet) {
+                    if (!spokenSet.has(f)) missing++;
+                }
+                scores.push({
+                    template: templateKey,
+                    score: matches - (extras * 2) - (missing * 0.5),
+                    matches, extras, missing,
+                    expectedCount: expectedSet.size
+                });
+            }
+            // Stable deterministic sort — matches TranscriptCouncil v2.4.1 ordering
+            scores.sort((a, b) => (b.score - a.score) || (b.matches - a.matches) || a.template.localeCompare(b.template));
+            return scores;
+        }
+
+        // Run a transcript through parseFieldsFromText against the universe of
+        // all known measurement field names (union across all 24 templates).
+        // Returns {field: value} dict. Pure function — no state mutation.
+        function parseAllFieldsFromTranscript(transcript) {
+            const universeFields = new Set();
+            for (const tpl of Object.values(ALL_TEMPLATES_V26)) {
+                for (const f of tpl.measurements) universeFields.add(f);
+            }
+            return parseFieldsFromText(transcript, Array.from(universeFields));
+        }
+
+        // Decide if the current template should auto-swap based on what fields
+        // the photographer actually spoke. Returns true if a swap occurred.
+        function autoCorrectTemplateFromTranscript(transcript) {
+            if (!state.template || !state.templateKey) return false;
+            if (!transcript || transcript.length < 10) return false;
+            // Any manual toggle = photographer is explicitly in charge; don't override
+            if (state.raglanManualOverride !== null) return false;
+            if (state.elasticWaistManualOverride !== null) return false;
+            if (state.elasticAnkleManualOverride !== null) return false;
+
+            const spokenMap = parseAllFieldsFromTranscript(transcript);
+            const spokenFields = Object.keys(spokenMap);
+            if (spokenFields.length < 3) return false; // not enough data yet
+
+            const scores = scoreTemplatesFromTranscript(spokenFields);
+            const top = scores[0];
+            const currentScore = scores.find(s => s.template === state.templateKey);
+
+            // Always update the transcript-derived tracking state for data.json provenance
+            state.transcriptDerivedTemplate = top.template;
+            state.transcriptTemplateScore = top.score;
+
+            // Only swap if top template beats current by >=2 points (meaningful gap)
+            const MEANINGFUL_GAP = 2.0;
+            const currentVal = currentScore?.score ?? -99;
+            if (top.template === state.templateKey) return false;
+            if (top.score < currentVal + MEANINGFUL_GAP) return false;
+
+            const newTemplate = ALL_TEMPLATES_V26[top.template];
+            if (!newTemplate) return false;
+
+            console.log(`⚡ [TEMPLATE AUTO-CORRECT v2.9.26] ${state.templateKey} (score ${currentVal}) → ${top.template} (score ${top.score}) | matches=${top.matches} extras=${top.extras}`);
+            const originalKey = state.templateKey;
+            const originalTemplate = state.template;
+            state.templateAutoCorrection = {
+                source: 'transcript_scoring_v2_9_26',
+                originalKey, originalTemplate,
+                correctedKey: top.template,
+                reason: `Transcript score: ${top.template}=${top.score} (match=${top.matches}/${top.expectedCount}), was ${originalKey}=${currentVal}`
+            };
+            state.templateKey = top.template;
+            state.template = newTemplate;
+            // Sync classificationHasRaglan for the detail line rendering
+            state.classificationHasRaglan = top.template.includes('raglan');
+            updateClassificationDisplay();
+            updateMeasurementList();
+            showToast('success', `⚡ Template auto-corrected from audio → ${newTemplate.name}`);
             return true;
+        }
+
+        // After every parse, check which template-expected fields the photographer
+        // hasn't spoken yet. Surface to UI as a yellow warning banner.
+        function detectMissingMeasurements() {
+            if (!state.template || !state.template.measurements) {
+                state.missingMeasurementFields = [];
+                updateMissingWarning();
+                return;
+            }
+            const spoken = new Set(
+                Object.keys(state.measurements || {})
+                    .concat(Object.keys(state.manualMeasurements || {}))
+            );
+            state.missingMeasurementFields = state.template.measurements.filter(f => !spoken.has(f));
+            updateMissingWarning();
+        }
+
+        function updateMissingWarning() {
+            const el = document.getElementById('missing-warning');
+            if (!el) return;
+            const missing = state.missingMeasurementFields || [];
+            const hasAnyData = Object.keys(state.measurements || {}).length > 0
+                            || Object.keys(state.manualMeasurements || {}).length > 0;
+            if (missing.length > 0 && hasAnyData) {
+                el.classList.add('visible');
+                el.innerHTML = `⚠️ MISSING: <strong>${missing.map(m => m.replace(/</g,'&lt;')).join(', ')}</strong>`;
+            } else {
+                el.classList.remove('visible');
+            }
         }
         
         // =====================================================================
@@ -2588,8 +2913,14 @@
             return { json: report, txt };
         }
         
-        function parseMeasurements(text, skipAutoCorrect) {
-            if (!state.template) return;
+        // =====================================================================
+        // v2.9.26: PURE MEASUREMENT PARSING HELPER
+        // Extracted from parseMeasurements() so it can be called with any field
+        // list (including the universe across all 24 templates). No state mutation,
+        // no side effects, no UI calls. Returns {field: value} dict.
+        // =====================================================================
+        function parseFieldsFromText(text, templateFields) {
+            if (!text || !templateFields || templateFields.length === 0) return {};
             
             const MEASUREMENT_ALIASES = {
                 'Center Neck to Sleeve Opening': ['center neck to sleeve opening', 'centre neck to sleeve opening', 'center of neck to sleeve opening', 'neck to sleeve opening', 'center neck to sleeve hem', 'neck to sleeve hem', 'center neck to sleeve', 'neck to sleeve', 'neck to end of sleeve', 'raglan to sleeve opening', 'raglan to sleeve'],
@@ -2625,8 +2956,11 @@
             };
             
             const lower = text.toLowerCase();
+            const templateFieldSet = new Set(templateFields);
             const aliasEntries = [];
-            for (const field of state.template.measurements) {
+            // Build alias list restricted to fields the caller asked about.
+            // When called with the universe (24-template union), this covers everything.
+            for (const field of templateFields) {
                 const aliases = MEASUREMENT_ALIASES[field] || [field.toLowerCase()];
                 for (const alias of aliases) {
                     aliasEntries.push({ alias, field, len: alias.length });
@@ -2668,18 +3002,27 @@
             found.sort((a, b) => a.pos - b.pos);
             const results = {};
             for (const { field, val } of found) {
-                results[field] = val;
+                if (templateFieldSet.has(field)) results[field] = val;
             }
-            
-            state.measurements = results;
-            // v2.9.25: Use updateMeasurementList() for consistent rendering
-            // that shows both parsed values and manual entries
+            return results;
+        }
+
+        // Orchestrator: parses transcript against the current template, runs
+        // auto-correct (which may swap the template and re-call), updates UI.
+        // skipAutoCorrect=true prevents recursive auto-correct when called from
+        // toggle handlers or from within auto-correct itself.
+        function parseMeasurements(text, skipAutoCorrect) {
+            if (!state.template) return;
+            state.measurements = parseFieldsFromText(text, state.template.measurements);
             updateMeasurementList();
-            
-            // v2.9.25: After initial parse, check transcript for raglan signals.
-            if (!skipAutoCorrect && autoCorrectForRaglan(text)) {
-                parseMeasurements(text, true);
+            // v2.9.26: generalized auto-correct. If it swaps the template,
+            // re-run parse against the new template before doing missing-check.
+            if (!skipAutoCorrect && autoCorrectTemplateFromTranscript(text)) {
+                state.measurements = parseFieldsFromText(text, state.template.measurements);
+                updateMeasurementList();
             }
+            // v2.9.26: post-parse missing detection
+            detectMissingMeasurements();
         }
         
         // =====================================================================
@@ -2767,6 +3110,41 @@
                     hasRaglan: state.classificationHasRaglan,
                     raglanManualOverride: state.raglanManualOverride, // v2.9.25
                     templateCorrection: state.templateAutoCorrection, // v2.9.25
+                    // v2.9.26: full construction-flag provenance (aiGuess vs override vs final)
+                    // Downstream Template Reconciler v1.3.1 reads this to filter Vision Council picks.
+                    constructionFlags: (function(){
+                        const tk = state.templateKey || '';
+                        return {
+                            raglan: {
+                                aiGuess: state._originalAIFlags ? state._originalAIFlags.hasRaglan : null,
+                                photographerOverride: state.raglanManualOverride,
+                                final: tk.includes('raglan'),
+                                source: state.raglanManualOverride !== null ? 'photographer_toggle'
+                                      : (state.templateAutoCorrection?.source === 'transcript_scoring_v2_9_26' ? 'transcript_derived'
+                                      : 'ai_vision')
+                            },
+                            elasticWaist: {
+                                aiGuess: state._originalAIFlags ? state._originalAIFlags.hasElasticWaist : null,
+                                photographerOverride: state.elasticWaistManualOverride,
+                                final: tk.startsWith('elastic-waist'),
+                                source: state.elasticWaistManualOverride !== null ? 'photographer_toggle'
+                                      : (state.templateAutoCorrection?.source === 'transcript_scoring_v2_9_26' ? 'transcript_derived'
+                                      : 'ai_vision')
+                            },
+                            elasticAnkle: {
+                                aiGuess: state._originalAIFlags ? state._originalAIFlags.hasElasticAnkle : null,
+                                photographerOverride: state.elasticAnkleManualOverride,
+                                final: tk.includes('elastic-ankle'),
+                                source: state.elasticAnkleManualOverride !== null ? 'photographer_toggle'
+                                      : (state.templateAutoCorrection?.source === 'transcript_scoring_v2_9_26' ? 'transcript_derived'
+                                      : 'ai_vision')
+                            }
+                        };
+                    })(),
+                    // v2.9.26: transcript-derived template tracking (for forensics + learning)
+                    transcriptDerivedTemplate: state.transcriptDerivedTemplate,
+                    transcriptTemplateScore: state.transcriptTemplateScore,
+                    missingMeasurementFieldsAtComplete: state.missingMeasurementFields,
                     templateKey: state.templateKey,
                     template: state.template,
                     tagData: state.tagData,
@@ -3058,6 +3436,13 @@
             state.classificationHasRaglan = false;
             state.raglanManualOverride = null; // v2.9.25
             state.templateAutoCorrection = null; // v2.9.25
+            // v2.9.26: Reset new state fields
+            state.elasticWaistManualOverride = null;
+            state.elasticAnkleManualOverride = null;
+            state.transcriptDerivedTemplate = null;
+            state.transcriptTemplateScore = 0;
+            state.missingMeasurementFields = [];
+            state._originalAIFlags = null;
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
@@ -3091,6 +3476,13 @@
             document.getElementById('correction-badge').textContent = ''; // v2.9.25
             document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
             document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
+            // v2.9.26: reset elastic toggles + hide missing-warning banner
+            document.getElementById('elastic-waist-toggle')?.classList.remove('active');
+            document.getElementById('elastic-ankle-toggle')?.classList.remove('active');
+            document.getElementById('elastic-waist-toggle').style.display = 'none';
+            document.getElementById('elastic-ankle-toggle').style.display = 'none';
+            document.getElementById('raglan-toggle').style.display = 'inline-block';
+            document.getElementById('missing-warning')?.classList.remove('visible');
             // v2.9.25: Hide addendum buttons + reset counts
             document.getElementById('measurement-addendum-btn').classList.remove('visible', 'recording');
             document.getElementById('measurement-addendum-btn').textContent = '➕ ADD MISSING MEASUREMENTS';
@@ -3123,6 +3515,13 @@
             state.classificationHasRaglan = false;
             state.raglanManualOverride = null; // v2.9.25
             state.templateAutoCorrection = null; // v2.9.25
+            // v2.9.26: Reset new state fields
+            state.elasticWaistManualOverride = null;
+            state.elasticAnkleManualOverride = null;
+            state.transcriptDerivedTemplate = null;
+            state.transcriptTemplateScore = 0;
+            state.missingMeasurementFields = [];
+            state._originalAIFlags = null;
             state.templateKey = null; state.template = null; state.tagData = null;
             state.measurements = {}; state.rawTranscript = ''; state.audioBlob = null;
             state.aiTriggered = false;
@@ -3156,6 +3555,13 @@
             document.getElementById('correction-badge').textContent = ''; // v2.9.25
             document.getElementById('raglan-toggle').classList.remove('active'); // v2.9.25
             document.querySelector('.classification-template').classList.remove('corrected'); // v2.9.25
+            // v2.9.26: reset elastic toggles + hide missing-warning banner
+            document.getElementById('elastic-waist-toggle')?.classList.remove('active');
+            document.getElementById('elastic-ankle-toggle')?.classList.remove('active');
+            document.getElementById('elastic-waist-toggle').style.display = 'none';
+            document.getElementById('elastic-ankle-toggle').style.display = 'none';
+            document.getElementById('raglan-toggle').style.display = 'inline-block';
+            document.getElementById('missing-warning')?.classList.remove('visible');
             // v2.9.25: Hide addendum buttons + reset counts
             document.getElementById('measurement-addendum-btn').classList.remove('visible', 'recording');
             document.getElementById('measurement-addendum-btn').textContent = '➕ ADD MISSING MEASUREMENTS';
