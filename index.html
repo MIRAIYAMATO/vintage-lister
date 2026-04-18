@@ -1,8 +1,56 @@
 <!DOCTYPE html>
 <!--
-    VintageLister v2.9.26 - TRANSCRIPT-AS-AUTHORITY + ELASTIC TOGGLES + MISSING DETECTION
+    VintageLister v2.9.27 - PASS 1 TEMPLATE REGISTRY EXPANSION (+12 templates)
     
     CHANGELOG:
+    v2.9.27 (2026-04-17):
+    - PASS 1 of a 3-pass patch series. No behavior changes to any UI, capture,
+      scoring, auto-correction, or parse logic. Template registry expansion
+      only. Logic fixes — crop toggle button, crop classification via Gemini,
+      tighter Length range for crops (client-side flagging) — are scheduled
+      for Pass 2 (v2.9.28).
+    - ADDED: 12 new templates in ALL_TEMPLATES_V26, growing the client-side
+      catalog 24 -> 36:
+        * 2 new non-crop sleeveless raglan variants (no shoulder seam, use
+          Arm Opening instead of Shoulder to Shoulder):
+            button-up-raglan-sleeveless
+            outerwear-raglan-sleeveless
+        * 10 new crop variants (field lists identical to parent; crop is a
+          length distinction, not a measurement-field distinction):
+            tops-short-sleeve-crop, tops-long-sleeve-crop
+            tops-raglan-crop, tops-raglan-short-sleeve-crop
+            tops-raglan-sleeveless-crop, tops-sleeveless-crop
+            button-up-short-sleeve-crop, button-up-long-sleeve-crop
+            button-up-sleeveless-crop, button-up-raglan-sleeveless-crop
+    - ADDED: 6 new entries in RAGLAN_TEMPLATES — the 2 non-crop sleeveless
+      raglan variants plus 4 raglan crop variants. The raglan toggle button
+      can now cycle to these from their non-raglan/non-crop equivalents.
+    - ADDED: 2 new entries in RAGLAN_CORRECTION_MAP:
+        'button-up-sleeveless' -> 'button-up-raglan-sleeveless'
+        'outerwear-sleeveless' -> 'outerwear-raglan-sleeveless'
+      So the raglan toggle now works on sleeveless button-ups and sleeveless
+      outerwear. RAGLAN_REVERSE_MAP is derived from the correction map via
+      Object.fromEntries and picks up the new entries automatically.
+    - NOT CHANGED in v2.9.27 (deferred to v2.9.28 / Pass 2):
+        * CROP toggle button — not added. Open design question: toggle on
+          parent template (like raglan) vs separate category flag. Either
+          approach is a UI + scoring change that belongs in Pass 2.
+        * Gemini classification prompt in handleClassify() — unchanged. AI
+          does not currently detect cropped hems. Crops are only reachable
+          via the (not-yet-built) crop toggle or manual template selection.
+        * Length range flagging — unchanged. A 12" crop will still flag as
+          out-of-range against the current 14-42" Length threshold. Fixed
+          when Measurement Reconciler gets template-aware ranges in Pass 2.
+        * ELASTIC_WAIST_CORRECTION_MAP, ELASTIC_ANKLE_CORRECTION_MAP —
+          unchanged. No elastic crop variants in this pass.
+    - REQUIRES: Lambda v106.9 with MEASUREMENT_TEMPLATES expanded to 36
+      templates, and Transcript Council v2.5.0 with ALL_TEMPLATES expanded
+      to match. Deploying this frontend against Lambda v106.8 is safe for
+      the existing 24 templates but the new 12 will fall back to unknown-
+      template handling until the Lambda ships.
+    - Template count: 24 -> 36 in ALL_TEMPLATES_V26 (and RAGLAN_TEMPLATES
+      grew 7 -> 13). All other maps unchanged in count.
+
     v2.9.26 (2026-04-17):
     - MAJOR: Photographer's audio is now PRIMARY AUTHORITY for template
       selection. The field names the photographer speaks literally tell the
@@ -1303,11 +1351,14 @@
         // See HTML comment at top of file for full changelog.
         // =============================================================================
         
-        const VERSION = '2.9.26';
+        const VERSION = '2.9.27';  // v2.9.27: Pass 1 template registry expansion (+12 templates)
         const DEFAULT_LAMBDA_URL = 'https://6t5wk2ae23foojyfwmddauorey0pjqji.lambda-url.us-east-2.on.aws/';
         const AI_IMAGE_MAX_SIZE = 1024;
 
         // v2.9.25: Local raglan templates for client-side correction without Lambda round-trip
+        // v2.9.27: Added 6 entries — 2 non-crop sleeveless raglan (button-up + outerwear) and
+        //          4 raglan crop variants (tops parent templates only; button-up-raglan-sleeveless
+        //          crop is listed because it's a raglan variant we stock).
         const RAGLAN_TEMPLATES = {
             'tops-raglan':                  { name:'Tops - Raglan Long Sleeve',      category:'tops',      measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:9 },
             'tops-raglan-short-sleeve':     { name:'Tops - Raglan Short Sleeve',     category:'tops',      measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:7 },
@@ -1316,26 +1367,44 @@
             'button-up-raglan-short-sleeve':{ name:'Button-Up - Raglan Short Sleeve',category:'button-up', measurements:['Neck Circumference','Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:8 },
             'outerwear-raglan':             { name:'Outerwear - Raglan Long Sleeve', category:'outerwear', measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:9 },
             'outerwear-raglan-short-sleeve':{ name:'Outerwear - Raglan Short Sleeve',category:'outerwear', measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:7 },
+            // v2.9.27: NEW — Non-crop sleeveless raglan variants. Use Arm Opening instead of Shoulder to Shoulder (raglan = no shoulder seam).
+            'button-up-raglan-sleeveless':  { name:'Button-Up - Raglan Sleeveless',   category:'button-up', measurements:['Neck Circumference','Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:6 },
+            'outerwear-raglan-sleeveless':  { name:'Outerwear - Raglan Sleeveless',   category:'outerwear', measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:5 },
+            // v2.9.27: NEW — Raglan crop variants. Field lists identical to parents; Length range tightening is Pass 2.
+            'tops-raglan-crop':              { name:'Tops - Raglan Long Sleeve Crop', category:'tops',      measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:9 },
+            'tops-raglan-short-sleeve-crop': { name:'Tops - Raglan Short Sleeve Crop',category:'tops',      measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:7 },
+            'tops-raglan-sleeveless-crop':   { name:'Tops - Raglan Sleeveless Crop',  category:'tops',      measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:5 },
+            'button-up-raglan-sleeveless-crop':{name:'Button-Up - Raglan Sleeveless Crop',category:'button-up',measurements:['Neck Circumference','Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'], count:6 },
         };
 
         // v2.9.25: Maps non-raglan template keys → raglan equivalents
+        // v2.9.27: Added 2 entries — raglan toggle now works on sleeveless button-ups and outerwear.
+        //          (Note: 'tops-sleeveless' → 'tops-raglan-sleeveless' was already present.)
         const RAGLAN_CORRECTION_MAP = {
             'tops-long-sleeve':        'tops-raglan',
             'tops-short-sleeve':       'tops-raglan-short-sleeve',
             'tops-sleeveless':         'tops-raglan-sleeveless',
             'button-up-long-sleeve':   'button-up-raglan',
             'button-up-short-sleeve':  'button-up-raglan-short-sleeve',
+            'button-up-sleeveless':    'button-up-raglan-sleeveless',   // v2.9.27
             'outerwear-long-sleeve':   'outerwear-raglan',
             'outerwear-short-sleeve':  'outerwear-raglan-short-sleeve',
+            'outerwear-sleeveless':    'outerwear-raglan-sleeveless',   // v2.9.27
         };
 
         // v2.9.25: Reverse map — raglan keys back to non-raglan equivalents
         const RAGLAN_REVERSE_MAP = Object.fromEntries(Object.entries(RAGLAN_CORRECTION_MAP).map(([k,v]) => [v,k]));
 
         // =====================================================================
-        // v2.9.26: Full 24-template catalog for transcript-based template scoring.
-        // Must stay in sync with MEASUREMENT_TEMPLATES in Lambda v106.8+ and
-        // with ALL_TEMPLATES in TranscriptCouncil v2.4.1+.
+        // v2.9.26: Full template catalog for transcript-based template scoring.
+        // Must stay in sync with MEASUREMENT_TEMPLATES in Lambda v106.9+ and
+        // with ALL_TEMPLATES in TranscriptCouncil v2.5.0+.
+        // v2.9.27: Expanded 24 → 36 templates. Added 2 non-crop sleeveless raglan
+        //          variants (button-up, outerwear) and 10 crop variants across
+        //          every parent tops/button-up style we stock. Crops share the
+        //          same field list as their parent; Length range tightening for
+        //          crops (e.g., 8-20" instead of 14-42") is a Pass 2 fix in the
+        //          Measurement Reconciler's RANGES dict.
         // =====================================================================
         const ALL_TEMPLATES_V26 = {
             'tops-long-sleeve':               { name:'Tops - Long Sleeve',                category:'tops',      measurements:['Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
@@ -1362,6 +1431,21 @@
             'elastic-waist-pants':            { name:'Elastic Waist Pants',               category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Knee','Leg Opening','Front Rise','Inseam','Outseam'] },
             'elastic-waist-shorts':           { name:'Elastic Waist Shorts',              category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Leg Opening','Front Rise','Inseam','Outseam'] },
             'elastic-waist-elastic-ankle':    { name:'Elastic Waist + Elastic Ankle',     category:'bottoms',   measurements:['Waist Relaxed','Waist Stretched','Hip','Thigh','Knee','Leg Opening Relaxed','Leg Opening Stretched','Front Rise','Inseam','Outseam'] },
+            // v2.9.27: NEW — Sleeveless raglan variants (non-crop). Use Arm Opening (raglan = no shoulder seam).
+            'button-up-raglan-sleeveless':    { name:'Button-Up - Raglan Sleeveless',     category:'button-up', measurements:['Neck Circumference','Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'outerwear-raglan-sleeveless':    { name:'Outerwear - Raglan Sleeveless',     category:'outerwear', measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            // v2.9.27: NEW — Crop variants. Field lists identical to parents.
+            //          Length range tightening (e.g., 8-20 instead of 14-42) lands in Pass 2 (Measurement Reconciler RANGES).
+            'tops-short-sleeve-crop':         { name:'Tops - Short Sleeve Crop',          category:'tops',      measurements:['Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-long-sleeve-crop':          { name:'Tops - Long Sleeve Crop',           category:'tops',      measurements:['Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan-crop':               { name:'Tops - Raglan Long Sleeve Crop',    category:'tops',      measurements:['Center Neck to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan-short-sleeve-crop':  { name:'Tops - Raglan Short Sleeve Crop',   category:'tops',      measurements:['Center Neck to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-raglan-sleeveless-crop':    { name:'Tops - Raglan Sleeveless Crop',     category:'tops',      measurements:['Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'tops-sleeveless-crop':           { name:'Tops - Sleeveless Crop',            category:'tops',      measurements:['Shoulder to Shoulder','Strap Width','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-short-sleeve-crop':    { name:'Button-Up - Short Sleeve Crop',     category:'button-up', measurements:['Neck Circumference','Center Neck to Shoulder','Shoulder to Sleeve Opening','Pit to Sleeve Opening','Sleeve Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-long-sleeve-crop':     { name:'Button-Up - Long Sleeve Crop',      category:'button-up', measurements:['Neck Circumference','Center Neck to Shoulder','Shoulder to Cuff','Pit to Cuff','Bicep','Elbow','Cuff Opening','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-sleeveless-crop':      { name:'Button-Up - Sleeveless Crop',       category:'button-up', measurements:['Neck Circumference','Shoulder to Shoulder','Pit to Pit','Waist','Bottom Hem','Length'] },
+            'button-up-raglan-sleeveless-crop':{name:'Button-Up - Raglan Sleeveless Crop',category:'button-up', measurements:['Neck Circumference','Arm Opening','Pit to Pit','Waist','Bottom Hem','Length'] },
         };
         // Attach count derived from measurements length (single source of truth)
         for (const key of Object.keys(ALL_TEMPLATES_V26)) {
